@@ -59,8 +59,7 @@ type PatientName = keyof typeof patientBriefs;
 const nav = [
   [Home, "Σήμερα", true],
   [Users, "Ασθενείς", false],
-  [FileText, "Σημειώσεις", false],
-  [Activity, "Τεστ & Πρόοδος", false],
+  [Activity, "Ψυχομετρικά τεστ", false],
   [Stethoscope, "Συνεργασία", false],
   [Settings, "Ρυθμίσεις", false],
 ] as const;

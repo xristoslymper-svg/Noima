@@ -177,3 +177,12 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .registry-page .registry-wrap{padding-top:56px}
 .psy-page .psy-content{padding-top:56px}
 @media(max-width:700px){.section-topbar{height:76px;padding:0 20px;grid-template-columns:1fr auto}.section-title{display:none}.section-profile{justify-self:end}}
+
+/* Persistent application shell for top-level sections */
+.secondary-shell .workspace{min-width:0}
+.secondary-content{min-height:calc(100vh - 76px);background:#fafbf9}
+.secondary-content.registry-page,.secondary-content.psy-page{width:auto}
+.secondary-content .registry-wrap,.secondary-content .psy-content{max-width:none;margin:0;padding:48px 52px 70px}
+.secondary-shell .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.96)}
+.secondary-shell .sidebar{position:sticky;top:0;height:100vh;align-self:start}
+@media(max-width:900px){.secondary-content .registry-wrap,.secondary-content .psy-content{padding:34px 24px 56px}}

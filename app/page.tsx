@@ -95,7 +95,7 @@ export default function Page() {
         </nav>
 
       </aside>
-
+      {mobileNav&&<button className="mobile-nav-backdrop" aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}
       <section className="workspace">
         <header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
           <div className="search">

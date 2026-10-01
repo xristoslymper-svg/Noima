@@ -186,3 +186,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .secondary-shell .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.96)}
 .secondary-shell .sidebar{position:sticky;top:0;height:100vh;align-self:start}
 @media(max-width:900px){.secondary-content .registry-wrap,.secondary-content .psy-content{padding:34px 24px 56px}}
+
+/* Keep Patients primary action aligned to the right edge of the summary row */
+.secondary-content.registry-page .registry-heading{display:grid;grid-template-columns:1fr auto;align-items:end}
+.secondary-content.registry-page .registry-heading .record{justify-self:end}
+.secondary-content.registry-page .registry-stats{display:grid;grid-template-columns:repeat(3,max-content);justify-content:start}
+@media(min-width:1100px){.secondary-content.registry-page .registry-heading{grid-template-columns:minmax(0,1fr) auto}.secondary-content.registry-page .registry-heading .record{margin-left:auto}}

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   FileText,
+  FolderOpen,
   HeartPulse,
   Home,
   Mic2,
@@ -105,7 +106,7 @@ export default function Page() {
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}
-                  {name === "Μαρία" ? <div className="session-actions"><Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link><Link href="/patients/maria/dictation" className="session-mic" aria-label="Νέα υπαγόρευση για τη Μαρία" title="Νέα υπαγόρευση"><Mic2 size={16}/></Link></div> : <button className="small-button">Άνοιγμα σύνοψης</button>}
+                  {name === "Μαρία" ? <div className="session-actions"><Link href="/patients/maria" className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link><Link href="/patients/maria/dictation" className="session-mic" aria-label="Νέα υπαγόρευση για τη Μαρία" title="Νέα υπαγόρευση"><Mic2 size={16}/></Link></div> : <button className="small-button folder-button"><FolderOpen size={16}/> Φάκελος</button>}
                 </div>
               ))}
             </div>

@@ -245,3 +245,19 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
  .sidebar .brand{padding-right:40px}
  .mobile-nav-backdrop{display:block;position:fixed;inset:0;z-index:205;border:0;background:rgba(29,40,35,.28);backdrop-filter:blur(2px)}
 }
+
+.calendar-week-card{background:#fff;border:1px solid #e5eae6;border-radius:17px;padding:14px;overflow-x:auto}
+.calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:10px;min-width:1080px}
+.week-day-column{border:1px solid #e8ece9;border-radius:14px;background:#fbfcfb;min-height:430px;padding:11px}
+.week-day-column.today{background:#f3f8f5;border-color:#cddfd6}
+.week-day-head{display:flex;flex-direction:column;gap:2px;padding:2px 2px 10px;border-bottom:1px solid #e8ece9}
+.week-day-head span{font-size:10px;font-weight:800;letter-spacing:.08em;color:#86918b;text-transform:uppercase}
+.week-day-head strong{font-size:13px;color:#33443c}
+.week-day-head i{font-style:normal;font-size:9px;color:#477663;font-weight:750;margin-top:2px}
+.week-day-events{display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.week-event{border-left:3px solid #8eae9f;background:#fff;border-radius:10px;padding:9px 9px 9px 10px;display:flex;flex-direction:column;gap:3px;box-shadow:0 2px 8px rgba(37,57,48,.035)}
+.week-event strong{font-size:11px;color:#315044}
+.week-event span{font-size:12px;font-weight:700;color:#2f3e37}
+.week-event small{font-size:10px;color:#87918c}
+.week-empty{font-size:10px;color:#a0aaa5;padding:10px 2px}
+@media(max-width:760px){.calendar-summary{flex-wrap:wrap}.calendar-view-switch{margin-left:0}.calendar-week-card{margin-right:-14px}.calendar-week-grid{min-width:980px}}

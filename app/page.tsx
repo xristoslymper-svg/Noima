@@ -123,7 +123,7 @@ export default function Page() {
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}
-                  <button className="small-button">Άνοιγμα σύνοψης</button>
+                  {name === "Μαρία Κ." ? <Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link> : <button className="small-button">Άνοιγμα σύνοψης</button>}
                 </div>
               ))}
             </div>
@@ -167,7 +167,7 @@ export default function Page() {
                   <span className="kicker">ΑΣΘΕΝΗΣ</span>
                   <h2>Μαρία Κ. — Κλινική εικόνα</h2>
                 </div>
-                <button className="text-button">Πλήρης φάκελος <ChevronRight size={16}/></button>
+                <Link href="/patients/maria" className="text-button link-button">Πλήρης φάκελος <ChevronRight size={16}/></Link>
               </div>
 
               <div className="clinical-grid">
@@ -206,7 +206,7 @@ export default function Page() {
               <h2>Υπαγόρευση κλινικής σημείωσης</h2>
               <p>Ο ψυχίατρος υπαγορεύει σύντομη σημείωση. Το Νόημα προτείνει δομημένα συμπτώματα, αγωγή, παρενέργειες, risk και πλάνο. Τίποτα δεν αποθηκεύεται χωρίς έγκριση.</p>
             </div>
-            <button className="record"><Mic2 size={22} /> Νέα υπαγόρευση</button>
+            <Link href="/patients/maria/dictation" className="record link-button"><Mic2 size={22} /> Νέα υπαγόρευση</Link>
           </section>
         </div>
       </section>

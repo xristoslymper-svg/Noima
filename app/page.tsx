@@ -45,7 +45,7 @@ export default function Page() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">Ν</div>
+          <div className="brand-mark">Ψ</div>
           <div>
             <div className="brand-name">Νόημα</div>
             <div className="brand-sub">Για πιο καθαρή κλινική σκέψη</div>
@@ -206,7 +206,7 @@ export default function Page() {
             <div>
               <span className="kicker">ΜΕΤΑ ΤΗ ΣΥΝΕΔΡΙΑ</span>
               <h2>Υπαγόρευση κλινικής σημείωσης</h2>
-              <p>Ο ψυχίατρος υπαγορεύει σύντομη σημείωση. Το Νόημα προτείνει δομημένα συμπτώματα, αγωγή, παρενέργειες, risk και πλάνο. Τίποτα δεν αποθηκεύεται χωρίς έγκριση.</p>
+              <p>Ο ψυχίατρος υπαγορεύει σύντομη σημείωση. Το σύστημα προτείνει δομημένα συμπτώματα, αγωγή, παρενέργειες, risk και πλάνο. Τίποτα δεν αποθηκεύεται χωρίς έγκριση.</p>
             </div>
             <Link href="/patients/maria/dictation" className="record link-button"><Mic2 size={22} /> Νέα υπαγόρευση</Link>
           </section>

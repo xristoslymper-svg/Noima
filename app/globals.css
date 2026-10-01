@@ -28,3 +28,10 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 
 .folder-button{display:inline-flex;align-items:center;gap:7px;color:#315f56;background:#fbfdfc}
 .folder-button svg{color:#2f6f63}
+
+.patient-name{border:0;background:transparent;padding:0;color:#142033;font:inherit;font-weight:800;text-align:left;cursor:pointer;border-radius:6px;transition:.15s}
+.patient-name:hover,.patient-name.selected{color:#2f6f63}
+.patient-name:focus-visible{outline:2px solid #8eb8ad;outline-offset:3px}
+.ai-brief{animation:brief-in .18s ease-out}
+@keyframes brief-in{from{opacity:.55;transform:translateY(2px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.ai-brief{animation:none}}

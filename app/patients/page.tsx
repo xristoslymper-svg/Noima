@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Search, Plus, ChevronRight, Users, CalendarDays, AlertCircle } from "lucide-react";
+import { Search, Plus, ChevronRight, Users, CalendarDays, AlertCircle, ArrowLeft, Bell } from "lucide-react";
 import { useState } from "react";
 
 const patients=[
@@ -14,7 +14,7 @@ export default function Patients(){
  const [q,setQ]=useState("");
  const filtered=patients.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||p.note.toLowerCase().includes(q.toLowerCase()));
  return <main className="registry-page">
-  <header className="registry-top"><Link href="/" className="registry-brand"><span>Ψ</span><small>Για μια οργανωμένη κλινική πράξη</small></Link><Link href="/" className="back-home">← Σήμερα</Link></header>
+  <header className="section-topbar"><Link href="/" className="section-back"><ArrowLeft size={17}/> Επισκόπηση</Link><div className="section-title"><div className="brand-mark">Ψ</div><span>Ασθενείς</span></div><div className="section-profile"><Bell size={18}/><div className="avatar">ΚΠ</div></div></header>
   <section className="registry-wrap">
    <div className="registry-heading"><div><span className="kicker">ΚΛΙΝΙΚΟ ΜΗΤΡΩΟ</span><h1>Ασθενείς</h1><p>Οι ασθενείς σας και ό,τι χρειάζεται την προσοχή σας.</p></div><Link href="/patients/new" className="record"><Plus size={18}/> Νέος ασθενής</Link></div>
    <div className="registry-stats"><div><Users/><span><strong>4</strong> ενεργοί ασθενείς</span></div><div><CalendarDays/><span><strong>4</strong> συνεδρίες σήμερα</span></div><div><AlertCircle/><span><strong>1</strong> νέα καρτέλα προς δημιουργία</span></div></div>

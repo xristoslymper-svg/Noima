@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Mic2, UserRound, Brain, HeartPulse, Pill, ClipboardList, ShieldCheck, Check, ChevronRight } from "lucide-react";
+import { ArrowLeft, Mic2, UserRound, Brain, HeartPulse, Pill, ClipboardList, ShieldCheck, Check, ChevronRight, Mail } from "lucide-react";
 
 const sections=[
  ["complaint","Λόγος προσέλευσης","Chief complaint, έναρξη και βασικό αίτημα",Brain],
@@ -13,6 +13,8 @@ const sections=[
 export default function NewPatient(){
  const [fields,setFields]=useState<Record<string,string>>({});
  const [listening,setListening]=useState<string|null>(null);
+ const [sent,setSent]=useState<string[]>([]);
+ const sendScale=(scale:string)=>setSent(v=>v.includes(scale)?v:[...v,scale]);
  const dictate=(key:string)=>{setListening(key);setTimeout(()=>{setFields(v=>({...v,[key]:"Demo υπαγόρευσης — το κείμενο θα προταθεί εδώ προς έλεγχο και έγκριση από τον ψυχίατρο."}));setListening(null)},650)};
  return <main className="intake-page">
   <div className="intake-top"><Link href="/patients" className="back"><ArrowLeft size={17}/> Ασθενείς</Link><span>Νέα καρτέλα · Αρχική αξιολόγηση</span></div>
@@ -26,7 +28,7 @@ export default function NewPatient(){
     {sections.map(([key,title,hint,Icon])=><section className="intake-card" key={key}><div className="intake-card-title"><span className="intake-icon"><Icon size={18}/></span><div><h2>{title}</h2><p>{hint}</p></div><button className={listening===key?"section-mic recording":"section-mic"} onClick={()=>dictate(key)} disabled={listening!==null}><Mic2 size={16}/>{listening===key?" Ακούω…":" Υπαγόρευση"}</button></div>
      {fields[key]?<div className="intake-proposal"><span>ΠΡΟΤΑΣΗ ΑΠΟ ΥΠΑΓΟΡΕΥΣΗ</span><p>{fields[key]}</p></div>:<textarea placeholder="Καταγραφή με κείμενο ή χρησιμοποιήστε την υπαγόρευση…"/>}
     </section>)}
-    <section className="intake-card"><div className="intake-card-title"><span className="intake-icon"><ShieldCheck size={18}/></span><div><h2>Κλίμακες πριν τη συνεδρία</h2><p>Προαιρετικές μετρήσεις για baseline</p></div></div><div className="scale-picks"><button>PHQ-9 <span>+ Προσθήκη</span></button><button>GAD-7 <span>+ Προσθήκη</span></button><button>ASRS <span>+ Προσθήκη</span></button><button>AUDIT-C <span>+ Προσθήκη</span></button></div></section>
+    <section className="intake-card"><div className="intake-card-title"><span className="intake-icon"><ShieldCheck size={18}/></span><div><h2>Κλίμακες πριν τη συνεδρία</h2><p>Προαιρετικές μετρήσεις για baseline</p></div></div><div className="scale-picks">{["PHQ-9","GAD-7","ASRS","AUDIT-C"].map(scale=><div className="scale-pick" key={scale}><div><strong>{scale}</strong><button className="scale-add">+ Προσθήκη</button></div><button className={sent.includes(scale)?"scale-send sent":"scale-send"} onClick={()=>sendScale(scale)}>{sent.includes(scale)?<><Check size={13}/> Στάλθηκε</>:<><Mail size={13}/> Αποστολή στον ασθενή</>}</button></div>)}</div></section>
    </div>
    <aside className="intake-side"><div className="intake-side-card"><span className="kicker">ΡΟΗ ΠΡΩΤΗΣ ΕΠΙΣΚΕΨΗΣ</span><div className="flow-step done"><Check size={15}/><div><strong>Δημιουργία καρτέλας</strong><span>Βασικά στοιχεία & pre-visit ιστορικό</span></div></div><div className="flow-step"><span>2</span><div><strong>Πρώτη συνεδρία</strong><small>Συνέντευξη · MSE · Risk</small></div></div><div className="flow-step"><span>3</span><div><strong>Κλινική εκτίμηση</strong><small>Διάγνωση · formulation · πλάνο</small></div></div><div className="flow-step"><span>4</span><div><strong>Σύνοψη</strong><small>Δημιουργείται μετά την αξιολόγηση</small></div></div></div>
     <div className="intake-note"><strong>Δεν υπάρχει ακόμη Σύνοψη</strong><p>Η κλινική σύνοψη θα δημιουργηθεί από τα εγκεκριμένα δεδομένα της αρχικής αξιολόγησης.</p></div>

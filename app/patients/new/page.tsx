@@ -33,7 +33,7 @@ export default function NewPatient(){
    <aside className="intake-side"><div className="intake-side-card"><span className="kicker">ΡΟΗ ΠΡΩΤΗΣ ΕΠΙΣΚΕΨΗΣ</span><div className="flow-step done"><Check size={15}/><div><strong>Δημιουργία καρτέλας</strong><span>Βασικά στοιχεία & pre-visit ιστορικό</span></div></div><div className="flow-step"><span>2</span><div><strong>Πρώτη συνεδρία</strong><small>Συνέντευξη · MSE · Risk</small></div></div><div className="flow-step"><span>3</span><div><strong>Κλινική εκτίμηση</strong><small>Διάγνωση · formulation · πλάνο</small></div></div><div className="flow-step"><span>4</span><div><strong>Σύνοψη</strong><small>Δημιουργείται μετά την αξιολόγηση</small></div></div></div>
     <div className="intake-note"><strong>Δεν υπάρχει ακόμη Σύνοψη</strong><p>Η κλινική σύνοψη θα δημιουργηθεί από τα εγκεκριμένα δεδομένα της αρχικής αξιολόγησης.</p></div>
    </aside></div>
-   <div className="intake-footer"><span>Demo MVP · Καμία πληροφορία δεν αποθηκεύεται ακόμη.</span><button className="save-intake">Αποθήκευση & έναρξη πρώτης συνεδρίας <ChevronRight size={17}/></button></div>
+   <div className="intake-footer"><span>Demo MVP · Καμία πληροφορία δεν αποθηκεύεται ακόμη.</span><Link href="/patients/kostas/initial" className="save-intake">Αποθήκευση & έναρξη πρώτης συνεδρίας <ChevronRight size={17}/></Link></div>
   </section>
  </main>
 }

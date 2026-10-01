@@ -109,7 +109,7 @@ export default function Page() {
             <div>
               <p className="eyebrow">ΠΕΜΠΤΗ, 1 ΟΚΤΩΒΡΙΟΥ</p>
               <h1>Καλημέρα, Δρ. Παπαδάκη</h1>
-              <p>Ό,τι χρειάζεστε πριν, κατά και μετά τη σημερινή κλινική εργασία.</p>
+              <p>Όλα όσα χρειάζεστε για μια όμορφη και παραγωγική ημέρα.</p>
             </div>
             <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>

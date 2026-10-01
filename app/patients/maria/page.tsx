@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText, HeartPulse, Mic2, Pill, ShieldCheck, Sparkles, TestTube2, Mail, X, Check } from "lucide-react";
+import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText, HeartPulse, Mic2, Pill, ShieldCheck, Sparkles, TestTube2, Mail, X, Check, Plus, History as HistoryIcon } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const data=[{date:"Ιουν",phq:17,gad:14},{date:"Ιουλ",phq:14,gad:11},{date:"Αυγ",phq:11,gad:8},{date:"Σεπ",phq:7,gad:5}];
@@ -9,11 +9,11 @@ type Tab="Σύνοψη"|"Συνεδρίες"|"Ιστορικό"|"Αγωγή"|"Κ
 
 export default function Maria(){
  const [tab,setTab]=useState<Tab>("Σύνοψη");
+ const [quickAdd,setQuickAdd]=useState(false);
  return <main className="clinical-page">
   <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Επισκόπηση</Link><span>Κλινικός φάκελος · Υποθετική ασθενής MVP</span></div>
   <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div></div>
-  <div className="patient-tabs">{(["Σύνοψη","Συνεδρίες","Ιστορικό","Αγωγή","Κλίμακες"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
-  {tab==="Σύνοψη"&&<Summary/>}{tab==="Συνεδρίες"&&<Sessions/>}{tab==="Ιστορικό"&&<History/>}{tab==="Αγωγή"&&<Meds/>}{tab==="Κλίμακες"&&<Tests/>}
+  <div className="patient-workspace-shell"><aside className="patient-nav"><div className="patient-nav-identity"><span className="patient-nav-avatar">Μ</span><div><strong>Μαρία</strong><small>32 ετών · Ενεργή</small></div></div><span className="patient-nav-label">ΦΑΚΕΛΟΣ</span>{(["Σύνοψη","Συνεδρίες","Ιστορικό","Αγωγή","Κλίμακες"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x==="Σύνοψη"?<FileText size={16}/>:x==="Συνεδρίες"?<ClipboardCheck size={16}/>:x==="Ιστορικό"?<HistoryIcon size={16}/>:x==="Αγωγή"?<Pill size={16}/>:<TestTube2 size={16}/>}<span>{x==="Κλίμακες"?"Ψυχομετρικά":x}</span>{x==="Συνεδρίες"&&<i>1</i>}</button>)}<div className="patient-nav-divider"/><span className="patient-nav-label action-label">ΠΡΟΣΘΗΚΗ ΣΤΟΝ ΦΑΚΕΛΟ</span><button className="patient-primary-action" onClick={()=>setTab("Συνεδρίες")}><Plus size={16}/> Νέα συνεδρία</button><Link href="/patients/maria/dictation" className="patient-action"><Mic2 size={16}/> Υπαγόρευση</Link><button className="patient-action" onClick={()=>setQuickAdd(true)}><Plus size={16}/> Κλινική καταχώρηση</button><button className="patient-action" onClick={()=>setTab("Κλίμακες")}><Mail size={16}/> Αποστολή τεστ</button><Link href="/calendar" className="patient-action"><CalendarDays size={16}/> Νέο ραντεβού</Link><div className="patient-next-visit"><small>ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ</small><strong>Σήμερα · 11:00</strong><button onClick={()=>setTab("Συνεδρίες")}>Έναρξη συνεδρίας <ChevronRight size={14}/></button></div></aside><div className="patient-workspace-content">{tab==="Σύνοψη"&&<Summary/>}{tab==="Συνεδρίες"&&<Sessions/>}{tab==="Ιστορικό"&&<History/>}{tab==="Αγωγή"&&<Meds/>}{tab==="Κλίμακες"&&<Tests/>}</div></div>{quickAdd&&<QuickAdd onClose={()=>setQuickAdd(false)}/>}
  </main>
 }
 
@@ -105,3 +105,5 @@ function Detail({title,text}:{title:string,text:string}){return <div className="
 function Medication({name,current,started,response,adverse}:{name:string,current:string,started:string,response:string,adverse:string}){return <div className="card medication-card"><div><span className="kicker">ΕΝΕΡΓΟ</span><h2>{name}</h2><strong>{current}</strong></div><div className="med-facts"><p><b>Ιστορικό δόσης:</b> {started}</p><p><b>Ανταπόκριση:</b> {response}</p><p><b>Ανεπιθύμητες:</b> {adverse}</p></div></div>}
 function Note({date,title,text}:{date:string,title:string,text:string}){return <div className="card note-card"><div><span>{date}</span><strong>{title}</strong></div><p>{text}</p></div>}
 function Info({icon,label,value}:{icon:React.ReactNode,label:string,value:string}){return <div className="side-info"><span>{icon}</span><div><small>{label}</small><strong>{value}</strong></div></div>}
+
+function QuickAdd({onClose}:{onClose:()=>void}){const [type,setType]=useState("Σύμπτωμα");const [text,setText]=useState("");return <div className="quick-add-backdrop" onClick={onClose}><section className="quick-add-modal" onClick={e=>e.stopPropagation()}><button className="quick-add-close" onClick={onClose}><X size={18}/></button><span className="kicker">ΚΛΙΝΙΚΗ ΚΑΤΑΧΩΡΗΣΗ</span><h2>Τι θέλετε να προσθέσετε στη Μαρία;</h2><p>Καταγράψτε γρήγορα κάτι που πρέπει να παραμείνει στον κλινικό φάκελο.</p><div className="quick-add-types">{["Σύμπτωμα","Παρενέργεια","Risk","Διάγνωση","Ιστορικό","Σημαντικό γεγονός","Θεραπευτικό πλάνο","Άλλο"].map(x=><button key={x} className={type===x?"active":""} onClick={()=>setType(x)}>{x}</button>)}</div><div className="quick-add-compose"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Γράψτε ή υπαγορεύστε τι θέλετε να καταγραφεί…"/><button title="Υπαγόρευση"><Mic2 size={18}/></button></div><div className="quick-add-note"><ShieldCheck size={15}/> Η καταχώρηση παραμένει πρόταση μέχρι να την εγκρίνετε.</div><footer><button onClick={onClose}>Ακύρωση</button><button className="quick-add-save" onClick={onClose} disabled={!text.trim()}><Check size={15}/> Προσθήκη στον φάκελο</button></footer></section></div>}

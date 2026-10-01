@@ -112,7 +112,7 @@ export default function Page() {
               </div>
 
               {[
-                ["11:00", "Μαρία Κ.", "32 ετών · Επανεκτίμηση", "Σε 25 λεπτά"],
+                ["11:00", "Μαρία", "32 ετών · Επανεκτίμηση", "Σε 25 λεπτά"],
                 ["12:30", "Γιάννης Π.", "41 ετών · Αγχώδης διαταραχή", ""],
                 ["14:00", "Ελένη Δ.", "28 ετών · Follow-up αγωγής", ""],
                 ["16:00", "Κώστας Σ.", "37 ετών · Πρώτη αξιολόγηση", ""],
@@ -125,7 +125,7 @@ export default function Page() {
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}
-                  {name === "Μαρία Κ." ? <Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link> : <button className="small-button">Άνοιγμα σύνοψης</button>}
+                  {name === "Μαρία" ? <Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link> : <button className="small-button">Άνοιγμα σύνοψης</button>}
                 </div>
               ))}
             </div>
@@ -136,7 +136,7 @@ export default function Page() {
                   <span className="kicker">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ</span>
                   <h2><Sparkles size={19} /> Σύνοψη πριν τη συνεδρία</h2>
                 </div>
-                <span className="status-dot">Μαρία Κ.</span>
+                <span className="status-dot">Μαρία</span>
               </div>
 
               <div className="brief-block">
@@ -167,7 +167,7 @@ export default function Page() {
               <div className="card-head">
                 <div>
                   <span className="kicker">ΑΣΘΕΝΗΣ</span>
-                  <h2>Μαρία Κ. — Κλινική εικόνα</h2>
+                  <h2>Μαρία — Κλινική εικόνα</h2>
                 </div>
                 <Link href="/patients/maria" className="text-button link-button">Πλήρης φάκελος <ChevronRight size={16}/></Link>
               </div>

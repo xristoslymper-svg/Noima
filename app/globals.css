@@ -35,3 +35,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .ai-brief{animation:brief-in .18s ease-out}
 @keyframes brief-in{from{opacity:.55;transform:translateY(2px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.ai-brief{animation:none}}
+
+.session-row{position:relative;padding-left:12px;padding-right:10px;border-radius:14px;transition:background .18s ease,box-shadow .18s ease}
+.session-row.selected-patient{background:#eef6f1;box-shadow:inset 3px 0 0 #4b8f7f}
+.session-row.selected-patient .patient-avatar{background:#dcece3;color:#276557}
+.session-row.selected-patient .patient-name{color:#245f55}
+@media(hover:hover) and (pointer:fine){.session-row:not(.selected-patient):has(.patient-name:hover){background:#f8faf8}}

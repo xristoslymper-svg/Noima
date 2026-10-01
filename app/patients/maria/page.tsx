@@ -5,15 +5,15 @@ import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText,
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const data=[{date:"Ιουν",phq:17,gad:14},{date:"Ιουλ",phq:14,gad:11},{date:"Αυγ",phq:11,gad:8},{date:"Σεπ",phq:7,gad:5}];
-type Tab="Σύνοψη"|"Ιστορικό"|"Φάρμακα"|"Τεστ"|"Σημειώσεις";
+type Tab="Σύνοψη"|"Συνεδρίες"|"Ιστορικό"|"Αγωγή"|"Κλίμακες";
 
 export default function Maria(){
  const [tab,setTab]=useState<Tab>("Σύνοψη");
  return <main className="clinical-page">
   <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Κλινικός φάκελος · Υποθετική ασθενής MVP</span></div>
-  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Νέα υπαγόρευση</Link></div>
-  <div className="patient-tabs">{(["Σύνοψη","Ιστορικό","Φάρμακα","Τεστ","Σημειώσεις"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
-  {tab==="Σύνοψη"&&<Summary/>}{tab==="Ιστορικό"&&<History/>}{tab==="Φάρμακα"&&<Meds/>}{tab==="Τεστ"&&<Tests/>}{tab==="Σημειώσεις"&&<Notes/>}
+  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Υπαγόρευση συνεδρίας</Link></div>
+  <div className="patient-tabs">{(["Σύνοψη","Συνεδρίες","Ιστορικό","Αγωγή","Κλίμακες"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
+  {tab==="Σύνοψη"&&<Summary/>}{tab==="Συνεδρίες"&&<Sessions/>}{tab==="Ιστορικό"&&<History/>}{tab==="Αγωγή"&&<Meds/>}{tab==="Κλίμακες"&&<Tests/>}
  </main>
 }
 
@@ -35,7 +35,59 @@ function Meds(){return <TabPage title="Φάρμακα" subtitle="Τρέχουσ�
 
 function Tests(){return <TabPage title="Τεστ & πρόοδος" subtitle="Μετρήσεις που συμπληρώνουν — δεν αντικαθιστούν — την κλινική εκτίμηση."><div className="test-table"><div className="test-head"><span>Ημερομηνία</span><span>PHQ-9</span><span>GAD-7</span><span>Κλινική εικόνα</span></div>{[["06/06","17","14","Μέτρια-σοβαρά συμπτώματα, συχνές κρίσεις πανικού"],["04/07","14","11","Μερική βελτίωση ύπνου και διάθεσης"],["08/08","11","8","Λιγότερη αποφυγή, καλύτερη λειτουργικότητα"],["17/09","7","5","Ήπια υπολειπόμενα συμπτώματα"]].map(r=><div className="test-row" key={r[0]}>{r.map(x=><span key={x}>{x}</span>)}</div>)}</div><div className="card tab-card"><span className="kicker">ΕΡΜΗΝΕΙΑ ΠΟΡΕΙΑΣ</span><h2>Σταθερή βελτίωση</h2><p>Η πτώση των scores συμβαδίζει με την κλινική εικόνα: λιγότερες κρίσεις πανικού, καλύτερος ύπνος και επιστροφή σε πλήρες ωράριο. Παραμένει ανάγκη παρακολούθησης της ανοχής στην αγωγή.</p></div></TabPage>}
 
-function Notes(){return <TabPage title="Σημειώσεις" subtitle="Σύντομες εγκεκριμένες κλινικές καταγραφές."><div className="notes-list"><Note date="17/09" title="Follow-up αγωγής" text="Χωρίς κρίση πανικού από 31/08. Διάθεση σαφώς καλύτερη. Αναφέρει μειωμένη libido μετά την αύξηση sertraline. Αρνείται SI/plan/intent. Συνέχιση 100 mg και επανεκτίμηση ανοχής."/><Note date="03/09" title="Επανεκτίμηση" text="Μερική ανταπόκριση στα 50 mg, αλλά παραμένει anticipatory anxiety και δύο επεισόδια πανικού τον Αύγουστο. Συζητήθηκε και συμφωνήθηκε αύξηση sertraline σε 100 mg."/><Note date="04/07" title="Follow-up" text="Καλύτερος ύπνος με trazodone. PHQ-9 14, GAD-7 11. Κρίσεις πανικού περίπου 1/εβδομάδα. Καλή ανοχή sertraline 50 mg."/><Note date="06/06" title="Αρχική αξιολόγηση" text="Καταθλιπτική διάθεση, ανηδονία, κόπωση, δυσκολία συγκέντρωσης και 2–3 κρίσεις πανικού/εβδομάδα. Χωρίς ιστορικό μανίας/ψύχωσης. Αρνείται ενεργό αυτοκτονικό ιδεασμό."/></div></TabPage>}
+function Sessions(){
+ const demo={
+  symptoms:"Χωρίς νέα κρίση πανικού από την προηγούμενη επίσκεψη. Ύπνος 6–7 ώρες. Το άγχος στην εργασία έχει μειωθεί, με ήπια ένταση πριν από παρουσιάσεις.",
+  effects:"Η μειωμένη libido επιμένει μετά την αύξηση της sertraline στα 100 mg και προκαλεί μέτρια ενόχληση.",
+  adherence:"Καλή συνέπεια στη λήψη. Αναφέρει μία χαμένη πρωινή δόση sertraline τον τελευταίο μήνα.",
+  mse:"Συνεργάσιμη, καλή βλεμματική επαφή. Λόγος φυσιολογικού ρυθμού. Διάθεση βελτιωμένη, συναίσθημα κατάλληλο. Χωρίς αναφερόμενα ψυχωτικά στοιχεία.",
+  risk:"Αρνείται αυτοκτονικό ιδεασμό, πρόθεση ή σχέδιο. Χωρίς ιστορικό απόπειρας. Παρόντες προστατευτικοί παράγοντες.",
+  assessment:"Συνεχιζόμενη κλινική βελτίωση καταθλιπτικών και αγχωδών συμπτωμάτων. Κύριο τρέχον ζήτημα η ανεκτικότητα της αγωγής λόγω σεξουαλικής δυσλειτουργίας.",
+  plan:"Συνέχιση sertraline 100 mg προς το παρόν. Παρακολούθηση σεξουαλικής δυσλειτουργίας και συζήτηση επιλογών εάν επιμένει. Συνέχιση trazodone 50 mg.",
+  review:"Επανεκτίμηση σε 4 εβδομάδες ή νωρίτερα εάν υπάρξει επιδείνωση."
+ } as const;
+ type Key=keyof typeof demo;
+ const [fields,setFields]=useState<Partial<Record<Key,string>>>({});
+ const [recording,setRecording]=useState<Key|null>(null);
+ const dictate=(key:Key)=>{setRecording(key); window.setTimeout(()=>{setFields(v=>({...v,[key]:demo[key]}));setRecording(null)},650)};
+ const sections:[Key,string,string][]=[
+  ["symptoms","Συμπτώματα","Μεταβολές από την προηγούμενη επίσκεψη"],
+  ["effects","Παρενέργειες","Ανεπιθύμητες ενέργειες και επίδραση"],
+  ["adherence","Συμμόρφωση στην αγωγή","Λήψη, παραλείψεις και δυσκολίες"],
+  ["mse","Εξέταση ψυχικής κατάστασης (MSE)","Σημερινά ευρήματα και μεταβολές"],
+  ["risk","Εκτίμηση κινδύνου","Αυτοκτονικότητα, αυτοβλάβη και προστατευτικοί παράγοντες"],
+  ["assessment","Διάγνωση & κλινική εκτίμηση","Τρέχουσα κλινική διατύπωση"],
+  ["plan","Θεραπευτικό πλάνο","Αγωγή, παρεμβάσεις και επόμενα βήματα"],
+  ["review","Επόμενη επανεκτίμηση","Χρόνος και λόγος επόμενου follow-up"]
+ ];
+ return <section className="session-workspace">
+  <div className="session-work-head">
+   <div><span className="kicker">ΣΗΜΕΡΙΝΗ ΣΥΝΕΔΡΙΑ · 1 ΟΚΤΩΒΡΙΟΥ</span><h2>Follow-up</h2><p>Καταγράψτε μόνο ό,τι είναι κλινικά χρήσιμο. Κάθε μικρόφωνο συμπληρώνει μόνο τη συγκεκριμένη ενότητα.</p></div>
+   <Link href="/patients/maria/dictation" className="record compact"><Mic2 size={17}/> Υπαγόρευση συνολικής συνεδρίας</Link>
+  </div>
+
+  <div className="followup-snapshot">
+   <div><span>PHQ-9</span><strong>11 → 7</strong><small>από προηγούμενη μέτρηση</small></div>
+   <div><span>GAD-7</span><strong>8 → 5</strong><small>από προηγούμενη μέτρηση</small></div>
+   <div><span>Αγωγή</span><strong>Sertraline 100 mg</strong><small>αύξηση από 50 mg</small></div>
+   <div><span>Κύριο θέμα</span><strong>Μειωμένη libido</strong><small>μετά την αύξηση δόσης</small></div>
+  </div>
+
+  <div className="clinical-sections">
+   {sections.map(([key,title,hint])=><div className={fields[key]?"clinical-section populated":"clinical-section"} key={key}>
+    <div className="clinical-section-head"><div><h3>{title}</h3><span>{hint}</span></div><button className={recording===key?"section-mic recording":"section-mic"} onClick={()=>dictate(key)} disabled={recording!==null} aria-label={"Υπαγόρευση: "+title}><Mic2 size={17}/>{recording===key?" Ακούω…":" Υπαγόρευση"}</button></div>
+    {fields[key]?<div className="section-content"><p>{fields[key]}</p><button onClick={()=>setFields(v=>({...v,[key]:undefined}))}>Καθαρισμός</button></div>:<div className="section-empty">Δεν έχει καταγραφεί ακόμη περιεχόμενο.</div>}
+   </div>)}
+  </div>
+  <div className="session-save"><span><ShieldCheck size={16}/> Demo: η υπαγόρευση δημιουργεί πρόταση προς έλεγχο από τον ψυχίατρο.</span><button>Έγκριση & αποθήκευση συνεδρίας</button></div>
+
+  <div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ ΣΥΝΕΔΡΙΕΣ</span><h3>Κλινική πορεία</h3>
+   <Note date="17/09" title="Follow-up αγωγής" text="Χωρίς κρίση πανικού από 31/08. Διάθεση σαφώς καλύτερη. Μειωμένη libido μετά την αύξηση sertraline. Αρνείται SI/plan/intent."/>
+   <Note date="03/09" title="Follow-up · αλλαγή αγωγής" text="Μερική ανταπόκριση στα 50 mg, αλλά παραμένει anticipatory anxiety. Συμφωνήθηκε αύξηση sertraline σε 100 mg."/>
+   <Note date="06/06" title="Αρχική αξιολόγηση" text="Καταθλιπτική διάθεση, ανηδονία, κόπωση, δυσκολία συγκέντρωσης και 2–3 κρίσεις πανικού/εβδομάδα. Χωρίς ιστορικό μανίας/ψύχωσης."/>
+  </div>
+ </section>
+}
 
 function TabPage({title,subtitle,children}:{title:string,subtitle:string,children:React.ReactNode}){return <section className="tab-page"><div className="tab-heading"><h2>{title}</h2><p>{subtitle}</p></div>{children}</section>}
 function Detail({title,text}:{title:string,text:string}){return <div className="card detail-card"><h3>{title}</h3><p>{text}</p></div>}

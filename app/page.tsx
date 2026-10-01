@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import {
   Activity,
   Bell,
   Brain,
+  Check,
+  Clock,
+  X,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
@@ -32,6 +36,7 @@ const nav = [
 ] as const;
 
 export default function Page() {
+  const [calendarOpen, setCalendarOpen] = useState(false);
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -49,11 +54,6 @@ export default function Page() {
           ))}
         </nav>
 
-        <div className="sidebar-note">
-          <Brain size={22} />
-          <strong>Ψυχιατρικό workspace</strong>
-          <span>Σχεδιασμένο γύρω από την πορεία του ασθενούς, όχι γύρω από φόρμες.</span>
-        </div>
       </aside>
 
       <section className="workspace">
@@ -79,7 +79,7 @@ export default function Page() {
               <h1>Καλημέρα, Δρ. Παπαδάκη</h1>
               <p>Ό,τι χρειάζεστε πριν, κατά και μετά τη σημερινή κλινική εργασία.</p>
             </div>
-            <button className="primary ghost"><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
+            <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>
 
           <section className="metric-grid">
@@ -152,6 +152,44 @@ export default function Page() {
 
         </div>
       </section>
+
+      {calendarOpen && <div className="calendar-overlay" onClick={()=>setCalendarOpen(false)}>
+        <section className="calendar-panel" onClick={e=>e.stopPropagation()}>
+          <div className="calendar-panel-head">
+            <div><span className="kicker">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span><h2>Πέμπτη, 1 Οκτωβρίου</h2><p>Τα ραντεβού σας σε μία καθαρή ημερήσια προβολή.</p></div>
+            <button className="calendar-close" onClick={()=>setCalendarOpen(false)} aria-label="Κλείσιμο"><X size={20}/></button>
+          </div>
+
+          <div className="calendar-date-strip">
+            {["ΔΕΥ|28","ΤΡΙ|29","ΤΕΤ|30","ΠΕΜ|1","ΠΑΡ|2","ΣΑΒ|3","ΚΥΡ|4"].map((d,i)=>{const [day,date]=d.split("|");return <button key={d} className={i===3?"active":""}><span>{day}</span><strong>{date}</strong></button>})}
+          </div>
+
+          <div className="calendar-body">
+            <div className="calendar-agenda">
+              <div className="agenda-title"><div><h3>Σήμερα</h3><span>1 συνεδρία · υποθετικό MVP</span></div><button className="add-appointment">+ Νέο ραντεβού</button></div>
+              <div className="agenda-event">
+                <div className="agenda-time"><strong>11:00</strong><span>50′</span></div>
+                <div className="agenda-line"></div>
+                <div className="agenda-info"><strong>Μαρία</strong><span>Επανεκτίμηση · Follow-up αγωγής</span><small><Clock size={13}/> 11:00–11:50</small></div>
+                <Link href="/patients/maria" className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link>
+              </div>
+              <div className="agenda-empty"><span>12:00</span><div></div></div>
+              <div className="agenda-empty"><span>13:00</span><div></div></div>
+              <div className="agenda-empty"><span>14:00</span><div></div></div>
+              <div className="agenda-empty"><span>15:00</span><div></div></div>
+            </div>
+
+            <aside className="calendar-integrations">
+              <span className="kicker">ΣΥΝΔΕΣΕΙΣ</span>
+              <h3>Συγχρονίστε το πρόγραμμά σας</h3>
+              <p>Φέρτε τα υπάρχοντα ραντεβού σας στο ίδιο ημερολόγιο.</p>
+              <button className="integration-button"><span className="integration-logo google">G</span><div><strong>Google Calendar</strong><small>Σύνδεση ημερολογίου</small></div><ChevronRight size={17}/></button>
+              <button className="integration-button"><span className="integration-logo doctor">D</span><div><strong>Doctoranytime</strong><small>Σύνδεση ραντεβού</small></div><ChevronRight size={17}/></button>
+              <div className="integration-note"><Check size={15}/><span>Οι συνδέσεις είναι demo στο MVP. Δεν γίνεται ακόμη συγχρονισμός δεδομένων.</span></div>
+            </aside>
+          </div>
+        </section>
+      </div>}
     </main>
   );
 }

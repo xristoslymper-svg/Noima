@@ -134,7 +134,7 @@ export default function Page() {
                   <div className="time">{time}</div>
                   <div className="patient-avatar">{name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatient === name ? "patient-name selected" : "patient-name"} onClick={()=>setSelectedPatient(name as PatientName)}>{name}</button>{name === "Μαρία" && <span className="visit-type-badge">Follow-up</span>}</div>
+                    <div className="patient-name-line"><button className={selectedPatient === name ? "patient-name selected" : "patient-name"} onClick={()=>setSelectedPatient(name as PatientName)}>{name}</button>{name === "Μαρία" && <span className="visit-type-badge">Follow-up</span>}{name === "Κώστας Σ." && <span className="visit-type-badge new">Νέος</span>}</div>
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}

@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   }
 
   const file = incoming.get("file");
+  const purpose = incoming.get("purpose") === "calendar" ? "calendar" : "clinical";
   if (!(file instanceof File) || file.size === 0) {
     return Response.json({ error: "Δεν βρέθηκε αρχείο ήχου." }, { status: 400 });
   }
@@ -32,7 +33,9 @@ export async function POST(request: Request) {
   body.append("model", "gpt-transcribe");
   body.append(
     "prompt",
-    "Greek psychiatric clinical dictation. Transcribe faithfully in the original language. Preserve negations, medication names, doses, units, scores, punctuation, and mixed Greek/English medical terminology. Do not summarize, interpret, or add clinical information.",
+    purpose === "calendar"
+      ? "Greek calendar voice command. Transcribe faithfully and literally. Preserve patient names, dates, relative dates such as today/tomorrow/next Tuesday, times, durations, recurrence wording, and Greek/English mixed terms. Do not execute, summarize, infer, or rewrite the command."
+      : "Greek psychiatric clinical dictation. Transcribe faithfully in the original language. Preserve negations, medication names, doses, units, scores, punctuation, and mixed Greek/English medical terminology. Do not summarize, interpret, or add clinical information.",
   );
 
   const controller = new AbortController();

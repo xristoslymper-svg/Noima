@@ -67,7 +67,8 @@ const nav = [
 ] as const;
 
 export default function Page() {
-  const [calendarOpen, setCalendarOpen] = useState(false);\n  const [mobileNav,setMobileNav]=useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [mobileNav,setMobileNav]=useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
   const [voiceOpen,setVoiceOpen]=useState(false);
   const [voiceStep,setVoiceStep]=useState<"listening"|"proposal"|"done">("listening");

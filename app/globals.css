@@ -284,3 +284,13 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .voice-capture-actions{display:flex;justify-content:center;gap:9px;margin-top:20px}
 .voice-capture-actions button{border:1px solid #dfe5e1;background:#fff;border-radius:10px;padding:10px 15px;font-weight:650;cursor:pointer}
 .voice-command-card button:disabled{opacity:.5;cursor:not-allowed}
+
+.calendar-runtime-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px;padding:11px 13px;border:1px solid #ecd7d2;background:#fff6f3;color:#8a4a3f;border-radius:12px;font-size:12px}
+.calendar-runtime-error button{border:1px solid #e2c9c3;background:#fff;border-radius:9px;padding:7px 10px;color:#7f493f;font-weight:700;cursor:pointer}
+.calendar-empty-state{min-height:170px;display:grid;place-items:center;color:#87918b;font-size:13px}
+.voice-command-edit-label{display:flex;flex-direction:column;gap:7px;margin-top:17px;font-size:11px;font-weight:750;color:#75847d}
+.voice-command-clarify{margin:14px 0 4px;padding:13px 14px;border-radius:12px;background:#faf5e9;color:#705f3b;font-size:12px;line-height:1.55}
+.voice-slot-list{display:grid;gap:8px;margin:15px 0 4px}
+.voice-slot{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e2e9e5;border-radius:11px;background:#fbfdfb;color:#40564c;font-size:12px;font-weight:650}
+.voice-slot-dot{width:8px;height:8px;border-radius:50%;background:#6e9a89;display:inline-block;flex:0 0 auto}
+.calendar-sync button:disabled{opacity:.55;cursor:not-allowed}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Νόημα — Ψυχιατρικό Workspace",
+  title: "Ψυχιατρικό Workspace",
   description: "Κλινικό workspace σχεδιασμένο για ψυχιάτρους."
 };
 

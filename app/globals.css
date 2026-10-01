@@ -147,3 +147,5 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .secure-link-preview{padding:12px}.secure-link-preview strong{font-size:11px}.secure-link-preview span{font-size:10px}
 .send-modal>footer button{font-size:11px;padding:10px 14px}
 }
+
+.patient-picker-menu button em{font-size:9px;color:#6f877b;font-style:normal;margin-top:2px}.patient-picker-menu button>span:nth-child(2){min-width:0}

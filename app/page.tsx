@@ -48,7 +48,7 @@ export default function Page() {
           <div className="brand-mark">Ψ</div>
           <div>
             <div className="brand-name">Νόημα</div>
-            <div className="brand-sub">Για πιο καθαρή κλινική σκέψη</div>
+            <div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div>
           </div>
         </div>
 

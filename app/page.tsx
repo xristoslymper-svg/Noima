@@ -22,15 +22,6 @@ import {
   TestTube2,
   Users,
 } from "lucide-react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-
-const symptomData = [
-  { date: "20/01", phq: 17, gad: 14 },
-  { date: "20/02", phq: 13, gad: 10 },
-  { date: "20/03", phq: 9, gad: 6 },
-  { date: "20/04", phq: 7, gad: 5 },
-];
-
 const nav = [
   [Home, "Σήμερα", true],
   [Users, "Ασθενείς", false],
@@ -46,10 +37,7 @@ export default function Page() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">Ψ</div>
-          <div>
-            <div className="brand-name">Νόημα</div>
-            <div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div>
-          </div>
+          <div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div>
         </div>
 
         <nav className="nav">
@@ -125,7 +113,7 @@ export default function Page() {
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}
-                  {name === "Μαρία" ? <Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link> : <button className="small-button">Άνοιγμα σύνοψης</button>}
+                  {name === "Μαρία" ? <div className="session-actions"><Link href="/patients/maria" className="small-button link-button">Άνοιγμα σύνοψης</Link><Link href="/patients/maria/dictation" className="session-mic" aria-label="Νέα υπαγόρευση για τη Μαρία" title="Νέα υπαγόρευση"><Mic2 size={16}/></Link></div> : <button className="small-button">Άνοιγμα σύνοψης</button>}
                 </div>
               ))}
             </div>
@@ -162,54 +150,6 @@ export default function Page() {
             </div>
           </section>
 
-          <section className="secondary-grid">
-            <div className="card patient-overview">
-              <div className="card-head">
-                <div>
-                  <span className="kicker">ΑΣΘΕΝΗΣ</span>
-                  <h2>Μαρία — Κλινική εικόνα</h2>
-                </div>
-                <Link href="/patients/maria" className="text-button link-button">Πλήρης φάκελος <ChevronRight size={16}/></Link>
-              </div>
-
-              <div className="clinical-grid">
-                <Clinical label="Διαγνώσεις" value="Μείζων καταθλιπτική διαταραχή · ΓΑΔ" icon={<Brain size={18}/>} />
-                <Clinical label="Τρέχουσα αγωγή" value="Sertraline 100 mg · Trazodone 50 mg" icon={<Pill size={18}/>} />
-                <Clinical label="Παρενέργειες" value="Μειωμένη libido — υπό παρακολούθηση" icon={<HeartPulse size={18}/>} />
-                <Clinical label="Επόμενο βήμα" value="Επανεκτίμηση ανταπόκρισης και ανοχής" icon={<ClipboardCheck size={18}/>} />
-              </div>
-            </div>
-
-            <div className="card chart-card">
-              <div className="card-head">
-                <div>
-                  <span className="kicker">ΜΕΤΡΗΣΙΜΗ ΠΟΡΕΙΑ</span>
-                  <h2>PHQ-9 & GAD-7</h2>
-                </div>
-              </div>
-              <div className="chart">
-                <ResponsiveContainer width="100%" height={210}>
-                  <LineChart data={symptomData}>
-                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                    <YAxis domain={[0, 20]} tickLine={false} axisLine={false} width={28} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="phq" stroke="#2f6f63" strokeWidth={3} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="gad" stroke="#5d80c2" strokeWidth={3} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="legend"><span><i className="dot green" /> PHQ-9: 7</span><span><i className="dot blue-dot" /> GAD-7: 5</span></div>
-            </div>
-          </section>
-
-          <section className="card dictation">
-            <div>
-              <span className="kicker">ΜΕΤΑ ΤΗ ΣΥΝΕΔΡΙΑ</span>
-              <h2>Υπαγόρευση κλινικής σημείωσης</h2>
-              <p>Ο ψυχίατρος υπαγορεύει σύντομη σημείωση. Το σύστημα προτείνει δομημένα συμπτώματα, αγωγή, παρενέργειες, risk και πλάνο. Τίποτα δεν αποθηκεύεται χωρίς έγκριση.</p>
-            </div>
-            <Link href="/patients/maria/dictation" className="record link-button"><Mic2 size={22} /> Νέα υπαγόρευση</Link>
-          </section>
         </div>
       </section>
     </main>
@@ -220,6 +160,3 @@ function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; lab
   return <div className={`metric ${tone}`}><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>;
 }
 
-function Clinical({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return <div className="clinical-item"><div className="clinical-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong></div></div>;
-}

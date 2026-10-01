@@ -79,6 +79,8 @@ export default function Page() {
         <nav className="nav">
           {nav.map(([Icon, label, active]) => label === "Ασθενείς" ? (
             <Link href="/patients" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
+          ) : label === "Ψυχομετρικά τεστ" ? (
+            <Link href="/psychometrics" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
           ) : (
             <button className={active ? "nav-item active" : "nav-item"} key={label}><Icon size={19}/><span>{label}</span></button>
           ))}

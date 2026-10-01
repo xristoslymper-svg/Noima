@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import SectionDictation from "@/components/dictation/SectionDictation";
 import { useState } from "react";
 import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText, HeartPulse, Mic2, Pill, ShieldCheck, Sparkles, TestTube2, Mail, X, Check, Plus, History as HistoryIcon } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -47,20 +48,9 @@ function Tests(){
 }
 
 function Sessions(){
- const demo={
-  interview:"Χωρίς νέα κρίση πανικού από την προηγούμενη επίσκεψη. Αναφέρει ύπνο 6–7 ώρες και λιγότερο άγχος στην εργασία, με ήπια ένταση πριν από παρουσιάσεις. Έχει επιστρέψει σε πλήρες ωράριο και δεν αναφέρει νέο σημαντικό στρεσογόνο γεγονός.",
-  effects:"Η μειωμένη libido επιμένει μετά την αύξηση της sertraline στα 100 mg και προκαλεί μέτρια ενόχληση.",
-  adherence:"Καλή συνέπεια στη λήψη. Αναφέρει μία χαμένη πρωινή δόση sertraline τον τελευταίο μήνα.",
-  mse:"Συνεργάσιμη, καλή βλεμματική επαφή. Λόγος φυσιολογικού ρυθμού. Διάθεση βελτιωμένη, συναίσθημα κατάλληλο. Χωρίς αναφερόμενα ψυχωτικά στοιχεία.",
-  risk:"Αρνείται αυτοκτονικό ιδεασμό, πρόθεση ή σχέδιο. Χωρίς ιστορικό απόπειρας. Παρόντες προστατευτικοί παράγοντες.",
-  assessment:"Συνεχιζόμενη κλινική βελτίωση καταθλιπτικών και αγχωδών συμπτωμάτων. Κύριο τρέχον ζήτημα η ανεκτικότητα της αγωγής λόγω σεξουαλικής δυσλειτουργίας.",
-  plan:"Συνέχιση sertraline 100 mg προς το παρόν. Παρακολούθηση σεξουαλικής δυσλειτουργίας και συζήτηση επιλογών εάν επιμένει. Συνέχιση trazodone 50 mg.",
-  review:"Επανεκτίμηση σε 4 εβδομάδες ή νωρίτερα εάν υπάρξει επιδείνωση."
- } as const;
- type Key=keyof typeof demo;
+ type Key="interview"|"effects"|"adherence"|"mse"|"risk"|"assessment"|"plan"|"review";
  const [fields,setFields]=useState<Partial<Record<Key,string>>>({});
- const [recording,setRecording]=useState<Key|null>(null);
- const dictate=(key:Key)=>{setRecording(key); window.setTimeout(()=>{setFields(v=>({...v,[key]:demo[key]}));setRecording(null)},650)};
+ const [dictating,setDictating]=useState<Key|null>(null);
  const sections:[Key,string,string][]=[
   ["interview","Ψυχιατρική συνέντευξη","Συμπτώματα, πορεία, λειτουργικότητα και σημαντικά γεγονότα"],
   ["effects","Παρενέργειες","Ανεπιθύμητες ενέργειες και επίδραση"],
@@ -87,12 +77,13 @@ function Sessions(){
   <div className="sections-label"><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΣΥΝΕΔΡΙΑΣ</span><span>Πατήστε το μικρόφωνο της ενότητας που θέλετε να συμπληρώσετε</span></div>
   <div className="clinical-sections">
    {sections.map(([key,title,hint])=><div className={fields[key]?"clinical-section populated":"clinical-section"} key={key}>
-    <div className="clinical-section-head"><div><h3>{title}</h3><span>{hint}</span></div><button className={recording===key?"section-mic recording":"section-mic"} onClick={()=>dictate(key)} disabled={recording!==null} aria-label={"Υπαγόρευση: "+title}><Mic2 size={17}/>{recording===key?" Ακούω…":" Υπαγόρευση"}</button></div>
-    {fields[key]?<div className="section-content"><p>{fields[key]}</p><button onClick={()=>setFields(v=>({...v,[key]:undefined}))}>Καθαρισμός</button></div>:<div className="section-empty">Δεν έχει καταγραφεί ακόμη περιεχόμενο.</div>}
+    <div className="clinical-section-head"><div><h3>{title}</h3><span>{hint}</span></div><button className="section-mic" onClick={()=>setDictating(key)} aria-label={"Υπαγόρευση: "+title}><Mic2 size={17}/> Υπαγόρευση</button></div>
+    {fields[key]!==undefined?<div className="section-content"><textarea className="section-draft" aria-label={"Κείμενο: "+title} value={fields[key]} onChange={e=>setFields(v=>({...v,[key]:e.target.value}))}/><button onClick={()=>setFields(v=>({...v,[key]:undefined}))}>Καθαρισμός</button></div>:<div className="section-empty">Δεν έχει καταγραφεί ακόμη περιεχόμενο.</div>}
    </div>)}
   </div>
-  <div className="session-save"><span><ShieldCheck size={16}/> Demo: η υπαγόρευση δημιουργεί πρόταση προς έλεγχο από τον ψυχίατρο.</span><button>Έγκριση & αποθήκευση συνεδρίας</button></div>
+  <div className="session-save"><span><ShieldCheck size={16}/> Demo: προσωρινά προσχέδια. Χάνονται όταν φύγετε από την καρτέλα ή ανανεώσετε τη σελίδα.</span><button disabled title="Η αποθήκευση στον φάκελο δεν είναι ακόμη διαθέσιμη">Αποθήκευση μη διαθέσιμη</button></div>
 
+  {dictating&&<SectionDictation title={sections.find(([key])=>key===dictating)![1]} onClose={()=>setDictating(null)} onInsert={text=>{setFields(v=>({...v,[dictating]:[v[dictating],text].filter(Boolean).join("\n\n")}));setDictating(null)}}/>}
   <div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ ΣΥΝΕΔΡΙΕΣ</span><h3>Κλινική πορεία</h3>
    <Note date="17/09" title="Follow-up αγωγής" text="Χωρίς κρίση πανικού από 31/08. Διάθεση σαφώς καλύτερη. Μειωμένη libido μετά την αύξηση sertraline. Αρνείται SI/plan/intent."/>
    <Note date="03/09" title="Follow-up · αλλαγή αγωγής" text="Μερική ανταπόκριση στα 50 mg, αλλά παραμένει anticipatory anxiety. Συμφωνήθηκε αύξηση sertraline σε 100 mg."/>

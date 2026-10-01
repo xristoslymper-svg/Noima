@@ -261,3 +261,20 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .week-event small{font-size:10px;color:#87918c}
 .week-empty{font-size:10px;color:#a0aaa5;padding:10px 2px}
 @media(max-width:760px){.calendar-summary{flex-wrap:wrap}.calendar-view-switch{margin-left:0}.calendar-week-card{margin-right:-14px}.calendar-week-grid{min-width:980px}}
+
+/* Section dictation: native modal keeps keyboard focus in the review. */
+.dictation-dialog{position:fixed;inset:0;margin:auto;width:min(640px,calc(100% - 32px));max-height:90dvh;overflow:auto;border:1px solid #dbe8e3;border-radius:20px;padding:28px;color:#294c45;background:#fff;box-shadow:0 24px 90px #183f3933}
+.dictation-dialog::backdrop{background:#153f3866;backdrop-filter:blur(3px)}
+.dictation-dialog header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.dictation-dialog h2{font-size:22px;margin:10px 0 16px}.dictation-dialog p{line-height:1.65}
+.dictation-dialog button{padding:11px 17px;border:1px solid #cdded7;border-radius:10px;background:#fff;color:#28594e;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit}
+.dictation-dialog button:disabled{opacity:.5;cursor:not-allowed}.dictation-dialog .dictation-close{padding:6px;border:0}
+.dictation-dialog .dictation-primary{background:#327364;color:white;border-color:#327364}
+.dictation-help,.dictation-review small{font-size:13px;color:#60786f}.dictation-status{margin:20px 0;font-weight:600;min-height:24px}
+.dictation-error{color:#9a342f;background:#fff2ef;padding:14px;border-radius:10px}
+.dictation-review{margin-top:18px}.dictation-review textarea,.section-draft{display:block;width:100%;resize:vertical;min-height:130px;border:1px solid #c6d9cf;border-radius:10px;padding:14px;color:#294c45;background:#fcfefc;font:inherit;line-height:1.7;box-sizing:border-box}
+.dictation-review textarea{margin:10px 0}.dictation-transcript{white-space:pre-wrap;background:#f2f7f4;border-radius:12px;padding:20px;max-height:35vh;overflow:auto}
+.dictation-dialog footer{margin-top:24px;border-top:1px solid #e4ece7;padding-top:18px}.dictation-dialog footer>span{display:block;font-size:12px;color:#60786f;margin-bottom:14px}.dictation-dialog footer>div{display:flex;justify-content:flex-end;gap:10px}
+.section-content .section-draft{flex:1;min-width:0}.session-save button:disabled{opacity:.5;cursor:not-allowed}
+.dictation-dialog button:focus-visible,.dictation-dialog textarea:focus-visible,.section-draft:focus-visible{outline:3px solid #6cb69f;outline-offset:3px}
+@media(max-width:600px){.dictation-dialog{padding:20px}.dictation-dialog h2{font-size:19px}.section-content{flex-wrap:wrap}.section-content .section-draft{flex-basis:100%}}

@@ -11,6 +11,7 @@
     "test:db": "node --test tests/database.test.mjs"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "lucide-react": "0.468.0",
     "next": "15.5.27",
     "react": "19.3.0",
@@ -26,6 +27,9 @@
     "typescript": "5.9.3"
   },
   "overrides": {
-    "postcss": "8.5.28"
+    "postcss": "8.5.28",
+    "@huggingface/transformers": {
+      "sharp": "0.35.4"
+    }
   }
 }

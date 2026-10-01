@@ -91,14 +91,6 @@ export default function Page() {
 
           <section className="main-grid">
             <div className="card sessions">
-              <div className="card-head">
-                <div>
-                  <span className="kicker">ΣΗΜΕΡΑ</span>
-                  <h2>Επόμενες συνεδρίες</h2>
-                </div>
-                <button className="text-button">Προβολή ημέρας <ChevronRight size={16} /></button>
-              </div>
-
               {[
                 ["11:00", "Μαρία", "32 ετών · Επανεκτίμηση", "Σε 25 λεπτά"],
                 ["12:30", "Γιάννης Π.", "41 ετών · Αγχώδης διαταραχή", ""],

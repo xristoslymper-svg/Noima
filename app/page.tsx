@@ -27,6 +27,35 @@ import {
   TestTube2,
   Users,
 } from "lucide-react";
+const patientBriefs = {
+  "Μαρία": {
+    kicker: "ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ",
+    changed: ["Ο ύπνος έχει βελτιωθεί, αλλά παραμένουν 1–2 νυχτερινές αφυπνίσεις.","PHQ-9: 17 → 7 τους τελευταίους 3 μήνες.","Sertraline αυξήθηκε από 50 mg → 100 mg στις 12/09.","Αναφέρθηκε μειωμένη libido μετά την αύξηση δόσης."],
+    today: ["Επιμένει η σεξουαλική δυσλειτουργία;","Υπήρξε επιστροφή κρίσεων πανικού;","Ανοχή και συνέπεια στη φαρμακευτική αγωγή."],
+    risk: "Τελευταία αξιολόγηση: χωρίς αναφερόμενο αυτοκτονικό ιδεασμό."
+  },
+  "Γιάννης Π.": {
+    kicker: "12:30 · FOLLOW-UP",
+    changed: ["Λιγότερη σωματική ένταση τις τελευταίες 3 εβδομάδες.","GAD-7: 13 → 8 από την προηγούμενη μέτρηση.","Χρησιμοποιεί την τεχνική αναπνοής πριν από επαγγελματικές συναντήσεις.","Παραμένει αποφυγή σε μετακινήσεις με μετρό όταν υπάρχει συνωστισμός."],
+    today: ["Συχνότητα επεισοδίων έντονου άγχους.","Βαθμός αποφυγής και επίδραση στην καθημερινότητα.","Ύπνος και χρήση καφεΐνης."],
+    risk: "Δεν έχει αναφερθεί πρόσφατη μεταβολή κινδύνου."
+  },
+  "Ελένη Δ.": {
+    kicker: "14:00 · FOLLOW-UP ΑΓΩΓΗΣ",
+    changed: ["Σταθερότερη διάθεση μετά την τελευταία προσαρμογή αγωγής.","Αναφέρει πρωινή υπνηλία 2–3 ημέρες την εβδομάδα.","Η λειτουργικότητα στην εργασία παραμένει καλή.","Δεν αναφέρει νέα επεισόδια έντονης ευερεθιστότητας."],
+    today: ["Αν η πρωινή υπνηλία επηρεάζει λειτουργικότητα ή οδήγηση.","Συνέπεια στη λήψη της βραδινής αγωγής.","Επανεκτίμηση διάθεσης και ύπνου."],
+    risk: "Στην τελευταία συνεδρία δεν αναφέρθηκαν σκέψεις αυτοβλάβης."
+  },
+  "Κώστας Σ.": {
+    kicker: "16:00 · ΠΡΩΤΗ ΑΞΙΟΛΟΓΗΣΗ",
+    changed: ["Πρώτη συνάντηση — δεν υπάρχει ακόμη προηγούμενη κλινική πορεία.","Αιτία παραπομπής: επίμονο άγχος και δυσκολία ύπνου περίπου 4 μήνες.","Δεν υπάρχει καταγεγραμμένη προηγούμενη ψυχιατρική αγωγή στο demo.","Έχει συμπληρώσει βασικά στοιχεία πριν το ραντεβού."],
+    today: ["Πλήρες ιστορικό συμπτωμάτων και λειτουργικότητας.","Προηγούμενο ψυχιατρικό/ιατρικό ιστορικό και ουσίες.","Βασική αξιολόγηση κινδύνου και θεραπευτικοί στόχοι."],
+    risk: "Απαιτείται αρχική αξιολόγηση κινδύνου στη σημερινή συνεδρία."
+  }
+} as const;
+
+type PatientName = keyof typeof patientBriefs;
+
 const nav = [
   [Home, "Σήμερα", true],
   [Users, "Ασθενείς", false],
@@ -38,6 +67,8 @@ const nav = [
 
 export default function Page() {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
+  const brief = patientBriefs[selectedPatient];
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -102,7 +133,7 @@ export default function Page() {
                   <div className="time">{time}</div>
                   <div className="patient-avatar">{name[0]}</div>
                   <div className="session-info">
-                    <strong>{name}</strong>
+                    <button className={selectedPatient === name ? "patient-name selected" : "patient-name"} onClick={()=>setSelectedPatient(name as PatientName)}>{name}</button>
                     <span>{meta}</span>
                   </div>
                   {badge && <span className="badge">{badge}</span>}
@@ -111,35 +142,26 @@ export default function Page() {
               ))}
             </div>
 
-            <div className="card ai-brief">
+            <div className="card ai-brief" key={selectedPatient}>
               <div className="card-head">
                 <div>
-                  <span className="kicker">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ</span>
+                  <span className="kicker">{brief.kicker}</span>
                   <h2><Sparkles size={19} /> Σύνοψη πριν τη συνεδρία</h2>
                 </div>
-                <span className="status-dot">Μαρία</span>
+                <span className="status-dot">{selectedPatient}</span>
               </div>
 
               <div className="brief-block">
-                <strong>Τι έχει αλλάξει</strong>
-                <ul>
-                  <li>Ο ύπνος έχει βελτιωθεί, αλλά παραμένουν 1–2 νυχτερινές αφυπνίσεις.</li>
-                  <li>PHQ-9: <b>17 → 7</b> τους τελευταίους 3 μήνες.</li>
-                  <li>Sertraline αυξήθηκε από <b>50 mg → 100 mg</b> στις 12/09.</li>
-                  <li>Αναφέρθηκε μειωμένη libido μετά την αύξηση δόσης.</li>
-                </ul>
+                <strong>{selectedPatient === "Κώστας Σ." ? "Τι γνωρίζουμε πριν την πρώτη συνάντηση" : "Τι έχει αλλάξει"}</strong>
+                <ul>{brief.changed.map(item=><li key={item}>{item}</li>)}</ul>
               </div>
 
               <div className="brief-block blue">
                 <strong>Να διερευνηθεί σήμερα</strong>
-                <ul>
-                  <li>Επιμένει η σεξουαλική δυσλειτουργία;</li>
-                  <li>Υπήρξε επιστροφή κρίσεων πανικού;</li>
-                  <li>Ανοχή και συνέπεια στη φαρμακευτική αγωγή.</li>
-                </ul>
+                <ul>{brief.today.map(item=><li key={item}>{item}</li>)}</ul>
               </div>
 
-              <div className="risk-strip"><ShieldCheck size={17} /> Τελευταία αξιολόγηση: χωρίς αναφερόμενο αυτοκτονικό ιδεασμό.</div>
+              <div className="risk-strip"><ShieldCheck size={17} /> {brief.risk}</div>
             </div>
           </section>
 

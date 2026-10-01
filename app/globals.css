@@ -278,3 +278,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .section-content .section-draft{flex:1;min-width:0}.session-save button:disabled{opacity:.5;cursor:not-allowed}
 .dictation-dialog button:focus-visible,.dictation-dialog textarea:focus-visible,.section-draft:focus-visible{outline:3px solid #6cb69f;outline-offset:3px}
 @media(max-width:600px){.dictation-dialog{padding:20px}.dictation-dialog h2{font-size:19px}.section-content{flex-wrap:wrap}.section-content .section-draft{flex-basis:100%}}
+
+.voice-command-textarea{width:100%;min-height:110px;margin:16px 0 4px;border:1px solid #cdded7;border-radius:13px;padding:14px;font:inherit;line-height:1.6;color:#2c3b34;background:#fcfefc;resize:vertical;box-sizing:border-box}
+.voice-command-textarea:focus{outline:3px solid rgba(108,182,159,.22);border-color:#6c9a89}
+.voice-capture-actions{display:flex;justify-content:center;gap:9px;margin-top:20px}
+.voice-capture-actions button{border:1px solid #dfe5e1;background:#fff;border-radius:10px;padding:10px 15px;font-weight:650;cursor:pointer}
+.voice-command-card button:disabled{opacity:.5;cursor:not-allowed}

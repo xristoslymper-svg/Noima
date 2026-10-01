@@ -11,7 +11,7 @@ export default function Maria(){
  const [tab,setTab]=useState<Tab>("Σύνοψη");
  return <main className="clinical-page">
   <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Κλινικός φάκελος · Υποθετική ασθενής MVP</span></div>
-  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Υπαγόρευση συνεδρίας</Link></div>
+  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div></div>
   <div className="patient-tabs">{(["Σύνοψη","Συνεδρίες","Ιστορικό","Αγωγή","Κλίμακες"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
   {tab==="Σύνοψη"&&<Summary/>}{tab==="Συνεδρίες"&&<Sessions/>}{tab==="Ιστορικό"&&<History/>}{tab==="Αγωγή"&&<Meds/>}{tab==="Κλίμακες"&&<Tests/>}
  </main>
@@ -37,7 +37,7 @@ function Tests(){return <TabPage title="Τεστ & πρόοδος" subtitle="Μ�
 
 function Sessions(){
  const demo={
-  symptoms:"Χωρίς νέα κρίση πανικού από την προηγούμενη επίσκεψη. Ύπνος 6–7 ώρες. Το άγχος στην εργασία έχει μειωθεί, με ήπια ένταση πριν από παρουσιάσεις.",
+  interview:"Χωρίς νέα κρίση πανικού από την προηγούμενη επίσκεψη. Αναφέρει ύπνο 6–7 ώρες και λιγότερο άγχος στην εργασία, με ήπια ένταση πριν από παρουσιάσεις. Έχει επιστρέψει σε πλήρες ωράριο και δεν αναφέρει νέο σημαντικό στρεσογόνο γεγονός.",
   effects:"Η μειωμένη libido επιμένει μετά την αύξηση της sertraline στα 100 mg και προκαλεί μέτρια ενόχληση.",
   adherence:"Καλή συνέπεια στη λήψη. Αναφέρει μία χαμένη πρωινή δόση sertraline τον τελευταίο μήνα.",
   mse:"Συνεργάσιμη, καλή βλεμματική επαφή. Λόγος φυσιολογικού ρυθμού. Διάθεση βελτιωμένη, συναίσθημα κατάλληλο. Χωρίς αναφερόμενα ψυχωτικά στοιχεία.",
@@ -51,7 +51,7 @@ function Sessions(){
  const [recording,setRecording]=useState<Key|null>(null);
  const dictate=(key:Key)=>{setRecording(key); window.setTimeout(()=>{setFields(v=>({...v,[key]:demo[key]}));setRecording(null)},650)};
  const sections:[Key,string,string][]=[
-  ["symptoms","Συμπτώματα","Μεταβολές από την προηγούμενη επίσκεψη"],
+  ["interview","Ψυχιατρική συνέντευξη","Συμπτώματα, πορεία, λειτουργικότητα και σημαντικά γεγονότα"],
   ["effects","Παρενέργειες","Ανεπιθύμητες ενέργειες και επίδραση"],
   ["adherence","Συμμόρφωση στην αγωγή","Λήψη, παραλείψεις και δυσκολίες"],
   ["mse","Εξέταση ψυχικής κατάστασης (MSE)","Σημερινά ευρήματα και μεταβολές"],
@@ -62,17 +62,18 @@ function Sessions(){
  ];
  return <section className="session-workspace">
   <div className="session-work-head">
-   <div><span className="kicker">ΣΗΜΕΡΙΝΗ ΣΥΝΕΔΡΙΑ · 1 ΟΚΤΩΒΡΙΟΥ</span><h2>Follow-up</h2><p>Καταγράψτε μόνο ό,τι είναι κλινικά χρήσιμο. Κάθε μικρόφωνο συμπληρώνει μόνο τη συγκεκριμένη ενότητα.</p></div>
+   <div><div className="visit-label"><span>FOLLOW-UP</span><i/> 1 ΟΚΤΩΒΡΙΟΥ · 11:00</div><h2>Σημερινή συνεδρία</h2><p>Κάθε ενότητα μπορεί να συμπληρωθεί με κείμενο ή με στοχευμένη υπαγόρευση.</p></div>
    <Link href="/patients/maria/dictation" className="record compact"><Mic2 size={17}/> Υπαγόρευση συνολικής συνεδρίας</Link>
   </div>
 
-  <div className="followup-snapshot">
+  <div className="visit-context"><div className="visit-context-title"><span className="kicker">ΑΠΟ ΤΗΝ ΠΡΟΗΓΟΥΜΕΝΗ ΕΠΙΣΚΕΨΗ</span><span>Γρήγορη εικόνα πριν την καταγραφή</span></div><div className="followup-snapshot">
    <div><span>PHQ-9</span><strong>11 → 7</strong><small>από προηγούμενη μέτρηση</small></div>
    <div><span>GAD-7</span><strong>8 → 5</strong><small>από προηγούμενη μέτρηση</small></div>
    <div><span>Αγωγή</span><strong>Sertraline 100 mg</strong><small>αύξηση από 50 mg</small></div>
    <div><span>Κύριο θέμα</span><strong>Μειωμένη libido</strong><small>μετά την αύξηση δόσης</small></div>
-  </div>
+  </div></div>
 
+  <div className="sections-label"><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΣΥΝΕΔΡΙΑΣ</span><span>Πατήστε το μικρόφωνο της ενότητας που θέλετε να συμπληρώσετε</span></div>
   <div className="clinical-sections">
    {sections.map(([key,title,hint])=><div className={fields[key]?"clinical-section populated":"clinical-section"} key={key}>
     <div className="clinical-section-head"><div><h3>{title}</h3><span>{hint}</span></div><button className={recording===key?"section-mic recording":"section-mic"} onClick={()=>dictate(key)} disabled={recording!==null} aria-label={"Υπαγόρευση: "+title}><Mic2 size={17}/>{recording===key?" Ακούω…":" Υπαγόρευση"}</button></div>

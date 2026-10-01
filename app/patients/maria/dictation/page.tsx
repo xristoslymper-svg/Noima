@@ -7,8 +7,8 @@ export default function Dictation(){
  const [recording,setRecording]=useState(false);
  const [structured,setStructured]=useState(false);
  return <main className="clinical-page narrow">
-  <div className="clinical-top"><Link href="/patients/maria" className="back"><ArrowLeft size={17}/> Μαρία Κ.</Link><span>Νόημα · Σημείωση μετά τη συνεδρία</span></div>
-  <div className="patient-hero"><div><p className="eyebrow">ΜΑΡΙΑ Κ. · 1 ΟΚΤΩΒΡΙΟΥ</p><h1>Σύντομη κλινική σημείωση</h1><p>Υπαγορεύστε ό,τι θέλετε να θυμάστε από τη σημερινή συνεδρία.</p></div></div>
+  <div className="clinical-top"><Link href="/patients/maria" className="back"><ArrowLeft size={17}/> Μαρία</Link><span>Σημείωση μετά τη συνεδρία</span></div>
+  <div className="patient-hero"><div><p className="eyebrow">ΜΑΡΙΑ · 1 ΟΚΤΩΒΡΙΟΥ</p><h1>Σύντομη κλινική σημείωση</h1><p>Υπαγορεύστε ό,τι θέλετε να θυμάστε από τη σημερινή συνεδρία.</p></div></div>
   <div className="privacy-note"><ShieldCheck size={18}/><div><strong>Δεν καταγράφεται η συνεδρία.</strong><span> Η ηχογράφηση αφορά μόνο τη σύντομη σημείωση που επιλέγετε να υπαγορεύσετε.</span></div></div>
   <section className="card recorder-card">
    <button className={recording?"mic-button recording":"mic-button"} onClick={()=>setRecording(!recording)}><Mic2 size={30}/></button>

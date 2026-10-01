@@ -20,7 +20,8 @@ const instruments:Instrument[]=[
 ];
 
 export default function Psychometrics(){
- const [mobileNav,setMobileNav]=useState(false);\n const [query,setQuery]=useState(""); const [category,setCategory]=useState<string>("Όλα"); const [active,setActive]=useState<Instrument|null>(null); const [answers,setAnswers]=useState<Record<number,number>>({}); const [sent,setSent]=useState<string[]>([]); const [sendTest,setSendTest]=useState<Instrument|null>(null); const [mail,setMail]=useState({to:"",subject:"",message:"Καλησπέρα,\n\nθα ήθελα να συμπληρώσετε το παρακάτω σύντομο ερωτηματολόγιο πριν από την επόμενη συνεδρία μας.\n\nΕυχαριστώ,\nΔρ. Κατερίνα Παπαδάκη"}); const patients=[
+ const [mobileNav,setMobileNav]=useState(false);
+ const [query,setQuery]=useState(""); const [category,setCategory]=useState<string>("Όλα"); const [active,setActive]=useState<Instrument|null>(null); const [answers,setAnswers]=useState<Record<number,number>>({}); const [sent,setSent]=useState<string[]>([]); const [sendTest,setSendTest]=useState<Instrument|null>(null); const [mail,setMail]=useState({to:"",subject:"",message:"Καλησπέρα,\n\nθα ήθελα να συμπληρώσετε το παρακάτω σύντομο ερωτηματολόγιο πριν από την επόμενη συνεδρία μας.\n\nΕυχαριστώ,\nΔρ. Κατερίνα Παπαδάκη"}); const patients=[
 {name:"Μαρία",email:"maria@example.gr",initials:"Μ",nextAppointment:"Παρασκευή 2 Οκτωβρίου · 11:00"},
 {name:"Γιάννης Π.",email:"giannis.p@example.gr",initials:"ΓΠ",nextAppointment:"Παρασκευή 2 Οκτωβρίου · 12:30"},
 {name:"Ελένη Δ.",email:"eleni.d@example.gr",initials:"ΕΔ",nextAppointment:"Παρασκευή 2 Οκτωβρίου · 14:00"},

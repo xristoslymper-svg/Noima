@@ -1,64 +1,44 @@
 "use client";
-
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText, HeartPulse, Mic2, Pill, ShieldCheck, Sparkles, TestTube2 } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const data=[{date:"Ιαν",phq:17,gad:14},{date:"Φεβ",phq:13,gad:10},{date:"Μαρ",phq:9,gad:6},{date:"Απρ",phq:7,gad:5}];
+const data=[{date:"Ιουν",phq:17,gad:14},{date:"Ιουλ",phq:14,gad:11},{date:"Αυγ",phq:11,gad:8},{date:"Σεπ",phq:7,gad:5}];
+type Tab="Σύνοψη"|"Ιστορικό"|"Φάρμακα"|"Τεστ"|"Σημειώσεις";
 
 export default function Maria(){
+ const [tab,setTab]=useState<Tab>("Σύνοψη");
  return <main className="clinical-page">
-  <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Νόημα · Κλινικός φάκελος</span></div>
-  <div className="patient-hero">
-   <div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία Κ.</h1><p>32 ετών · τελευταία συνεδρία πριν 43 ημέρες</p></div>
-   <Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Νέα υπαγόρευση</Link>
-  </div>
-  <div className="patient-tabs"><button className="active">Σύνοψη</button><button>Ιστορικό</button><button>Φάρμακα</button><button>Τεστ</button><button>Σημειώσεις</button></div>
-
-  <section className="patient-layout">
-   <div className="patient-main">
-    <div className="card focus-card">
-     <span className="kicker">20″ ΠΡΙΝ ΤΗ ΣΥΝΕΔΡΙΑ</span>
-     <h2><Sparkles size={19}/> Τι χρειάζεται να θυμάστε σήμερα</h2>
-     <div className="memory-lead">Σαφής βελτίωση άγχους και διάθεσης μετά την αύξηση sertraline. Το βασικό ανοιχτό θέμα είναι η <b>μειωμένη libido</b>.</div>
-     <div className="memory-grid">
-      <div><strong>Από την τελευταία φορά</strong><ul><li>Κρίσεις πανικού: 3/εβδομάδα → καμία τις τελευταίες 2 εβδομάδες</li><li>Ύπνος καλύτερος, παραμένουν 1–2 αφυπνίσεις</li><li>PHQ-9: 17 → 7 · GAD-7: 14 → 5</li></ul></div>
-      <div><strong>Να διερευνηθεί σήμερα</strong><ul><li>Σεξουαλική δυσλειτουργία μετά την αύξηση δόσης</li><li>Συνέπεια στη λήψη και ανοχή αγωγής</li><li>Λειτουργικότητα στην εργασία και στη σχέση</li></ul></div>
-     </div>
-     <div className="risk-strip"><ShieldCheck size={17}/> Τελευταία αξιολόγηση: χωρίς αναφερόμενο αυτοκτονικό ιδεασμό. Επιβεβαίωση στη σημερινή εκτίμηση.</div>
-    </div>
-
-    <div className="card">
-     <div className="card-head"><div><span className="kicker">ΠΟΡΕΙΑ</span><h2>Συμπτώματα & ψυχομετρικά</h2></div><span className="trend-good">Βελτίωση</span></div>
-     <div className="chart patient-chart"><ResponsiveContainer width="100%" height={235}><LineChart data={data}><XAxis dataKey="date" tickLine={false} axisLine={false}/><YAxis domain={[0,20]} tickLine={false} axisLine={false} width={28}/><Tooltip/><Line type="monotone" dataKey="phq" stroke="#2f6f63" strokeWidth={3}/><Line type="monotone" dataKey="gad" stroke="#5d80c2" strokeWidth={3}/></LineChart></ResponsiveContainer></div>
-     <div className="legend"><span><i className="dot green"/> PHQ-9 · 7</span><span><i className="dot blue-dot"/> GAD-7 · 5</span></div>
-    </div>
-
-    <div className="card">
-     <span className="kicker">ΚΛΙΝΙΚΗ ΧΡΟΝΟΓΡΑΜΜΗ</span><h2>Σημαντικές αλλαγές</h2>
-     <div className="timeline">
-      <div><span>12 Σεπ</span><strong>Sertraline 50 → 100 mg</strong><p>Αύξηση λόγω υπολειπόμενων συμπτωμάτων άγχους.</p></div>
-      <div><span>20 Σεπ</span><strong>Νέα παρενέργεια</strong><p>Αναφέρθηκε μειωμένη libido.</p></div>
-      <div><span>28 Σεπ</span><strong>PHQ-9: 7</strong><p>Σημαντική πτώση από αρχική τιμή 17.</p></div>
-     </div>
-    </div>
-   </div>
-
-   <aside className="patient-side">
-    <div className="card side-card"><span className="kicker">ΚΛΙΝΙΚΗ ΕΙΚΟΝΑ</span>
-     <Info icon={<Brain/>} label="Διαγνώσεις" value="Μείζων καταθλιπτική διαταραχή · ΓΑΔ"/>
-     <Info icon={<Pill/>} label="Αγωγή" value="Sertraline 100 mg · Trazodone 50 mg"/>
-     <Info icon={<HeartPulse/>} label="Παρενέργεια" value="Μειωμένη libido"/>
-     <Info icon={<CalendarDays/>} label="Follow-up" value="Σήμερα · 11:00"/>
-    </div>
-    <div className="card side-card"><span className="kicker">ΤΕΛΕΥΤΑΙΑ ΔΕΔΟΜΕΝΑ</span>
-     <Info icon={<TestTube2/>} label="PHQ-9" value="7 · ήπια συμπτώματα"/>
-     <Info icon={<TestTube2/>} label="GAD-7" value="5 · ήπιο άγχος"/>
-     <Info icon={<ClipboardCheck/>} label="Adherence" value="Αναφέρθηκε συνεπής"/>
-    </div>
-    <Link href="/patients/maria/dictation" className="next-action"><FileText size={18}/><div><strong>Μετά τη συνεδρία</strong><span>Υπαγόρευση σύντομης κλινικής σημείωσης</span></div><ChevronRight size={18}/></Link>
-   </aside>
-  </section>
+  <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Νόημα · Υποθετική ασθενής MVP</span></div>
+  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Νέα υπαγόρευση</Link></div>
+  <div className="patient-tabs">{(["Σύνοψη","Ιστορικό","Φάρμακα","Τεστ","Σημειώσεις"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
+  {tab==="Σύνοψη"&&<Summary/>}{tab==="Ιστορικό"&&<History/>}{tab==="Φάρμακα"&&<Meds/>}{tab==="Τεστ"&&<Tests/>}{tab==="Σημειώσεις"&&<Notes/>}
  </main>
 }
+
+function Summary(){return <section className="patient-layout"><div className="patient-main">
+ <div className="card focus-card"><span className="kicker">20″ ΠΡΙΝ ΤΗ ΣΥΝΕΔΡΙΑ</span><h2><Sparkles size={19}/> Τι χρειάζεται να θυμάστε σήμερα</h2>
+  <div className="memory-lead">Σημαντική βελτίωση διάθεσης και άγχους από τον Ιούνιο. Μετά την αύξηση της sertraline στα 100 mg οι κρίσεις πανικού υποχώρησαν, αλλά εμφανίστηκε <b>μειωμένη libido</b>. Σήμερα χρειάζεται απόφαση για ανοχή έναντι οφέλους.</div>
+  <div className="memory-grid"><div><strong>Από την τελευταία συνεδρία</strong><ul><li>Καμία κρίση πανικού τις τελευταίες 2 εβδομάδες</li><li>Ύπνος 6–7 ώρες, 1 νυχτερινή αφύπνιση</li><li>Επέστρεψε σε πλήρες ωράριο εργασίας</li><li>PHQ-9 17 → 7 · GAD-7 14 → 5</li></ul></div><div><strong>Να διερευνηθεί σήμερα</strong><ul><li>Ένταση και επίδραση της σεξουαλικής δυσλειτουργίας</li><li>Adherence και τυχόν χαμένες δόσεις</li><li>Άγχος ενόψει παρουσίασης στη δουλειά</li><li>Επανεκτίμηση αυτοκτονικού ιδεασμού</li></ul></div></div>
+  <div className="risk-strip"><ShieldCheck size={17}/> Στις 17/09: αρνήθηκε αυτοκτονικό ιδεασμό, πρόθεση ή σχέδιο. Χωρίς ιστορικό απόπειρας.</div>
+ </div>
+ <div className="card"><div className="card-head"><div><span className="kicker">ΠΟΡΕΙΑ 4 ΜΗΝΩΝ</span><h2>Κατάθλιψη & άγχος</h2></div><span className="trend-good">Βελτίωση</span></div><div className="chart patient-chart"><ResponsiveContainer width="100%" height={235}><LineChart data={data}><XAxis dataKey="date" tickLine={false} axisLine={false}/><YAxis domain={[0,20]} tickLine={false} axisLine={false} width={28}/><Tooltip/><Line type="monotone" dataKey="phq" stroke="#2f6f63" strokeWidth={3}/><Line type="monotone" dataKey="gad" stroke="#5d80c2" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="legend"><span><i className="dot green"/> PHQ-9 · 7</span><span><i className="dot blue-dot"/> GAD-7 · 5</span></div></div>
+ <div className="card"><span className="kicker">ΠΡΟΣΦΑΤΗ ΠΟΡΕΙΑ</span><h2>Σημαντικές αλλαγές</h2><div className="timeline"><div><span>03 ΣΕΠ</span><strong>Sertraline 50 → 100 mg</strong><p>Υπολειπόμενο άγχος και επεισόδια πανικού παρά μερική βελτίωση διάθεσης.</p></div><div><span>10 ΣΕΠ</span><strong>Πρώτη αναφορά μειωμένης libido</strong><p>Χρονική συσχέτιση με αύξηση δόσης. Χωρίς άλλη νέα ανεπιθύμητη ενέργεια.</p></div><div><span>17 ΣΕΠ</span><strong>Κλινική βελτίωση</strong><p>Χωρίς νέα κρίση πανικού, καλύτερη συγκέντρωση και επιστροφή σε πλήρες ωράριο.</p></div></div></div>
+ </div><PatientSide/></section>}
+
+function PatientSide(){return <aside className="patient-side"><div className="card side-card"><span className="kicker">ΚΛΙΝΙΚΗ ΕΙΚΟΝΑ</span><Info icon={<Brain/>} label="Διαγνώσεις" value="Μείζον καταθλιπτικό επεισόδιο · Διαταραχή πανικού"/><Info icon={<Pill/>} label="Αγωγή" value="Sertraline 100 mg πρωί · Trazodone 50 mg βράδυ"/><Info icon={<HeartPulse/>} label="Παρενέργεια" value="Μειωμένη libido — μέτρια ενόχληση"/><Info icon={<CalendarDays/>} label="Follow-up" value="Σήμερα · 11:00"/></div><div className="card side-card"><span className="kicker">ΤΕΛΕΥΤΑΙΑ ΔΕΔΟΜΕΝΑ</span><Info icon={<TestTube2/>} label="PHQ-9" value="7 · ήπια συμπτώματα"/><Info icon={<TestTube2/>} label="GAD-7" value="5 · ήπιο άγχος"/><Info icon={<ClipboardCheck/>} label="Adherence" value="Καλή · 1 χαμένη δόση/μήνα"/></div><Link href="/patients/maria/dictation" className="next-action"><FileText size={18}/><div><strong>Μετά τη συνεδρία</strong><span>Υπαγόρευση σύντομης κλινικής σημείωσης</span></div><ChevronRight size={18}/></Link></aside>}
+
+function History(){return <TabPage title="Κλινικό ιστορικό" subtitle="Η ιστορία της Μαρίας σε κλινικά χρήσιμη μορφή."><div className="detail-grid"><Detail title="Έναρξη & πορεία" text="Πρώτη προσέλευση 06/06 με 3μηνη περίοδο καταθλιπτικής διάθεσης, ανηδονίας, πρωινής κόπωσης, δυσκολίας συγκέντρωσης και αυξανόμενων κρίσεων πανικού. Επιβάρυνση μετά από αλλαγή ρόλου στην εργασία."/><Detail title="Κρίσεις πανικού" text="Αρχικά 2–3/εβδομάδα, διάρκειας 10–20 λεπτών, με ταχυκαρδία, δύσπνοια και φόβο απώλειας ελέγχου. Τελευταία κρίση 31/08."/><Detail title="Ύπνος" text="Αρχικά 4–5 ώρες με συχνές αφυπνίσεις. Τώρα 6–7 ώρες, συνήθως μία αφύπνιση. Trazodone 50 mg με καλή ανοχή."/><Detail title="Λειτουργικότητα" text="Τον Ιούνιο είχε μειώσει προσωρινά το ωράριο. Από 15/09 εργάζεται ξανά πλήρες ωράριο. Παραμένει anticipatory anxiety πριν από παρουσιάσεις."/><Detail title="Ψυχιατρικό ιστορικό" text="Χωρίς προηγούμενη νοσηλεία ή απόπειρα αυτοκτονίας. Σύντομη ψυχοθεραπεία στα 26 για άγχος εξετάσεων. Δεν αναφέρεται προηγούμενο μανιακό ή ψυχωτικό επεισόδιο."/><Detail title="Ουσίες & συνήθειες" text="Αλκοόλ 1–2 ποτά/εβδομάδα. Δεν αναφέρει χρήση άλλων ουσιών. Καφές 2/ημέρα, αποφεύγει καφεΐνη μετά τις 15:00."/><Detail title="Οικογενειακό ιστορικό" text="Μητέρα με ιστορικό καταθλιπτικού επεισοδίου. Δεν αναφέρεται γνωστό οικογενειακό ιστορικό διπολικής διαταραχής ή αυτοκτονίας."/><Detail title="Προστατευτικοί παράγοντες" text="Σταθερή σχέση, καλή επαφή με αδελφή, εργασία που επιθυμεί να διατηρήσει, θεραπευτική συνεργασία και καλή προσήλωση." /></div></TabPage>}
+
+function Meds(){return <TabPage title="Φάρμακα" subtitle="Τρέχουσα αγωγή, αλλαγές, ανταπόκριση και ανεπιθύμητες ενέργειες."><div className="med-list"><Medication name="Sertraline" current="100 mg · πρωί" started="06/06: 25 mg → 13/06: 50 mg → 03/09: 100 mg" response="Σαφής βελτίωση διάθεσης και κρίσεων πανικού μετά την τιτλοποίηση." adverse="Μειωμένη libido από την πρώτη εβδομάδα στα 100 mg. Δεν αναφέρει ναυτία ή τρόμο."/><Medication name="Trazodone" current="50 mg · βράδυ" started="20/06: έναρξη 50 mg" response="Ύπνος από 4–5 ώρες σε 6–7 ώρες. Λιγότερες νυχτερινές αφυπνίσεις." adverse="Ήπια πρωινή υπνηλία τις πρώτες ημέρες, πλέον όχι."/></div><div className="card tab-card"><span className="kicker">ADHERENCE</span><h2>Λήψη αγωγής</h2><p>Η Μαρία αναφέρει καθημερινή λήψη. Μία χαμένη πρωινή δόση sertraline τον τελευταίο μήνα. Δεν έχει διακόψει μόνη της φάρμακο.</p></div></TabPage>}
+
+function Tests(){return <TabPage title="Τεστ & πρόοδος" subtitle="Μετρήσεις που συμπληρώνουν — δεν αντικαθιστούν — την κλινική εκτίμηση."><div className="test-table"><div className="test-head"><span>Ημερομηνία</span><span>PHQ-9</span><span>GAD-7</span><span>Κλινική εικόνα</span></div>{[["06/06","17","14","Μέτρια-σοβαρά συμπτώματα, συχνές κρίσεις πανικού"],["04/07","14","11","Μερική βελτίωση ύπνου και διάθεσης"],["08/08","11","8","Λιγότερη αποφυγή, καλύτερη λειτουργικότητα"],["17/09","7","5","Ήπια υπολειπόμενα συμπτώματα"]].map(r=><div className="test-row" key={r[0]}>{r.map(x=><span key={x}>{x}</span>)}</div>)}</div><div className="card tab-card"><span className="kicker">ΕΡΜΗΝΕΙΑ ΠΟΡΕΙΑΣ</span><h2>Σταθερή βελτίωση</h2><p>Η πτώση των scores συμβαδίζει με την κλινική εικόνα: λιγότερες κρίσεις πανικού, καλύτερος ύπνος και επιστροφή σε πλήρες ωράριο. Παραμένει ανάγκη παρακολούθησης της ανοχής στην αγωγή.</p></div></TabPage>}
+
+function Notes(){return <TabPage title="Σημειώσεις" subtitle="Σύντομες εγκεκριμένες κλινικές καταγραφές."><div className="notes-list"><Note date="17/09" title="Follow-up αγωγής" text="Χωρίς κρίση πανικού από 31/08. Διάθεση σαφώς καλύτερη. Αναφέρει μειωμένη libido μετά την αύξηση sertraline. Αρνείται SI/plan/intent. Συνέχιση 100 mg και επανεκτίμηση ανοχής."/><Note date="03/09" title="Επανεκτίμηση" text="Μερική ανταπόκριση στα 50 mg, αλλά παραμένει anticipatory anxiety και δύο επεισόδια πανικού τον Αύγουστο. Συζητήθηκε και συμφωνήθηκε αύξηση sertraline σε 100 mg."/><Note date="04/07" title="Follow-up" text="Καλύτερος ύπνος με trazodone. PHQ-9 14, GAD-7 11. Κρίσεις πανικού περίπου 1/εβδομάδα. Καλή ανοχή sertraline 50 mg."/><Note date="06/06" title="Αρχική αξιολόγηση" text="Καταθλιπτική διάθεση, ανηδονία, κόπωση, δυσκολία συγκέντρωσης και 2–3 κρίσεις πανικού/εβδομάδα. Χωρίς ιστορικό μανίας/ψύχωσης. Αρνείται ενεργό αυτοκτονικό ιδεασμό."/></div></TabPage>}
+
+function TabPage({title,subtitle,children}:{title:string,subtitle:string,children:React.ReactNode}){return <section className="tab-page"><div className="tab-heading"><h2>{title}</h2><p>{subtitle}</p></div>{children}</section>}
+function Detail({title,text}:{title:string,text:string}){return <div className="card detail-card"><h3>{title}</h3><p>{text}</p></div>}
+function Medication({name,current,started,response,adverse}:{name:string,current:string,started:string,response:string,adverse:string}){return <div className="card medication-card"><div><span className="kicker">ΕΝΕΡΓΟ</span><h2>{name}</h2><strong>{current}</strong></div><div className="med-facts"><p><b>Ιστορικό δόσης:</b> {started}</p><p><b>Ανταπόκριση:</b> {response}</p><p><b>Ανεπιθύμητες:</b> {adverse}</p></div></div>}
+function Note({date,title,text}:{date:string,title:string,text:string}){return <div className="card note-card"><div><span>{date}</span><strong>{title}</strong></div><p>{text}</p></div>}
 function Info({icon,label,value}:{icon:React.ReactNode,label:string,value:string}){return <div className="side-info"><span>{icon}</span><div><small>{label}</small><strong>{value}</strong></div></div>}

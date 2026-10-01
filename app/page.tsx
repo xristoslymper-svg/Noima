@@ -129,7 +129,7 @@ export default function Page() {
                 ["14:00", "Ελένη Δ.", "28 ετών · Follow-up αγωγής", ""],
                 ["16:00", "Κώστας Σ.", "37 ετών · Πρώτη αξιολόγηση", ""],
               ].map(([time, name, meta, badge]) => (
-                <div className="session-row" key={time}>
+                <div className={selectedPatient === name ? "session-row selected-patient" : "session-row"} key={time}>
                   <div className="time">{time}</div>
                   <div className="patient-avatar">{name[0]}</div>
                   <div className="session-info">

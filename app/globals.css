@@ -11,3 +11,8 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .brand-mark{font-family:Georgia,"Times New Roman",serif;font-size:27px;line-height:1}
 .brand-copy{height:42px;display:flex;align-items:flex-start;padding-top:3px}
 .brand-copy .brand-sub{margin:0;line-height:1.35;max-width:145px}
+
+.session-actions{display:flex;align-items:center;gap:7px}
+.session-mic{width:34px;height:34px;border:1px solid #dce6e1;border-radius:10px;display:grid;place-items:center;color:#2f6f63;background:#f7faf8;transition:.15s}
+.session-mic:hover{background:#e8f2ec;border-color:#cddfd6}
+@media(max-width:760px){.session-actions .small-button{display:none}.session-mic{display:grid}}

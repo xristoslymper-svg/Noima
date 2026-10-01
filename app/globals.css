@@ -41,3 +41,5 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .session-row.selected-patient .patient-avatar{background:#dcece3;color:#276557}
 .session-row.selected-patient .patient-name{color:#245f55}
 @media(hover:hover) and (pointer:fine){.session-row:not(.selected-patient):has(.patient-name:hover){background:#f8faf8}}
+
+.sessions-title{display:block;margin:4px 12px 12px}

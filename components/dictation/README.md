@@ -1,33 +1,21 @@
-# Section dictation demo
+# Section dictation
 
-Maria → Sessions → a section's Υπαγόρευση button opens `SectionDictation`.
-It loads multilingual Whisper base (q8, WASM, single thread) in a dedicated
-worker, records at most 60 seconds, decodes/downmixes/resamples to 16 kHz, and
-transcribes in Greek. No paid API, server route, credential, or installation.
-Model assets download from Hugging Face and are browser-cached where supported.
-This requires internet for the first model download, HTTPS/localhost, microphone
-permission, MediaRecorder, Web Audio and WebAssembly. Speed/memory vary by device.
+Maria → Sessions → a section's **Υπαγόρευση** button opens `SectionDictation`.
 
-The result appears read-only with **ΟΚ / Επεξεργασία**. Editing does not insert it;
-ΟΚ appends the reviewed text to the selected section without replacing existing
-text. Close/Escape cancels. Recording tracks stop on completion/cancel/unmount;
-the worker is terminated on unmount. Audio is held only in memory, never uploaded
-or persisted. The worker receives audio only, not the patient or section title.
-Only model files are cached. No transcript or audio logging is implemented.
+The current production path is:
 
-This remains a fictional-case demo: text is React state and disappears on leaving
-the Sessions tab or refreshing. It does not approve official clinical records,
-save to Supabase, structure notes with an LLM, or change other dictation demos.
-Silence/short-input checks reduce accidental empty recordings but cannot prevent
-all Whisper hallucinations. Clinician review is essential.
+1. Browser records up to 60 seconds with `MediaRecorder`.
+2. The completed audio blob is POSTed to the same-origin `/api/transcribe` route.
+3. The server forwards the file to OpenAI's `/v1/audio/transcriptions` endpoint using `gpt-transcribe`.
+4. The transcript is shown for clinician review/editing.
+5. Only after **ΟΚ** is it appended to the selected section's temporary React state.
 
-Validation: production build/typecheck; real browser microphone pipeline using
-a public speech WAV as Chrome's fake capture source; actual Whisper inference;
-review-before-insertion, edit then OK, section isolation, cancellation, no POST
-uploads, and responsive layout. The fixture verifies plumbing, not Greek clinical
-accuracy. Before broader use, test Greek drug names, doses, negations, mixed
-Greek/English speech, permission denial, noisy/silent audio, 60-second cutoff,
-and cancellation on target desktop/mobile browsers with fictional examples.
+`OPENAI_API_KEY` is server-only. It must never use a `NEXT_PUBLIC_` prefix and is never sent to the browser.
 
-The targeted sharp override patches an unused server-side image dependency of
-Transformers.js; the browser uses neither sharp nor onnxruntime-node.
+The transcription prompt asks the model to preserve the speaker's wording, especially negations, medication names, doses, units, scores, punctuation, and mixed Greek/English medical terminology. It explicitly tells the model not to summarize or infer clinical information.
+
+The audio is not written to Supabase or application storage by this implementation, and no transcript/audio logging is added. However, unlike the earlier local Whisper demo, the audio is sent to OpenAI for transcription. Treat this as health-data processing when using real patient data and cover it in the product's processor/subprocessor and privacy documentation.
+
+The UI remains review-first. No transcript becomes an approved clinical record automatically. Current section drafts remain temporary and disappear on refresh/navigation until the database workflow is connected.
+
+The old local Whisper worker remains in the repository for now but is no longer used by `SectionDictation`.

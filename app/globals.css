@@ -43,3 +43,22 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 @media(hover:hover) and (pointer:fine){.session-row:not(.selected-patient):has(.patient-name:hover){background:#f8faf8}}
 
 .sessions-title{display:block;margin:4px 12px 12px}
+
+/* Patient record — session-first clinical workspace */
+.session-workspace{max-width:1100px;padding-bottom:40px}
+.session-work-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin:10px 0 20px}
+.session-work-head h2{font-size:28px;margin:5px 0 5px;color:#14233a}.session-work-head p{margin:0;max-width:650px;color:#718078;font-size:13px;line-height:1.55}
+.record.compact{padding:10px 13px;white-space:nowrap;font-size:12px}
+.followup-snapshot{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.followup-snapshot>div{background:#f5f8f5;border:1px solid #e3eae4;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.followup-snapshot span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7b8981;font-weight:800}.followup-snapshot strong{font-size:14px;color:#263c34}.followup-snapshot small{font-size:10px;color:#8a958f}
+.clinical-sections{background:#fff;border:1px solid #e3e9e4;border-radius:19px;overflow:hidden}
+.clinical-section{padding:18px 20px;border-bottom:1px solid #edf0ed;transition:background .18s}.clinical-section:last-child{border-bottom:0}.clinical-section.populated{background:#fbfdfb}
+.clinical-section-head{display:flex;align-items:center;justify-content:space-between;gap:18px}.clinical-section-head h3{margin:0 0 4px;font-size:15px;color:#17283f}.clinical-section-head span{font-size:11px;color:#87928c}
+.section-mic{border:1px solid #dbe5df;background:#f8fbf9;color:#2f6f63;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}.section-mic:hover{background:#eaf3ee}.section-mic:disabled{opacity:.55;cursor:default}.section-mic.recording{background:#f4e7e8;color:#984a55;border-color:#ead4d7}
+.section-empty{margin-top:12px;border:1px dashed #e2e8e3;border-radius:11px;padding:12px;color:#9aa39e;font-size:12px}
+.section-content{margin-top:12px;background:#eef6f1;border-radius:11px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px}.section-content p{margin:0;flex:1;color:#40554c;font-size:12px;line-height:1.6}.section-content button{border:0;background:transparent;color:#7d8983;font-size:10px;cursor:pointer}
+.session-save{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:14px;padding:13px 15px;background:#f6f8f6;border-radius:13px}.session-save span{display:flex;align-items:center;gap:6px;color:#78857e;font-size:11px}.session-save button{border:0;background:#2f6f63;color:#fff;border-radius:10px;padding:10px 13px;font-size:11px;font-weight:800}
+.previous-visits{margin-top:32px}.previous-visits>h3{font-size:20px;margin:5px 0 13px}.previous-visits .note-card{margin-bottom:10px}
+@media(max-width:800px){.session-work-head{flex-direction:column}.followup-snapshot{grid-template-columns:1fr 1fr}.clinical-section-head{align-items:flex-start}.session-save{align-items:flex-start;flex-direction:column}}
+@media(max-width:520px){.followup-snapshot{grid-template-columns:1fr}.clinical-section{padding:15px}.clinical-section-head{gap:10px}.section-mic{font-size:0;padding:9px}.session-save button{width:100%}}

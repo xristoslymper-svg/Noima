@@ -158,3 +158,11 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .instrument-overlay:has(.custom-test-sheet){display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
 .instrument-overlay .custom-test-sheet{position:relative;margin:0;max-height:min(88vh,860px);width:min(720px,calc(100vw - 48px));overflow-y:auto;border-radius:20px;box-shadow:0 28px 90px rgba(25,42,34,.22)}
 @media(max-width:600px){.instrument-overlay:has(.custom-test-sheet){padding:10px}.instrument-overlay .custom-test-sheet{width:calc(100vw - 20px);max-height:calc(100vh - 20px);border-radius:16px}}
+
+/* Psychometrics filter/action alignment */
+.category-filter-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.category-filter-row .category-tabs{flex:1;min-width:0;margin:0}
+.category-add{flex:0 0 auto;height:34px;padding:0 15px;white-space:nowrap}
+.category-search{width:min(290px,100%);height:36px;margin:0 0 16px 0}
+.category-search input{height:34px;padding-top:0;padding-bottom:0}
+@media(max-width:900px){.category-filter-row{flex-wrap:wrap;flex-direction:row}.category-filter-row .category-tabs{flex-basis:100%}.category-add{margin-left:0}.category-search{width:100%}}

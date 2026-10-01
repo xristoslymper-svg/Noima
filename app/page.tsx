@@ -57,7 +57,7 @@ const patientBriefs = {
 type PatientName = keyof typeof patientBriefs;
 
 const nav = [
-  [Home, "Σήμερα", true],
+  [Home, "Επισκόπηση", true],
   [Users, "Ασθενείς", false],
   [Activity, "Ψυχομετρικά τεστ", false],
   [Stethoscope, "Συνεργασία", false],

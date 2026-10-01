@@ -123,6 +123,7 @@ export default function Page() {
 
           <section className="main-grid">
             <div className="card sessions">
+              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {[
                 ["11:00", "Μαρία", "32 ετών · Επανεκτίμηση", "Σε 25 λεπτά"],
                 ["12:30", "Γιάννης Π.", "41 ετών · Αγχώδης διαταραχή", ""],

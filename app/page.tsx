@@ -76,9 +76,9 @@ export default function Page() {
           </div>
           <div className="profile">
             <Bell size={20} />
-            <div className="avatar">ΕΠ</div>
+            <div className="avatar">ΚΠ</div>
             <div>
-              <strong>Δρ. Ελένη Παπαδοπούλου</strong>
+              <strong>Δρ. Κατερίνα Παπαδάκη</strong>
               <span>Ψυχίατρος</span>
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function Page() {
           <div className="page-heading">
             <div>
               <p className="eyebrow">ΠΕΜΠΤΗ, 1 ΟΚΤΩΒΡΙΟΥ</p>
-              <h1>Καλημέρα, Δρ. Παπαδοπούλου</h1>
+              <h1>Καλημέρα, Δρ. Παπαδάκη</h1>
               <p>Ό,τι χρειάζεστε πριν, κατά και μετά τη σημερινή κλινική εργασία.</p>
             </div>
             <button className="primary ghost"><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>

@@ -10,7 +10,7 @@ type Tab="Σύνοψη"|"Ιστορικό"|"Φάρμακα"|"Τεστ"|"Σημε
 export default function Maria(){
  const [tab,setTab]=useState<Tab>("Σύνοψη");
  return <main className="clinical-page">
-  <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Νόημα · Υποθετική ασθενής MVP</span></div>
+  <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Σήμερα</Link><span>Κλινικός φάκελος · Υποθετική ασθενής MVP</span></div>
   <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><Link href="/patients/maria/dictation" className="record"><Mic2 size={19}/> Νέα υπαγόρευση</Link></div>
   <div className="patient-tabs">{(["Σύνοψη","Ιστορικό","Φάρμακα","Τεστ","Σημειώσεις"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x}</button>)}</div>
   {tab==="Σύνοψη"&&<Summary/>}{tab==="Ιστορικό"&&<History/>}{tab==="Φάρμακα"&&<Meds/>}{tab==="Τεστ"&&<Tests/>}{tab==="Σημειώσεις"&&<Notes/>}

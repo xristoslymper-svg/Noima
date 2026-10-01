@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Search, Plus, ChevronRight, Users, CalendarDays, AlertCircle, ArrowLeft, Bell } from "lucide-react";
+import { Search, Plus, ChevronRight, Users, CalendarDays, AlertCircle, Bell, Activity, Home, Settings, Stethoscope } from "lucide-react";
 import { useState } from "react";
 
 const patients=[
@@ -13,8 +13,7 @@ const patients=[
 export default function Patients(){
  const [q,setQ]=useState("");
  const filtered=patients.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||p.note.toLowerCase().includes(q.toLowerCase()));
- return <main className="registry-page">
-  <header className="section-topbar"><Link href="/" className="section-back"><ArrowLeft size={17}/> Επισκόπηση</Link><div className="section-title"><div className="brand-mark">Ψ</div><span>Ασθενείς</span></div><div className="section-profile"><Bell size={18}/><div className="avatar">ΚΠ</div></div></header>
+ return <main className="app-shell secondary-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">Ψ</div><div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>Επισκόπηση</span></Link><Link href="/patients" className="nav-item active"><Users size={19}/><span>Ασθενείς</span></Link><Link href="/psychometrics" className="nav-item"><Activity size={19}/><span>Ψυχομετρικά τεστ</span></Link><button className="nav-item"><Stethoscope size={19}/><span>Συνεργασία</span></button><button className="nav-item"><Settings size={19}/><span>Ρυθμίσεις</span></button></nav></aside><section className="workspace"><header className="topbar"><div className="search"><Search size={18}/><span>Αναζήτηση ασθενή, σημείωσης, φαρμάκου ή τεστ...</span></div><div className="profile"><Bell size={20}/><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div></header><div className="secondary-content registry-page">
   <section className="registry-wrap">
    <div className="registry-heading"><div><span className="kicker">ΚΛΙΝΙΚΟ ΜΗΤΡΩΟ</span><h1>Ασθενείς</h1><p>Οι ασθενείς σας και ό,τι χρειάζεται την προσοχή σας.</p></div><Link href="/patients/new" className="record"><Plus size={18}/> Νέος ασθενής</Link></div>
    <div className="registry-stats"><div><Users/><span><strong>4</strong> ενεργοί ασθενείς</span></div><div><CalendarDays/><span><strong>4</strong> συνεδρίες σήμερα</span></div><div><AlertCircle/><span><strong>1</strong> νέα καρτέλα προς δημιουργία</span></div></div>
@@ -27,6 +26,6 @@ export default function Patients(){
       <ChevronRight size={17}/>
     </Link>)}
    </div>
-  </section>
+  </section></div></section>
  </main>
 }

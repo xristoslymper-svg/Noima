@@ -18,6 +18,7 @@ import {
   HeartPulse,
   Home,
   Mic2,
+  Menu,
   Pill,
   Search,
   Settings,
@@ -66,7 +67,7 @@ const nav = [
 ] as const;
 
 export default function Page() {
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);\n  const [mobileNav,setMobileNav]=useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
   const [voiceOpen,setVoiceOpen]=useState(false);
   const [voiceStep,setVoiceStep]=useState<"listening"|"proposal"|"done">("listening");
@@ -75,7 +76,7 @@ export default function Page() {
   const brief = patientBriefs[selectedPatient];
   return (
     <main className="app-shell">
-      <aside className="sidebar">
+      <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
         <div className="brand">
           <div className="brand-mark">Ψ</div>
           <div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div>
@@ -96,7 +97,7 @@ export default function Page() {
       </aside>
 
       <section className="workspace">
-        <header className="topbar">
+        <header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
           <div className="search">
             <Search size={18} />
             <span>Αναζήτηση ασθενή, σημείωσης, φαρμάκου ή τεστ...</span>

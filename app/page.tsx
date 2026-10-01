@@ -58,6 +58,7 @@ type PatientName = keyof typeof patientBriefs;
 
 const nav = [
   [Home, "Επισκόπηση", true],
+  [CalendarDays, "Ημερολόγιο", false],
   [Users, "Ασθενείς", false],
   [Activity, "Ψυχομετρικά τεστ", false],
   [Stethoscope, "Συνεργασία", false],
@@ -83,6 +84,8 @@ export default function Page() {
         <nav className="nav">
           {nav.map(([Icon, label, active]) => label === "Ασθενείς" ? (
             <Link href="/patients" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
+          ) : label === "Ημερολόγιο" ? (
+            <Link href="/calendar" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
           ) : label === "Ψυχομετρικά τεστ" ? (
             <Link href="/psychometrics" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
           ) : (

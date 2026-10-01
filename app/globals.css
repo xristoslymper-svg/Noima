@@ -166,3 +166,14 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .category-search{width:min(290px,100%);height:36px;margin:0 0 16px 0}
 .category-search input{height:34px;padding-top:0;padding-bottom:0}
 @media(max-width:900px){.category-filter-row{flex-wrap:wrap;flex-direction:row}.category-filter-row .category-tabs{flex-basis:100%}.category-add{margin-left:0}.category-search{width:100%}}
+
+/* Shared secondary-screen top navigation */
+.section-topbar{height:92px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 56px;border-bottom:1px solid #e5ebe7;background:#fff;box-sizing:border-box}
+.section-back{justify-self:start;display:inline-flex;align-items:center;gap:8px;color:#376f62;text-decoration:none;font-size:13px;font-weight:750}
+.section-title{justify-self:center;display:flex;align-items:center;gap:10px;color:#243b32;font-size:12px;font-weight:800}
+.section-title .brand-mark{width:34px;height:34px;font-size:22px;border-radius:10px}
+.section-profile{justify-self:end;display:flex;align-items:center;gap:14px;color:#21382f}
+.section-profile .avatar{width:36px;height:36px}
+.registry-page .registry-wrap{padding-top:56px}
+.psy-page .psy-content{padding-top:56px}
+@media(max-width:700px){.section-topbar{height:76px;padding:0 20px;grid-template-columns:1fr auto}.section-title{display:none}.section-profile{justify-self:end}}

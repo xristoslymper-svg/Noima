@@ -386,3 +386,28 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .calendar-move-safe{background:#edf6f1;color:#4e7465}.calendar-move-error{background:#fbefef;color:#8b5258;align-items:flex-start;flex-direction:column}.calendar-move-error strong{font-size:11px}.calendar-move-error span{font-size:10px}
 .calendar-move-dialog footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.calendar-move-dialog footer button{border:1px solid #dce4df;background:#fff;color:#607068;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.calendar-move-dialog footer button:disabled{opacity:.55;cursor:not-allowed}.calendar-move-dialog footer .calendar-move-confirm{background:#477663;border-color:#477663;color:#fff}
 @media(max-width:760px){.week-interaction-hint{align-items:flex-start;flex-direction:column;gap:4px}.calendar-time-grid{min-width:1040px}.calendar-move-comparison{grid-template-columns:1fr}.calendar-move-arrow{transform:rotate(90deg);justify-self:start}}
+
+
+/* Reliable visit lifecycle */
+.session-save-overview{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:180px}
+.session-save-overview>span{font-size:10px;font-weight:750;color:#547666;background:#eef6f1;border:1px solid #dbe9e1;border-radius:999px;padding:6px 9px}
+.session-save-overview>span.pending{color:#8a6b3f;background:#fff8ea;border-color:#efe1bd}
+.session-save-overview small{font-size:9.5px;color:#8b958f}
+.section-save-state{display:flex;align-items:center;gap:8px;min-height:22px}
+.inline-retry{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:#9a5058;font-size:10px;font-weight:750;cursor:pointer;padding:0}
+.risk-save.error{color:#9a5058}.risk-save button{display:inline-flex;align-items:center;gap:5px}
+.completed-session-list{display:flex;flex-direction:column;gap:8px}
+.completed-session-row{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;text-align:left;border:1px solid #e3e9e5;background:#fff;border-radius:12px;padding:12px 13px;color:#4c665b;cursor:pointer}
+.completed-session-row:hover{border-color:#cbdcd3;background:#fbfdfc}.completed-session-row>div{display:flex;flex-direction:column;gap:3px}.completed-session-row strong{font-size:12px;color:#30443a}.completed-session-row span{font-size:10px;color:#87938d}.completed-session-row .open-session-label{font-weight:750;color:#527866}
+.session-back-button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#557568;font-size:11px;font-weight:750;padding:0;margin:0 0 14px;cursor:pointer}
+.visit-label.completed span{background:#e8f3ed;color:#3f725c}
+.completed-section-stack{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.completed-clinical-section{border:1px solid #e3e9e5;background:#fff;border-radius:13px;padding:15px 16px}
+.completed-clinical-section>span{display:block;font-size:10px;font-weight:800;letter-spacing:.04em;color:#698077;text-transform:uppercase;margin-bottom:7px}
+.completed-clinical-section>p{white-space:pre-wrap;margin:0;color:#34483e;font-size:12.5px;line-height:1.65}
+.completed-clinical-section>small{display:block;margin-top:9px;color:#939d98;font-size:9.5px}
+.completed-risk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.completed-risk-grid>div{background:#f8faf9;border-radius:9px;padding:10px}
+.completed-risk-grid strong{display:block;color:#60736a;font-size:10px;margin-bottom:4px}.completed-risk-grid p{margin:0;color:#34483e;font-size:11px;white-space:pre-wrap}
+.save-state.error strong{font-weight:800}.save-state.error span{display:block;margin-top:3px}
+@media(max-width:760px){.session-save-overview{align-items:flex-start;min-width:0}.completed-risk-grid{grid-template-columns:1fr}.completed-session-row{grid-template-columns:auto minmax(0,1fr)}.completed-session-row .open-session-label{display:none}}

@@ -117,6 +117,15 @@ export default function CalendarPage() {
     void refreshEvents();
   }, [refreshEvents]);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("voice") === "1") {
+      setVoice(true);
+      url.searchParams.delete("voice");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, []);
+
   const dayEvents = useMemo(
     () => events.filter(event => dateKey(new Date(event.scheduled_start)) === focusDate),
     [events, focusDate],

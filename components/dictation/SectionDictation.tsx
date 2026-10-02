@@ -227,17 +227,17 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
           ) : (
             <p className="dictation-transcript">{text}</p>
           )}
-          <small>Ελέγξτε ιδιαίτερα αρνήσεις, ονόματα φαρμάκων και δόσεις. Δεν γίνεται αυτόματη κλινική ερμηνεία.</small>
+          <small>Ελέγξτε ιδιαίτερα αρνήσεις, ονόματα φαρμάκων και δόσεις. Μετά το ΟΚ δημιουργείται δομημένη κλινική πρόταση για δικό σας έλεγχο και έγκριση.</small>
         </div>
       )}
 
       <footer>
-        <span>Προσωρινό προσχέδιο · δεν αποθηκεύεται στον φάκελο.</span>
+        <span>Η μεταγραφή θα αποθηκευτεί ως πρόταση · δεν γίνεται επίσημη καταχώρηση χωρίς έγκριση.</span>
         <div>
           {stage === 'review' ? (
             <>
               <button onClick={() => setEditing(true)} disabled={editing}>Επεξεργασία</button>
-              <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>ΟΚ</button>
+              <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>Δημιουργία πρότασης</button>
             </>
           ) : (
             <>

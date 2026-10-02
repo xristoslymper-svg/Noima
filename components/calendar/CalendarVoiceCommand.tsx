@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, Mic2, Send, ShieldCheck, Sparkles, Square, X } from 'lucide-react';
+import { getDemoTesterId } from '@/lib/demo-tester';
 
 type Intent = 'move' | 'cancel' | 'create' | 'schedule_follow_up' | 'find_availability';
 type MissingField = 'patient' | 'date' | 'time' | 'appointment' | 'recurrence';
@@ -107,7 +108,7 @@ export default function CalendarVoiceCommand({
       const response = await fetch('/api/calendar/command/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: text.trim(), follow_ups: answers }),
+        body: JSON.stringify({ transcript: text.trim(), follow_ups: answers, tester: getDemoTesterId() }),
       });
       const data = (await response.json().catch(() => ({}))) as Proposal & { error?: string };
 
@@ -275,6 +276,7 @@ export default function CalendarVoiceCommand({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tester: getDemoTesterId(),
           action: command.action,
           event_id: command.event_id,
           patient_name: command.patient_name,

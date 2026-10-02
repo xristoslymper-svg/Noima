@@ -5,6 +5,9 @@ const SUPABASE_KEY =
 
 export type DemoCalendarEvent = {
   id: string;
+  tester_id: string | null;
+  patient_id: string | null;
+  session_id: string | null;
   patient_name: string;
   appointment_type: string;
   detail: string;
@@ -23,10 +26,22 @@ function headers(extra?: HeadersInit): HeadersInit {
   };
 }
 
-export async function fetchDemoCalendarEvents(): Promise<DemoCalendarEvent[]> {
+async function bootstrap(tester: string) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_tester_bootstrap`, {
+    method: "POST",
+    headers: headers(),
+    cache: "no-store",
+    body: JSON.stringify({ p_tester: tester }),
+  });
+  if (!response.ok) throw new Error(`calendar_bootstrap_failed:${response.status}`);
+}
+
+export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalendarEvent[]> {
+  await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status",
+    tester_id: `eq.${tester}`,
     status: "eq.scheduled",
     order: "scheduled_start.asc",
   });
@@ -36,16 +51,14 @@ export async function fetchDemoCalendarEvents(): Promise<DemoCalendarEvent[]> {
     { headers: headers(), cache: "no-store" },
   );
 
-  if (!response.ok) {
-    throw new Error(`calendar_read_failed:${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`calendar_read_failed:${response.status}`);
   return (await response.json()) as DemoCalendarEvent[];
 }
 
 export type DemoCalendarMutation = {
   action: "move" | "cancel" | "create" | "schedule_follow_up";
   event_id?: string | null;
+  patient_id?: string | null;
   patient_name?: string | null;
   scheduled_start?: string | null;
   scheduled_end?: string | null;
@@ -54,15 +67,18 @@ export type DemoCalendarMutation = {
 };
 
 export async function applyDemoCalendarMutation(
+  tester: string,
   mutation: DemoCalendarMutation,
 ): Promise<DemoCalendarEvent> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_apply`, {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_apply_v2`, {
     method: "POST",
     headers: headers(),
     cache: "no-store",
     body: JSON.stringify({
+      p_tester: tester,
       p_action: mutation.action,
       p_event_id: mutation.event_id ?? null,
+      p_patient_id: mutation.patient_id ?? null,
       p_patient_name: mutation.patient_name ?? null,
       p_scheduled_start: mutation.scheduled_start ?? null,
       p_scheduled_end: mutation.scheduled_end ?? null,
@@ -73,11 +89,21 @@ export async function applyDemoCalendarMutation(
 
   if (!response.ok) {
     const message = await response.text();
-    if (message.includes("calendar_conflict")) {
-      throw new Error("calendar_conflict");
-    }
+    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
+    if (message.includes("patient_not_found") || message.includes("patient_required")) throw new Error("patient_not_found");
     throw new Error(`calendar_write_failed:${response.status}`);
   }
 
   return (await response.json()) as DemoCalendarEvent;
+}
+
+export async function startDemoCalendarSession(tester: string, eventId: string) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_start_session`, {
+    method: "POST",
+    headers: headers(),
+    cache: "no-store",
+    body: JSON.stringify({ p_tester: tester, p_event: eventId }),
+  });
+  if (!response.ok) throw new Error(`calendar_session_failed:${response.status}`);
+  return response.json() as Promise<{ id: string; patient_id: string; status: "draft" | "completed" }>;
 }

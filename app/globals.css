@@ -294,3 +294,7 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .voice-slot{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e2e9e5;border-radius:11px;background:#fbfdfb;color:#40564c;font-size:12px;font-weight:650}
 .voice-slot-dot{width:8px;height:8px;border-radius:50%;background:#6e9a89;display:inline-block;flex:0 0 auto}
 .calendar-sync button:disabled{opacity:.55;cursor:not-allowed}
+
+.calendar-date-nav{display:flex;align-items:center;gap:7px}
+.calendar-date-nav>button{width:28px;height:28px;border:1px solid #e1e7e3;background:#fff;border-radius:8px;color:#52635b;font-size:18px;line-height:1;cursor:pointer}
+.calendar-date-nav .calendar-today-jump{width:auto;padding:0 9px;font-size:11px;font-weight:700}

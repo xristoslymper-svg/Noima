@@ -1,0 +1,8 @@
+const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const headers=()=>({apikey:SUPABASE_KEY,"Content-Type":"application/json"});
+export type DemoClinicalEntry={id:string;section_key:string;transcript:string;proposal:Record<string,unknown>;status:"proposal"|"approved";approved_text:string|null;created_at:string;approved_at:string|null};
+function configured(){if(!SUPABASE_URL||!SUPABASE_KEY) throw new Error("clinical_supabase_not_configured");}
+export async function fetchClinicalEntries(){configured();const r=await fetch(`${SUPABASE_URL}/rest/v1/demo_clinical_entries?select=*&patient_key=eq.maria&order=created_at.asc`,{headers:headers(),cache:"no-store"});if(!r.ok)throw new Error("clinical_read_failed");return await r.json() as DemoClinicalEntry[];}
+export async function submitClinicalEntry(section:string,transcript:string,proposal:Record<string,unknown>){configured();const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_clinical_submit`,{method:"POST",headers:headers(),cache:"no-store",body:JSON.stringify({p_section:section,p_transcript:transcript,p_proposal:proposal})});if(!r.ok)throw new Error("clinical_submit_failed");return await r.json() as DemoClinicalEntry;}
+export async function approveClinicalEntry(id:string,approvedText:string){configured();const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_clinical_approve`,{method:"POST",headers:headers(),cache:"no-store",body:JSON.stringify({p_id:id,p_approved_text:approvedText})});if(!r.ok)throw new Error("clinical_approve_failed");return await r.json() as DemoClinicalEntry;}

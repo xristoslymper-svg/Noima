@@ -1,0 +1,4 @@
+import {approveClinicalEntry,fetchClinicalEntries} from "@/lib/clinical/demo-clinical";
+export const dynamic="force-dynamic";
+export async function GET(){try{return Response.json({entries:await fetchClinicalEntries()})}catch{return Response.json({error:"Δεν ήταν δυνατή η ανάγνωση της συνεδρίας."},{status:502})}}
+export async function POST(req:Request){const b=await req.json().catch(()=>({}));if(typeof b.id!=="string"||typeof b.approved_text!=="string"||!b.approved_text.trim())return Response.json({error:"Μη έγκυρη έγκριση."},{status:400});try{return Response.json({entry:await approveClinicalEntry(b.id,b.approved_text.trim())})}catch{return Response.json({error:"Δεν αποθηκεύτηκε η έγκριση."},{status:502})}}

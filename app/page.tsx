@@ -70,10 +70,6 @@ export default function Page() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
-  const [voiceOpen,setVoiceOpen]=useState(false);
-  const [voiceStep,setVoiceStep]=useState<"listening"|"proposal"|"done">("listening");
-  const [voiceText,setVoiceText]=useState("");
-  const startVoice=()=>{setVoiceOpen(true);setVoiceStep("listening");setVoiceText("");setTimeout(()=>{setVoiceText("Μετέφερε τη Μαρία αύριο από τις 11 στις 12:30");setVoiceStep("proposal")},1100)};
   const brief = patientBriefs[selectedPatient];
   return (
     <main className="app-shell">
@@ -191,7 +187,7 @@ export default function Page() {
 
           <div className="calendar-body">
             <div className="calendar-agenda">
-              <div className="agenda-title"><div><h3>Σήμερα</h3><span>1 συνεδρία · υποθετικό MVP</span></div><div className="calendar-head-actions"><button className="voice-calendar-button" onClick={startVoice}><Mic2 size={16}/> Φωνητική εντολή</button><button className="add-appointment">+ Νέο ραντεβού</button></div></div>
+              <div className="agenda-title"><div><h3>Σήμερα</h3><span>1 συνεδρία · υποθετικό MVP</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><button className="add-appointment">+ Νέο ραντεβού</button></div></div>
               <div className="agenda-event">
                 <div className="agenda-time"><strong>11:00</strong><span>50′</span></div>
                 <div className="agenda-line"></div>
@@ -215,7 +211,6 @@ export default function Page() {
           </div>
         </section>
       </div>}
-      {voiceOpen&&<div className="voice-command-overlay" onClick={()=>setVoiceOpen(false)}><section className="voice-command-card" onClick={e=>e.stopPropagation()}><button className="voice-command-close" onClick={()=>setVoiceOpen(false)}><X size={18}/></button>{voiceStep==="listening"?<div className="voice-listening"><div className="voice-orb"><Mic2 size={24}/></div><span className="kicker">ΦΩΝΗΤΙΚΗ ΕΝΤΟΛΗ</span><h3>Σας ακούω…</h3><p>Πείτε τι θέλετε να αλλάξετε στο πρόγραμμά σας.</p><div className="voice-wave"><i/><i/><i/><i/><i/></div></div>:voiceStep==="proposal"?<><div className="voice-command-head"><div className="voice-orb small"><Sparkles size={20}/></div><div><span className="kicker">ΚΑΤΑΛΑΒΑ</span><h3>Μετακίνηση ραντεβού</h3></div></div><div className="voice-transcript">“{voiceText}”</div><div className="voice-change"><div><span>Ασθενής</span><strong>Μαρία</strong></div><div><span>Από</span><strong>Αύριο · 11:00</strong></div><ChevronRight size={18}/><div><span>Σε</span><strong>Αύριο · 12:30</strong></div></div><div className="voice-safe-note"><ShieldCheck size={15}/> Καμία αλλαγή δεν γίνεται χωρίς την επιβεβαίωσή σας.</div><footer><button onClick={()=>setVoiceOpen(false)}>Ακύρωση</button><button className="voice-confirm" onClick={()=>setVoiceStep("done")}><Check size={15}/> Επιβεβαίωση αλλαγής</button></footer></>:<div className="voice-listening voice-done"><div className="voice-done-icon"><Check size={22}/></div><h3>Η αλλαγή επιβεβαιώθηκε</h3><p>Demo ενέργεια: το ραντεβού της Μαρίας μετακινήθηκε στις 12:30.</p><button className="voice-confirm" onClick={()=>setVoiceOpen(false)}>Τέλος</button></div>}</section></div>}
     </main>
   );
 }

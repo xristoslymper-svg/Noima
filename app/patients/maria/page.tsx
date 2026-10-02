@@ -14,7 +14,7 @@ export default function Maria(){
  const [appointmentOpen,setAppointmentOpen]=useState(false);
  return <main className="clinical-page">
   <div className="clinical-top"><Link href="/" className="back"><ArrowLeft size={17}/> Επισκόπηση</Link><span>Κλινικός φάκελος · Υποθετική ασθενής MVP</span></div>
-  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div></div>
+  <div className="patient-hero"><div><p className="eyebrow">ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ · 11:00</p><h1>Μαρία</h1><p>32 ετών · τελευταία συνεδρία πριν 14 ημέρες · υποθετική ασθενής</p></div><button className="patient-voice-cta" onClick={()=>setTab("Συνεδρίες")}><span className="patient-voice-icon"><Mic2 size={19}/></span><span><strong>Συμπλήρωση με φωνή</strong><small>Υπαγόρευση στα δομημένα πεδία της επίσκεψης</small></span><ChevronRight size={18}/></button></div>
   <div className="patient-workspace-shell"><aside className="patient-nav"><div className="patient-nav-identity"><span className="patient-nav-avatar">Μ</span><div><strong>Μαρία</strong><small>32 ετών · Ενεργή</small></div></div><span className="patient-nav-label">ΦΑΚΕΛΟΣ</span>{(["Σύνοψη","Συνεδρίες","Ιστορικό","Αγωγή","Κλίμακες"] as Tab[]).map(x=><button key={x} onClick={()=>setTab(x)} className={tab===x?"active":""}>{x==="Σύνοψη"?<FileText size={16}/>:x==="Συνεδρίες"?<ClipboardCheck size={16}/>:x==="Ιστορικό"?<HistoryIcon size={16}/>:x==="Αγωγή"?<Pill size={16}/>:<TestTube2 size={16}/>}<span>{x==="Κλίμακες"?"Ψυχομετρικά":x}</span>{x==="Συνεδρίες"&&<i>1</i>}</button>)}<div className="patient-nav-divider"/><span className="patient-nav-label action-label">ΠΡΟΣΘΗΚΗ ΣΤΟΝ ΦΑΚΕΛΟ</span><button className="patient-primary-action" onClick={()=>setTab("Συνεδρίες")}><Plus size={16}/> Νέα συνεδρία</button><button className="patient-action" onClick={()=>setTab("Κλίμακες")}><Mail size={16}/> Αποστολή τεστ</button><button className="patient-action" onClick={()=>setAppointmentOpen(true)}><CalendarDays size={16}/> Νέο ραντεβού</button><div className="patient-next-visit"><small>ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ</small><strong>Σήμερα · 11:00</strong><button onClick={()=>setTab("Συνεδρίες")}>Έναρξη συνεδρίας <ChevronRight size={14}/></button></div></aside><div className="patient-workspace-content">{tab==="Σύνοψη"&&<Summary/>}{tab==="Συνεδρίες"&&<Sessions/>}{tab==="Ιστορικό"&&<History/>}{tab==="Αγωγή"&&<Meds/>}{tab==="Κλίμακες"&&<Tests/>}</div></div>{quickAdd&&<QuickAdd onClose={()=>setQuickAdd(false)}/>} {appointmentOpen&&<AppointmentModal onClose={()=>setAppointmentOpen(false)}/>}
  </main>
 }
@@ -64,7 +64,7 @@ function Sessions(){
  return <section className="session-workspace">
   <div className="session-work-head">
    <div><div className="visit-label"><span>FOLLOW-UP</span><i/> 1 ΟΚΤΩΒΡΙΟΥ · 11:00</div><h2>Σημερινή συνεδρία</h2><p>Κάθε ενότητα μπορεί να συμπληρωθεί με κείμενο ή με στοχευμένη υπαγόρευση.</p></div>
-   <Link href="/patients/maria/dictation" className="record compact"><Mic2 size={17}/> Υπαγόρευση συνολικής συνεδρίας</Link>
+   <div className="structured-voice-badge"><Mic2 size={16}/><span><strong>Δομημένη υπαγόρευση</strong><small>Επιλέξτε μικρόφωνο σε κάθε πεδίο</small></span></div>
   </div>
 
   <div className="visit-context"><div className="visit-context-title"><span className="kicker">ΑΠΟ ΤΗΝ ΠΡΟΗΓΟΥΜΕΝΗ ΕΠΙΣΚΕΨΗ</span><span>Γρήγορη εικόνα πριν την καταγραφή</span></div><div className="followup-snapshot">

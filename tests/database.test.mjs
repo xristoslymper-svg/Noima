@@ -222,3 +222,23 @@ test('section dictation cannot produce a proposal for another section', async ()
   await rejected(a,"insert into clinical_proposals(input_id,session_id,patient_id,practice_id,section_type,content,provider) values($1,$2,$3,$4,'treatment_plan','Wrong section','mock')",[input,s,patientA,pa],/scope mismatch/);
   await asUser(a, () => sql("insert into clinical_proposals(input_id,session_id,patient_id,practice_id,section_type,content,provider) values($1,$2,$3,$4,'mse','Correct section','mock')",[input,s,patientA,pa]));
 });
+
+
+test('fictional tester calendar links to patient IDs and future medication changes do not apply early', async () => {
+  const tester = '50000000-0000-4000-8000-000000000001';
+  await sql('select demo_tester_bootstrap($1)', [tester]);
+  await sql('select demo_seed_maria_record($1)', [tester]);
+  const [{count:patients}] = await sql('select count(*)::int count from demo_patients where tester_id=$1', [tester]);
+  const [{count:events}] = await sql('select count(*)::int count from demo_calendar_events where tester_id=$1 and patient_id is not null', [tester]);
+  const [{count:completed}] = await sql("select count(*)::int count from demo_sessions where tester_id=$1 and status='completed'", [tester]);
+  assert.equal(patients,4);
+  assert.equal(events,4);
+  assert.equal(completed,1);
+
+  const [{id:medication,dose:before}] = await sql("select id,dose from demo_medications where tester_id=$1 and medication_name='Sertraline' limit 1",[tester]);
+  await sql("select demo_medication_change($1,$2,null,150,'mg','1× πρωί',current_date+1,'future test')",[tester,medication]);
+  const [{dose:after}] = await sql('select dose from demo_medications where id=$1',[medication]);
+  const [{dose:future}] = await sql("select (new_state->>'dose')::numeric dose from demo_medication_events where medication_id=$1 and event_type='changed' order by created_at desc limit 1",[medication]);
+  assert.equal(Number(after),Number(before));
+  assert.equal(Number(future),150);
+});

@@ -33,7 +33,18 @@ type CalendarEvent = {
   status: "scheduled" | "cancelled";
 };
 
+type PendingMove = {
+  event: CalendarEvent;
+  startIso: string;
+  endIso: string;
+  conflict: boolean;
+};
+
 const TIMEZONE = "Europe/Athens";
+const WEEK_START_MINUTE = 8 * 60;
+const WEEK_END_MINUTE = 22 * 60;
+const WEEK_HOUR_HEIGHT = 64;
+const WEEK_TOTAL_HEIGHT = ((WEEK_END_MINUTE - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT;
 
 function dateKey(value: Date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -87,6 +98,59 @@ function focusTitle(focus: string) {
   }).format(new Date(`${focus}T12:00:00Z`));
 }
 
+function athensMinutes(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const pick = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0);
+  return pick("hour") * 60 + pick("minute");
+}
+
+function getAthensOffsetMinutes(instant: Date) {
+  const offsetName = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    timeZoneName: "shortOffset",
+  }).formatToParts(instant).find(part => part.type === "timeZoneName")?.value;
+  const match = offsetName?.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
+  return match[1] === "-" ? -minutes : minutes;
+}
+
+function localAthensToIso(date: string, minutesFromMidnight: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  const hours = Math.floor(minutesFromMidnight / 60);
+  const minutes = minutesFromMidnight % 60;
+  const guess = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+  const offset = getAthensOffsetMinutes(guess);
+  return new Date(guess.getTime() - offset * 60_000).toISOString();
+}
+
+function addMinutes(iso: string, minutes: number) {
+  return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
+}
+
+function dateTimeLabel(iso: string) {
+  return new Intl.DateTimeFormat("el-GR", {
+    timeZone: TIMEZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function eventDurationMinutes(event: CalendarEvent) {
+  return Math.max(
+    15,
+    Math.round((new Date(event.scheduled_end).getTime() - new Date(event.scheduled_start).getTime()) / 60_000),
+  );
+}
+
 export default function CalendarPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [view, setView] = useState<"day" | "week">("day");
@@ -95,6 +159,11 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [calendarError, setCalendarError] = useState("");
   const [focusDate, setFocusDate] = useState(() => dateKey(new Date()));
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ dayKey: string; minute: number } | null>(null);
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [moveSaving, setMoveSaving] = useState(false);
+  const [moveError, setMoveError] = useState("");
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -141,6 +210,88 @@ export default function CalendarPage() {
   const waiting = dayEvents.find(event => event.readiness === "waiting");
   const newPatient = dayEvents.find(event => event.readiness === "new");
   const readyCount = dayEvents.filter(event => event.readiness !== "waiting").length;
+  const draggingEvent = draggingEventId ? events.find(event => event.id === draggingEventId) ?? null : null;
+  const weekHours = Array.from(
+    { length: (WEEK_END_MINUTE - WEEK_START_MINUTE) / 60 + 1 },
+    (_, index) => WEEK_START_MINUTE / 60 + index,
+  );
+
+  const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const raw = WEEK_START_MINUTE + ((clientY - rect.top) / rect.height) * (WEEK_END_MINUTE - WEEK_START_MINUTE);
+    const snapped = Math.round(raw / 30) * 30;
+    return Math.max(WEEK_START_MINUTE, Math.min(WEEK_END_MINUTE - 30, snapped));
+  }, []);
+
+  const prepareMove = useCallback((event: CalendarEvent, dayKey: string, startMinute: number) => {
+    const duration = eventDurationMinutes(event);
+    const latestStart = WEEK_END_MINUTE - Math.min(duration, WEEK_END_MINUTE - WEEK_START_MINUTE);
+    const safeStart = Math.min(startMinute, latestStart);
+    const startIso = localAthensToIso(dayKey, safeStart);
+    const endIso = addMinutes(startIso, duration);
+
+    setDraggingEventId(null);
+    setDragPreview(null);
+
+    if (new Date(startIso).getTime() === new Date(event.scheduled_start).getTime()) return;
+
+    const startMs = new Date(startIso).getTime();
+    const endMs = new Date(endIso).getTime();
+    const conflict = events.some(other =>
+      other.id !== event.id &&
+      new Date(other.scheduled_start).getTime() < endMs &&
+      new Date(other.scheduled_end).getTime() > startMs
+    );
+
+    setMoveError("");
+    setPendingMove({ event, startIso, endIso, conflict });
+  }, [events]);
+
+  const confirmMove = useCallback(async () => {
+    if (!pendingMove || pendingMove.conflict || moveSaving) return;
+    setMoveSaving(true);
+    setMoveError("");
+
+    try {
+      const response = await fetch("/api/calendar/command/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move",
+          event_id: pendingMove.event.id,
+          patient_name: pendingMove.event.patient_name,
+          start_iso: pendingMove.startIso,
+          end_iso: pendingMove.endIso,
+          appointment_type: pendingMove.event.appointment_type,
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        event?: CalendarEvent;
+        error?: string;
+        code?: string;
+      };
+
+      if (!response.ok) {
+        setMoveError(
+          data.code === "calendar_conflict"
+            ? "Η ώρα δεν είναι πλέον διαθέσιμη. Το ραντεβού έμεινε στην αρχική του θέση."
+            : data.error || "Η μετακίνηση δεν αποθηκεύτηκε.",
+        );
+        return;
+      }
+
+      if (data.event) {
+        setEvents(current => current.map(item => item.id === data.event!.id ? data.event! : item));
+        setFocusDate(dateKey(new Date(data.event.scheduled_start)));
+      }
+      setPendingMove(null);
+      await refreshEvents();
+    } catch {
+      setMoveError("Η μετακίνηση δεν αποθηκεύτηκε. Το ραντεβού έμεινε στην αρχική του θέση.");
+    } finally {
+      setMoveSaving(false);
+    }
+  }, [moveSaving, pendingMove, refreshEvents]);
 
   return (
     <main className="app-shell secondary-shell">
@@ -273,26 +424,112 @@ export default function CalendarPage() {
                 )}
               </section>
             ) : (
-              <section className="calendar-week-card">
-                <div className="calendar-week-grid">
+              <section className="calendar-week-card interactive-week">
+                <div className="week-interaction-hint">
+                  <span><strong>Σύρετε</strong> ένα ραντεβού σε άλλη ημέρα ή ώρα.</span>
+                  <small>Η μετακίνηση αποθηκεύεται μόνο μετά την επιβεβαίωσή σας · βήμα 30′.</small>
+                </div>
+
+                <div className="calendar-time-grid">
+                  <div className="week-time-corner" />
+                  {days.map(day => (
+                    <div className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key}>
+                      <span>{day.day}</span>
+                      <strong>{day.date}</strong>
+                      {day.key === focusDate && <i>Σήμερα</i>}
+                    </div>
+                  ))}
+
+                  <div className="week-time-axis" style={{ height: WEEK_TOTAL_HEIGHT }}>
+                    {weekHours.map(hour => (
+                      <span
+                        key={hour}
+                        style={{ top: ((hour * 60 - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT }}
+                      >
+                        {String(hour).padStart(2, "0")}:00
+                      </span>
+                    ))}
+                  </div>
+
                   {days.map(day => {
                     const items = events.filter(event => dateKey(new Date(event.scheduled_start)) === day.key);
+                    const previewMinute = dragPreview?.dayKey === day.key ? dragPreview.minute : null;
+
                     return (
-                      <div className={"week-day-column" + (day.key === focusDate ? " today" : "")} key={day.key}>
-                        <div className="week-day-head">
-                          <span>{day.day}</span>
-                          <strong>{day.date}</strong>
-                          {day.key === focusDate && <i>Σήμερα</i>}
-                        </div>
-                        <div className="week-day-events">
-                          {items.length ? items.map(event => (
-                            <div className="week-event" key={event.id}>
+                      <div
+                        className={
+                          "week-time-column" +
+                          (day.key === focusDate ? " today" : "") +
+                          (previewMinute !== null ? " drag-target" : "")
+                        }
+                        key={day.key}
+                        style={{ height: WEEK_TOTAL_HEIGHT }}
+                        onDragOver={event => {
+                          if (!draggingEvent) return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                          setDragPreview({ dayKey: day.key, minute: minuteFromDrop(event.clientY, event.currentTarget) });
+                        }}
+                        onDragLeave={event => {
+                          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragPreview(null);
+                        }}
+                        onDrop={event => {
+                          event.preventDefault();
+                          if (!draggingEvent) return;
+                          const minute = minuteFromDrop(event.clientY, event.currentTarget);
+                          prepareMove(draggingEvent, day.key, minute);
+                        }}
+                      >
+                        {previewMinute !== null && draggingEvent && (
+                          <div
+                            className="week-drop-preview"
+                            style={{
+                              top: ((previewMinute - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT,
+                              height: Math.max(28, (eventDurationMinutes(draggingEvent) / 60) * WEEK_HOUR_HEIGHT),
+                            }}
+                          >
+                            {timeLabel(localAthensToIso(day.key, previewMinute))}
+                          </div>
+                        )}
+
+                        {items.map(event => {
+                          const startMinute = athensMinutes(event.scheduled_start);
+                          const duration = eventDurationMinutes(event);
+                          const top = ((startMinute - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT;
+                          const height = Math.max(38, (duration / 60) * WEEK_HOUR_HEIGHT);
+                          const outsideRange = startMinute < WEEK_START_MINUTE || startMinute >= WEEK_END_MINUTE;
+
+                          if (outsideRange) return null;
+
+                          return (
+                            <div
+                              className={
+                                "week-event draggable" +
+                                (draggingEventId === event.id ? " dragging" : "") +
+                                (event.readiness === "waiting" ? " waiting" : "")
+                              }
+                              key={event.id}
+                              draggable
+                              title="Σύρετε για αλλαγή ημέρας ή ώρας"
+                              style={{ top, height }}
+                              onDragStart={dragEvent => {
+                                setDraggingEventId(event.id);
+                                setMoveError("");
+                                dragEvent.dataTransfer.effectAllowed = "move";
+                                dragEvent.dataTransfer.setData("text/plain", event.id);
+                              }}
+                              onDragEnd={() => {
+                                setDraggingEventId(null);
+                                setDragPreview(null);
+                              }}
+                            >
+                              <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
                               <strong>{timeLabel(event.scheduled_start)}</strong>
                               <span>{event.patient_name}</span>
                               <small>{appointmentType(event.appointment_type)}</small>
                             </div>
-                          )) : <div className="week-empty">Χωρίς ραντεβού</div>}
-                        </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -335,6 +572,59 @@ export default function CalendarPage() {
           </div>
         </div>
       </section>
+
+      {pendingMove && (
+        <div className="calendar-move-overlay" onClick={() => !moveSaving && setPendingMove(null)}>
+          <section className="calendar-move-dialog" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+            <button
+              className="calendar-move-close"
+              onClick={() => setPendingMove(null)}
+              disabled={moveSaving}
+              aria-label="Κλείσιμο"
+            >
+              <X size={18} />
+            </button>
+            <span className="kicker">ΜΕΤΑΚΙΝΗΣΗ ΡΑΝΤΕΒΟΥ</span>
+            <h3>{pendingMove.event.patient_name}</h3>
+            <div className="calendar-move-comparison">
+              <div>
+                <span>Από</span>
+                <strong>{dateTimeLabel(pendingMove.event.scheduled_start)}</strong>
+              </div>
+              <span className="calendar-move-arrow">→</span>
+              <div>
+                <span>Σε</span>
+                <strong>{dateTimeLabel(pendingMove.startIso)}</strong>
+              </div>
+            </div>
+
+            {pendingMove.conflict ? (
+              <div className="calendar-move-error">
+                <strong>Η ώρα είναι ήδη κατειλημμένη.</strong>
+                <span>Δεν έγινε καμία αλλαγή. Επιλέξτε άλλη ώρα στο ημερολόγιο.</span>
+              </div>
+            ) : (
+              <div className="calendar-move-safe">
+                <Check size={15} aria-hidden="true" />
+                Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση».
+              </div>
+            )}
+
+            {moveError && <div className="calendar-move-error"><span>{moveError}</span></div>}
+
+            <footer>
+              <button onClick={() => setPendingMove(null)} disabled={moveSaving}>
+                {pendingMove.conflict ? "Επιστροφή" : "Ακύρωση"}
+              </button>
+              {!pendingMove.conflict && (
+                <button className="calendar-move-confirm" onClick={() => void confirmMove()} disabled={moveSaving}>
+                  {moveSaving ? "Αποθήκευση…" : "Μετακίνηση"}
+                </button>
+              )}
+            </footer>
+          </section>
+        </div>
+      )}
 
       {voice && (
         <CalendarVoiceCommand

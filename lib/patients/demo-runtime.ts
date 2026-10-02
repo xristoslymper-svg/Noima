@@ -23,7 +23,7 @@ async function request(path:string, init:RequestInit={}){
 export async function rpc(name:string,args:Record<string,unknown>){return request(`rpc/${name}`,{method:'POST',body:JSON.stringify(args)})}
 const rows=<T>(value:unknown):T[]=>Array.isArray(value)?value as T[]:value?[value as T]:[];
 const one=<T>(value:unknown):T=>rows<T>(value)[0];
-export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester})}
+export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester});await rpc('demo_seed_maria_record',{p_tester:tester})}
 export async function listPatients(tester:string){await bootstrap(tester);return rows<DemoPatient>(await request(`demo_patients?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=updated_at.desc`))}
 export async function listPatientRows(tester:string){
  const patients=await listPatients(tester);

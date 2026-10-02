@@ -25,7 +25,23 @@ const rows=<T>(value:unknown):T[]=>Array.isArray(value)?value as T[]:value?[valu
 const one=<T>(value:unknown):T=>rows<T>(value)[0];
 export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester})}
 export async function listPatients(tester:string){await bootstrap(tester);return rows<DemoPatient>(await request(`demo_patients?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=updated_at.desc`))}
-export async function listPatientRows(tester:string){const patients=await listPatients(tester);const sessions=rows<DemoSession>(await request(`demo_sessions?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=started_at.desc`));return patients.map(patient=>({...patient,draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,last_session:sessions.find(s=>s.patient_id===patient.id&&s.status==='completed')||null}))}
+export async function listPatientRows(tester:string){
+ const patients=await listPatients(tester);
+ const tid=encodeURIComponent(tester);
+ const [sessionData,appointmentData]=await Promise.all([
+  request(`demo_sessions?select=*&tester_id=eq.${tid}&order=started_at.desc`),
+  request(`demo_calendar_events?select=id,patient_id,session_id,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&status=eq.scheduled&order=scheduled_start.asc`),
+ ]);
+ const sessions=rows<DemoSession>(sessionData);
+ const appointments=rows<{id:string;patient_id:string|null;session_id:string|null;scheduled_start:string;scheduled_end:string;status:string}>(appointmentData);
+ const now=Date.now();
+ return patients.map(patient=>({
+  ...patient,
+  draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,
+  last_session:sessions.find(s=>s.patient_id===patient.id&&s.status==='completed')||null,
+  next_appointment:appointments.find(a=>a.patient_id===patient.id&&new Date(a.scheduled_end).getTime()>=now)||null,
+ }));
+}
 export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;email:string;chief_complaint:string}){
   await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v2',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_email:input.email,p_complaint:input.chief_complaint}));
 }

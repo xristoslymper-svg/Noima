@@ -237,7 +237,7 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
           {stage === 'review' ? (
             <>
               <button onClick={() => setEditing(true)} disabled={editing}>Επεξεργασία</button>
-              <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>Δημιουργία πρότασης</button>
+              <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>ΟΚ</button>
             </>
           ) : (
             <>

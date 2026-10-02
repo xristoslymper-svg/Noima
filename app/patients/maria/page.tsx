@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import SectionDictation from "@/components/dictation/SectionDictation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Brain, CalendarDays, ChevronRight, ClipboardCheck, FileText, HeartPulse, Mic2, Pill, ShieldCheck, Sparkles, TestTube2, Mail, X, Check, Plus, History as HistoryIcon } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -19,7 +19,12 @@ export default function Maria(){
  </main>
 }
 
-function Summary(){return <section className="patient-layout"><div className="patient-main">
+function Summary(){
+ const [approved,setApproved]=useState<any[]>([]);
+ useEffect(()=>{fetch("/api/clinical/entries",{cache:"no-store"}).then(r=>r.json()).then(d=>setApproved((d.entries||[]).filter((x:any)=>x.status==="approved"))).catch(()=>{});},[]);
+ const latest=approved.at(-1);
+ return <section className="patient-layout"><div className="patient-main">
+ {latest&&<div className="card approved-update"><span className="kicker">ΝΕΑ ΕΓΚΕΚΡΙΜΕΝΗ ΚΑΤΑΓΡΑΦΗ · LIVE</span><h2><Check size={18}/> Η σύνοψη ενημερώθηκε από τη συνεδρία</h2><p>{latest.approved_text}</p><small>Πηγή: εγκεκριμένη καταχώρηση · {latest.section_key}</small></div>}
  <div className="card focus-card"><span className="kicker">20″ ΠΡΙΝ ΤΗ ΣΥΝΕΔΡΙΑ</span><h2><Sparkles size={19}/> Τι χρειάζεται να θυμάστε σήμερα</h2>
   <div className="memory-lead">Σημαντική βελτίωση διάθεσης και άγχους από τον Ιούνιο. Μετά την αύξηση της sertraline στα 100 mg οι κρίσεις πανικού υποχώρησαν, αλλά εμφανίστηκε <b>μειωμένη libido</b>. Σήμερα χρειάζεται απόφαση για ανοχή έναντι οφέλους.</div>
   <div className="memory-grid"><div><strong>Από την τελευταία συνεδρία</strong><ul><li>Καμία κρίση πανικού τις τελευταίες 2 εβδομάδες</li><li>Ύπνος 6–7 ώρες, 1 νυχτερινή αφύπνιση</li><li>Επέστρεψε σε πλήρες ωράριο εργασίας</li><li>PHQ-9 17 → 7 · GAD-7 14 → 5</li></ul></div><div><strong>Να διερευνηθεί σήμερα</strong><ul><li>Ένταση και επίδραση της σεξουαλικής δυσλειτουργίας</li><li>Συμμόρφωση και τυχόν χαμένες δόσεις</li><li>Άγχος ενόψει παρουσίασης στη δουλειά</li><li>Επανεκτίμηση αυτοκτονικού ιδεασμού</li></ul></div></div>
@@ -51,6 +56,24 @@ function Sessions(){
  type Key="interview"|"effects"|"adherence"|"mse"|"risk"|"assessment"|"plan"|"review";
  const [fields,setFields]=useState<Partial<Record<Key,string>>>({});
  const [dictating,setDictating]=useState<Key|null>(null);
+ const [proposals,setProposals]=useState<Record<string,any>>({});
+ const [saving,setSaving]=useState<Key|null>(null);
+ async function capture(key:Key,text:string){
+  setSaving(key);
+  try{
+   const r=await fetch("/api/clinical/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:key,transcript:text})});
+   const d=await r.json(); if(!r.ok) throw new Error(d.error||"error");
+   setFields(v=>({...v,[key]:d.entry.proposal.clinical_text||text}));
+   setProposals(v=>({...v,[key]:d.entry}));
+  }catch{setFields(v=>({...v,[key]:text})); alert("Η μεταγραφή κρατήθηκε μόνο στην οθόνη· η κλινική πρόταση δεν αποθηκεύτηκε.");}
+  finally{setSaving(null);setDictating(null);}
+ }
+ async function approve(key:Key){
+  const p=proposals[key]; const text=fields[key]?.trim(); if(!p||!text)return;
+  setSaving(key);
+  try{const r=await fetch("/api/clinical/entries",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:p.id,approved_text:text})});const d=await r.json();if(!r.ok)throw new Error();setProposals(v=>({...v,[key]:d.entry}));}
+  catch{alert("Η έγκριση δεν αποθηκεύτηκε.");}finally{setSaving(null);}
+ }
  const sections:[Key,string,string][]=[
   ["interview","Ψυχιατρική συνέντευξη","Συμπτώματα, πορεία, λειτουργικότητα και σημαντικά γεγονότα"],
   ["effects","Παρενέργειες","Ανεπιθύμητες ενέργειες και επίδραση"],
@@ -78,12 +101,12 @@ function Sessions(){
   <div className="clinical-sections">
    {sections.map(([key,title,hint])=><div className={fields[key]?"clinical-section populated":"clinical-section"} key={key}>
     <div className="clinical-section-head"><div><h3>{title}</h3><span>{hint}</span></div><button className="section-mic" onClick={()=>setDictating(key)} aria-label={"Υπαγόρευση: "+title}><Mic2 size={17}/> Υπαγόρευση</button></div>
-    {fields[key]!==undefined?<div className="section-content"><textarea className="section-draft" aria-label={"Κείμενο: "+title} value={fields[key]} onChange={e=>setFields(v=>({...v,[key]:e.target.value}))}/><button onClick={()=>setFields(v=>({...v,[key]:undefined}))}>Καθαρισμός</button></div>:<div className="section-empty">Δεν έχει καταγραφεί ακόμη περιεχόμενο.</div>}
+    {fields[key]!==undefined?<div className="section-content"><textarea className="section-draft" aria-label={"Κείμενο: "+title} value={fields[key]} onChange={e=>setFields(v=>({...v,[key]:e.target.value}))}/>{proposals[key]&&<div className={"proposal-state "+(proposals[key].status==="approved"?"approved":"")}><span>{proposals[key].status==="approved"?"Εγκεκριμένη κλινική καταχώρηση":"AI πρόταση · απαιτεί έγκριση"}</span>{proposals[key].status!=="approved"&&<button disabled={saving===key} onClick={()=>void approve(key)}><Check size={14}/> {saving===key?"Αποθήκευση…":"Έγκριση & ενημέρωση φακέλου"}</button>}</div>}<button onClick={()=>setFields(v=>({...v,[key]:undefined}))}>Καθαρισμός</button></div>:<div className="section-empty">{saving===key?"Δημιουργία και αποθήκευση κλινικής πρότασης…":"Δεν έχει καταγραφεί ακόμη περιεχόμενο."}</div>}
    </div>)}
   </div>
-  <div className="session-save"><span><ShieldCheck size={16}/> Demo: προσωρινά προσχέδια. Χάνονται όταν φύγετε από την καρτέλα ή ανανεώσετε τη σελίδα.</span><button disabled title="Η αποθήκευση στον φάκελο δεν είναι ακόμη διαθέσιμη">Αποθήκευση μη διαθέσιμη</button></div>
+  <div className="session-save"><span><ShieldCheck size={16}/> Οι υπαγορεύσεις αποθηκεύονται ως AI προτάσεις. Μόνο οι εγκεκριμένες καταχωρήσεις ενημερώνουν τον φάκελο και τη σύνοψη.</span></div>
 
-  {dictating&&<SectionDictation title={sections.find(([key])=>key===dictating)![1]} onClose={()=>setDictating(null)} onInsert={text=>{setFields(v=>({...v,[dictating]:[v[dictating],text].filter(Boolean).join("\n\n")}));setDictating(null)}}/>}
+  {dictating&&<SectionDictation title={sections.find(([key])=>key===dictating)![1]} onClose={()=>setDictating(null)} onInsert={text=>void capture(dictating,text)}/>}
   <div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ ΣΥΝΕΔΡΙΕΣ</span><h3>Κλινική πορεία</h3>
    <Note date="17/09" title="Follow-up αγωγής" text="Χωρίς κρίση πανικού από 31/08. Διάθεση σαφώς καλύτερη. Μειωμένη libido μετά την αύξηση sertraline. Αρνείται SI/plan/intent."/>
    <Note date="03/09" title="Follow-up · αλλαγή αγωγής" text="Μερική ανταπόκριση στα 50 mg, αλλά παραμένει anticipatory anxiety. Συμφωνήθηκε αύξηση sertraline σε 100 mg."/>

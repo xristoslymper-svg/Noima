@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Mic2, UserRound, Brain, HeartPulse, Pill, ClipboardList, ShieldCheck, Check, ChevronRight, Mail } from "lucide-react";
 
@@ -12,6 +12,10 @@ const sections=[
 ] as const;
 
 export default function NewPatient(){
+ return <Suspense fallback={<main className="intake-page"><p role="status">Φόρτωση καρτέλας…</p></main>}><NewPatientForm/></Suspense>;
+}
+
+function NewPatientForm(){
  const router=useRouter(); const search=useSearchParams(); const preset=search.get("patient")==="kostas";
  const [fields,setFields]=useState<Record<string,string>>({});
  const [firstName,setFirstName]=useState(preset?"Κώστας":"");

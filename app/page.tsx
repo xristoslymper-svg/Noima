@@ -184,27 +184,21 @@ export default function Page() {
       {calendarOpen && <div className="calendar-overlay" onClick={()=>setCalendarOpen(false)}>
         <section className="calendar-panel" onClick={e=>e.stopPropagation()}>
           <div className="calendar-panel-head">
-            <div><span className="kicker">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span><h2>Πέμπτη, 1 Οκτωβρίου</h2><p>Τα ραντεβού σας σε μία καθαρή ημερήσια προβολή.</p></div>
+            <div><span className="kicker">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span><h2>{overviewDayLabel()}</h2><p>Τα ίδια αποθηκευμένα ραντεβού που εμφανίζονται στο ημερολόγιο.</p></div>
             <button className="calendar-close" onClick={()=>setCalendarOpen(false)} aria-label="Κλείσιμο"><X size={20}/></button>
           </div>
 
-          <div className="calendar-date-strip">
-            {["ΔΕΥ|28","ΤΡΙ|29","ΤΕΤ|30","ΠΕΜ|1","ΠΑΡ|2","ΣΑΒ|3","ΚΥΡ|4"].map((d,i)=>{const [day,date]=d.split("|");return <button key={d} className={i===3?"active":""}><span>{day}</span><strong>{date}</strong></button>})}
-          </div>
+          <div className="calendar-runtime-link"><CalendarDays size={15}/><span>Η προβολή χρησιμοποιεί το κοινό calendar state.</span><Link href="/calendar" onClick={()=>setCalendarOpen(false)}>Πλήρες ημερολόγιο</Link></div>
 
           <div className="calendar-body">
             <div className="calendar-agenda">
-              <div className="agenda-title"><div><h3>Σήμερα</h3><span>1 συνεδρία · υποθετικό MVP</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><button className="add-appointment">+ Νέο ραντεβού</button></div></div>
-              <div className="agenda-event">
-                <div className="agenda-time"><strong>11:00</strong><span>50′</span></div>
+              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} συνεδρίες · persistent demo</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><Link href="/calendar" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
+              {todaySchedule.length?todaySchedule.map(event=><div className="agenda-event" key={event.id}>
+                <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
-                <div className="agenda-info"><strong>Μαρία</strong><span>Επανεκτίμηση · Follow-up αγωγής</span><small><Clock size={13}/> 11:00–11:50</small></div>
-                <Link href="/patients/maria" className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link>
-              </div>
-              <div className="agenda-empty"><span>12:00</span><div></div></div>
-              <div className="agenda-empty"><span>13:00</span><div></div></div>
-              <div className="agenda-empty"><span>14:00</span><div></div></div>
-              <div className="agenda-empty"><span>15:00</span><div></div></div>
+                <div className="agenda-info"><strong>{event.patient_name}</strong><span>{event.detail||event.readiness_label}</span><small><Clock size={13}/> {overviewTime(event.scheduled_start)}–{overviewTime(event.scheduled_end)}</small></div>
+                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id} className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link>}
+              </div>):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
             <aside className="calendar-integrations">

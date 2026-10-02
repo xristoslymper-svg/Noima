@@ -94,7 +94,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [calendarError, setCalendarError] = useState("");
-  const [focusDate] = useState(() => dateKey(new Date()));
+  const [focusDate, setFocusDate] = useState(() => dateKey(new Date()));
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -123,6 +123,12 @@ export default function CalendarPage() {
   );
 
   const days = useMemo(() => weekKeys(focusDate), [focusDate]);
+
+  const shiftFocus = useCallback((daysToMove: number) => {
+    const [year, month, day] = focusDate.split("-").map(Number);
+    const next = new Date(Date.UTC(year, month - 1, day + daysToMove, 12));
+    setFocusDate(next.toISOString().slice(0, 10));
+  }, [focusDate]);
   const waiting = dayEvents.find(event => event.readiness === "waiting");
   const newPatient = dayEvents.find(event => event.readiness === "new");
   const readyCount = dayEvents.filter(event => event.readiness !== "waiting").length;
@@ -200,7 +206,12 @@ export default function CalendarPage() {
           </div>
 
           <div className="calendar-summary">
-            <strong>{focusTitle(focusDate)}</strong>
+            <div className="calendar-date-nav">
+              <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
+              <strong>{focusTitle(focusDate)}</strong>
+              <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
+              {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => setFocusDate(dateKey(new Date()))}>Σήμερα</button>}
+            </div>
             <span>{dayEvents.length} συνεδρίες</span>
             <span className="summary-ready"><Check size={13} /> {readyCount} έτοιμες</span>
             <span>{dayEvents.filter(event => event.readiness === "waiting").length} αναμένει τεστ</span>
@@ -319,7 +330,13 @@ export default function CalendarPage() {
       {voice && (
         <CalendarVoiceCommand
           onClose={() => setVoice(false)}
-          onApplied={refreshEvents}
+          onApplied={async (event) => {
+            await refreshEvents();
+            if (event?.scheduled_start) {
+              setFocusDate(dateKey(new Date(event.scheduled_start)));
+              setView("day");
+            }
+          }}
         />
       )}
     </main>

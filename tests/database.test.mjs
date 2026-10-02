@@ -52,7 +52,7 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
-test('every table has RLS; anonymous reads are limited to the three fictional demo tables', async () => {
+test('every table has RLS; anonymous reads are limited to fictional demo tables', async () => {
   const tables = await sql("select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','private') and c.relkind='r'");
   assert.ok(tables.length >= 20);
   for (const table of tables) assert.equal(table.relrowsecurity, true, table.relname);
@@ -60,7 +60,18 @@ test('every table has RLS; anonymous reads are limited to the three fictional de
   await assert.rejects(sql('select * from patients'), /permission denied/);
   await db.exec('rollback');
   const allowed = await sql("select table_name, privilege_type from information_schema.role_table_grants where grantee = 'anon' and table_schema in ('public','private') order by table_name, privilege_type");
-  assert.deepEqual(allowed, ['demo_calendar_events', 'demo_clinical_entries', 'demo_patients'].map(table_name => ({ table_name, privilege_type: 'SELECT' })));
+  const demoReadable = [
+    'demo_calendar_events',
+    'demo_clinical_entries',
+    'demo_medication_events',
+    'demo_medications',
+    'demo_patient_history',
+    'demo_patients',
+    'demo_risk_assessments',
+    'demo_session_sections',
+    'demo_sessions',
+  ];
+  assert.deepEqual(allowed, demoReadable.map(table_name => ({ table_name, privilege_type: 'SELECT' })));
 });
 
 test('practice membership isolates patient reads and writes, including direct API-shaped access', async () => {

@@ -308,3 +308,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .structured-voice-badge{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #dce7e1;border-radius:11px;background:#f8fbf9;color:#477663}
 .structured-voice-badge>span{display:flex;flex-direction:column;gap:1px}.structured-voice-badge strong{font-size:11px}.structured-voice-badge small{font-size:9px;color:#7b8982;font-weight:500}
 @media(max-width:760px){.patient-hero{align-items:flex-start;flex-direction:column}.patient-voice-cta{width:100%;min-width:0}}
+
+.proposal-state{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#f4efe5;color:#6a5d49;font-size:12px;font-weight:700}
+.proposal-state.approved{background:#edf5f0;color:#356455}
+.proposal-state button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:8px 11px;background:#356f61;color:white;font-weight:700;cursor:pointer}
+.approved-update{border:1px solid #d9e9df;background:linear-gradient(135deg,#f4faf6,#fff)}
+.approved-update h2{display:flex;align-items:center;gap:8px}.approved-update p{font-size:15px;line-height:1.65}.approved-update small{color:#738078}

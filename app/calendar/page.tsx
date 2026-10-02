@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
+import { getDemoTesterId } from "@/lib/demo-tester";
 import {
   Activity,
   Bell,
@@ -23,6 +24,9 @@ import {
 
 type CalendarEvent = {
   id: string;
+  tester_id: string | null;
+  patient_id: string | null;
+  session_id: string | null;
   patient_name: string;
   appointment_type: string;
   detail: string;
@@ -168,7 +172,7 @@ export default function CalendarPage() {
   const refreshEvents = useCallback(async () => {
     try {
       setCalendarError("");
-      const response = await fetch("/api/calendar/events", { cache: "no-store" });
+      const response = await fetch("/api/calendar/events?tester=" + encodeURIComponent(getDemoTesterId()), { cache: "no-store" });
       const data = (await response.json().catch(() => ({}))) as {
         events?: CalendarEvent[];
         error?: string;
@@ -257,6 +261,7 @@ export default function CalendarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tester: getDemoTesterId(),
           action: "move",
           event_id: pendingMove.event.id,
           patient_name: pendingMove.event.patient_name,

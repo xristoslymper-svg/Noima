@@ -225,13 +225,26 @@ function SectionEditor({sessionId,definition,existing,onSaved,registerFlusher,on
   timer.current=setTimeout(()=>{void saveNow().catch(()=>{})},700);
  }
 
+ async function retrySave(){
+  const stale=status.includes('άλλαξε')||status.includes('Επαναφορτώστε');
+  if(stale){
+   const fresh=await onSaved() as PatientBundle|null;
+   const server=fresh?.sections.find(section=>section.session_id===sessionId&&section.section_key===definition.key);
+   if(!fresh){setStatus('Δεν ήταν δυνατή η επαναφόρτωση. Το κείμενό σας παραμένει εδώ.');return}
+   versionRef.current=server?.version??null;
+   lastSaved.current=server?.content??'';
+   onDirtyChange(key,latest.current!==lastSaved.current);
+  }
+  await saveNow();
+ }
+
  function acceptDictation(text:string){setDictating(false);if(value.trim())setPending(text);else change(text)}
 
- const failed=status.includes('Αποτυχία')||status.includes('άλλαξε')||status.includes('Επαναφορτώστε');
+ const failed=status.includes('Αποτυχία')||status.includes('άλλαξε')||status.includes('Επαναφορτώστε')||status.includes('επαναφόρτωση');
  return <div className={value.trim()?'clinical-section populated':'clinical-section'}>
   <div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3><span>{definition.hint}</span></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
   <textarea className="section-editor" rows={value.length>280?7:4} value={value} onChange={event=>change(event.target.value)} onBlur={()=>void saveNow().catch(()=>{})} placeholder="Γράψτε ή υπαγορεύστε. Κενό = δεν έχει καταγραφεί."/>
-  <div className={failed?'section-save-state error':'section-save-state'}>{status||'Δεν έχει αποθηκευτεί ακόμη'}{failed&&<button className="inline-retry" onClick={()=>void saveNow().catch(()=>{})}><RotateCcw size={12}/> Επανάληψη</button>}</div>
+  <div className={failed?'section-save-state error':'section-save-state'}>{status||'Δεν έχει αποθηκευτεί ακόμη'}{failed&&<button className="inline-retry" onClick={()=>void retrySave().catch(()=>{})}><RotateCcw size={12}/> {status.includes('άλλαξε')||status.includes('Επαναφορτώστε')?'Επαναφόρτωση & αποθήκευση':'Επανάληψη'}</button>}</div>
   {dictating&&<SectionDictation title={definition.title} onClose={()=>setDictating(false)} onInsert={acceptDictation}/>}
   {pending&&<div className="dictation-insert-choice"><div><strong>Υπάρχει ήδη κείμενο</strong><span>Πώς θέλετε να χρησιμοποιηθεί η νέα μεταγραφή;</span></div><button onClick={()=>{change((value.trim()+'\n\n'+pending).trim());setPending('')}}>Προσθήκη</button><button onClick={()=>{change(pending);setPending('')}}>Αντικατάσταση</button><button onClick={()=>setPending('')}>Ακύρωση</button></div>}
  </div>;
@@ -291,12 +304,25 @@ function RiskEditor({sessionId,existing,onSaved,registerFlusher,onDirtyChange}:{
   timer.current=setTimeout(()=>{void saveNow().catch(()=>{})},700);
  }
 
- const failed=state.includes('Αποτυχία')||state.includes('άλλαξε')||state.includes('Επαναφορτώστε');
+ async function retrySave(){
+  const stale=state.includes('άλλαξε')||state.includes('Επαναφορτώστε');
+  if(stale){
+   const fresh=await onSaved() as PatientBundle|null;
+   const server=fresh?.risks.find(item=>item.session_id===sessionId);
+   if(!fresh){setState('Δεν ήταν δυνατή η επαναφόρτωση. Οι επιλογές σας παραμένουν εδώ.');return}
+   versionRef.current=server?.version??null;
+   lastSaved.current=JSON.stringify(server?{suicidal_ideation:server.suicidal_ideation,intent:server.intent,plan:server.plan,self_harm:server.self_harm,attempt_history:server.attempt_history,protective_factors:server.protective_factors,clinical_note:server.clinical_note}:{suicidal_ideation:'not_assessed',intent:'not_assessed',plan:'not_assessed',self_harm:'not_assessed',attempt_history:'not_assessed',protective_factors:'',clinical_note:''});
+   onDirtyChange(key,JSON.stringify(latest.current)!==lastSaved.current);
+  }
+  await saveNow();
+ }
+
+ const failed=state.includes('Αποτυχία')||state.includes('άλλαξε')||state.includes('Επαναφορτώστε')||state.includes('επαναφόρτωση');
  return <div className="clinical-section risk-editor">
   <div className="clinical-section-head"><div><h3>Εκτίμηση κινδύνου *</h3><span>Το «Δεν διερευνήθηκε» διαφέρει από αρνητικό εύρημα. Οι αλλαγές αποθηκεύονται αυτόματα.</span></div><ShieldCheck size={18}/></div>
   <div className="risk-grid">{[['suicidal_ideation','Αυτοκτονικός ιδεασμός'],['intent','Πρόθεση'],['plan','Σχέδιο'],['self_harm','Αυτοτραυματισμός'],['attempt_history','Ιστορικό απόπειρας']].map(([field,label])=><label key={field}>{label}<select value={risk[field as keyof typeof risk]} onChange={event=>change(field,event.target.value)} onBlur={()=>void saveNow().catch(()=>{})}>{riskOptions.map(([value,text])=><option key={value} value={value}>{text}</option>)}</select></label>)}</div>
   <label className="risk-note">Προστατευτικοί παράγοντες<textarea rows={2} value={risk.protective_factors} onChange={event=>change('protective_factors',event.target.value)} onBlur={()=>void saveNow().catch(()=>{})}/></label>
   <label className="risk-note">Κλινική σημείωση<textarea rows={2} value={risk.clinical_note} onChange={event=>change('clinical_note',event.target.value)} onBlur={()=>void saveNow().catch(()=>{})}/></label>
-  <div className={failed?'risk-save error':'risk-save'}><span>{state||'Δεν έχει αποθηκευτεί'}</span>{failed&&<button onClick={()=>void saveNow().catch(()=>{})}><RotateCcw size={12}/> Επανάληψη</button>}</div>
+  <div className={failed?'risk-save error':'risk-save'}><span>{state||'Δεν έχει αποθηκευτεί'}</span>{failed&&<button onClick={()=>void retrySave().catch(()=>{})}><RotateCcw size={12}/> {state.includes('άλλαξε')||state.includes('Επαναφορτώστε')?'Επαναφόρτωση & αποθήκευση':'Επανάληψη'}</button>}</div>
  </div>;
 }

@@ -726,7 +726,8 @@ function AppointmentEditor({
 }) {
   const initialPatient = event?.patient_id || patients[0]?.id || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
-  const initialTime = event ? timeLabel(event.scheduled_start) : "09:00";
+  const eventMinute = event ? athensMinutes(event.scheduled_start) : 9 * 60;
+  const initialTime = String(Math.floor(eventMinute / 60)).padStart(2, "0") + ":" + String(eventMinute % 60).padStart(2, "0");
   const [patientId, setPatientId] = useState(initialPatient);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);

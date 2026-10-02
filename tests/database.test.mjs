@@ -64,6 +64,7 @@ test('every table has RLS; anonymous reads are limited to fictional demo tables'
     'demo_calendar_events',
     'demo_clinical_entries',
     'demo_medication_events',
+    'demo_medication_side_effects',
     'demo_medications',
     'demo_patient_history',
     'demo_patients',

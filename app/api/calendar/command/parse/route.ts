@@ -18,6 +18,8 @@ type ParsedCommand = {
   target_date: string | null;
   duration_minutes: number | null;
   appointment_type: "follow_up" | "initial_assessment" | "other" | null;
+  date_explicit: boolean;
+  time_explicit: boolean;
   clarification: string | null;
   missing_fields: MissingField[];
 };
@@ -231,6 +233,8 @@ export async function POST(request: Request) {
       target_date: { anyOf: [{ type: "string", format: "date" }, { type: "null" }] },
       duration_minutes: { anyOf: [{ type: "integer", minimum: 15, maximum: 180 }, { type: "null" }] },
       appointment_type: { anyOf: [{ type: "string", enum: ["follow_up", "initial_assessment", "other"] }, { type: "null" }] },
+      date_explicit: { type: "boolean" },
+      time_explicit: { type: "boolean" },
       clarification: { anyOf: [{ type: "string" }, { type: "null" }] },
       missing_fields: {
         type: "array",
@@ -238,7 +242,7 @@ export async function POST(request: Request) {
         maxItems: 5,
       },
     },
-    required: ["action", "intended_action", "event_id", "patient_name", "start_iso", "end_iso", "target_date", "duration_minutes", "appointment_type", "clarification", "missing_fields"],
+    required: ["action", "intended_action", "event_id", "patient_name", "start_iso", "end_iso", "target_date", "duration_minutes", "appointment_type", "date_explicit", "time_explicit", "clarification", "missing_fields"],
     additionalProperties: false,
   };
 
@@ -250,6 +254,9 @@ export async function POST(request: Request) {
     "Treat the original command plus clarification answers as ONE conversation. Preserve all already-known details. A later answer fills a missing field or corrects an earlier value; the latest explicit answer wins.",
     "If the command is incomplete or ambiguous, action=clarify, intended_action=the intended intent, preserve every known field, and list only the genuinely missing/ambiguous fields.",
     "For create/schedule_follow_up, patient + calendar date + clock time are required. Default duration is 50 minutes.",
+    "CRITICAL: Never invent or default a clock time. There is NO default appointment time (not 08:00, 09:00, current time, opening time, or any other time).",
+    "Set time_explicit=true ONLY if the user explicitly supplied a clock time or an unambiguous time expression in the original command or clarification answers. Otherwise time_explicit=false, start_iso/end_iso must not be treated as complete, and 'time' must be missing.",
+    "Set date_explicit=true ONLY if the user explicitly supplied a date/day/relative day such as σήμερα, αύριο, Παρασκευή, 12 Οκτωβρίου. Never silently default a new appointment to today.",
     "For move/cancel, event_id MUST be exactly one ID from the provided calendar and only when the referenced appointment is unambiguous.",
     "For move, a unique appointment plus a new time may keep the appointment's existing date; a unique appointment plus a new date may keep its existing clock time.",
     "For move, preserve the existing appointment duration unless a new duration is explicitly given.",
@@ -302,6 +309,17 @@ export async function POST(request: Request) {
 
     const selected = command.event_id ? events.find(event => event.id === command.event_id) : undefined;
 
+    // New appointments must never acquire a date/time merely because the model can construct one.
+    // The parser has to attest that the user actually supplied both pieces of information.
+    if (!userCancelled && (intended === "create" || intended === "schedule_follow_up")) {
+      const missing = new Set(command.missing_fields);
+      if (!command.date_explicit) missing.add("date");
+      if (!command.time_explicit) missing.add("time");
+      if (!command.date_explicit || !command.time_explicit) {
+        command = { ...command, action: "clarify", start_iso: null, end_iso: null, missing_fields: [...missing] };
+      }
+    }
+
     if (command.action === "move" && selected && command.start_iso && !command.end_iso) {
       const duration = Math.round((new Date(selected.scheduled_end).getTime() - new Date(selected.scheduled_start).getTime()) / 60_000);
       command = { ...command, end_iso: addMinutes(command.start_iso, duration) };
@@ -318,9 +336,9 @@ export async function POST(request: Request) {
     if (!userCancelled && (intended === "create" || intended === "schedule_follow_up")) {
       const missing = new Set(command.missing_fields);
       if (!command.patient_name) missing.add("patient");
-      if (!command.start_iso) {
-        const hasDate = Boolean(command.target_date);
-        if (!hasDate) missing.add("date");
+      if (!command.date_explicit) missing.add("date");
+      if (!command.time_explicit) missing.add("time");
+      if (!command.start_iso && command.date_explicit && command.time_explicit) {
         missing.add("time");
       }
       if (missing.size) command = { ...command, action: "clarify", missing_fields: [...missing] };

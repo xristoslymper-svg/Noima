@@ -44,6 +44,12 @@ type PendingMove = {
   conflict: boolean;
 };
 
+type PatientOption = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
 const TIMEZONE = "Europe/Athens";
 const WEEK_START_MINUTE = 8 * 60;
 const WEEK_END_MINUTE = 22 * 60;
@@ -168,6 +174,9 @@ export default function CalendarPage() {
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
+  const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent } | null>(null);
+  const [openingSession, setOpeningSession] = useState<string | null>(null);
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -186,9 +195,39 @@ export default function CalendarPage() {
     }
   }, []);
 
+  const refreshPatients = useCallback(async () => {
+    try {
+      const response = await fetch("/api/patients/demo/runtime?tester=" + encodeURIComponent(getDemoTesterId()), { cache: "no-store" });
+      const data = (await response.json().catch(() => ({}))) as { patients?: PatientOption[] };
+      if (response.ok && data.patients) setPatients(data.patients);
+    } catch {
+      // Calendar remains usable even if the patient picker cannot refresh.
+    }
+  }, []);
+
+  const openAppointmentSession = useCallback(async (event: CalendarEvent) => {
+    if (!event.patient_id || openingSession) return;
+    setOpeningSession(event.id);
+    setCalendarError("");
+    try {
+      const response = await fetch("/api/calendar/appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tester: getDemoTesterId(), event_id: event.id }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { session?: { id: string; patient_id: string }; error?: string };
+      if (!response.ok || !data.session) throw new Error(data.error || "session");
+      window.location.href = "/patients/demo/" + encodeURIComponent(data.session.patient_id) + "?tab=sessions";
+    } catch (cause) {
+      setCalendarError(cause instanceof Error ? cause.message : "Δεν ήταν δυνατή η έναρξη της συνεδρίας.");
+      setOpeningSession(null);
+    }
+  }, [openingSession]);
+
   useEffect(() => {
     void refreshEvents();
-  }, [refreshEvents]);
+    void refreshPatients();
+  }, [refreshEvents, refreshPatients]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -366,7 +405,7 @@ export default function CalendarPage() {
               <button className="voice-calendar-button" onClick={() => setVoice(true)}>
                 <Mic2 size={16} /> Φωνητική εντολή
               </button>
-              <button className="add-appointment">+ Νέο ραντεβού</button>
+              <button className="add-appointment" onClick={() => setAppointmentEditor({ mode: "create" })}>+ Νέο ραντεβού</button>
             </div>
           </div>
 
@@ -417,8 +456,8 @@ export default function CalendarPage() {
                         </span>
                       </div>
                       <div className="clinical-event-actions">
-                        {event.patient_name === "Μαρία" && <Link href="/patients/maria">Φάκελος</Link>}
-                        <button aria-label={"Άνοιγμα ραντεβού " + event.patient_name}>
+                        {event.patient_id && <Link href={"/patients/demo/" + event.patient_id}>Φάκελος</Link>}
+                        <button onClick={() => setAppointmentEditor({ mode: "edit", event })} aria-label={"Άνοιγμα ραντεβού " + event.patient_name}>
                           <ChevronRight size={17} />
                         </button>
                       </div>
@@ -527,6 +566,7 @@ export default function CalendarPage() {
                                 setDraggingEventId(null);
                                 setDragPreview(null);
                               }}
+                              onDoubleClick={() => setAppointmentEditor({ mode: "edit", event })}
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
                               <strong>{timeLabel(event.scheduled_start)}</strong>
@@ -577,6 +617,23 @@ export default function CalendarPage() {
           </div>
         </div>
       </section>
+
+      {appointmentEditor && (
+        <AppointmentEditor
+          mode={appointmentEditor.mode}
+          event={appointmentEditor.event}
+          patients={patients}
+          focusDate={focusDate}
+          openingSession={openingSession === appointmentEditor.event?.id}
+          onClose={() => setAppointmentEditor(null)}
+          onSaved={async (event) => {
+            setAppointmentEditor(null);
+            await refreshEvents();
+            if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
+          }}
+          onOpenSession={openAppointmentSession}
+        />
+      )}
 
       {pendingMove && (
         <div className="calendar-move-overlay" onClick={() => !moveSaving && setPendingMove(null)}>
@@ -645,4 +702,109 @@ export default function CalendarPage() {
       )}
     </main>
   );
+}
+
+
+function AppointmentEditor({
+  mode,
+  event,
+  patients,
+  focusDate,
+  openingSession,
+  onClose,
+  onSaved,
+  onOpenSession,
+}: {
+  mode: "create" | "edit";
+  event?: CalendarEvent;
+  patients: PatientOption[];
+  focusDate: string;
+  openingSession: boolean;
+  onClose: () => void;
+  onSaved: (event?: CalendarEvent) => Promise<void>;
+  onOpenSession: (event: CalendarEvent) => Promise<void>;
+}) {
+  const initialPatient = event?.patient_id || patients[0]?.id || "";
+  const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
+  const initialTime = event ? timeLabel(event.scheduled_start) : "09:00";
+  const [patientId, setPatientId] = useState(initialPatient);
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState(initialTime);
+  const [duration, setDuration] = useState(event ? String(eventDurationMinutes(event)) : "50");
+  const [type, setType] = useState(event?.appointment_type || "follow_up");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function mutate(action: "create" | "move" | "cancel") {
+    if (saving) return;
+    const patient = patients.find(item => item.id === patientId);
+    if (action === "create" && !patient) {
+      setError("Επιλέξτε ασθενή.");
+      return;
+    }
+    const [hours, minutes] = time.split(":").map(Number);
+    const durationMinutes = Number(duration);
+    if (action !== "cancel" && (!date || !Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(durationMinutes) || durationMinutes < 15)) {
+      setError("Ελέγξτε ημερομηνία, ώρα και διάρκεια.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const startIso = action === "cancel" ? null : localAthensToIso(date, hours * 60 + minutes);
+      const endIso = startIso ? addMinutes(startIso, durationMinutes) : null;
+      const response = await fetch("/api/calendar/command/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tester: getDemoTesterId(),
+          action,
+          event_id: event?.id || null,
+          patient_id: action === "create" ? patientId : event?.patient_id || null,
+          patient_name: action === "create" ? (patient?.first_name + " " + patient?.last_name).trim() : event?.patient_name || null,
+          start_iso: startIso,
+          end_iso: endIso,
+          appointment_type: action === "create" ? type : event?.appointment_type || type,
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { event?: CalendarEvent; error?: string; code?: string };
+      if (!response.ok) {
+        setError(data.code === "calendar_conflict" ? "Υπάρχει ήδη ραντεβού σε αυτή την ώρα." : data.error || "Η αλλαγή δεν αποθηκεύτηκε.");
+        return;
+      }
+      await onSaved(data.event);
+    } catch {
+      setError("Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <div className="calendar-move-overlay" onClick={() => !saving && onClose()}>
+    <section className="calendar-appointment-dialog" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
+      <button className="calendar-move-close" onClick={onClose} disabled={saving} aria-label="Κλείσιμο"><X size={18}/></button>
+      <span className="kicker">{mode === "create" ? "ΝΕΟ ΡΑΝΤΕΒΟΥ" : "ΡΑΝΤΕΒΟΥ"}</span>
+      <h3>{mode === "create" ? "Προγραμματισμός" : event?.patient_name}</h3>
+
+      <div className="appointment-form-grid">
+        {mode === "create" && <label>Ασθενής<select value={patientId} onChange={change => setPatientId(change.target.value)}><option value="">Επιλέξτε…</option>{patients.map(patient => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name}</option>)}</select></label>}
+        <label>Ημερομηνία<input type="date" value={date} onChange={change => setDate(change.target.value)}/></label>
+        <label>Ώρα<input type="time" step="1800" value={time} onChange={change => setTime(change.target.value)}/></label>
+        <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}><option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
+        {mode === "create" && <label>Τύπος<select value={type} onChange={change => setType(change.target.value)}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
+      </div>
+
+      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id}>Άνοιγμα φακέλου</Link></div>}
+      {error && <div className="calendar-move-error"><span>{error}</span></div>}
+
+      <footer className="appointment-editor-footer">
+        {mode === "edit" && event && <button className="appointment-cancel-action" onClick={() => void mutate("cancel")} disabled={saving}>Ακύρωση ραντεβού</button>}
+        <span/>
+        <button onClick={onClose} disabled={saving}>Κλείσιμο</button>
+        {mode === "edit" && event?.patient_id && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια συνεδρίας" : "Έναρξη συνεδρίας"}</button>}
+        <button className="calendar-move-confirm" onClick={() => void mutate(mode === "create" ? "create" : "move")} disabled={saving}>{saving ? "Αποθήκευση…" : mode === "create" ? "Δημιουργία" : "Αποθήκευση αλλαγών"}</button>
+      </footer>
+    </section>
+  </div>;
 }

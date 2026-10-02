@@ -298,3 +298,13 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .calendar-date-nav{display:flex;align-items:center;gap:7px}
 .calendar-date-nav>button{width:28px;height:28px;border:1px solid #e1e7e3;background:#fff;border-radius:8px;color:#52635b;font-size:18px;line-height:1;cursor:pointer}
 .calendar-date-nav .calendar-today-jump{width:auto;padding:0 9px;font-size:11px;font-weight:700}
+
+/* Patient record: prominent structured voice entry */
+.patient-hero{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.patient-voice-cta{border:1px solid #cfe0d8;background:#f3f8f5;border-radius:15px;padding:12px 14px;display:flex;align-items:center;gap:11px;color:#315f52;cursor:pointer;text-align:left;min-width:300px;box-shadow:0 5px 18px rgba(47,111,99,.06)}
+.patient-voice-cta:hover{background:#edf6f1;border-color:#bcd4c8}
+.patient-voice-cta>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:2px}.patient-voice-cta strong{font-size:13px}.patient-voice-cta small{font-size:10px;color:#72847c;font-weight:500}
+.patient-voice-icon{width:37px;height:37px;border-radius:11px;background:#477663;color:#fff;display:grid;place-items:center;flex:0 0 auto}
+.structured-voice-badge{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #dce7e1;border-radius:11px;background:#f8fbf9;color:#477663}
+.structured-voice-badge>span{display:flex;flex-direction:column;gap:1px}.structured-voice-badge strong{font-size:11px}.structured-voice-badge small{font-size:9px;color:#7b8982;font-weight:500}
+@media(max-width:760px){.patient-hero{align-items:flex-start;flex-direction:column}.patient-voice-cta{width:100%;min-width:0}}

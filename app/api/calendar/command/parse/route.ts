@@ -5,14 +5,12 @@ export const dynamic = "force-dynamic";
 
 const TIMEZONE = "Europe/Athens";
 
+type Intent = "move" | "cancel" | "create" | "schedule_follow_up" | "find_availability";
+type MissingField = "patient" | "date" | "time" | "appointment" | "recurrence";
+
 type ParsedCommand = {
-  action:
-    | "move"
-    | "cancel"
-    | "create"
-    | "schedule_follow_up"
-    | "find_availability"
-    | "clarify";
+  action: Intent | "clarify";
+  intended_action: Intent | null;
   event_id: string | null;
   patient_name: string | null;
   start_iso: string | null;
@@ -21,7 +19,10 @@ type ParsedCommand = {
   duration_minutes: number | null;
   appointment_type: "follow_up" | "initial_assessment" | "other" | null;
   clarification: string | null;
+  missing_fields: MissingField[];
 };
+
+type ClarificationOption = { label: string; value: string };
 
 function dateKeyInAthens(value: Date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -49,7 +50,6 @@ function extractOutputText(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const output = (payload as { output?: unknown }).output;
   if (!Array.isArray(output)) return null;
-
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
     const content = (item as { content?: unknown }).content;
@@ -60,9 +60,7 @@ function extractOutputText(payload: unknown): string | null {
         typeof part === "object" &&
         (part as { type?: unknown }).type === "output_text" &&
         typeof (part as { text?: unknown }).text === "string"
-      ) {
-        return (part as { text: string }).text;
-      }
+      ) return (part as { text: string }).text;
     }
   }
   return null;
@@ -76,9 +74,7 @@ function getAthensOffsetMinutes(instant: Date) {
   const offsetName = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
     timeZoneName: "shortOffset",
-  })
-    .formatToParts(instant)
-    .find(part => part.type === "timeZoneName")?.value;
+  }).formatToParts(instant).find(part => part.type === "timeZoneName")?.value;
   const match = offsetName?.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
   if (!match) return 0;
   const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
@@ -94,11 +90,7 @@ function localAthensToIso(date: string, minutesFromMidnight: number) {
   return new Date(guess.getTime() - offset * 60_000).toISOString();
 }
 
-function findAvailableSlots(
-  date: string,
-  durationMinutes: number,
-  events: DemoCalendarEvent[],
-) {
+function findAvailableSlots(date: string, durationMinutes: number, events: DemoCalendarEvent[]) {
   const slots: { start_iso: string; end_iso: string; label: string }[] = [];
   for (let minute = 9 * 60; minute + durationMinutes <= 18 * 60; minute += 30) {
     const start = localAthensToIso(date, minute);
@@ -118,48 +110,94 @@ function findAvailableSlots(
   return slots;
 }
 
-function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
-  const event = command.event_id
-    ? events.find(item => item.id === command.event_id)
-    : undefined;
+function normalized(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("el-GR").trim();
+}
 
+function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
+  const event = command.event_id ? events.find(item => item.id === command.event_id) : undefined;
   if (command.action === "move" && event && command.start_iso) {
     return `Μετακίνηση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)} → ${formatDateTime(command.start_iso)}`;
   }
   if (command.action === "cancel" && event) {
     return `Ακύρωση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)}`;
   }
-  if (
-    (command.action === "create" || command.action === "schedule_follow_up") &&
-    command.patient_name &&
-    command.start_iso
-  ) {
+  if ((command.action === "create" || command.action === "schedule_follow_up") && command.patient_name && command.start_iso) {
     return `Νέο ραντεβού: ${command.patient_name} · ${formatDateTime(command.start_iso)}`;
   }
   if (command.action === "find_availability" && command.target_date) {
-    return `Διαθέσιμες ώρες · ${command.target_date}`;
+    return command.patient_name
+      ? `Διαθέσιμες ώρες για ${command.patient_name} · ${command.target_date}`
+      : `Διαθέσιμες ώρες · ${command.target_date}`;
   }
   return "Χρειάζομαι μία διευκρίνιση πριν γίνει οποιαδήποτε αλλαγή.";
+}
+
+function specificClarification(command: ParsedCommand) {
+  const missing = new Set(command.missing_fields);
+  const intent = command.intended_action;
+
+  if (missing.has("recurrence")) {
+    return "Τα επαναλαμβανόμενα ραντεβού δεν υποστηρίζονται ακόμη. Να δημιουργήσω μόνο το πρώτο ραντεβού;";
+  }
+  if (missing.has("appointment")) {
+    if (intent === "cancel") return "Ποιο ακριβώς ραντεβού θέλετε να ακυρώσω;";
+    if (intent === "move") return "Ποιο ακριβώς ραντεβού θέλετε να μεταφέρω;";
+    return "Ποιο ακριβώς ραντεβού εννοείτε;";
+  }
+  if (missing.has("patient") && missing.has("date") && missing.has("time")) {
+    return "Για ποιον ασθενή και ποια ημέρα και ώρα να κλείσω το ραντεβού;";
+  }
+  if (missing.has("patient")) return "Για ποιον ασθενή να κλείσω το ραντεβού;";
+  if (missing.has("date") && missing.has("time")) return "Ποια ημέρα και ώρα θέλετε;";
+  if (missing.has("date")) return "Ποια ημέρα θέλετε;";
+  if (missing.has("time")) return intent === "move" ? "Σε τι ώρα θέλετε να μεταφερθεί;" : "Τι ώρα θέλετε;";
+  return command.clarification || "Τι θα θέλατε να συμπληρώσετε;";
+}
+
+function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[]): ClarificationOption[] {
+  const missing = new Set(command.missing_fields);
+  if (missing.has("appointment")) {
+    const candidates = command.patient_name
+      ? events.filter(event => normalized(event.patient_name).includes(normalized(command.patient_name!)))
+      : events;
+    return candidates.slice(0, 6).map(event => ({
+      label: `${event.patient_name} · ${formatDateTime(event.scheduled_start)}`,
+      value: `Εννοώ το ραντεβού με event_id ${event.id}.`,
+    }));
+  }
+  if (missing.has("patient")) {
+    const names = [...new Set(events.map(event => event.patient_name))].slice(0, 6);
+    return names.map(name => ({ label: name, value: name }));
+  }
+  if (missing.has("recurrence")) {
+    return [
+      { label: "Μόνο το πρώτο", value: "Ναι, δημιούργησε μόνο το πρώτο ραντεβού." },
+      { label: "Ακύρωση", value: "Όχι, ακύρωσε την εντολή." },
+    ];
+  }
+  return [];
 }
 
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json(
-      { error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." },
-      { status: 503 },
-    );
+    return Response.json({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
   }
 
   let transcript = "";
+  let followUps: string[] = [];
   try {
-    const body = (await request.json()) as { transcript?: unknown };
+    const body = (await request.json()) as { transcript?: unknown; follow_ups?: unknown };
     transcript = typeof body.transcript === "string" ? body.transcript.trim() : "";
+    followUps = Array.isArray(body.follow_ups)
+      ? body.follow_ups.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean).slice(-6)
+      : [];
   } catch {
     return Response.json({ error: "Μη έγκυρη εντολή." }, { status: 400 });
   }
 
-  if (!transcript || transcript.length > 1000) {
+  if (!transcript || transcript.length > 1000 || followUps.some(item => item.length > 300)) {
     return Response.json({ error: "Η εντολή είναι κενή ή πολύ μεγάλη." }, { status: 400 });
   }
 
@@ -180,38 +218,27 @@ export async function POST(request: Request) {
     type: event.appointment_type,
   }));
 
+  const intentEnum = ["move", "cancel", "create", "schedule_follow_up", "find_availability"];
   const schema = {
     type: "object",
     properties: {
-      action: {
-        type: "string",
-        enum: ["move", "cancel", "create", "schedule_follow_up", "find_availability", "clarify"],
-      },
+      action: { type: "string", enum: [...intentEnum, "clarify"] },
+      intended_action: { anyOf: [{ type: "string", enum: intentEnum }, { type: "null" }] },
       event_id: { anyOf: [{ type: "string" }, { type: "null" }] },
       patient_name: { anyOf: [{ type: "string" }, { type: "null" }] },
       start_iso: { anyOf: [{ type: "string", format: "date-time" }, { type: "null" }] },
       end_iso: { anyOf: [{ type: "string", format: "date-time" }, { type: "null" }] },
       target_date: { anyOf: [{ type: "string", format: "date" }, { type: "null" }] },
       duration_minutes: { anyOf: [{ type: "integer", minimum: 15, maximum: 180 }, { type: "null" }] },
-      appointment_type: {
-        anyOf: [
-          { type: "string", enum: ["follow_up", "initial_assessment", "other"] },
-          { type: "null" },
-        ],
-      },
+      appointment_type: { anyOf: [{ type: "string", enum: ["follow_up", "initial_assessment", "other"] }, { type: "null" }] },
       clarification: { anyOf: [{ type: "string" }, { type: "null" }] },
+      missing_fields: {
+        type: "array",
+        items: { type: "string", enum: ["patient", "date", "time", "appointment", "recurrence"] },
+        maxItems: 5,
+      },
     },
-    required: [
-      "action",
-      "event_id",
-      "patient_name",
-      "start_iso",
-      "end_iso",
-      "target_date",
-      "duration_minutes",
-      "appointment_type",
-      "clarification",
-    ],
+    required: ["action", "intended_action", "event_id", "patient_name", "start_iso", "end_iso", "target_date", "duration_minutes", "appointment_type", "clarification", "missing_fields"],
     additionalProperties: false,
   };
 
@@ -219,16 +246,21 @@ export async function POST(request: Request) {
     "You are a deterministic Greek calendar-command parser for a psychiatrist.",
     `Current date in ${TIMEZONE}: ${today}. Current instant: ${now.toISOString()}.`,
     "Never execute anything. Return only the requested structured output.",
-    "Allowed intents: move, cancel, create, schedule_follow_up, find_availability, clarify.",
+    "Allowed intents: move, cancel, create, schedule_follow_up, find_availability.",
+    "Treat the original command plus clarification answers as ONE conversation. Preserve all already-known details. A later answer fills a missing field or corrects an earlier value; the latest explicit answer wins.",
+    "If the command is incomplete or ambiguous, action=clarify, intended_action=the intended intent, preserve every known field, and list only the genuinely missing/ambiguous fields.",
+    "For create/schedule_follow_up, patient + calendar date + clock time are required. Default duration is 50 minutes.",
     "For move/cancel, event_id MUST be exactly one ID from the provided calendar and only when the referenced appointment is unambiguous.",
-    "If patient/date/time could refer to more than one appointment, use clarify.",
+    "For move, a unique appointment plus a new time may keep the appointment's existing date; a unique appointment plus a new date may keep its existing clock time.",
+    "For move, preserve the existing appointment duration unless a new duration is explicitly given.",
+    "For find_availability, a date is required; default duration is 50 minutes. Preserve patient_name if the user names a patient, but do not invent one.",
     "Interpret Greek relative dates (σήμερα, αύριο, μεθαύριο, την άλλη Τρίτη) in Europe/Athens.",
-    "For create/follow-up, use a 50-minute duration when the user does not specify duration.",
-    "For move, if the user does not specify duration, end_iso may be null; the application preserves the existing duration.",
-    "For find_availability set target_date and duration_minutes; do not invent availability.",
-    "Do not infer clinical facts. Do not change patient names beyond obvious transcription punctuation/casing.",
+    "If the user requests recurrence/repeating appointments, do NOT silently discard recurrence. Clarify that only the first occurrence can currently be created; use missing_fields=['recurrence'] until the user explicitly accepts only the first.",
+    "If a user says no/cancel while answering a clarification, return action=clarify with clarification='Η εντολή ακυρώθηκε.' and no missing fields.",
+    "Do not infer clinical facts. Do not invent a patient name.",
     `Calendar events: ${JSON.stringify(eventContext)}`,
-    `User command: ${transcript}`,
+    `Original user command: ${transcript}`,
+    `Clarification answers in order: ${JSON.stringify(followUps)}`,
   ].join("\n");
 
   const controller = new AbortController();
@@ -237,124 +269,89 @@ export async function POST(request: Request) {
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-6-luna",
         reasoning: { effort: "none" },
         store: false,
         input: prompt,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "calendar_command",
-            strict: true,
-            schema,
-          },
-        },
+        text: { format: { type: "json_schema", name: "calendar_command", strict: true, schema } },
       }),
     });
 
     if (!response.ok) {
-      return Response.json(
-        { error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." },
-        { status: 502 },
-      );
+      return Response.json({ error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." }, { status: 502 });
     }
 
     const payload = await response.json();
     const outputText = extractOutputText(payload);
-    if (!outputText) {
-      return Response.json({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
-    }
+    if (!outputText) return Response.json({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
 
     let command = JSON.parse(outputText) as ParsedCommand;
+    const intended = command.action === "clarify" ? command.intended_action : command.action;
+    command = { ...command, intended_action: intended ?? command.intended_action };
 
     if (command.event_id && !events.some(event => event.id === command.event_id)) {
-      command = {
-        ...command,
-        action: "clarify",
-        event_id: null,
-        clarification: "Δεν βρήκα με βεβαιότητα το ραντεβού που εννοείτε.",
-      };
+      command = { ...command, action: "clarify", event_id: null, missing_fields: ["appointment"], clarification: null };
     }
 
-    const selected = command.event_id
-      ? events.find(event => event.id === command.event_id)
-      : undefined;
+    const selected = command.event_id ? events.find(event => event.id === command.event_id) : undefined;
 
     if (command.action === "move" && selected && command.start_iso && !command.end_iso) {
-      const duration = Math.round(
-        (new Date(selected.scheduled_end).getTime() -
-          new Date(selected.scheduled_start).getTime()) /
-          60_000,
-      );
+      const duration = Math.round((new Date(selected.scheduled_end).getTime() - new Date(selected.scheduled_start).getTime()) / 60_000);
       command = { ...command, end_iso: addMinutes(command.start_iso, duration) };
     }
 
-    if (
-      (command.action === "create" || command.action === "schedule_follow_up") &&
-      command.start_iso &&
-      !command.end_iso
-    ) {
-      command = {
-        ...command,
-        end_iso: addMinutes(command.start_iso, command.duration_minutes ?? 50),
-      };
+    if ((command.action === "create" || command.action === "schedule_follow_up") && command.start_iso && !command.end_iso) {
+      command = { ...command, end_iso: addMinutes(command.start_iso, command.duration_minutes ?? 50) };
     }
 
-    if (
-      (command.action === "move" || command.action === "cancel") &&
-      !command.event_id
-    ) {
-      command = {
-        ...command,
-        action: "clarify",
-        clarification:
-          command.clarification || "Ποιο ακριβώς ραντεβού θέλετε να αλλάξω;",
-      };
+    if ((intended === "move" || intended === "cancel") && !command.event_id) {
+      command = { ...command, action: "clarify", missing_fields: [...new Set([...command.missing_fields, "appointment" as MissingField])] };
     }
 
-    if (
-      (command.action === "create" || command.action === "schedule_follow_up") &&
-      (!command.patient_name || !command.start_iso || !command.end_iso)
-    ) {
-      command = {
-        ...command,
-        action: "clarify",
-        clarification:
-          command.clarification || "Χρειάζομαι ασθενή, ημερομηνία και ώρα.",
-      };
+    if ((intended === "create" || intended === "schedule_follow_up")) {
+      const missing = new Set(command.missing_fields);
+      if (!command.patient_name) missing.add("patient");
+      if (!command.start_iso) {
+        const hasDate = Boolean(command.target_date);
+        if (!hasDate) missing.add("date");
+        missing.add("time");
+      }
+      if (missing.size) command = { ...command, action: "clarify", missing_fields: [...missing] };
+    }
+
+    if (intended === "move" && command.event_id && !command.start_iso) {
+      const missing = new Set(command.missing_fields);
+      missing.add("time");
+      command = { ...command, action: "clarify", missing_fields: [...missing] };
+    }
+
+    if (intended === "find_availability" && !command.target_date) {
+      command = { ...command, action: "clarify", missing_fields: [...new Set([...command.missing_fields, "date" as MissingField])] };
+    }
+
+    if (command.action === "clarify") {
+      command = { ...command, clarification: specificClarification(command) };
     }
 
     const availableSlots =
       command.action === "find_availability" && command.target_date
-        ? findAvailableSlots(
-            command.target_date,
-            command.duration_minutes ?? 50,
-            events,
-          )
+        ? findAvailableSlots(command.target_date, command.duration_minutes ?? 50, events)
         : [];
 
     return Response.json({
       transcript,
+      follow_ups: followUps,
       command,
       summary: buildSummary(command, events),
       available_slots: availableSlots,
+      clarification_options: command.action === "clarify" ? clarificationOptions(command, events) : [],
     });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
-    return Response.json(
-      {
-        error: timedOut
-          ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά."
-          : "Δεν ήταν δυνατή η κατανόηση της εντολής.",
-      },
-      { status: 502 },
-    );
+    return Response.json({ error: timedOut ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά." : "Δεν ήταν δυνατή η κατανόηση της εντολής." }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }

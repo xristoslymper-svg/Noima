@@ -291,8 +291,12 @@ export async function POST(request: Request) {
     let command = JSON.parse(outputText) as ParsedCommand;
     const intended = command.action === "clarify" ? command.intended_action : command.action;
     command = { ...command, intended_action: intended ?? command.intended_action };
+    const userCancelled =
+      command.action === "clarify" &&
+      command.missing_fields.length === 0 &&
+      Boolean(command.clarification?.toLocaleLowerCase("el").includes("ακυρώ"));
 
-    if (command.event_id && !events.some(event => event.id === command.event_id)) {
+    if (!userCancelled && command.event_id && !events.some(event => event.id === command.event_id)) {
       command = { ...command, action: "clarify", event_id: null, missing_fields: ["appointment"], clarification: null };
     }
 
@@ -307,11 +311,11 @@ export async function POST(request: Request) {
       command = { ...command, end_iso: addMinutes(command.start_iso, command.duration_minutes ?? 50) };
     }
 
-    if ((intended === "move" || intended === "cancel") && !command.event_id) {
+    if (!userCancelled && (intended === "move" || intended === "cancel") && !command.event_id) {
       command = { ...command, action: "clarify", missing_fields: [...new Set([...command.missing_fields, "appointment" as MissingField])] };
     }
 
-    if ((intended === "create" || intended === "schedule_follow_up")) {
+    if (!userCancelled && (intended === "create" || intended === "schedule_follow_up")) {
       const missing = new Set(command.missing_fields);
       if (!command.patient_name) missing.add("patient");
       if (!command.start_iso) {
@@ -322,13 +326,13 @@ export async function POST(request: Request) {
       if (missing.size) command = { ...command, action: "clarify", missing_fields: [...missing] };
     }
 
-    if (intended === "move" && command.event_id && !command.start_iso) {
+    if (!userCancelled && intended === "move" && command.event_id && !command.start_iso) {
       const missing = new Set(command.missing_fields);
       missing.add("time");
       command = { ...command, action: "clarify", missing_fields: [...missing] };
     }
 
-    if (intended === "find_availability" && !command.target_date) {
+    if (!userCancelled && intended === "find_availability" && !command.target_date) {
       command = { ...command, action: "clarify", missing_fields: [...new Set([...command.missing_fields, "date" as MissingField])] };
     }
 

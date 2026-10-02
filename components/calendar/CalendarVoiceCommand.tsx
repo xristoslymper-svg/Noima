@@ -46,7 +46,7 @@ export default function CalendarVoiceCommand({
   onApplied,
 }: {
   onClose: () => void;
-  onApplied: () => Promise<void> | void;
+  onApplied: (event?: { scheduled_start?: string }) => Promise<void> | void;
 }) {
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -262,13 +262,16 @@ export default function CalendarVoiceCommand({
         }),
       });
 
-      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        event?: { scheduled_start?: string };
+      };
       if (!response.ok) {
         fail(data.error || 'Η αλλαγή δεν αποθηκεύτηκε.');
         return;
       }
 
-      await onApplied();
+      await onApplied(data.event);
       setDoneMessage(proposal.summary);
       setStage('done');
     } catch {

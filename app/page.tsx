@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getDemoTesterId } from "@/lib/demo-tester";
 
 import {
   Activity,
@@ -56,6 +57,11 @@ const patientBriefs = {
 } as const;
 
 type PatientName = keyof typeof patientBriefs;
+type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string};
+const TIMEZONE="Europe/Athens";
+const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
+const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
 
 const nav = [
   [Home, "Επισκόπηση", true],
@@ -70,7 +76,11 @@ export default function Page() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
+  const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const brief = patientBriefs[selectedPatient];
+  useEffect(()=>{const tester=getDemoTesterId();fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}).then(async response=>{const data=await response.json();if(response.ok)setSchedule((data.events||[]) as OverviewEvent[])}).catch(()=>{})},[]);
+  const today=overviewDateKey(new Date());
+  const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today);
   return (
     <main className="app-shell">
       <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
@@ -112,7 +122,7 @@ export default function Page() {
         <div className="content">
           <div className="page-heading">
             <div>
-              <p className="eyebrow">ΠΕΜΠΤΗ, 1 ΟΚΤΩΒΡΙΟΥ</p>
+              <p className="eyebrow">{overviewDayLabel()}</p>
               <h1>Καλημέρα, Δρ. Παπαδάκη</h1>
               <p>Όλα όσα χρειάζεστε για μια όμορφη και παραγωγική ημέρα.</p>
             </div>
@@ -120,7 +130,7 @@ export default function Page() {
           </div>
 
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value="6" note="Επόμενη σε 25 λεπτά" tone="sage" />
+            <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value={String(todaySchedule.length)} note={todaySchedule.length?"Από το κοινό ημερολόγιο":"Χωρίς ραντεβού σήμερα"} tone="sage" />
             <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value="2" note="Από τις τελευταίες συνεδρίες" tone="blue" />
             <Metric icon={<TestTube2 />} label="Νέα ψυχομετρικά" value="4" note="PHQ-9, GAD-7, PCL-5" tone="gold" />
             <Metric icon={<HeartPulse />} label="Ασθενείς σε στενή παρακολούθηση" value="3" note="Με ενεργό clinical flag" tone="rose" />
@@ -129,23 +139,20 @@ export default function Page() {
           <section className="main-grid">
             <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
-              {[
-                ["11:00", "Μαρία", "32 ετών · Επανεκτίμηση", "Σε 25 λεπτά"],
-                ["12:30", "Γιάννης Π.", "41 ετών · Αγχώδης διαταραχή", ""],
-                ["14:00", "Ελένη Δ.", "28 ετών · Follow-up αγωγής", ""],
-                ["16:00", "Κώστας Σ.", "37 ετών · Πρώτη αξιολόγηση", ""],
-              ].map(([time, name, meta, badge]) => (
-                <div className={selectedPatient === name ? "session-row selected-patient" : "session-row"} key={time}>
-                  <div className="time">{time}</div>
-                  <div className="patient-avatar">{name[0]}</div>
+              {todaySchedule.length?todaySchedule.map(event => {
+                const name=event.patient_name as PatientName;
+                const known=Object.prototype.hasOwnProperty.call(patientBriefs,name);
+                return <div className={selectedPatient === name ? "session-row selected-patient" : "session-row"} key={event.id}>
+                  <div className="time">{overviewTime(event.scheduled_start)}</div>
+                  <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatient === name ? "patient-name selected" : "patient-name"} onClick={()=>setSelectedPatient(name as PatientName)}>{name}</button>{name === "Μαρία" && <span className="visit-type-badge">Follow-up</span>}{name === "Κώστας Σ." && <span className="visit-type-badge new">Νέος</span>}</div>
-                    <span>{meta}</span>
+                    <div className="patient-name-line"><button className={selectedPatient === name ? "patient-name selected" : "patient-name"} disabled={!known} onClick={()=>known&&setSelectedPatient(name)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Follow-up"}</span></div>
+                    <span>{event.detail||event.readiness_label}</span>
                   </div>
-                  {badge && <span className="badge">{badge}</span>}
-                  {name === "Μαρία" ? <div className="session-actions"><Link href="/patients/maria" className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link><Link href="/patients/maria/dictation" className="session-mic" aria-label="Νέα υπαγόρευση για τη Μαρία" title="Νέα υπαγόρευση"><Mic2 size={16}/></Link></div> : name === "Κώστας Σ." ? <Link href="/patients/new?patient=kostas" className="small-button link-button folder-button"><FolderOpen size={16}/> Δημιουργία καρτέλας</Link> : <button className="small-button folder-button"><FolderOpen size={16}/> Φάκελος</button>}
+                  {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
+                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id} className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link>:<Link href="/patients" className="small-button link-button folder-button"><FolderOpen size={16}/> Ασθενείς</Link>}
                 </div>
-              ))}
+              }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
             <div className="card ai-brief" key={selectedPatient}>

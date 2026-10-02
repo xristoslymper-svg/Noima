@@ -188,15 +188,21 @@ export async function POST(request: Request) {
   }
 
   let transcript = "";
+  let tester = "";
   let followUps: string[] = [];
   try {
-    const body = (await request.json()) as { transcript?: unknown; follow_ups?: unknown };
+    const body = (await request.json()) as { transcript?: unknown; follow_ups?: unknown; tester?: unknown };
     transcript = typeof body.transcript === "string" ? body.transcript.trim() : "";
+    tester = typeof body.tester === "string" ? body.tester.trim() : "";
     followUps = Array.isArray(body.follow_ups)
       ? body.follow_ups.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean).slice(-6)
       : [];
   } catch {
     return Response.json({ error: "Μη έγκυρη εντολή." }, { status: 400 });
+  }
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tester)) {
+    return Response.json({ error: "Λείπει η δοκιμαστική ταυτότητα." }, { status: 400 });
   }
 
   if (!transcript || transcript.length > 1000 || followUps.some(item => item.length > 300)) {
@@ -205,7 +211,7 @@ export async function POST(request: Request) {
 
   let events: DemoCalendarEvent[];
   try {
-    events = await fetchDemoCalendarEvents();
+    events = await fetchDemoCalendarEvents(tester);
   } catch {
     return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου." }, { status: 502 });
   }

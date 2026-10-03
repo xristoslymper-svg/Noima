@@ -1,6 +1,6 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=3;
+export const SUMMARY_POLICY_VERSION=4;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -36,6 +36,7 @@ const denied=(text:string)=>/(αρνειται|δεν αναφερει|δεν α
 export const narrativeRiskRequiresReview=(text:string)=>sentences(text).flatMap(s=>s.split(/[,;]|\bbut\b|αλλά|αλλα/iu)).some(s=>{
  if(!riskMention.test(s))return false;
  const n=normalize(s),mention=n.search(/αυτοκτον|suicid|σκεψ|death wish|passive death/u),prefix=n.slice(0,mention);
+ if(/(επανελεγχος|ελεγχος|επανεκτιμηση|recheck|reassess|screen for)\s*$/u.test(prefix))return false;
  return /(δεν ρωτη|δεν διερευν|δεν αποκλει|αβεβαι|not asked|uncertain|unknown)/u.test(n)||!denied(prefix)&&!/(χωρις|without|no)\s*$/u.test(prefix);
 });
 function medicationNeedsReview(text:string,med:PatientBundle['medications'][number]){

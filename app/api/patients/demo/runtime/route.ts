@@ -8,7 +8,9 @@ function failure(error:unknown){
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return Response.json({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return Response.json({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});
  if(message.includes('missing_sections'))return Response.json({error:'Συμπληρώστε Ψυχιατρική συνέντευξη, MSE, Κλινική εκτίμηση, Πλάνο και Επανεκτίμηση πριν την ολοκλήρωση.',code:'missing_sections'},{status:422});
+ if(message.includes('risk_followup_required'))return Response.json({error:'Με θετικό αυτοκτονικό ιδεασμό χρειάζεται να αξιολογηθούν Πρόθεση, Σχέδιο, Αυτοτραυματισμός και Ιστορικό απόπειρας πριν την ολοκλήρωση.',code:'risk_followup_required'},{status:422});
  if(message.includes('risk_required'))return Response.json({error:'Χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού πριν την ολοκλήρωση.',code:'risk_required'},{status:422});
+ if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
@@ -27,6 +29,11 @@ export async function POST(request:Request){
     const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα βασικά στοιχεία.'},{status:400});
     return Response.json({patient:await createPatient(tester,{first_name:firstName,last_name:String(body.last_name||'').trim(),age,phone:String(body.phone||'').trim(),email:String(body.email||'').trim(),chief_complaint:String(body.chief_complaint||'').trim()})});
+   }
+   case 'update_patient':{
+    const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
+    if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
+    return Response.json({patient:first(await rpc('demo_patient_update',{p_tester:tester,p_patient:body.patient_id,p_first_name:firstName,p_last_name:String(body.last_name||'').trim(),p_age:age,p_phone:String(body.phone||'').trim(),p_email:String(body.email||'').trim(),p_complaint:String(body.chief_complaint||'').trim(),p_expected_updated_at:body.expected_updated_at||null}))});
    }
    case 'start_session': return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});

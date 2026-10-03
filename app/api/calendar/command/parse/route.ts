@@ -1,4 +1,5 @@
 import { fetchDemoCalendarEvents, type DemoCalendarEvent } from "@/lib/calendar/demo-supabase";
+import { listPatients, type DemoPatient } from "@/lib/patients/demo-runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ type ParsedCommand = {
   time_explicit: boolean;
   clarification: string | null;
   missing_fields: MissingField[];
+  patient_id?: string | null;
+  new_patient?: boolean;
 };
 
 type ClarificationOption = { label: string; value: string };
@@ -113,7 +116,42 @@ function findAvailableSlots(date: string, durationMinutes: number, events: DemoC
 }
 
 function normalized(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("el-GR").trim();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("el-GR").replace(/[.]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function patientName(patient: DemoPatient) {
+  return (patient.first_name + " " + patient.last_name).trim();
+}
+
+function explicitPatientId(followUps: string[]) {
+  for (const answer of [...followUps].reverse()) {
+    const match = answer.match(/patient_id[:\s]+([0-9a-f-]{36})/i);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function resolvePatient(name: string | null, patients: DemoPatient[], followUps: string[]) {
+  const selectedId = explicitPatientId(followUps);
+  if (selectedId) {
+    const patient = patients.find(item => item.id === selectedId) || null;
+    if (patient) return { patient, candidates: [patient], isNew: false };
+  }
+  if (!name) return { patient: null, candidates: [] as DemoPatient[], isNew: false };
+  const target = normalized(name);
+  const exactFull = patients.filter(item => normalized(patientName(item)) === target);
+  if (exactFull.length === 1) return { patient: exactFull[0], candidates: exactFull, isNew: false };
+  if (exactFull.length > 1) return { patient: null, candidates: exactFull, isNew: false };
+  const exactPart = patients.filter(item => normalized(item.first_name) === target || normalized(item.last_name) === target);
+  if (exactPart.length === 1) return { patient: exactPart[0], candidates: exactPart, isNew: false };
+  if (exactPart.length > 1) return { patient: null, candidates: exactPart, isNew: false };
+  const prefix = target.length >= 3 ? patients.filter(item => {
+    const full = normalized(patientName(item));
+    return full.startsWith(target) || target.startsWith(full);
+  }) : [];
+  if (prefix.length === 1) return { patient: prefix[0], candidates: prefix, isNew: false };
+  if (prefix.length > 1) return { patient: null, candidates: prefix, isNew: false };
+  return { patient: null, candidates: [] as DemoPatient[], isNew: true };
 }
 
 function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
@@ -125,7 +163,7 @@ function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
     return `Ακύρωση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)}`;
   }
   if ((command.action === "create" || command.action === "schedule_follow_up") && command.patient_name && command.start_iso) {
-    return `Νέο ραντεβού: ${command.patient_name} · ${formatDateTime(command.start_iso)}`;
+    return `${command.new_patient ? "Νέος ασθενής + ραντεβού" : "Νέο ραντεβού"}: ${command.patient_name} · ${formatDateTime(command.start_iso)}`;
   }
   if (command.action === "find_availability" && command.target_date) {
     return command.patient_name
@@ -138,6 +176,7 @@ function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
 function specificClarification(command: ParsedCommand) {
   const missing = new Set(command.missing_fields);
   const intent = command.intended_action;
+  const newPatientPrefix = command.new_patient && command.patient_name ? `Για τον νέο ασθενή ${command.patient_name}, ` : "";
 
   if (missing.has("recurrence")) {
     return "Τα επαναλαμβανόμενα ραντεβού δεν υποστηρίζονται ακόμη. Να δημιουργήσω μόνο το πρώτο ραντεβού;";
@@ -151,13 +190,13 @@ function specificClarification(command: ParsedCommand) {
     return "Για ποιον ασθενή και ποια ημέρα και ώρα να κλείσω το ραντεβού;";
   }
   if (missing.has("patient")) return "Για ποιον ασθενή να κλείσω το ραντεβού;";
-  if (missing.has("date") && missing.has("time")) return "Ποια ημέρα και ώρα θέλετε;";
-  if (missing.has("date")) return "Ποια ημέρα θέλετε;";
-  if (missing.has("time")) return intent === "move" ? "Σε τι ώρα θέλετε να μεταφερθεί;" : "Τι ώρα θέλετε;";
+  if (missing.has("date") && missing.has("time")) return newPatientPrefix + "ποια ημέρα και ώρα θέλετε;";
+  if (missing.has("date")) return newPatientPrefix + "ποια ημέρα θέλετε;";
+  if (missing.has("time")) return intent === "move" ? "Σε τι ώρα θέλετε να μεταφερθεί;" : newPatientPrefix + "τι ώρα θέλετε;";
   return command.clarification || "Τι θα θέλατε να συμπληρώσετε;";
 }
 
-function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[]): ClarificationOption[] {
+function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[], patients: DemoPatient[]): ClarificationOption[] {
   const missing = new Set(command.missing_fields);
   if (missing.has("appointment")) {
     const candidates = command.patient_name
@@ -169,8 +208,15 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
     }));
   }
   if (missing.has("patient")) {
-    const names = [...new Set(events.map(event => event.patient_name))].slice(0, 6);
-    return names.map(name => ({ label: name, value: name }));
+    const target = command.patient_name ? normalized(command.patient_name) : "";
+    const candidates = target ? patients.filter(patient => {
+      const full = normalized(patientName(patient));
+      return full.includes(target) || target.includes(normalized(patient.first_name)) || target.includes(normalized(patient.last_name));
+    }) : patients;
+    return candidates.slice(0, 6).map(patient => ({
+      label: patientName(patient) + (patient.reported_age ? ` · ${patient.reported_age} ετών` : ""),
+      value: `Επίλεξα ${patientName(patient)} [patient_id:${patient.id}]`,
+    }));
   }
   if (missing.has("recurrence")) {
     return [
@@ -210,10 +256,11 @@ export async function POST(request: Request) {
   }
 
   let events: DemoCalendarEvent[];
+  let patients: DemoPatient[];
   try {
-    events = await fetchDemoCalendarEvents(tester);
+    [events, patients] = await Promise.all([fetchDemoCalendarEvents(tester), listPatients(tester)]);
   } catch {
-    return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου." }, { status: 502 });
+    return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
   }
 
   const now = new Date();
@@ -225,6 +272,7 @@ export async function POST(request: Request) {
     end: event.scheduled_end,
     type: event.appointment_type,
   }));
+  const patientContext = patients.map(patient => ({ id: patient.id, name: patientName(patient), age: patient.reported_age }));
 
   const intentEnum = ["move", "cancel", "create", "schedule_follow_up", "find_availability"];
   const schema = {
@@ -259,9 +307,11 @@ export async function POST(request: Request) {
     "Allowed intents: move, cancel, create, schedule_follow_up, find_availability.",
     "Treat the original command plus clarification answers as ONE conversation. Preserve all already-known details. A later answer fills a missing field or corrects an earlier value; the latest explicit answer wins.",
     "If the command is incomplete or ambiguous, action=clarify, intended_action=the intended intent, preserve every known field, and list only the genuinely missing/ambiguous fields.",
-    "For create/schedule_follow_up, patient + calendar date + clock time are required. Default duration is 50 minutes.",
+    "For create/schedule_follow_up, patient name + calendar date + clock time are required. Default duration is 50 minutes.",
+    "The patient registry is supplied below. If the spoken patient clearly matches an existing patient, keep the canonical registry name. If no registry patient matches, preserve the spoken name; the application can explicitly offer to create a new minimal patient record. Never silently substitute a different person.",
+    "If the user explicitly says this is a new patient, appointment_type should be initial_assessment unless the user explicitly asks for another type.",
     "CRITICAL: Never invent or default a clock time. There is NO default appointment time (not 08:00, 09:00, current time, opening time, or any other time).",
-    "Set time_explicit=true ONLY if the user explicitly supplied a clock time or an unambiguous time expression in the original command or clarification answers. Otherwise time_explicit=false, start_iso/end_iso must not be treated as complete, and 'time' must be missing.",
+    "Set time_explicit=true ONLY if the user explicitly supplied a clock time or an unambiguous time expression in the original command or clarification answers. Broad dayparts such as πρωί, μεσημέρι, απόγευμα or βράδυ are NOT sufficient by themselves; ask for an exact clock time. Otherwise time_explicit=false, start_iso/end_iso must not be treated as complete, and 'time' must be missing.",
     "Set date_explicit=true ONLY if the user explicitly supplied a date/day/relative day such as σήμερα, αύριο, Παρασκευή, 12 Οκτωβρίου. Never silently default a new appointment to today.",
     "For move/cancel, event_id MUST be exactly one ID from the provided calendar and only when the referenced appointment is unambiguous.",
     "For move, a unique appointment plus a new time may keep the appointment's existing date; a unique appointment plus a new date may keep its existing clock time.",
@@ -271,6 +321,7 @@ export async function POST(request: Request) {
     "If the user requests recurrence/repeating appointments, do NOT silently discard recurrence. Clarify that only the first occurrence can currently be created; use missing_fields=['recurrence'] until the user explicitly accepts only the first.",
     "If a user says no/cancel while answering a clarification, return action=clarify with clarification='Η εντολή ακυρώθηκε.' and no missing fields.",
     "Do not infer clinical facts. Do not invent a patient name.",
+    `Patient registry: ${JSON.stringify(patientContext)}`,
     `Calendar events: ${JSON.stringify(eventContext)}`,
     `Original user command: ${transcript}`,
     `Clarification answers in order: ${JSON.stringify(followUps)}`,
@@ -312,8 +363,29 @@ export async function POST(request: Request) {
     if (!userCancelled && command.event_id && !events.some(event => event.id === command.event_id)) {
       command = { ...command, action: "clarify", event_id: null, missing_fields: ["appointment"], clarification: null };
     }
+    const explicitEventSelection = followUps.some(answer => /event_id\s+[0-9a-f-]{36}/i.test(answer));
+    if (!userCancelled && !explicitEventSelection && command.patient_name && (intended === "move" || intended === "cancel")) {
+      const target = normalized(command.patient_name);
+      const candidates = events.filter(event => normalized(event.patient_name).includes(target) || target.includes(normalized(event.patient_name)));
+      if (candidates.length > 1) {
+        command = { ...command, action: "clarify", event_id: null, missing_fields: [...new Set([...command.missing_fields, "appointment" as MissingField])], clarification: null };
+      }
+    }
 
     const selected = command.event_id ? events.find(event => event.id === command.event_id) : undefined;
+    const explicitNewPatient = /\b(νεο|νεος|νεα|καινουργιο|καινουριος|καινουρια)\s+ασθεν/.test(normalized(transcript));
+    const patientResolution = explicitNewPatient
+      ? { patient: null, candidates: [] as DemoPatient[], isNew: true }
+      : resolvePatient(command.patient_name, patients, followUps);
+    if (!userCancelled && command.patient_name && (intended === "create" || intended === "schedule_follow_up" || intended === "find_availability")) {
+      if (patientResolution.patient) {
+        command = { ...command, patient_id: patientResolution.patient.id, patient_name: patientName(patientResolution.patient), new_patient: false };
+      } else if (patientResolution.candidates.length > 1) {
+        command = { ...command, action: "clarify", patient_id: null, new_patient: false, missing_fields: [...new Set([...command.missing_fields, "patient" as MissingField])], clarification: null };
+      } else if (patientResolution.isNew) {
+        command = { ...command, patient_id: null, new_patient: true, appointment_type: command.appointment_type === "other" ? "other" : "initial_assessment" };
+      }
+    }
 
     // New appointments must never acquire a date/time merely because the model can construct one.
     // The parser has to attest that the user actually supplied both pieces of information.
@@ -375,7 +447,7 @@ export async function POST(request: Request) {
       command,
       summary: buildSummary(command, events),
       available_slots: availableSlots,
-      clarification_options: command.action === "clarify" ? clarificationOptions(command, events) : [],
+      clarification_options: command.action === "clarify" ? clarificationOptions(command, events, patients) : [],
     });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";

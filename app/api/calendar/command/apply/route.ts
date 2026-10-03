@@ -2,7 +2,8 @@ import {
   applyDemoCalendarMutation,
   type DemoCalendarMutation,
 } from "@/lib/calendar/demo-supabase";
-import { listPatients } from "@/lib/patients/demo-runtime";
+import { fetchDemoCalendarEvents } from "@/lib/calendar/demo-supabase";
+import { createPatient, listPatients } from "@/lib/patients/demo-runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ type ApplyBody = {
   start_iso?: unknown;
   end_iso?: unknown;
   appointment_type?: unknown;
+  create_new_patient?: unknown;
 };
 
 const allowed = new Set(["move", "cancel", "create", "schedule_follow_up"]);
@@ -48,20 +50,29 @@ export async function POST(request: Request) {
   }
 
   let patientId = textOrNull(body.patient_id);
-  const patientName = textOrNull(body.patient_name);
+  let patientName = textOrNull(body.patient_name);
+  let patientCreated = false;
+  const wantsNewPatient = body.create_new_patient === true;
 
-  if ((action === "create" || action === "schedule_follow_up") && !patientId && patientName) {
-    const patients = await listPatients(tester);
+  const patients = (action === "create" || action === "schedule_follow_up") ? await listPatients(tester) : [];
+  if (patientId) {
+    const selected = patients.find(patient => patient.id === patientId);
+    if (!selected) return Response.json({ error: "Δεν βρέθηκε αντίστοιχος φάκελος ασθενή.", code: "patient_not_found" }, { status: 422 });
+    patientName = (selected.first_name + " " + selected.last_name).trim();
+  } else if ((action === "create" || action === "schedule_follow_up") && patientName && !wantsNewPatient) {
     const target = normalized(patientName);
-    const matches = patients.filter(patient => {
-      const full = normalized((patient.first_name + " " + patient.last_name).trim());
-      const first = normalized(patient.first_name);
-      return full === target || first === target || full.startsWith(target) || target.startsWith(first);
-    });
-    if (matches.length === 1) patientId = matches[0].id;
+    const exact = patients.filter(patient => normalized((patient.first_name + " " + patient.last_name).trim()) === target);
+    const first = patients.filter(patient => normalized(patient.first_name) === target);
+    const matches = exact.length ? exact : first;
+    if (matches.length === 1) {
+      patientId = matches[0].id;
+      patientName = (matches[0].first_name + " " + matches[0].last_name).trim();
+    } else if (matches.length > 1) {
+      return Response.json({ error: "Υπάρχουν περισσότεροι από ένας ασθενείς με αυτό το όνομα. Επιλέξτε τον σωστό φάκελο.", code: "patient_ambiguous" }, { status: 409 });
+    }
   }
 
-  const mutation: DemoCalendarMutation = {
+  let mutation: DemoCalendarMutation = {
     action: action as DemoCalendarMutation["action"],
     event_id: textOrNull(body.event_id),
     patient_id: patientId,
@@ -83,15 +94,43 @@ export async function POST(request: Request) {
   }
 
   if ((mutation.action === "create" || mutation.action === "schedule_follow_up") && !mutation.patient_id) {
-    return Response.json(
-      { error: "Δεν βρέθηκε αντίστοιχος φάκελος ασθενή. Επιλέξτε ασθενή από τη λίστα.", code: "patient_not_found" },
-      { status: 422 },
-    );
+    if (!wantsNewPatient || !mutation.patient_name) {
+      return Response.json(
+        { error: "Δεν βρέθηκε αντίστοιχος φάκελος ασθενή. Επιλέξτε ασθενή από τη λίστα.", code: "patient_not_found" },
+        { status: 422 },
+      );
+    }
+    const startMs = new Date(mutation.scheduled_start!).getTime();
+    const endMs = new Date(mutation.scheduled_end!).getTime();
+    const events = await fetchDemoCalendarEvents(tester);
+    const conflict = events.some(event => new Date(event.scheduled_start).getTime() < endMs && new Date(event.scheduled_end).getTime() > startMs);
+    if (conflict) {
+      return Response.json({ error: "Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Δεν δημιουργήθηκε νέος φάκελος.", code: "calendar_conflict" }, { status: 409 });
+    }
+    const parts = mutation.patient_name.trim().split(/\s+/);
+    const created = await createPatient(tester, {
+      first_name: parts[0],
+      last_name: parts.slice(1).join(" "),
+      age: null,
+      phone: "",
+      email: "",
+      chief_complaint: "",
+    });
+    patientCreated = true;
+    patientId = created.id;
+    patientName = (created.first_name + " " + created.last_name).trim();
+    mutation = {
+      ...mutation,
+      action: "create",
+      patient_id: patientId,
+      patient_name: patientName,
+      appointment_type: mutation.appointment_type === "other" ? "other" : "initial_assessment",
+    };
   }
 
   try {
     const event = await applyDemoCalendarMutation(tester, mutation);
-    return Response.json({ event });
+    return Response.json({ event, patient_created: patientCreated, patient_id: patientId });
   } catch (error) {
     if (error instanceof Error && error.message === "calendar_conflict") {
       return Response.json(

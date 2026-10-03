@@ -379,7 +379,7 @@ export default function CalendarPage() {
             <Menu size={21} />
           </button>
           <div className="search"><span>Ψ · ημερολόγιο</span></div>
-          <div className="profile"><div className="avatar">Ψ</div><div><strong>Pilot workspace</strong><span>Ψυχίατρος</span></div></div>
+          <div className="profile"><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div>
         </header>
 
         <div className="calendar-page-content">

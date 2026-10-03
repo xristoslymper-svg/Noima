@@ -124,14 +124,14 @@ export default function Page() {
       <section className="workspace">
         <header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
           <div className="search"><span>Ψ · δοκιμαστικός κλινικός χώρος</span></div>
-          <div className="profile"><div className="avatar">Ψ</div><div><strong>Pilot workspace</strong><span>Ψυχίατρος</span></div></div>
+          <div className="profile"><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div>
         </header>
 
         <div className="content">
           <div className="page-heading">
             <div>
               <p className="eyebrow">{overviewDayLabel()}</p>
-              <h1>Καλημέρα</h1>
+              <h1>Καλημέρα, Δρ. Παπαδάκη</h1>
               <p>Όλα όσα χρειάζεστε για μια όμορφη και παραγωγική ημέρα.</p>
             </div>
             <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>

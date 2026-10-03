@@ -40,15 +40,16 @@ export default function PatientSession({
 }:{
  bundle:PatientBundle;
  reload:()=>Promise<unknown>;
- onFinalize:()=>Promise<void>;
+ onFinalize:(sessionId:string)=>Promise<void>;
  finalizing:boolean;
  finalizeError:string;
  selectedSessionId:string|null;
  onSelectSession:(sessionId?:string|null)=>void;
 }){
- const draft=bundle.sessions.find(s=>s.status==='draft');
  const completed=bundle.sessions.filter(s=>s.status==='completed');
- const selected=selectedSessionId?completed.find(s=>s.id===selectedSessionId):undefined;
+ const requested=selectedSessionId?bundle.sessions.find(s=>s.id===selectedSessionId):undefined;
+ const draft=requested?.status==='draft'?requested:(!selectedSessionId?bundle.sessions.find(s=>s.status==='draft'):undefined);
+ const selected=requested?.status==='completed'?requested:undefined;
  const flushers=useRef(new Map<string,()=>Promise<void>>());
  const dirtyKeys=useRef(new Set<string>());
  const [dirtyCount,setDirtyCount]=useState(0);
@@ -96,7 +97,8 @@ export default function PatientSession({
   if(finishing.current)return;finishing.current=true;
   try{
    await flushAll();
-   await onFinalize();
+   if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
+   await onFinalize(draft.id);
   }catch{
    // The concrete save/finalize error is already rendered in the workspace.
   }finally{finishing.current=false}
@@ -104,6 +106,10 @@ export default function PatientSession({
 
  if(selected){
   return <CompletedSessionView session={selected} bundle={bundle} reload={reload} onBack={()=>onSelectSession(null)} />;
+ }
+
+ if(selectedSessionId&&!requested){
+  return <section className="panel-stack"><div className="panel-heading"><div><span className="kicker">ΣΥΝΕΔΡΙΕΣ</span><h2>Η συγκεκριμένη συνεδρία δεν είναι διαθέσιμη</h2><p>Ο σύνδεσμος είναι παλιός ή η συνεδρία δεν ανήκει πλέον σε αυτόν τον φάκελο.</p></div><button onClick={()=>onSelectSession(null)}>Προβολή συνεδριών</button></div></section>;
  }
 
  if(!draft){

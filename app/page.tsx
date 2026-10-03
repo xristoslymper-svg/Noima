@@ -72,8 +72,6 @@ export default function Page() {
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
-  const [startingEvent,setStartingEvent]=useState<string|null>(null);
-  const [actionError,setActionError]=useState("");
   useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();void (async()=>{
     const [calendarResponse,patientsResponse]=await Promise.all([
       fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}),
@@ -96,17 +94,7 @@ export default function Page() {
   const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
   const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>(a.status==="assigned"||a.status==="opened")&&new Date(a.expires_at)>new Date()).length,0);
   const item9Reviews=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>a.status==="completed"&&a.item9_review&&!a.item9_reviewed_at).length,0);
-  async function openAppointmentSession(event:OverviewEvent){
-    if(!event.patient_id||startingEvent)return;
-    setStartingEvent(event.id);setActionError("");
-    try{
-      const response=await fetch("/api/calendar/appointment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id})});
-      const data=await response.json();
-      if(!response.ok||!data.session)throw new Error(data.error||"session");
-      window.location.href="/patients/demo/"+encodeURIComponent(data.session.patient_id)+"?tab=sessions&session="+encodeURIComponent(data.session.id);
-    }catch{setActionError("Δεν ήταν δυνατή η έναρξη της συνεδρίας από το ραντεβού.")}
-    finally{setStartingEvent(null)}
-  }
+
   return (
     <main className="app-shell">
       <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
@@ -146,7 +134,7 @@ export default function Page() {
 
           <section className="main-grid">
             <div className="card sessions">
-              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>{actionError&&<div className="save-state error" role="alert">{actionError}</div>}
+              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id&&bundles[event.patient_id]);
                 return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
@@ -157,7 +145,7 @@ export default function Page() {
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
                   {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
-                  {event.patient_id?<div className="session-row-actions"><button className="small-button" disabled={startingEvent===event.id} onClick={()=>void openAppointmentSession(event)}>{startingEvent===event.id?"Άνοιγμα…":"Έναρξη / συνέχεια"}</button><Link href={"/patients/demo/"+event.patient_id} className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link></div>:<Link href="/patients" className="small-button link-button folder-button"><FolderOpen size={16}/> Ασθενείς</Link>}
+                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
                 </div>
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
@@ -204,7 +192,7 @@ export default function Page() {
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
                 <div className="agenda-info"><strong>{event.patient_name}</strong><span>{event.detail||event.readiness_label}</span><small><Clock size={13}/> {overviewTime(event.scheduled_start)}–{overviewTime(event.scheduled_end)}</small></div>
-                {event.patient_id&&<div className="session-row-actions"><button className="small-button" disabled={startingEvent===event.id} onClick={()=>void openAppointmentSession(event)}>{startingEvent===event.id?"Άνοιγμα…":"Έναρξη"}</button><Link href={"/patients/demo/"+event.patient_id} className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link></div>}
+                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου" onClick={()=>setCalendarOpen(false)}><FolderOpen size={20}/></Link>}
               </div>):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 

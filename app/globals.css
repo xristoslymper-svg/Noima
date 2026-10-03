@@ -545,3 +545,16 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .new-patient-home>header h2{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:720;font-size:clamp(30px,3vw,42px);letter-spacing:-.045em;color:#243a32;margin:5px 0 8px}
 .new-patient-home>header p{max-width:690px;font-size:13px;line-height:1.6}
 @media(max-width:650px){.new-patient-home>header{gap:12px}.folder-start-mark{width:38px;height:38px;flex-basis:38px;border-radius:11px}.new-patient-home>header h2{font-size:30px}}
+
+/* New patient: one obvious clinical next action */
+.clinical-start{min-height:430px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:28px 0 56px;max-width:920px}
+.clinical-start-copy{max-width:760px}
+.clinical-start-eyebrow{display:inline-flex;align-items:center;gap:10px;color:#56806f;font-size:10px;font-weight:800;letter-spacing:.16em}
+.clinical-start-eyebrow:before{content:"";width:28px;height:1.5px;background:#4e806d;display:block}
+.clinical-start h2{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:clamp(38px,4.4vw,62px);line-height:1;letter-spacing:-.055em;font-weight:720;color:#203a31;margin:17px 0 12px}
+.clinical-start-copy>p{font-size:17px;line-height:1.5;color:#7a8982;margin:0 0 28px}
+.clinical-start-cta{width:min(100%,390px);border:0;border-radius:14px;background:#2f6f5b;color:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;font:700 14px/1.2 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 10px 28px rgba(47,111,91,.12);transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.clinical-start-cta:hover{background:#285f4e;transform:translateY(-1px);box-shadow:0 14px 34px rgba(47,111,91,.16)}
+.clinical-start-scope{margin-top:19px;color:#8a9891;font-size:11px;line-height:1.7;display:flex;gap:8px;flex-wrap:wrap}.clinical-start-scope i{font-style:normal;color:#c0c8c4}
+.patient-details-link{margin-top:54px;border:0;background:transparent;padding:0;color:#70847a;font-size:11px;font-weight:700;display:flex;gap:8px;align-items:center;cursor:pointer}.patient-details-link:hover{color:#376f5d}
+@media(max-width:650px){.clinical-start{min-height:360px;padding:18px 0 40px}.clinical-start h2{font-size:38px}.clinical-start-copy>p{font-size:15px}.clinical-start-cta{width:100%}}

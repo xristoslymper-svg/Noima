@@ -65,6 +65,8 @@ test('every table has RLS; anonymous reads are limited to fictional demo tables'
     'demo_clinical_entries',
     'demo_medication_events',
     'demo_medication_side_effects',
+    'demo_session_addenda',
+    'demo_medication_event_revisions',
     'demo_medications',
     'demo_patient_history',
     'demo_patients',
@@ -72,7 +74,7 @@ test('every table has RLS; anonymous reads are limited to fictional demo tables'
     'demo_session_sections',
     'demo_sessions',
   ];
-  assert.deepEqual(allowed, demoReadable.map(table_name => ({ table_name, privilege_type: 'SELECT' })));
+  assert.deepEqual(allowed, demoReadable.sort().map(table_name => ({ table_name, privilege_type: 'SELECT' })));
 });
 
 test('practice membership isolates patient reads and writes, including direct API-shaped access', async () => {
@@ -241,4 +243,82 @@ test('fictional tester calendar links to patient IDs and future medication chang
   const [{dose:future}] = await sql("select (new_state->>'dose')::numeric dose from demo_medication_events where medication_id=$1 and event_type='changed' order by created_at desc limit 1",[medication]);
   assert.equal(Number(after),Number(before));
   assert.equal(Number(future),150);
+});
+
+test('canonical proposal requires explicit approval, preserves provenance and rejects stale/new-section races', async () => {
+ const t='60000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const [entry]=await sql("select * from demo_proposal_create($1,$2,'assessment',$3,$4,'test-model')",[t,s.id,'Δεν ρώτησα για αυτοκτονικό ιδεασμό',JSON.stringify({clinical_text:'Δεν διερευνήθηκε αυτοκτονικός ιδεασμός.',facts:[]})]);
+ assert.equal((await sql('select * from demo_session_sections where session_id=$1',[s.id])).length,0);
+ const [section]=await sql("select * from demo_proposal_approve($1,$2,$3,'replace',null)",[t,entry.id,'Δεν διερευνήθηκε αυτοκτονικός ιδεασμός.']);
+ assert.equal(section.source,'ai_proposal');
+ const [retry]=await sql("select * from demo_proposal_approve($1,$2,$3,'replace',null)",[t,entry.id,'Δεν διερευνήθηκε αυτοκτονικός ιδεασμός.']);assert.equal(retry.version,section.version);
+ await assert.rejects(sql("select demo_session_save_section($1,$2,'assessment','stale','manual',null)",[t,s.id]),/stale_section/);
+ const [e]=await sql('select * from demo_clinical_entries where id=$1',[entry.id]);assert.equal(e.approved_by,t);assert.equal(e.transcript,'Δεν ρώτησα για αυτοκτονικό ιδεασμό');assert.equal(e.section_version,section.version);
+ await assert.rejects(sql('select demo_clinical_approve($1,$2)',[entry.id,'bad']),/proposal_not_found/);
+ await assert.rejects(sql("update demo_clinical_entries set approved_text='rewritten' where id=$1",[entry.id]),/immutable_record/);
+ await assert.rejects(sql("select demo_proposal_create($1,$2,'assessment','raw',null,'test')",[t,s.id]),/invalid_proposal/);
+ await assert.rejects(sql("select demo_proposal_approve($1,$2,'different','replace',1)",[t,entry.id]),/already_approved/);
+});
+
+test('finalization is idempotent, immutable and supports append-only idempotent addenda', async () => {
+ const t='60000000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ await assert.rejects(sql('select demo_session_finalize($1,$2,1)',[t,s.id]),/missing_sections/);
+ for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,s.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'unknown'})]);
+ const [current]=await sql('select version from demo_sessions where id=$1',[s.id]);
+ await assert.rejects(sql('select demo_session_finalize($1,$2,1)',[t,s.id]),/stale_session/);
+ const [done]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,s.id,current.version]);
+ const [retry]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,s.id,current.version]);assert.equal(done.completed_at.toISOString(),retry.completed_at.toISOString());assert.equal(done.version,retry.version);
+ await assert.rejects(sql("select demo_session_save_section($1,$2,'assessment','changed','manual',1)",[t,s.id]),/session_unavailable/);
+ await assert.rejects(sql("update demo_session_sections set content='bad' where session_id=$1",[s.id]),/immutable_record/);
+ const args=[t,s.id,'60000000-0000-4000-8000-000000000003','correction','Typo','Corrected spelling'];
+ const [a]=await sql('select * from demo_addendum_create($1,$2,$3,$4,$5,$6)',args);const [b]=await sql('select * from demo_addendum_create($1,$2,$3,$4,$5,$6)',args);assert.equal(a.id,b.id);
+ await assert.rejects(sql("update demo_session_addenda set content='bad' where id=$1",[a.id]),/immutable_record/);
+});
+
+test('psychometric links isolate the response surface, score server-side and preserve longitudinal assignments', async () => {
+ const t='70000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const token='a'.repeat(64),id='70000000-0000-4000-8000-000000000002';
+ await sql("select demo_assessment_assign($1,$2,null,$3,'PHQ-9',$4)",[t,p.id,id,token]);
+ const [{demo_assessment_open:opened}]=await sql('select demo_assessment_open($1)',[token]);assert.equal(opened.status,'opened');assert.equal(opened.patient_id,undefined);assert.equal(opened.tester_id,undefined);
+ await assert.rejects(sql('select demo_assessment_submit($1,$2)',[token,JSON.stringify([3,3])]),/invalid_answers/);
+ await assert.rejects(sql('select demo_assessment_submit($1,null)',[token]),/invalid_answers/);
+ await assert.rejects(sql('select demo_assessment_submit($1,$2)',[token,'{}']),/invalid_answers/);
+ await assert.rejects(sql('select demo_assessment_submit($1,$2)',[token,JSON.stringify([3,3,3,3,3,3,3,3,4])]),/invalid_answers/);
+ const answers=[0,1,2,3,0,1,2,3,1];await sql('select demo_assessment_submit($1,$2)',[token,JSON.stringify(answers)]);await sql('select demo_assessment_submit($1,$2)',[token,JSON.stringify(answers)]);
+ await assert.rejects(sql('select demo_assessment_submit($1,$2)',[token,JSON.stringify(Array(9).fill(0))]),/already_completed/);
+ const [{demo_assessment_list:list}]=await sql('select demo_assessment_list($1,$2)',[t,p.id]);assert.equal(list[0].score,13);assert.equal(list[0].item9_review,true);assert.equal(list[0].token_hash,undefined);
+ assert.equal((await sql('select * from demo_risk_assessments where patient_id=$1',[p.id])).length,0);
+ const token2='b'.repeat(64),id2='70000000-0000-4000-8000-000000000003';await sql("select demo_assessment_assign($1,$2,null,$3,'PHQ-9',$4)",[t,p.id,id2,token2]);await sql('select demo_assessment_revoke($1,$2)',[t,id2]);await assert.rejects(sql('select demo_assessment_open($1)',[token2]),/link_unavailable/);
+ const token3='c'.repeat(64),id3='70000000-0000-4000-8000-000000000004';await sql("select demo_assessment_assign($1,$2,null,$3,'GAD-7',$4)",[t,p.id,id3,token3]);await sql("update private.demo_assessments set expires_at=now()-interval '1 day' where id=$1",[id3]);await assert.rejects(sql('select demo_assessment_submit($1,$2)',[token3,JSON.stringify(Array(7).fill(0))]),/link_expired/);
+ await db.exec('begin; set local role anon;');await assert.rejects(sql('select * from private.demo_assessments'),/permission denied/);await db.exec('rollback');
+ const token4='d'.repeat(64),id4='70000000-0000-4000-8000-000000000005';
+ await sql("select demo_assessment_assign($1,$2,null,$3,'GAD-7',$4)",[t,p.id,id4,token4]);
+ await sql('select demo_assessment_submit($1,$2)',[token4,JSON.stringify(Array(7).fill(2))]);
+ const [{score,item9_review}]=await sql('select score,item9_review from private.demo_assessments where id=$1',[id4]);assert.equal(score,14);assert.equal(item9_review,false);
+});
+
+test('medication timeline derives current/future state without bootstrap and preserves cancellations and backdated corrections', async () => {
+ const t='80000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [m]=await sql("select * from demo_medication_start($1,$2,null,'Fictional med',100,'mg','daily',current_date-10,'baseline')",[t,p.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'changed',150,'mg','daily',current_date+2,'Monday',2,null,false)",[t,m.id]);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date+4,'Wednesday',2,null,false)",[t,m.id]),/stale_medication/);
+ await sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date+4,'Wednesday',3,null,false)",[t,m.id]);
+ const state=async offset=>(await sql('select demo_medication_state($1,current_date+$2::int) state',[m.id,offset]))[0].state;
+ assert.equal((await state(0)).dose,100);assert.equal((await state(3)).dose,150);assert.equal((await state(5)).status,'stopped');
+ const [e]=await sql("select * from demo_medication_events where medication_id=$1 and event_type='changed'",[m.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'changed',125,'mg','daily',current_date+2,'revised plan',4,$3,false)",[t,m.id,e.id]);
+ assert.equal((await state(0)).dose,100);assert.equal((await state(3)).dose,125);assert.equal((await state(5)).status,'stopped');
+ const [stop]=await sql("select * from demo_medication_events where medication_id=$1 and event_type='stopped'",[m.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date+4,'cancel stop',5,$3,true)",[t,m.id,stop.id]);assert.equal((await state(5)).status,'active');
+ await sql("select demo_medication_event_write($1,$2,null,'changed',75,'mg','daily',current_date-2,'backdated correction',6,null,false)",[t,m.id]);assert.equal((await state(0)).dose,75);assert.equal((await state(3)).dose,125);
+ assert.equal((await sql('select * from demo_medication_event_revisions where event_id=$1',[e.id])).length,1);
+ await assert.rejects(sql("update demo_medication_events set reason='rewrite' where id=$1",[e.id]),/immutable_record/);
+ const [future]=await sql("select * from demo_medication_start($1,$2,null,'Future med',50,'mg','daily',current_date+10,'planned')",[t,p.id]);const [{state:futureState}]=await sql('select demo_medication_state($1,current_date) state',[future.id]);assert.equal(futureState.status,'planned');
+ const [start]=await sql("select id from demo_medication_events where medication_id=$1",[future.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'started',50,'mg','daily',current_date+10,'cancel future start',2,$3,true)",[t,future.id,start.id]);
+ assert.equal((await sql('select demo_medication_state($1,current_date+20) state',[future.id]))[0].state.status,'cancelled');
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'changed',90,'mg','daily',current_date+2,'same day',7,null,false)",[t,m.id]),/event_date_conflict/);
+ assert.equal((await state(3)).dose,125);
 });

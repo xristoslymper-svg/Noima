@@ -16,27 +16,29 @@ export function HistoryPanel({bundle,reload}:{bundle:PatientBundle;reload:()=>Pr
 
 export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onAdd:()=>void;reload:()=>Promise<unknown>}){
  const active=bundle.medications.filter(x=>x.status==='active');
- const today=new Date().toISOString().slice(0,10);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const medName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
  const doseText=(state:Record<string,unknown>|null)=>state&&state.dose!=null?String(state.dose)+' '+String(state.unit||''):'—';
  return <section className="panel-stack">
   <div className="panel-heading"><div><span className="kicker">ΑΓΩΓΗ</span><h2>Τρέχουσα αγωγή & ιστορικό αλλαγών</h2><p>Η ενεργή δόση εμφανίζεται χωριστά από τις προγραμματισμένες αλλαγές.</p></div><button className="record compact" onClick={onAdd}><Plus size={15}/> Διαχείριση αγωγής</button></div>
   {active.length?<div className="med-runtime-list">{active.map(m=><article key={m.id}><div><span className="kicker">ΕΝΕΡΓΟ</span><h3>{m.medication_name}</h3></div><strong>{m.dose} {m.unit}</strong><span>{m.frequency}</span><small>Από {date(m.effective_from)}</small></article>)}</div>:<div className="panel-empty">Δεν υπάρχει ενεργή αγωγή.</div>}
   <MedicationTimeline bundle={bundle} reload={reload}/>
-  <div className="med-side-effects"><h3>Καταγεγραμμένες παρενέργειες</h3>{bundle.medicationSideEffects.length?bundle.medicationSideEffects.map(effect=><article key={effect.id}><div><strong>{effect.effect_text}</strong><span>{medName(effect.medication_id)} · {date(effect.noted_on)}</span></div><i className={'severity '+effect.severity}>{effect.severity==='mild'?'Ήπια':effect.severity==='severe'?'Σοβαρή':'Μέτρια'}</i><p>{effect.impact||effect.note||'Δεν καταγράφηκε επίδραση στη λειτουργικότητα.'}</p></article>):<p>Δεν έχουν καταγραφεί παρενέργειες.</p>}</div>
+  <div className="med-side-effects"><h3>Καταγεγραμμένες παρενέργειες</h3>{bundle.medicationSideEffects.length?bundle.medicationSideEffects.map(effect=><article key={effect.id} className={effect.resolved_on?'resolved':''}><div><strong>{effect.effect_text}</strong><span>{medName(effect.medication_id)} · {date(effect.noted_on)}</span></div><i className={'severity '+effect.severity}>{effect.severity==='mild'?'Ήπια':effect.severity==='severe'?'Σοβαρή':'Μέτρια'}</i><p>{effect.impact||effect.note||'Δεν καταγράφηκε επίδραση στη λειτουργικότητα.'}</p>{effect.resolved_on?<small>Επιλύθηκε {date(effect.resolved_on)}</small>:<button onClick={async()=>{await demoPost({action:'medication_side_effect_resolve',side_effect_id:effect.id,resolved_on:today});await reload()}}>Σήμανση ως επιλυμένη</button>}</article>):<p>Δεν έχουν καταγραφεί παρενέργειες.</p>}</div>
  </section>
 }
 
 export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;onClose:()=>void;onSaved:()=>Promise<unknown>}){
- const active=bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
+ const active=bundle.medications.filter(x=>x.status==='active');
+ const selectable=bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
  const [mode,setMode]=useState<'start'|'change'|'stop'|'side_effect'>(active.length?'change':'start');
- const [medId,setMedId]=useState(active[0]?.id||'');
- const selected=useMemo(()=>active.find(x=>x.id===medId),[active,medId]);
+ const [medId,setMedId]=useState(active[0]?.id||selectable[0]?.id||'');
+ const selected=useMemo(()=>selectable.find(x=>x.id===medId),[selectable,medId]);
  const [name,setName]=useState('');
  const [dose,setDose]=useState(selected?String(selected.dose):'');
  const [unit,setUnit]=useState(selected?.unit||'mg');
  const [frequency,setFrequency]=useState(selected?.frequency||'');
- const [effective,setEffective]=useState(new Date().toISOString().slice(0,10));
+ const athensToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const [effective,setEffective]=useState(athensToday);
  const [reason,setReason]=useState('');
  const [effect,setEffect]=useState('');
  const [severity,setSeverity]=useState<'mild'|'moderate'|'severe'>('moderate');
@@ -66,13 +68,13 @@ export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;o
  return <div className="entry-modal-backdrop" onClick={onClose}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()}>
   <button className="entry-close" onClick={onClose} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
   <div className="mode-switch medication-modes">
-   <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>setMode('change')}>Αλλαγή δόσης</button>
+   <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
    <button className={mode==='start'?'active':''} onClick={()=>setMode('start')}>Νέα αγωγή</button>
-   <button className={mode==='stop'?'active':''} disabled={!active.length} onClick={()=>setMode('stop')}>Διακοπή</button>
-   <button className={mode==='side_effect'?'active':''} disabled={!active.length} onClick={()=>setMode('side_effect')}>Παρενέργεια</button>
+   <button className={mode==='stop'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('stop')}}>Διακοπή</button>
+   <button className={mode==='side_effect'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('side_effect')}}>Παρενέργεια</button>
   </div>
 
-  {mode!=='start'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{active.map(m=><option key={m.id} value={m.id}>{m.medication_name}</option>)}</select></label>{selected&&<div className="current-dose">Τρέχουσα αγωγή <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
+  {mode!=='start'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{selectable.map(m=><option key={m.id} value={m.id}>{m.medication_name}{m.status==='planned'?' · προγραμματισμένη':''}</option>)}</select></label>{selected&&<div className="current-dose">Τρέχουσα αγωγή <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
   {mode==='start'&&<label>Φάρμακο<input value={name} onChange={e=>setName(e.target.value)} placeholder="π.χ. Sertraline"/></label>}
 
   {(mode==='start'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>Συχνότητα<input value={frequency} onChange={e=>setFrequency(e.target.value)} placeholder="π.χ. 1× πρωί"/></label><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}
@@ -86,7 +88,7 @@ export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;o
    mode==='start'?(name||'Νέα αγωγή')+': '+(dose||'—')+' '+unit+' · '+(frequency||'—')+' · από '+effective:
    mode==='stop'&&selected?'Διακοπή '+selected.medication_name+' από '+effective:
    selected?(effect||'Παρενέργεια')+' · '+selected.medication_name+' · '+effective:'—'
-  }</p>{(mode==='change'||mode==='stop')&&effective>new Date().toISOString().slice(0,10)&&<small>Η αλλαγή είναι μελλοντική και δεν θα μεταβάλει την ενεργή αγωγή πριν από αυτή την ημερομηνία.</small>}</div>
+  }</p>{(mode==='change'||mode==='stop')&&effective>athensToday&&<small>Η αλλαγή είναι μελλοντική και δεν θα μεταβάλει την ενεργή αγωγή πριν από αυτή την ημερομηνία.</small>}</div>
   {error&&<div className="save-state error" role="alert">{error}</div>}
   <footer className="entry-footer"><button onClick={onClose}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save()} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
  </section></div>

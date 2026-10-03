@@ -9,7 +9,7 @@
 .summary-evidence li{padding:3px 0}
 .summary-evidence button{border:0;background:none;border-radius:0;padding:2px 0;font-size:11px;text-align:left;white-space:normal;text-decoration:underline;text-underline-offset:3px}
 .summary-evidence-modal{max-width:720px;width:min(720px,94vw)}
-.summary-evidence-modal pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.7 inherit;max-height:55vh;overflow:auto;padding:14px;background:#f8faf7;border-radius:8px}
+.summary-evidence-modal pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;font-family:inherit;max-height:55vh;overflow:auto;padding:14px;background:#f8faf7;border-radius:8px}
 .summary-next-compact{display:flex;flex-direction:column;gap:5px;font-size:12px;white-space:nowrap;color:#3e6151}
 .summary-next-compact span{font-size:11px;color:#7a887f}
 .psychometric-trajectories{padding:12px 0;border-bottom:1px solid #e7ece8}

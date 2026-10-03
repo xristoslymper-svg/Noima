@@ -26,3 +26,7 @@ test('stale hash conflicts before provider call; database errors fail closed',as
 test('seeded ID succeeds without configured provider and real-data mode is denied',async()=>{
  const r=await route(fixture(),null,{}).POST(request());assert.equal(r.status,200);assert.equal((await r.json()).mode,'canonical');assert.equal((await route(fixture(),null,{CLINICAL_DATA_MODE:'real'}).POST(request())).status,403);
 });
+test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Πορεία',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]}]})}]}]})});
+ const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,1);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,2);assert.notEqual(changed.context_hash,first.context_hash);
+});

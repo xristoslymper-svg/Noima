@@ -35,8 +35,10 @@ function buildBrief(bundle:PatientBundle|null,event?:OverviewEvent):Brief{
  if(!bundle)return {kicker:event?"ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ":"ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ",changed:["Δεν υπάρχουν ακόμη διαθέσιμα κλινικά δεδομένα για σύνοψη."],today:["Ανοίξτε τον φάκελο για κλινική αξιολόγηση."],risk:"Δεν υπάρχει διαθέσιμη εκτίμηση κινδύνου."};
  const facts=buildSummaryContext(bundle).findings;
  const reviews=facts.filter(f=>f.attention);
- const risk=facts.filter(f=>f.label==='Κίνδυνος'||f.label==='Χρειάζεται επιβεβαίωση').map(f=>f.text).join(' ');
- return {kicker:event?'ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ':'ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ',changed:facts.filter(f=>['Αγωγή','Ψυχομετρικά','Παρενέργειες'].includes(f.label)).slice(0,4).map(f=>clip(f.text)),today:reviews.length?reviews.slice(0,3).map(f=>clip(f.text)):['Δεν υπάρχουν δομημένες εκκρεμότητες προς επισήμανση· ελέγξτε τον πλήρη φάκελο.'],risk:risk||'Δεν υπάρχει διαθέσιμη δομημένη εκτίμηση κινδύνου.'};
+ const risk=facts.filter(f=>f.label==='Κίνδυνος').map(f=>f.text).join(' ');
+ const riskReviews=facts.filter(f=>f.key.startsWith('risk-review:')).length;
+ const today=reviews.slice(0,3).map(f=>clip(f.text));if(reviews.length>3)today.push(`Ακόμη ${reviews.length-3} επισημάνσεις στον πλήρη φάκελο.`);
+ return {kicker:event?'ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ':'ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ',changed:facts.filter(f=>['Αγωγή','Ψυχομετρικά','Παρενέργειες'].includes(f.label)).slice(0,4).map(f=>clip(f.text)),today:reviews.length?today:['Δεν υπάρχουν δομημένες εκκρεμότητες προς επισήμανση· ελέγξτε τον πλήρη φάκελο.'],risk:(risk||'Δεν υπάρχει διαθέσιμη δομημένη εκτίμηση κινδύνου.')+(riskReviews?` ${riskReviews} αφηγηματικές πηγές χρειάζονται έλεγχο συμφωνίας.`:'')};
 }
 
 const TIMEZONE="Europe/Athens";
@@ -130,7 +132,7 @@ export default function Page() {
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
                   {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
-                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
+                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
                 </div>
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
@@ -145,12 +147,12 @@ export default function Page() {
               </div>
 
               <div className="brief-block">
-                <strong>{selectedBundle?.sessions.some(x=>x.status==="completed")?"Τι έχει αλλάξει":"Τι γνωρίζουμε"}</strong>
+                <strong>{"Αγωγή & ευρήματα"}</strong>
                 <ul>{brief.changed.map(item=><li key={item}>{item}</li>)}</ul>
               </div>
 
               <div className="brief-block blue">
-                <strong>Να διερευνηθεί σήμερα</strong>
+                <strong>Χρειάζεται έλεγχο</strong>
                 <ul>{brief.today.map(item=><li key={item}>{item}</li>)}</ul>
               </div>
 
@@ -177,7 +179,7 @@ export default function Page() {
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
                 <div className="agenda-info"><strong>{event.patient_name}</strong><span>{event.detail||event.readiness_label}</span><small><Clock size={13}/> {overviewTime(event.scheduled_start)}–{overviewTime(event.scheduled_end)}</small></div>
-                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου" onClick={()=>setCalendarOpen(false)}><FolderOpen size={20}/></Link>}
+                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου" onClick={()=>setCalendarOpen(false)}><FolderOpen size={20}/></Link>}
               </div>):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 

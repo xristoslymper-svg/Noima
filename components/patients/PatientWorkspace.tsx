@@ -3,7 +3,7 @@ import ClinicalSummary from './ClinicalSummary';
 import VisitWorkspace from './VisitWorkspace';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Activity, Bell, CalendarDays, ClipboardCheck, FileText, History as HistoryIcon, Home, Menu, Pill, Plus, Search, Settings, Stethoscope, TestTube2, Users, X } from 'lucide-react';
+import { Activity, Bell, CalendarDays, ClipboardCheck, FileText, FolderPlus, History as HistoryIcon, Home, Menu, Pill, Plus, Search, Settings, Stethoscope, TestTube2, Users, X } from 'lucide-react';
 import { getDemoTesterId } from '@/lib/demo-tester';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
@@ -61,7 +61,7 @@ function NewPatientSummary({bundle,onDetails,onStart}:{bundle:PatientBundle;onDe
  const p=bundle.patient;
  const identityComplete=Boolean(p.reported_age&&p.amka&&p.address&&(p.phone||p.contact_phone));
  return <section className="new-patient-home">
-  <header><span className="kicker">ΝΕΟΣ ΑΣΘΕΝΗΣ</span><h2>Ξεκινήστε τον φάκελο</h2><p>Τα στοιχεία καταγράφονται μία φορά. Στην επίσκεψη δουλεύετε σε μία ενιαία ροή και το Ψ οργανώνει αυτόματα τον φάκελο.</p></header>
+  <header><div className="folder-start-mark"><FolderPlus size={19} strokeWidth={1.7}/></div><div><span className="kicker">ΝΕΟΣ ΑΣΘΕΝΗΣ</span><h2>Εκκίνηση φακέλου</h2><p>Καταχωρίστε τα βασικά στοιχεία και συνεχίστε στην αρχική αξιολόγηση. Το Ψ οργανώνει αυτόματα την πληροφορία στον φάκελο.</p></div></header>
   <div className="new-patient-steps">
    <button className="new-patient-step" onClick={onDetails}><span className={identityComplete?'step-state done':'step-state'}>{identityComplete?'✓':'01'}</span><div><strong>Στοιχεία ασθενή</strong><p>{identityComplete?'Τα βασικά στοιχεία έχουν συμπληρωθεί.':'Ταυτότητα και στοιχεία επικοινωνίας.'}</p></div><span className="step-arrow">→</span></button>
    <button className="new-patient-step primary-step" onClick={onStart}><span className="step-state">02</span><div><strong>Αρχική αξιολόγηση</strong><p>Όλη η πρώτη επίσκεψη σε μία συνεχή ροή.</p><small>Λόγος προσέλευσης · MSE · Risk · Ιστορικό · Διάγνωση · Αγωγή · Πλάνο</small></div><span className="step-arrow">→</span></button>

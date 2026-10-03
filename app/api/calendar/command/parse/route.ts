@@ -95,9 +95,18 @@ function localAthensToIso(date: string, minutesFromMidnight: number) {
   return new Date(guess.getTime() - offset * 60_000).toISOString();
 }
 
-function findAvailableSlots(date: string, durationMinutes: number, events: DemoCalendarEvent[]) {
+function availabilityWindow(text: string) {
+  const value = normalized(text);
+  if (value.includes("πρωι")) return { start: 9 * 60, end: 12 * 60, label: "πρωί" };
+  if (value.includes("μεσημερι")) return { start: 12 * 60, end: 15 * 60, label: "μεσημέρι" };
+  if (value.includes("απογευμα")) return { start: 14 * 60, end: 18 * 60, label: "απόγευμα" };
+  if (value.includes("βραδυ")) return { start: 17 * 60, end: 18 * 60, label: "βράδυ" };
+  return { start: 9 * 60, end: 18 * 60, label: "" };
+}
+
+function findAvailableSlots(date: string, durationMinutes: number, events: DemoCalendarEvent[], windowStart=9*60, windowEnd=18*60) {
   const slots: { start_iso: string; end_iso: string; label: string }[] = [];
-  for (let minute = 9 * 60; minute + durationMinutes <= 18 * 60; minute += 30) {
+  for (let minute = windowStart; minute + durationMinutes <= windowEnd; minute += 30) {
     const start = localAthensToIso(date, minute);
     const end = addMinutes(start, durationMinutes);
     const startMs = new Date(start).getTime();
@@ -154,7 +163,11 @@ function resolvePatient(name: string | null, patients: DemoPatient[], followUps:
   return { patient: null, candidates: [] as DemoPatient[], isNew: true };
 }
 
-function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
+function formatDateKey(date: string) {
+  return new Intl.DateTimeFormat("el-GR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(date + "T12:00:00Z"));
+}
+
+function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[], availabilityLabel="") {
   const event = command.event_id ? events.find(item => item.id === command.event_id) : undefined;
   if (command.action === "move" && event && command.start_iso) {
     return `Μετακίνηση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)} → ${formatDateTime(command.start_iso)}`;
@@ -163,12 +176,15 @@ function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[]) {
     return `Ακύρωση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)}`;
   }
   if ((command.action === "create" || command.action === "schedule_follow_up") && command.patient_name && command.start_iso) {
-    return `${command.new_patient ? "Νέος ασθενής + ραντεβού" : "Νέο ραντεβού"}: ${command.patient_name} · ${formatDateTime(command.start_iso)}`;
+    const duration = command.duration_minutes ?? 50;
+    const kind = command.new_patient ? "Νέος ασθενής + αρχική αξιολόγηση" : "Νέο ραντεβού";
+    return `${kind}: ${command.patient_name} · ${formatDateTime(command.start_iso)} · ${duration}′`;
   }
   if (command.action === "find_availability" && command.target_date) {
+    const suffix = availabilityLabel ? ` · ${availabilityLabel}` : "";
     return command.patient_name
-      ? `Διαθέσιμες ώρες για ${command.patient_name} · ${command.target_date}`
-      : `Διαθέσιμες ώρες · ${command.target_date}`;
+      ? `Διαθέσιμες ώρες για ${command.patient_name} · ${formatDateKey(command.target_date)}${suffix}`
+      : `Διαθέσιμες ώρες · ${formatDateKey(command.target_date)}${suffix}`;
   }
   return "Χρειάζομαι μία διευκρίνιση πριν γίνει οποιαδήποτε αλλαγή.";
 }
@@ -311,7 +327,7 @@ export async function POST(request: Request) {
     "The patient registry is supplied below. If the spoken patient clearly matches an existing patient, keep the canonical registry name. If no registry patient matches, preserve the spoken name; the application can explicitly offer to create a new minimal patient record. Never silently substitute a different person.",
     "If the user explicitly says this is a new patient, appointment_type should be initial_assessment unless the user explicitly asks for another type.",
     "CRITICAL: Never invent or default a clock time. There is NO default appointment time (not 08:00, 09:00, current time, opening time, or any other time).",
-    "Set time_explicit=true ONLY if the user explicitly supplied a clock time or an unambiguous time expression in the original command or clarification answers. Broad dayparts such as πρωί, μεσημέρι, απόγευμα or βράδυ are NOT sufficient by themselves; ask for an exact clock time. Otherwise time_explicit=false, start_iso/end_iso must not be treated as complete, and 'time' must be missing.",
+    "Set time_explicit=true ONLY if the user explicitly supplied a clock time or an unambiguous time expression in the original command or clarification answers. Broad dayparts such as πρωί, μεσημέρι, απόγευμα or βράδυ are NOT sufficient by themselves for create/move; ask for an exact clock time. A bare hour such as 'στις 5' is ambiguous unless the user clearly says morning/afternoon/evening or uses 24-hour wording. Otherwise time_explicit=false, start_iso/end_iso must not be treated as complete, and 'time' must be missing.",
     "Set date_explicit=true ONLY if the user explicitly supplied a date/day/relative day such as σήμερα, αύριο, Παρασκευή, 12 Οκτωβρίου. Never silently default a new appointment to today.",
     "For move/cancel, event_id MUST be exactly one ID from the provided calendar and only when the referenced appointment is unambiguous.",
     "For move, a unique appointment plus a new time may keep the appointment's existing date; a unique appointment plus a new date may keep its existing clock time.",
@@ -436,16 +452,17 @@ export async function POST(request: Request) {
       command = { ...command, clarification: specificClarification(command) };
     }
 
+    const availability = availabilityWindow([transcript, ...followUps].join(" "));
     const availableSlots =
       command.action === "find_availability" && command.target_date
-        ? findAvailableSlots(command.target_date, command.duration_minutes ?? 50, events)
+        ? findAvailableSlots(command.target_date, command.duration_minutes ?? 50, events, availability.start, availability.end)
         : [];
 
     return Response.json({
       transcript,
       follow_ups: followUps,
       command,
-      summary: buildSummary(command, events),
+      summary: buildSummary(command, events, command.action === "find_availability" ? availability.label : ""),
       available_slots: availableSlots,
       clarification_options: command.action === "clarify" ? clarificationOptions(command, events, patients) : [],
     });

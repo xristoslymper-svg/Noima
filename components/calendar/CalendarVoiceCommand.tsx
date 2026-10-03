@@ -254,7 +254,7 @@ export default function CalendarVoiceCommand({
     const appointmentType = proposal.command.appointment_type || 'follow_up';
     setProposal({
       ...proposal,
-      summary: `Νέο ραντεβού: ${proposal.command.patient_name} · ${slot.label}`,
+      summary: `${proposal.command.new_patient ? "Νέος ασθενής + ραντεβού" : "Νέο ραντεβού"}: ${proposal.command.patient_name} · ${slot.label}`,
       available_slots: [],
       command: {
         ...proposal.command,
@@ -301,21 +301,28 @@ export default function CalendarVoiceCommand({
       };
 
       if (!response.ok) {
-        if (data.code === 'calendar_conflict') {
+        if (data.code === 'calendar_conflict' || data.code === 'past_appointment') {
+          const past = data.code === 'past_appointment';
           setProposal({
             ...proposal,
-            summary: 'Η ώρα δεν είναι διαθέσιμη',
+            summary: past ? 'Η ώρα έχει ήδη περάσει' : 'Η ώρα δεν είναι διαθέσιμη',
             command: {
               ...proposal.command,
               action: 'clarify',
               intended_action: proposal.command.action as Intent,
-              clarification: 'Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Πείτε μια άλλη ώρα για να συνεχίσουμε.',
-              missing_fields: ['time'],
+              clarification: past
+                ? 'Η ώρα έχει ήδη περάσει. Πείτε νέα ημέρα και ώρα για να συνεχίσουμε.'
+                : 'Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Πείτε μια άλλη ώρα για να συνεχίσουμε.',
+              missing_fields: past ? ['date','time'] : ['time'],
             },
             clarification_options: [],
           });
           busy.current = false;
           setStage('proposal');
+          return;
+        }
+        if (data.code === 'session_already_started') {
+          fail('Η συνεδρία για αυτό το ραντεβού έχει ήδη ξεκινήσει. Ανοίξτε τον φάκελο του ασθενή αντί να αλλάξετε το ραντεβού.');
           return;
         }
         fail(data.error || 'Η αλλαγή δεν αποθηκεύτηκε.');
@@ -370,15 +377,18 @@ export default function CalendarVoiceCommand({
               </div>
             </div>
 
-            <label className="voice-command-edit-label">
-              Τι άκουσα
-              <textarea
-                className="voice-command-textarea"
-                value={transcript}
-                onChange={event => setTranscript(event.target.value)}
-                rows={3}
-              />
-            </label>
+            <details className="voice-command-transcript">
+              <summary>Τι άκουσα</summary>
+              <label className="voice-command-edit-label">
+                <textarea
+                  className="voice-command-textarea"
+                  value={transcript}
+                  onChange={event => setTranscript(event.target.value)}
+                  rows={3}
+                />
+              </label>
+              <small>Αν η μεταγραφή είναι λάθος, διορθώστε την και πατήστε «Ξανά από την αρχή».</small>
+            </details>
 
             {followUps.length > 0 && (
               <div className="voice-followup-history">
@@ -456,7 +466,7 @@ export default function CalendarVoiceCommand({
 
             <footer>
               <button onClick={clarificationCancelled ? reset : () => void parseCommand(transcript, [])}>
-                {clarificationCancelled ? 'Νέα εντολή' : 'Ανάλυση από την αρχή'}
+                {clarificationCancelled ? 'Νέα εντολή' : 'Ξανά από την αρχή'}
               </button>
               {!isClarify && !isAvailability && (
                 <button className="voice-confirm" onClick={() => void confirm()}>

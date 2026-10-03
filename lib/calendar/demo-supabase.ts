@@ -15,7 +15,7 @@ export type DemoCalendarEvent = {
   scheduled_end: string;
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
-  status: "scheduled" | "cancelled";
+  status: "scheduled" | "cancelled" | "completed";
 };
 
 function headers(extra?: HeadersInit): HeadersInit {

@@ -130,19 +130,19 @@ export default function PatientSession({
 
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
-   <div><span className="visit-label"><span>ΠΡΟΧΕΙΡΟ</span><i/> {draft.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Οι αλλαγές αποθηκεύονται αυτόματα. Πριν από την οριστικοποίηση περιμένουμε όλες τις εκκρεμείς αποθηκεύσεις και ξαναδιαβάζουμε την τελευταία έκδοση.</p></div>
+   <div><span className="visit-label"><span>ΠΡΟΧΕΙΡΟ</span><i/> {draft.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Αυτόματη αποθήκευση · οριστικοποίηση μετά τον κλινικό έλεγχο.</p></div>
    <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Όλες οι αλλαγές αποθηκεύτηκαν'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
   <div className="sections-label"><span className="kicker">ΚΛΙΝΙΚΗ ΚΑΤΑΓΡΑΦΗ</span><span>* απαιτείται για ολοκλήρωση</span></div>
-  <p className="dictation-guidance">Μετά το ραντεβού: συμπληρώστε τις 5 βασικές ενότητες και την εκτίμηση κινδύνου. Οι πρόσθετες ενότητες ανοίγουν μόνο όταν υπάρχει κάτι σχετικό να καταγραφεί. Μπορείτε να γράψετε ή να υπαγορεύσετε ανά ενότητα.</p><fieldset disabled={flushing||finalizing} className="clinical-sections">
+  <p className="dictation-guidance">Γράψτε φυσικά ή υπαγορεύστε. Πρόσθετη καταγραφή μόνο όταν χρειάζεται.</p><fieldset disabled={flushing||finalizing} className="clinical-sections">
    {definitions.filter(([key])=>required.has(key)).map(([key,title,hint])=><SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title,hint}} existing={sections.find(x=>x.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>)}
    <RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
    <details className="optional-clinical-sections"><summary>Πρόσθετη καταγραφή <span>Λειτουργικότητα · Παρενέργειες · Συμμόρφωση</span></summary><div>{definitions.filter(([key])=>!required.has(key)).map(([key,title,hint])=><SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title,hint}} existing={sections.find(x=>x.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>)}</div></details>
   </fieldset>
 
   <div className="finalize-bar">
-   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Οι 5 βασικές ενότητες και η εκτίμηση κινδύνου έχουν καταγραφεί.':requiredDone+'/5 βασικές ενότητες · '+(!risk?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':risk.suicidal_ideation==='not_assessed'?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':!riskFollowupReady?'θετικός ιδεασμός · ολοκληρώστε τα σχετικά πεδία κινδύνου':'κίνδυνος καταγράφηκε')}</span></div>
+   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Οι 5 βασικές ενότητες και ο ιδεασμός έχουν καταγραφεί. Ελέγξτε τα υπόλοιπα πεδία κινδύνου πριν ολοκληρώσετε.':requiredDone+'/5 βασικές ενότητες · '+(!risk?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':risk.suicidal_ideation==='not_assessed'?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':!riskFollowupReady?'θετικός ιδεασμός · ολοκληρώστε τα σχετικά πεδία κινδύνου':'κίνδυνος καταγράφηκε')}</span></div>
    <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Έλεγχος & ολοκλήρωση'}</button>
   </div>
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}
@@ -161,7 +161,7 @@ function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSessio
  const risk=bundle.risks.find(item=>item.session_id===session.id);
  return <section className="session-workspace completed-session-view">
   <div className="session-work-head">
-   <div><button className="session-back-button" onClick={onBack}><ArrowLeft size={15}/> Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Ανάγνωση της οριστικοποιημένης έκδοσης. Το περιεχόμενο δεν τροποποιείται σιωπηλά μετά την ολοκλήρωση.</p></div>
+   <div><button className="session-back-button" onClick={onBack}><ArrowLeft size={15}/> Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Οριστικοποιημένη καταγραφή · διορθώσεις μέσω προσθήκης.</p></div>
    <span className="draft-updated">Ολοκληρώθηκε {fmt(session.completed_at)}</span>
   </div>
   <Addenda bundle={bundle} sessionId={session.id} reload={reload}/><div className="completed-section-stack">

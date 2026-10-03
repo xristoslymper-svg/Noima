@@ -444,7 +444,7 @@ export default function CalendarPage() {
                         </span>
                       </div>
                       <div className="clinical-event-actions">
-                        {event.patient_id && <Link href={"/patients/demo/" + event.patient_id}>Φάκελος</Link>}
+                        {event.patient_id && <Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Φάκελος</Link>}
                         <button onClick={() => setAppointmentEditor({ mode: "edit", event })} aria-label={"Άνοιγμα ραντεβού " + event.patient_name}>
                           <ChevronRight size={17} />
                         </button>
@@ -784,7 +784,7 @@ function AppointmentEditor({
         {mode === "create" && <label>Τύπος<select value={type} onChange={change => setType(change.target.value)}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
       </div>
 
-      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id}>Άνοιγμα φακέλου</Link></div>}
+      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}
       {error && <div className="calendar-move-error"><span>{error}</span></div>}
 
       <footer className="appointment-editor-footer">

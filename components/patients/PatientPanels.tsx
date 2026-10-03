@@ -68,8 +68,8 @@ export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onA
 
 export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;onClose:()=>void;onSaved:()=>Promise<unknown>}){
  const active=bundle.medications.filter(x=>x.status==='active');
- const selectable=bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
  const [mode,setMode]=useState<'start'|'change'|'stop'|'side_effect'>(active.length?'change':'start');
+ const selectable=mode==='side_effect'?bundle.medications:bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
  const [medId,setMedId]=useState(active[0]?.id||selectable[0]?.id||'');
  const selected=useMemo(()=>selectable.find(x=>x.id===medId),[selectable,medId]);
  const [name,setName]=useState('');
@@ -110,10 +110,10 @@ export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;o
    <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
    <button className={mode==='start'?'active':''} onClick={()=>setMode('start')}>Νέα αγωγή</button>
    <button className={mode==='stop'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('stop')}}>Διακοπή</button>
-   <button className={mode==='side_effect'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('side_effect')}}>Παρενέργεια</button>
+   <button className={mode==='side_effect'?'active':''} disabled={!bundle.medications.length} onClick={()=>{setMedId(active[0]?.id||bundle.medications[0]?.id||'');setMode('side_effect')}}>Παρενέργεια</button>
   </div>
 
-  {mode!=='start'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{selectable.map(m=><option key={m.id} value={m.id}>{m.medication_name}{m.status==='planned'?' · προγραμματισμένη':''}</option>)}</select></label>{selected&&<div className="current-dose">Τρέχουσα αγωγή <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
+  {mode!=='start'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{selectable.map(m=><option key={m.id} value={m.id}>{m.medication_name}{m.status==='planned'?' · προγραμματισμένη':m.status==='stopped'?' · διακοπείσα':''}</option>)}</select></label>{selected&&<div className="current-dose">{selected.status==='stopped'?'Τελευταία δόση πριν τη διακοπή':selected.status==='planned'?'Προγραμματισμένη αγωγή':'Τρέχουσα αγωγή'} <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
   {mode==='start'&&<label>Φάρμακο<input value={name} onChange={e=>setName(e.target.value)} placeholder="π.χ. Sertraline"/></label>}
 
   {(mode==='start'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>Συχνότητα<input value={frequency} onChange={e=>setFrequency(e.target.value)} placeholder="π.χ. 1× πρωί"/></label><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}

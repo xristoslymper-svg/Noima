@@ -9,20 +9,16 @@ import { documentedChanges } from "@/lib/clinical/summary";
 import {
   Activity,
   Bell,
-  Brain,
   Check,
   Clock,
   X,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
-  FileText,
   FolderOpen,
-  HeartPulse,
   Home,
   Mic2,
   Menu,
-  Pill,
   Search,
   Settings,
   ShieldCheck,
@@ -58,7 +54,6 @@ function buildBrief(bundle:PatientBundle|null,event?:OverviewEvent):Brief{
  return {kicker:event?"ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ":"ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ",changed:changes.slice(0,4).length?changes.slice(0,4):["Δεν υπάρχει ακόμη τεκμηριωμένη μεταβολή μεταξύ συνεδριών."],today:today.length?today.slice(0,3):["Δεν έχουν καταγραφεί ειδικά επόμενα βήματα."],risk:riskText};
 }
 
- = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));

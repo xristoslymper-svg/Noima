@@ -1,0 +1,10 @@
+import {patientBundle} from '@/lib/patients/demo-runtime';
+import {isClinicalId} from '@/lib/clinical/identity';
+import {patientRecordText} from '@/lib/clinical/record-export';
+export const dynamic='force-dynamic';
+export async function GET(request:Request){
+ const url=new URL(request.url),tester=url.searchParams.get('tester'),patient=url.searchParams.get('patient');
+ if(!isClinicalId(tester)||!isClinicalId(patient))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
+ if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Δεν έχει ενεργοποιηθεί πραγματική κλινική πρόσβαση.'},{status:403});
+ try{const bundle=await patientBundle(tester,patient);return new Response(patientRecordText(bundle),{headers:{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':`attachment; filename="noima-patient-${patient}.txt"`,'Cache-Control':'no-store'}})}catch{return Response.json({error:'Δεν έγινε εξαγωγή του φακέλου.'},{status:503});}
+}

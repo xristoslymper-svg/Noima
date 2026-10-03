@@ -1,0 +1,22 @@
+.fictional-pilot-notice{font-size:11px;text-align:center;color:#6b716a;background:#f6f7f4;padding:5px 12px;border-bottom:1px solid #e8ece7}
+.summary-category{padding:12px 0;border-bottom:1px solid #e7ece8}
+.summary-category h3{margin:0 0 3px;font-size:12px;font-weight:750;color:#34483f}
+.summary-category .summary-finding{grid-template-columns:8px minmax(0,1fr);padding:9px 0;border:0;gap:9px}
+.summary-category .summary-finding p{font-size:13px;line-height:1.65}
+.summary-evidence{margin-top:7px;font-size:11px;color:#617b6d}
+.summary-evidence summary{cursor:pointer;width:fit-content}
+.summary-evidence ul{list-style:none;padding:4px 0 0 12px;margin:0}
+.summary-evidence li{padding:3px 0}
+.summary-evidence button{border:0;background:none;border-radius:0;padding:2px 0;font-size:11px;text-align:left;white-space:normal;text-decoration:underline;text-underline-offset:3px}
+.summary-evidence-modal{max-width:720px;width:min(720px,94vw)}
+.summary-evidence-modal pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.7 inherit;max-height:55vh;overflow:auto;padding:14px;background:#f8faf7;border-radius:8px}
+.summary-next-compact{display:flex;flex-direction:column;gap:5px;font-size:12px;white-space:nowrap;color:#3e6151}
+.summary-next-compact span{font-size:11px;color:#7a887f}
+.psychometric-trajectories{padding:12px 0;border-bottom:1px solid #e7ece8}
+.psychometric-trajectories>div{display:flex;gap:16px;align-items:baseline;padding:5px 0}
+.psychometric-trajectories strong{font-size:12px;color:#3c5a4a;min-width:52px}
+.psychometric-trajectories p{margin:0;font-size:13px;line-height:1.7;color:#596b61}
+.runtime-session .clinical-section{box-shadow:none;border-radius:6px}
+.runtime-session .clinical-section-head span{font-size:11px}
+.runtime-session .dictation-guidance{font-size:12px;margin:7px 0 16px;color:#718076}
+@media(max-width:720px){.psychometric-trajectories>div{display:block}.summary-next-compact{white-space:normal}}

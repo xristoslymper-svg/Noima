@@ -37,4 +37,6 @@ Provider failures and invalid output return only deterministic facts and attribu
 
 ## Boundaries
 
-Not production-grade authentication. Real-patient readiness remains blocked. The `CLINICAL_DATA_MODE=real` switch fails closed on demo clinical endpoints; it does not secure direct public demo access or turn the demo into a real clinical tenancy. Only fictional data is permitted in this application surface.
+Not production-grade authentication. Real-patient readiness remains blocked. The `CLINICAL_DATA_MODE=real` switch fails closed on the patient runtime, Summary and export endpoints and hides the application UI; it does not secure direct public demo access or turn the demo into a real clinical tenancy. Only fictional data is permitted in this application surface. Full authentication would require connecting the actual data consumer and all lifecycle RPCs to trusted clinician/practice membership rather than repurposing the client UUID; this is deliberately not represented as complete.
+
+Selective carry-forward was inspected and deferred: the present section source contract records manual/approved AI input, but not a prior-section identity with explicit current-visit approval. Copying text through that contract would lose the requested provenance. No risk assessment or prior note is automatically copied. Existing progressive disclosure of optional sections and all five backend-required sections remain intact.

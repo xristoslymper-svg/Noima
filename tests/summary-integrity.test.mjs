@@ -40,3 +40,9 @@ test('one invalid narrative invalidates all; corrected parent and item-9 review 
 test('seeded and created UUIDs share one identity contract; SQL injection strings rejected',()=>{
  assert.ok(isClinicalId('61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1'));assert.ok(isClinicalId('f052ba1f-64b1-4fbd-a2a9-6323f896bbf0'));assert.ok(!isClinicalId("x' or true"));
 });
+test('wrong-section medication, adverse effect and trajectory remain documented, not silently promoted',()=>{
+ const b=fixture();visit(b,1,'Συνεχίζει Sertraline 100 mg. Αναφέρει ναυτία αλλά το άγχος είναι αισθητά καλύτερο.');const before=JSON.stringify(b);const c=buildSummaryContext(b);assert.equal(JSON.stringify(b),before);assert.equal(b.medications.length,0);assert.ok(c.findings.some(f=>f.key.startsWith('unstructured-med:')));assert.ok(c.findings.some(f=>f.key.startsWith('narrative-effect:')&&f.source_ids.includes('section:s1')));assert.ok(c.layers.trajectory.some(s=>String(s.content).includes('αισθητά καλύτερο')));
+});
+test('date rollover with an old medication snapshot withholds the old current-state claim',()=>{
+ const b=fixture();b.clinical_day='2026-10-03';b.medications.push({id:'m',status:'active',medication_name:'Sertraline',dose:50});const c=buildSummaryContext(b,'2026-10-04');assert.ok(c.findings.some(f=>f.key==='medication-refresh'&&f.attention));assert.ok(!c.findings.some(f=>f.key==='med:m'));
+});

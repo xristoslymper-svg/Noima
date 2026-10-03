@@ -4,6 +4,7 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {buildSummaryContext,summaryContextHash,summaryContextKey,clinicDay,type Finding,type Evidence,categories} from '@/lib/clinical/summary-context';
 import {formatClinicDateTime} from '@/lib/clinic-time';
+import {evidenceText} from '@/lib/clinical/evidence-text';
 type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;generated_at:string;mode:string};
 export default function ClinicalSummary({bundle,onSessions,onPsychometrics,onMedications,onHistory}:{bundle:PatientBundle;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void}){
  const [day,setDay]=useState(clinicDay());
@@ -13,7 +14,7 @@ export default function ClinicalSummary({bundle,onSessions,onPsychometrics,onMed
  const key=summaryContextKey(bundle,day);const context=buildSummaryContext(bundle,day);
  useEffect(()=>{const timer=setInterval(()=>setDay(clinicDay()),30000);return()=>clearInterval(timer)},[]);
  useEffect(()=>{
-  let active=true;const controller=new AbortController();setState('loading');
+  let active=true;const controller=new AbortController();setState('loading');setEvidence(null);
   void (async()=>{const hash=await summaryContextHash(bundle,day);const r=await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),patient_id:bundle.patient.id,context_hash:hash})});const data=await r.json();if(!r.ok||data.context_hash!==hash)throw new Error('stale_or_unavailable');if(active){setResult({key,data});setState('ready')}})().catch(()=>{if(active)setState('unavailable')});
   return()=>{active=false;controller.abort()};
  // key is the complete canonical record including date and policy version.
@@ -27,6 +28,6 @@ export default function ClinicalSummary({bundle,onSessions,onPsychometrics,onMed
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="kicker">ΠΡΙΝ ΤΗ ΣΥΝΕΔΡΙΑ</span><h2>Όσα χρειάζονται προσοχή</h2><p>{current?`Ενημέρωση ${formatClinicDateTime(current.generated_at)}`:state==='loading'?'Ενημέρωση σύνθεσης · εμφανίζονται οι τεκμηριωμένες καταγραφές':'Η κλινική σύνθεση δεν είναι προσωρινά διαθέσιμη'}{current?.mode==='canonical'?' · μόνο τεκμηριωμένες καταγραφές':''}</p></div>{next&&<div className="summary-next-compact"><strong>{formatClinicDateTime(next.scheduled_start)}</strong><span>{next.session_id?'Συνδεδεμένη συνεδρία':'Επόμενο ραντεβού'}</span></div>}</header>
   <div className="summary-findings">{order.map(category=>{const group=findings.filter(f=>f.label===category);if(!group.length)return null;return <section className="summary-category" key={category}><h3>{category}</h3>{group.map(f=><article key={f.key} className={f.attention?'summary-finding attention':'summary-finding'}><span className="summary-finding-dot" aria-hidden="true"/><div><p>{f.text}</p>{f.source_ids.length>0&&<details className="summary-evidence"><summary>{f.source_ids.length} {f.source_ids.length===1?'πηγή':'πηγές'}</summary><ul>{f.source_ids.map(id=>{const source=sources.find(s=>s.id===id);return source?<li key={id}><button onClick={()=>setEvidence(source)}>{source.label}</button></li>:null})}</ul></details>}</div></article>)}</section>})}</div>
-  {evidence&&<div className="entry-modal-backdrop" onClick={()=>setEvidence(null)}><section className="entry-modal summary-evidence-modal" role="dialog" aria-modal="true" aria-label="Κλινική πηγή" onClick={e=>e.stopPropagation()}><button className="entry-close" onClick={()=>setEvidence(null)} aria-label="Κλείσιμο">×</button><h2>{evidence.label}</h2>{evidence.date&&<p>{formatClinicDateTime(evidence.date)}</p>}<pre>{typeof evidence.content==='string'?evidence.content:JSON.stringify(evidence.content,null,2)}</pre><footer><button onClick={()=>navigate(evidence)}>Άνοιγμα καταγραφής</button></footer></section></div>}
+  {evidence&&<div className="entry-modal-backdrop" onClick={()=>setEvidence(null)}><section className="entry-modal summary-evidence-modal" role="dialog" aria-modal="true" aria-label="Κλινική πηγή" onClick={e=>e.stopPropagation()}><button className="entry-close" onClick={()=>setEvidence(null)} aria-label="Κλείσιμο">×</button><h2>{evidence.label}</h2>{evidence.date&&<p>{formatClinicDateTime(evidence.date)}</p>}<pre>{evidenceText(evidence)}</pre><footer><button onClick={()=>navigate(evidence)}>Άνοιγμα καταγραφής</button></footer></section></div>}
  </section>;
 }

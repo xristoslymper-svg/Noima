@@ -18,4 +18,3 @@ export function documentedChanges(bundle:PatientBundle){
  }
  return changes;
 }
-

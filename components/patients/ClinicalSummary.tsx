@@ -2,61 +2,31 @@
 import {useEffect,useState} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
-import {clinicalSummaryFindings,type SummaryFinding} from '@/lib/clinical/summary';
-import {formatClinicDate,formatClinicDateTime} from '@/lib/clinic-time';
-
-type AiFinding={label:string;text:string;source_ids:string[];attention:boolean};
-
+import {buildSummaryContext,summaryContextHash,summaryContextKey,clinicDay,type Finding,type Evidence,categories} from '@/lib/clinical/summary-context';
+import {formatClinicDateTime} from '@/lib/clinic-time';
+type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;generated_at:string;mode:string};
 export default function ClinicalSummary({bundle,onSessions,onPsychometrics,onMedications,onHistory}:{bundle:PatientBundle;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void}){
- const completed=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.completed_at!)-Date.parse(a.completed_at!));
- const latest=completed[0];
- const fallbackFindings=clinicalSummaryFindings(bundle);
- const [aiFindings,setAiFindings]=useState<AiFinding[]|null>(null);
- const [aiState,setAiState]=useState<'loading'|'ready'|'fallback'>('loading');
- useEffect(()=>{let active=true;setAiState('loading');setAiFindings(null);fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),patient_id:bundle.patient.id})}).then(async r=>{const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'summary_failed');if(active){setAiFindings(data.findings);setAiState('ready')}}).catch(()=>{if(active)setAiState('fallback')});return()=>{active=false}},[bundle.patient.id,bundle.sessions.map(s=>s.updated_at).join('|'),bundle.medications.map(m=>m.updated_at).join('|'),bundle.assessments.map(a=>a.completed_at||a.created_at).join('|'),bundle.addenda.map(a=>a.created_at).join('|')]);
- const findings=aiFindings||fallbackFindings;
- const next=[...bundle.appointments].filter(a=>a.status==='scheduled'&&new Date(a.scheduled_start)>new Date()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0];
- const h=bundle.history;
- const historyItems=h?[['Αλλεργίες',h.allergies],['Ψυχιατρικό ιστορικό',h.psychiatric_history],['Ιατρικό ιστορικό',h.medical_history],['Νοσηλείες',h.hospitalizations],['Προηγούμενες θεραπείες',h.previous_treatments],['Ουσίες',h.substance_history]].filter((item):item is [string,string]=>Boolean(item[1]?.trim())):[];
- const additions=bundle.addenda.filter(a=>completed.some(s=>s.id===a.session_id)).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
- const aiSourceAction=(finding:AiFinding)=>{
-  const ids=finding.source_ids;
-  const sectionId=ids.find(id=>id.startsWith('section:'));if(sectionId){const section=bundle.sections.find(x=>x.id===sectionId.slice(8));if(section)return()=>onSessions(section.session_id)}
-  const riskId=ids.find(id=>id.startsWith('risk:'));if(riskId){const risk=bundle.risks.find(x=>x.session_id===riskId.slice(5));if(risk)return()=>onSessions(risk.session_id)}
-  if(ids.some(id=>id.startsWith('medication:')||id.startsWith('side_effect:')))return onMedications;
-  if(ids.some(id=>id.startsWith('assessment:')))return onPsychometrics;
-  if(ids.some(id=>id.startsWith('history:')))return onHistory;
-  const addendumId=ids.find(id=>id.startsWith('addendum:'));if(addendumId){const addendum=bundle.addenda.find(x=>x.id===addendumId.slice(9));if(addendum)return()=>onSessions(addendum.session_id)}
-  return onHistory;
- };
- const aiSourceLabel=(finding:AiFinding)=>{const ids=finding.source_ids;if(ids.some(id=>id.startsWith('medication:')||id.startsWith('side_effect:')))return 'Αγωγή';if(ids.some(id=>id.startsWith('assessment:')))return 'Ψυχομετρικά';if(ids.some(id=>id.startsWith('history:')))return 'Ιστορικό';return 'Πηγή'};
- const sourceAction=(finding:SummaryFinding)=>{
-  if(finding.source==='session')return ()=>onSessions(finding.sessionId);
-  if(finding.source==='medications')return onMedications;
-  if(finding.source==='psychometrics')return onPsychometrics;
-  return onHistory;
- };
- const sourceLabel=(finding:SummaryFinding)=>finding.source==='session'?'Συνεδρία':finding.source==='medications'?'Αγωγή':finding.source==='psychometrics'?'Ψυχομετρικά':'Ιστορικό';
-
+ const [day,setDay]=useState(clinicDay());
+ const [result,setResult]=useState<{key:string;data:ResponseData}|null>(null);
+ const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
+ const [evidence,setEvidence]=useState<Evidence|null>(null);
+ const key=summaryContextKey(bundle,day);const context=buildSummaryContext(bundle,day);
+ useEffect(()=>{const timer=setInterval(()=>setDay(clinicDay()),30000);return()=>clearInterval(timer)},[]);
+ useEffect(()=>{
+  let active=true;const controller=new AbortController();setState('loading');
+  void (async()=>{const hash=await summaryContextHash(bundle,day);const r=await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),patient_id:bundle.patient.id,context_hash:hash})});const data=await r.json();if(!r.ok||data.context_hash!==hash)throw new Error('stale_or_unavailable');if(active){setResult({key,data});setState('ready')}})().catch(()=>{if(active)setState('unavailable')});
+  return()=>{active=false;controller.abort()};
+ // key is the complete canonical record including date and policy version.
+ },[key]);
+ const current=result?.key===key?result.data:null;
+ const findings=current?.findings||context.findings;
+ const sources=current?.sources||context.sources;
+ const next=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>Date.now()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0];
+ function navigate(source:Evidence){setEvidence(null);if(source.target==='sessions')onSessions(source.session_id);else if(source.target==='medications')onMedications();else if(source.target==='psychometrics')onPsychometrics();else if(source.target==='history')onHistory();else window.location.href='/calendar';}
+ const order=[...categories].sort((a,b)=>{const priority:Record<string,number>={'Χρειάζεται επιβεβαίωση':0,'Κίνδυνος':1,'Παρενέργειες':2,'Τρέχουσα εικόνα':3,'Πορεία':4,'Αγωγή':5,'Ψυχομετρικά':6,'Πλάνο':7,'Σημαντικό ιστορικό':8};return priority[a]-priority[b]});
  return <section className="clinical-summary">
-  <header className="clinical-summary-head">
-   <div><span className="kicker">ΚΛΙΝΙΚΗ ΣΥΝΟΨΗ</span><h2>Κεντρικά ευρήματα</h2><p>{latest?<>Με βάση τον κλινικό φάκελο έως {formatClinicDate(latest.completed_at!)}{aiState==='ready'?' · AI σύνθεση με πηγές':aiState==='loading'?' · σύνθεση…':' · ασφαλής βασική προβολή'}</>:'Δεν υπάρχει ακόμη ολοκληρωμένη συνεδρία.'}</p></div>
-   {latest&&<button className="summary-latest-source" onClick={()=>onSessions(latest.id)}>Τελευταία συνεδρία</button>}
-  </header>
-
-  <div className="summary-findings">
-   {findings.length?findings.map((finding,index)=>{const ai='source_ids' in finding;return <article key={ai?'ai-'+index:finding.key} className={finding.attention?'summary-finding attention':'summary-finding'}>
-    <span className="summary-finding-dot" aria-hidden="true"/>
-    <div><strong>{finding.label}</strong><p>{finding.text}</p></div>
-    <button onClick={ai?aiSourceAction(finding):sourceAction(finding)} aria-label={'Άνοιγμα πηγής: '+finding.label}>{ai?aiSourceLabel(finding):sourceLabel(finding)}</button>
-   </article>}):<div className="summary-empty"><strong>Δεν υπάρχουν ακόμη κεντρικά κλινικά ευρήματα.</strong><p>Η σύνοψη θα ενημερωθεί από ολοκληρωμένες συνεδρίες, αγωγή και ψυχομετρικά.</p></div>}
-  </div>
-
-  {additions.length>0&&<aside className="summary-addenda"><strong>Μεταγενέστερες προσθήκες</strong><p>Υπάρχουν {additions.length} προσθήκες ή διορθώσεις σε ολοκληρωμένες συνεδρίες.</p><button onClick={()=>onSessions(additions[0].session_id)}>Έλεγχος προσθηκών</button></aside>}
-
-  <div className="summary-context">
-   <section><div className="summary-context-title"><h3>Σημαντικό ιστορικό</h3><button onClick={onHistory}>Πλήρες ιστορικό</button></div>{historyItems.length?<ul>{historyItems.slice(0,4).map(([label,value])=><li key={label}><strong>{label}</strong><span>{value}</span></li>)}</ul>:<p>Δεν υπάρχει συμπληρωμένο σχετικό ιστορικό.</p>}</section>
-   <section><div className="summary-context-title"><h3>Επόμενο ραντεβού</h3></div>{next?<><strong className="summary-next-date">{formatClinicDateTime(next.scheduled_start)}</strong><span>{next.appointment_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</span></>:<p>Δεν έχει προγραμματιστεί.</p>}</section>
-  </div>
+  <header className="clinical-summary-head"><div><span className="kicker">ΠΡΙΝ ΤΗ ΣΥΝΕΔΡΙΑ</span><h2>Όσα χρειάζονται προσοχή</h2><p>{current?`Ενημέρωση ${formatClinicDateTime(current.generated_at)}`:state==='loading'?'Ενημέρωση σύνθεσης · εμφανίζονται οι τεκμηριωμένες καταγραφές':'Η κλινική σύνθεση δεν είναι προσωρινά διαθέσιμη'}{current?.mode==='canonical'?' · μόνο τεκμηριωμένες καταγραφές':''}</p></div>{next&&<div className="summary-next-compact"><strong>{formatClinicDateTime(next.scheduled_start)}</strong><span>{next.session_id?'Συνδεδεμένη συνεδρία':'Επόμενο ραντεβού'}</span></div>}</header>
+  <div className="summary-findings">{order.map(category=>{const group=findings.filter(f=>f.label===category);if(!group.length)return null;return <section className="summary-category" key={category}><h3>{category}</h3>{group.map(f=><article key={f.key} className={f.attention?'summary-finding attention':'summary-finding'}><span className="summary-finding-dot" aria-hidden="true"/><div><p>{f.text}</p>{f.source_ids.length>0&&<details className="summary-evidence"><summary>{f.source_ids.length} {f.source_ids.length===1?'πηγή':'πηγές'}</summary><ul>{f.source_ids.map(id=>{const source=sources.find(s=>s.id===id);return source?<li key={id}><button onClick={()=>setEvidence(source)}>{source.label}</button></li>:null})}</ul></details>}</div></article>)}</section>})}</div>
+  {evidence&&<div className="entry-modal-backdrop" onClick={()=>setEvidence(null)}><section className="entry-modal summary-evidence-modal" role="dialog" aria-modal="true" aria-label="Κλινική πηγή" onClick={e=>e.stopPropagation()}><button className="entry-close" onClick={()=>setEvidence(null)} aria-label="Κλείσιμο">×</button><h2>{evidence.label}</h2>{evidence.date&&<p>{formatClinicDateTime(evidence.date)}</p>}<pre>{typeof evidence.content==='string'?evidence.content:JSON.stringify(evidence.content,null,2)}</pre><footer><button onClick={()=>navigate(evidence)}>Άνοιγμα καταγραφής</button></footer></section></div>}
  </section>;
 }

@@ -1,7 +1,7 @@
 import { bootstrap, createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
+import {isClinicalId} from '@/lib/clinical/identity';
 export const dynamic='force-dynamic';
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const testerOf=(value:unknown)=>typeof value==='string'&&uuid.test(value)?value:'';
+const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
@@ -15,10 +15,12 @@ function failure(error:unknown){
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
 export async function GET(request:Request){
+ if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Αυτός ο χώρος δέχεται μόνο φανταστικά δεδομένα. Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const url=new URL(request.url); const tester=testerOf(url.searchParams.get('tester')); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
  try{const patient=url.searchParams.get('patient');return Response.json(patient?{bundle:await patientBundle(tester,patient)}:{patients:await listPatientRows(tester)})}catch(error){return failure(error)}
 }
 export async function POST(request:Request){
+ if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const body=await request.json().catch(()=>({})); const tester=testerOf(body.tester); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
  try{
   await bootstrap(tester);

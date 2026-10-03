@@ -1,2 +1,2 @@
-import PatientWorkspace from '@/components/patients/PatientWorkspace';
-export default function KostasPage(){return <PatientWorkspace patientRef="Κώστας"/>}
+import { redirect } from 'next/navigation';
+export default function KostasPage(){redirect('/patients')}

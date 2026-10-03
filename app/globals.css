@@ -482,3 +482,18 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .folder-icon-button{width:44px;height:44px;border:1px solid #dbe5e1;border-radius:13px;background:#fbfdfc;color:#2f6f63;display:inline-flex;align-items:center;justify-content:center;justify-self:end;transition:background .15s ease,border-color .15s ease,transform .15s ease}
 .folder-icon-button:hover{background:#f1f7f4;border-color:#bfd3cc;transform:translateY(-1px)}
 .folder-icon-button:focus-visible{outline:2px solid #8eb8ad;outline-offset:3px}
+
+/* Dashboard schedule alignment after collapsing actions to one folder icon.
+   Keep status content fluid, but reserve one fixed action rail for every row. */
+@media(min-width:1101px){
+  .sessions .session-row{grid-template-columns:105px 52px minmax(0,1fr) minmax(0,auto) 64px;column-gap:12px}
+  .sessions .session-row>.folder-icon-button{grid-column:5;justify-self:center;align-self:center}
+}
+@media(min-width:761px) and (max-width:1100px){
+  .sessions .session-row{grid-template-columns:88px 44px minmax(0,1fr) 64px}
+  .sessions .session-row>.folder-icon-button{grid-column:4;justify-self:center;align-self:center}
+}
+@media(max-width:760px){
+  .sessions .session-row{grid-template-columns:58px 36px minmax(0,1fr) 48px}
+  .sessions .session-row>.folder-icon-button{grid-column:4;justify-self:center;align-self:center;width:40px;height:40px}
+}

@@ -22,7 +22,7 @@ export default function ClinicalSummary({bundle,onSessions,onPsychometrics,onMed
  const aiSourceAction=(finding:AiFinding)=>{
   const ids=finding.source_ids;
   const sectionId=ids.find(id=>id.startsWith('section:'));if(sectionId){const section=bundle.sections.find(x=>x.id===sectionId.slice(8));if(section)return()=>onSessions(section.session_id)}
-  const riskId=ids.find(id=>id.startsWith('risk:'));if(riskId){const risk=bundle.risks.find(x=>x.id===riskId.slice(5));if(risk)return()=>onSessions(risk.session_id)}
+  const riskId=ids.find(id=>id.startsWith('risk:'));if(riskId){const risk=bundle.risks.find(x=>x.session_id===riskId.slice(5));if(risk)return()=>onSessions(risk.session_id)}
   if(ids.some(id=>id.startsWith('medication:')||id.startsWith('side_effect:')))return onMedications;
   if(ids.some(id=>id.startsWith('assessment:')))return onPsychometrics;
   if(ids.some(id=>id.startsWith('history:')))return onHistory;

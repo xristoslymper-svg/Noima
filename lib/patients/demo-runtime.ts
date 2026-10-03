@@ -41,7 +41,7 @@ export async function listPatientRows(tester:string){
   ...patient,
   draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,
   last_session:sessions.find(s=>s.patient_id===patient.id&&s.status==='completed')||null,
-  next_appointment:appointments.find(a=>a.patient_id===patient.id&&new Date(a.scheduled_end).getTime()>=now)||null,
+  next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,
  }));
 }
 export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;email:string;chief_complaint:string}){

@@ -467,3 +467,13 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .session-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.session-row-actions .small-button{white-space:nowrap}
 
 .voice-new-patient-note{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid rgba(120,104,78,.18);border-radius:14px;background:rgba(248,244,234,.72);margin:10px 0}.voice-new-patient-note strong{font-size:13px}.voice-new-patient-note span{font-size:13px;line-height:1.45;opacity:.8}
+
+/* Pilot friction/readiness */
+.patient-details-card{border:1px solid rgba(80,72,58,.12);border-radius:16px;padding:16px;background:rgba(255,255,255,.42);display:flex;flex-direction:column;gap:12px}
+.patient-details-card.incomplete{border-color:rgba(170,117,48,.28);background:rgba(252,247,235,.65)}
+.patient-details-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.patient-details-head>div{display:flex;flex-direction:column;gap:3px}.patient-details-head span{font-size:13px;opacity:.72}
+.patient-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.patient-details-grid label{display:flex;flex-direction:column;gap:6px;font-size:13px}.patient-details-grid .span-two{grid-column:1/-1}.patient-details-grid input,.patient-details-grid textarea{width:100%}
+.appointment-choice-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}.appointment-choice-list button{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:12px}.appointment-choice-list span{font-size:12px;opacity:.7}
+.optional-clinical-sections{border:1px dashed rgba(80,72,58,.18);border-radius:16px;padding:0 14px;margin-top:8px}.optional-clinical-sections>summary{cursor:pointer;padding:14px 0;font-weight:650;display:flex;justify-content:space-between;gap:12px}.optional-clinical-sections>summary span{font-weight:400;font-size:12px;opacity:.65}.optional-clinical-sections>div{display:flex;flex-direction:column;gap:12px;padding-bottom:14px}
+@media(max-width:720px){.patient-details-grid{grid-template-columns:1fr}.patient-details-grid .span-two{grid-column:auto}.patient-details-head{align-items:flex-start;flex-direction:column}.optional-clinical-sections>summary{flex-direction:column}}

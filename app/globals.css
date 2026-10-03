@@ -537,3 +537,11 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 
 @media(max-width:950px){.generic-patient-page{padding:24px 20px 56px}.patient-workspace-shell{gap:22px}.new-patient-steps{grid-template-columns:1fr}}
 @media(max-width:650px){.generic-patient-page .patient-hero{align-items:flex-start;flex-direction:column}.generic-patient-page .patient-hero h1{font-size:30px}.new-patient-home>header h2{font-size:34px}.new-patient-step{grid-template-columns:34px 1fr 18px}}
+
+/* Lean folder-start lockup */
+.new-patient-home>header{display:flex;align-items:flex-start;gap:15px;max-width:790px}
+.folder-start-mark{width:42px;height:42px;flex:0 0 42px;border:1px solid #dbe7e1;border-radius:13px;background:#f1f6f3;color:#3f7865;display:grid;place-items:center;margin-top:2px}
+.new-patient-home>header>div:last-child{min-width:0}
+.new-patient-home>header h2{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:720;font-size:clamp(30px,3vw,42px);letter-spacing:-.045em;color:#243a32;margin:5px 0 8px}
+.new-patient-home>header p{max-width:690px;font-size:13px;line-height:1.6}
+@media(max-width:650px){.new-patient-home>header{gap:12px}.folder-start-mark{width:38px;height:38px;flex-basis:38px;border-radius:11px}.new-patient-home>header h2{font-size:30px}}

@@ -456,7 +456,7 @@ export default function CalendarVoiceCommand({
                       <button onClick={() => selectSlot(slot)}>Κλείσιμο εδώ</button>
                     )}
                   </div>
-                )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ωράριο 09:00–18:00.</span>}
+                )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ζητούμενο διάστημα.</span>}
               </div>
             )}
 

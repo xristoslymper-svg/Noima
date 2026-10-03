@@ -411,7 +411,7 @@ export async function POST(request: Request) {
     const selected = command.event_id ? events.find(event => event.id === command.event_id) : undefined;
     const selectedPatientId = explicitPatientId(followUps);
     const confirmedNewPatient = explicitCreateNewPatient(followUps);
-    const explicitNewPatient = /\b(νεο|νεος|νεα|καινουργιο|καινουριος|καινουρια)\s+ασθεν/.test(normalized(transcript));
+    const explicitNewPatient = /\b(νεο|νεος|νεα|καινουργιο|καινουριος|καινουρια)\s+ασθεν/.test(normalized([transcript, ...followUps].join(" ")));
     const naturalPatientResolution = resolvePatient(command.patient_name, patients, followUps);
     const patientResolution = selectedPatientId
       ? naturalPatientResolution

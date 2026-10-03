@@ -4,7 +4,7 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhi
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
 const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json' });
 
-export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
+export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; landline:string; contact_phone:string; amka:string; address:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
 export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
 export type DemoSection = { document?:VisitDocument|null; id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
 export type DemoRisk = { harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
@@ -45,8 +45,8 @@ export async function listPatientRows(tester:string){
   next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,
  }));
 }
-export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;email:string;chief_complaint:string}){
-  await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v2',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_email:input.email,p_complaint:input.chief_complaint}));
+export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;landline:string;contact_phone:string;amka:string;address:string;email:string;chief_complaint:string}){
+  await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v3',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_landline:input.landline,p_contact_phone:input.contact_phone,p_amka:input.amka,p_address:input.address,p_email:input.email,p_complaint:input.chief_complaint}));
 }
 export async function patientBundle(tester:string,patientRef:string):Promise<PatientBundle>{
   const patients=await listPatients(tester); const normalized=patientRef.toLocaleLowerCase('el');

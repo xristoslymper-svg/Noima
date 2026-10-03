@@ -12,6 +12,7 @@ export async function POST(request:Request){
    if(!uuid.test(b.id||'')||!uuid.test(b.patient_id||'')||!/^[a-f0-9]{64}$/.test(b.token||''))return Response.json({error:'Μη έγκυρη ανάθεση.'},{status:400});
    return Response.json(await rpc('demo_assessment_assign',{p_tester:b.tester,p_patient:b.patient_id,p_appointment:b.appointment_id||null,p_id:b.id,p_instrument:b.instrument,p_token:b.token}));
   }
+  if(b.action==='review_item9'){await rpc('demo_assessment_item9_review',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
   if(b.action==='revoke'){await rpc('demo_assessment_revoke',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
   return Response.json({error:'Μη έγκυρη ενέργεια.'},{status:400});
  }catch(e){const message=e instanceof Error?e.message:'';const expired=message.includes('link_expired'),done=message.includes('already_completed');return Response.json({error:expired?'Ο σύνδεσμος έχει λήξει. Ζητήστε νέο από τον γιατρό σας.':done?'Το ερωτηματολόγιο έχει ήδη υποβληθεί.':message.includes('invalid_answers')?'Απαντήστε σε όλες τις ερωτήσεις.':'Η ενέργεια δεν ολοκληρώθηκε. Ο σύνδεσμος μπορεί να έχει ανακληθεί. Οι απαντήσεις παραμένουν διαθέσιμες για επανάληψη.'},{status:expired?410:done?409:400})}

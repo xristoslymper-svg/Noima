@@ -82,8 +82,8 @@ export default function Page() {
   const brief=buildBrief(selectedBundle,selectedEvent);
   const loadedBundles=Object.values(bundles);
   const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
-  const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>a.status==="assigned"||a.status==="opened").length,0);
-  const item9Reviews=loadedBundles.filter(b=>b.assessments.some(a=>a.status==="completed"&&a.item9_review)).length;
+  const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>(a.status==="assigned"||a.status==="opened")&&new Date(a.expires_at)>new Date()).length,0);
+  const item9Reviews=loadedBundles.filter(b=>b.assessments.some(a=>a.status==="completed"&&a.item9_review&&!a.item9_reviewed_at)).length;
   return (
     <main className="app-shell">
       <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>

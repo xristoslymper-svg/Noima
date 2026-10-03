@@ -32,7 +32,7 @@ export async function listPatientRows(tester:string){
  const tid=encodeURIComponent(tester);
  const [sessionData,appointmentData]=await Promise.all([
   request(`demo_sessions?select=*&tester_id=eq.${tid}&order=started_at.desc`),
-  request(`demo_calendar_events?select=id,patient_id,session_id,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&status=eq.scheduled&order=scheduled_start.asc`),
+  request(`demo_calendar_events?select=id,patient_id,session_id,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&order=scheduled_start.asc`),
  ]);
  const sessions=rows<DemoSession>(sessionData);
  const appointments=rows<{id:string;patient_id:string|null;session_id:string|null;scheduled_start:string;scheduled_end:string;status:string}>(appointmentData);

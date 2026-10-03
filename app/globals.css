@@ -558,3 +558,10 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .clinical-start-scope{margin-top:19px;color:#8a9891;font-size:11px;line-height:1.7;display:flex;gap:8px;flex-wrap:wrap}.clinical-start-scope i{font-style:normal;color:#c0c8c4}
 .patient-details-link{margin-top:54px;border:0;background:transparent;padding:0;color:#70847a;font-size:11px;font-weight:700;display:flex;gap:8px;align-items:center;cursor:pointer}.patient-details-link:hover{color:#376f5d}
 @media(max-width:650px){.clinical-start{min-height:360px;padding:18px 0 40px}.clinical-start h2{font-size:38px}.clinical-start-copy>p{font-size:15px}.clinical-start-cta{width:100%}}
+
+/* Minimal new-patient state: the action is the interface */
+.minimal-start{min-height:330px;padding-top:18px}
+.minimal-start .clinical-start-copy{width:min(100%,620px)}
+.minimal-start .clinical-start-cta{width:min(100%,430px);margin:0}
+.minimal-start .clinical-start-scope{margin-top:16px;max-width:600px}
+.minimal-start .patient-details-link{margin-top:44px}

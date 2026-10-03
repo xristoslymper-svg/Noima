@@ -482,3 +482,19 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .folder-icon-button{width:44px;height:44px;border:1px solid #dbe5e1;border-radius:13px;background:#fbfdfc;color:#2f6f63;display:inline-flex;align-items:center;justify-content:center;justify-self:end;transition:background .15s ease,border-color .15s ease,transform .15s ease}
 .folder-icon-button:hover{background:#f1f7f4;border-color:#bfd3cc;transform:translateY(-1px)}
 .folder-icon-button:focus-visible{outline:2px solid #8eb8ad;outline-offset:3px}
+
+/* Clinical summary — one compact, provenance-preserving reading surface. */
+.clinical-summary{max-width:980px;display:flex;flex-direction:column;gap:18px}
+.clinical-summary-head{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;padding:2px 2px 16px;border-bottom:1px solid #e5eae6}
+.clinical-summary-head h2{font-family:Georgia,serif;font-size:30px;letter-spacing:-.02em;color:#263c33;margin:5px 0 5px}.clinical-summary-head p{margin:0;color:#84908a;font-size:11px}
+.summary-latest-source,.summary-finding button,.summary-context-title button,.summary-addenda button{border:0;background:transparent;color:#477663;font-size:10px;font-weight:800;cursor:pointer;padding:5px 0}
+.summary-findings{display:flex;flex-direction:column}
+.summary-finding{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:11px;align-items:start;padding:14px 4px;border-bottom:1px solid #edf0ed}
+.summary-finding-dot{width:6px;height:6px;border-radius:50%;background:#739a89;margin-top:6px}.summary-finding.attention .summary-finding-dot{background:#b17c37}
+.summary-finding>div{min-width:0}.summary-finding strong{display:block;color:#34483f;font-size:11px;margin-bottom:4px}.summary-finding p{margin:0;color:#56675f;font-size:12.5px;line-height:1.58;white-space:pre-wrap;overflow-wrap:anywhere}
+.summary-finding button{border:1px solid #e0e8e3;border-radius:999px;padding:5px 9px;background:#fbfdfc;white-space:nowrap}
+.summary-empty{padding:22px 4px;color:#75827c}.summary-empty strong{font-size:13px}.summary-empty p{font-size:11px;margin:5px 0 0}
+.summary-addenda{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;align-items:center;padding:12px 14px;background:#fff8eb;border-left:3px solid #b88a45;border-radius:8px}.summary-addenda strong{font-size:11px;color:#6f5937}.summary-addenda p{grid-column:1;margin:0;color:#8a7759;font-size:10.5px}.summary-addenda button{grid-column:2;grid-row:1/3}
+.summary-context{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(220px,.5fr);gap:16px;padding-top:4px}
+.summary-context>section{border-top:1px solid #dfe6e1;padding:14px 2px 2px;min-width:0}.summary-context-title{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:9px}.summary-context h3{font-size:11px;letter-spacing:.03em;color:#53675e;margin:0}.summary-context ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}.summary-context li{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-size:10.5px;line-height:1.45}.summary-context li strong{color:#64766d}.summary-context li span,.summary-context>section>span{color:#7b8781}.summary-context p{font-size:10.5px;color:#87928c;margin:0}.summary-next-date{display:block;color:#34483f;font-size:13px;margin:2px 0 4px}
+@media(max-width:720px){.clinical-summary-head{align-items:flex-start;flex-direction:column}.summary-finding{grid-template-columns:9px minmax(0,1fr)}.summary-finding button{grid-column:2;justify-self:start}.summary-context{grid-template-columns:1fr}.summary-context li{grid-template-columns:1fr;gap:2px}.summary-addenda{grid-template-columns:1fr}.summary-addenda p,.summary-addenda button{grid-column:1;grid-row:auto}.summary-addenda button{justify-self:start}}

@@ -140,6 +140,10 @@ function explicitPatientId(followUps: string[]) {
   return null;
 }
 
+function explicitCreateNewPatient(followUps: string[]) {
+  return followUps.some(answer => /\[create_new_patient:true\]/i.test(answer));
+}
+
 function resolvePatient(name: string | null, patients: DemoPatient[], followUps: string[]) {
   const selectedId = explicitPatientId(followUps);
   if (selectedId) {
@@ -205,7 +209,10 @@ function specificClarification(command: ParsedCommand) {
   if (missing.has("patient") && missing.has("date") && missing.has("time")) {
     return "Για ποιον ασθενή και ποια ημέρα και ώρα να κλείσω το ραντεβού;";
   }
-  if (missing.has("patient")) return "Για ποιον ασθενή να κλείσω το ραντεβού;";
+  if (missing.has("patient")) {
+    if (command.new_patient && command.patient_name) return `Υπάρχει ήδη φάκελος για ${command.patient_name}. Θέλετε τον υπάρχοντα φάκελο ή να δημιουργηθεί νέος;`;
+    return "Για ποιον ασθενή να κλείσω το ραντεβού;";
+  }
   if (missing.has("date") && missing.has("time")) return newPatientPrefix + "ποια ημέρα και ώρα θέλετε;";
   if (missing.has("date")) return newPatientPrefix + "ποια ημέρα θέλετε;";
   if (missing.has("time")) return intent === "move" ? "Σε τι ώρα θέλετε να μεταφερθεί;" : newPatientPrefix + "τι ώρα θέλετε;";
@@ -229,10 +236,23 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
       const full = normalized(patientName(patient));
       return full.includes(target) || target.includes(normalized(patient.first_name)) || target.includes(normalized(patient.last_name));
     }) : patients;
-    return candidates.slice(0, 6).map(patient => ({
-      label: patientName(patient) + (patient.reported_age ? ` · ${patient.reported_age} ετών` : ""),
-      value: `Επίλεξα ${patientName(patient)} [patient_id:${patient.id}]`,
-    }));
+    const options = candidates.slice(0, 5).map(patient => {
+      const details = [
+        patient.reported_age ? `${patient.reported_age} ετών` : "",
+        patient.phone ? `τηλ. …${patient.phone.replace(/\D/g,"").slice(-4)}` : "",
+      ].filter(Boolean).join(" · ");
+      return {
+        label: patientName(patient) + (details ? ` · ${details}` : ""),
+        value: `Επίλεξα ${patientName(patient)} [patient_id:${patient.id}]`,
+      };
+    });
+    if (command.new_patient && command.patient_name) {
+      options.push({
+        label: `Νέος φάκελος · ${command.patient_name}`,
+        value: `Δημιούργησε νέο φάκελο για ${command.patient_name} [create_new_patient:true]`,
+      });
+    }
+    return options;
   }
   if (missing.has("recurrence")) {
     return [
@@ -389,15 +409,24 @@ export async function POST(request: Request) {
     }
 
     const selected = command.event_id ? events.find(event => event.id === command.event_id) : undefined;
+    const selectedPatientId = explicitPatientId(followUps);
+    const confirmedNewPatient = explicitCreateNewPatient(followUps);
     const explicitNewPatient = /\b(νεο|νεος|νεα|καινουργιο|καινουριος|καινουρια)\s+ασθεν/.test(normalized(transcript));
-    const patientResolution = explicitNewPatient
-      ? { patient: null, candidates: [] as DemoPatient[], isNew: true }
-      : resolvePatient(command.patient_name, patients, followUps);
+    const naturalPatientResolution = resolvePatient(command.patient_name, patients, followUps);
+    const patientResolution = selectedPatientId
+      ? naturalPatientResolution
+      : confirmedNewPatient
+        ? { patient: null, candidates: [] as DemoPatient[], isNew: true }
+        : explicitNewPatient && (naturalPatientResolution.patient || naturalPatientResolution.candidates.length)
+          ? { patient: null, candidates: naturalPatientResolution.patient ? [naturalPatientResolution.patient] : naturalPatientResolution.candidates, isNew: true }
+          : explicitNewPatient
+            ? { patient: null, candidates: [] as DemoPatient[], isNew: true }
+            : naturalPatientResolution;
     if (!userCancelled && command.patient_name && (intended === "create" || intended === "schedule_follow_up" || intended === "find_availability")) {
       if (patientResolution.patient) {
         command = { ...command, patient_id: patientResolution.patient.id, patient_name: patientName(patientResolution.patient), new_patient: false };
-      } else if (patientResolution.candidates.length > 1) {
-        command = { ...command, action: "clarify", patient_id: null, new_patient: false, missing_fields: [...new Set([...command.missing_fields, "patient" as MissingField])], clarification: null };
+      } else if (patientResolution.candidates.length > 1 || (patientResolution.isNew && patientResolution.candidates.length > 0 && !confirmedNewPatient)) {
+        command = { ...command, action: "clarify", patient_id: null, new_patient: patientResolution.isNew, missing_fields: [...new Set([...command.missing_fields, "patient" as MissingField])], clarification: null };
       } else if (patientResolution.isNew) {
         command = { ...command, patient_id: null, new_patient: true, appointment_type: command.appointment_type === "other" ? "other" : "initial_assessment" };
       }

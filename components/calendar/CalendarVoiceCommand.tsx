@@ -132,7 +132,12 @@ export default function CalendarVoiceCommand({
     }
   }
 
-  const displayFollowUp=(value:string)=>value.replace(/\s*\[patient_id:[0-9a-f-]{36}\]/i,"");
+  const displayFollowUp=(value:string)=>{
+    if (/event_id\s+[0-9a-f-]{36}/i.test(value)) return "Επιλέχθηκε συγκεκριμένο ραντεβού.";
+    return value
+      .replace(/\s*\[patient_id:[0-9a-f-]{36}\]/i,"")
+      .replace(/\s*\[create_new_patient:true\]/i,"");
+  };
 
   async function submitClarification(rawAnswer: string) {
     const answer = rawAnswer.trim();
@@ -396,7 +401,7 @@ export default function CalendarVoiceCommand({
               </div>
             )}
 
-            {proposal.command.new_patient && proposal.command.patient_name && !isAvailability && (
+            {proposal.command.new_patient && proposal.command.patient_name && !isAvailability && !isClarify && (
               <div className="voice-new-patient-note">
                 <strong>Νέος ασθενής</strong>
                 <span>Δεν υπάρχει φάκελος για {proposal.command.patient_name}. Αν επιβεβαιώσετε, θα δημιουργηθεί βασικός φάκελος και θα συνδεθεί με αυτό το ραντεβού. Τα υπόλοιπα στοιχεία μπορούν να συμπληρωθούν αργότερα.</span>

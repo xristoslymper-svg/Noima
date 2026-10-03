@@ -1,6 +1,0 @@
-const URL=process.env.NEXT_PUBLIC_SUPABASE_URL!;const KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-const h=()=>({apikey:KEY,"Content-Type":"application/json"});
-export type DemoPatient={id:string;first_name:string;last_name:string;reported_age:number|null;note:string;created_at:string};
-export async function listDemoPatients(){if(!URL||!KEY)return[];const r=await fetch(`${URL}/rest/v1/demo_patients?select=*&order=created_at.desc`,{headers:h(),cache:"no-store"});if(!r.ok)throw new Error();return r.json() as Promise<DemoPatient[]>}
-export async function createDemoPatient(x:{first_name:string;last_name:string;age:number|null;note:string}){const r=await fetch(`${URL}/rest/v1/rpc/demo_patient_create`,{method:"POST",headers:h(),cache:"no-store",body:JSON.stringify({p_first_name:x.first_name,p_last_name:x.last_name,p_age:x.age,p_note:x.note})});if(!r.ok)throw new Error();return r.json() as Promise<DemoPatient>}
-export async function getDemoPatient(id:string){if(!URL||!KEY)throw new Error();const r=await fetch(`${URL}/rest/v1/demo_patients?select=*&id=eq.${encodeURIComponent(id)}&limit=1`,{headers:h(),cache:"no-store"});if(!r.ok)throw new Error();const rows=await r.json() as DemoPatient[];return rows[0]||null}

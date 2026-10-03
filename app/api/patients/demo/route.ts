@@ -1,3 +1,3 @@
-import{createDemoPatient,listDemoPatients}from "@/lib/patients/demo-patients";export const dynamic="force-dynamic";
-export async function GET(){try{return Response.json({patients:await listDemoPatients()})}catch{return Response.json({error:"Δεν φορτώθηκαν οι δοκιμαστικοί ασθενείς."},{status:502})}}
-export async function POST(req:Request){const b=await req.json().catch(()=>({}));const first=typeof b.first_name==="string"?b.first_name.trim():"";const last=typeof b.last_name==="string"?b.last_name.trim():"";const age=Number.isFinite(Number(b.age))?Number(b.age):null;const note=typeof b.note==="string"?b.note.trim():"";if(!first||age!==null&&(age<0||age>120))return Response.json({error:"Συμπληρώστε έγκυρα βασικά στοιχεία."},{status:400});try{return Response.json({patient:await createDemoPatient({first_name:first,last_name:last,age,note})})}catch{return Response.json({error:"Δεν δημιουργήθηκε η καρτέλα."},{status:502})}}
+export const dynamic='force-dynamic';
+export async function GET(){return Response.json({error:'Η legacy patient API έχει αποσυρθεί. Χρησιμοποιήστε το tester-scoped /api/patients/demo/runtime.'},{status:410})}
+export async function POST(){return Response.json({error:'Η legacy patient API έχει αποσυρθεί. Η δημιουργία ασθενούς γίνεται μόνο από το canonical runtime.'},{status:410})}

@@ -20,6 +20,8 @@ type Command = {
   appointment_type: 'follow_up' | 'initial_assessment' | 'other' | null;
   clarification: string | null;
   missing_fields: MissingField[];
+  patient_id?: string | null;
+  new_patient?: boolean;
 };
 
 type Slot = { start_iso: string; end_iso: string; label: string };
@@ -56,6 +58,7 @@ export default function CalendarVoiceCommand({
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [error, setError] = useState('');
   const [doneMessage, setDoneMessage] = useState('');
+  const [donePatientId, setDonePatientId] = useState<string | null>(null);
 
   function clearTimer() {
     if (timer.current) clearInterval(timer.current);
@@ -128,6 +131,13 @@ export default function CalendarVoiceCommand({
       fail('Δεν ήταν δυνατή η ανάλυση της εντολής. Δοκιμάστε ξανά.');
     }
   }
+
+  const displayFollowUp=(value:string)=>{
+    if (/event_id\s+[0-9a-f-]{36}/i.test(value)) return "Επιλέχθηκε συγκεκριμένο ραντεβού.";
+    return value
+      .replace(/\s*\[patient_id:[0-9a-f-]{36}\]/i,"")
+      .replace(/\s*\[create_new_patient:true\]/i,"");
+  };
 
   async function submitClarification(rawAnswer: string) {
     const answer = rawAnswer.trim();
@@ -249,7 +259,7 @@ export default function CalendarVoiceCommand({
     const appointmentType = proposal.command.appointment_type || 'follow_up';
     setProposal({
       ...proposal,
-      summary: `Νέο ραντεβού: ${proposal.command.patient_name} · ${slot.label}`,
+      summary: `${proposal.command.new_patient ? "Νέος ασθενής + ραντεβού" : "Νέο ραντεβού"}: ${proposal.command.patient_name} · ${slot.label}`,
       available_slots: [],
       command: {
         ...proposal.command,
@@ -283,6 +293,8 @@ export default function CalendarVoiceCommand({
           start_iso: command.start_iso,
           end_iso: command.end_iso,
           appointment_type: command.appointment_type,
+          patient_id: command.patient_id || null,
+          create_new_patient: Boolean(command.new_patient),
         }),
       });
 
@@ -290,24 +302,32 @@ export default function CalendarVoiceCommand({
         error?: string;
         code?: string;
         event?: { scheduled_start?: string };
+        patient_id?: string | null;
       };
 
       if (!response.ok) {
-        if (data.code === 'calendar_conflict') {
+        if (data.code === 'calendar_conflict' || data.code === 'past_appointment') {
+          const past = data.code === 'past_appointment';
           setProposal({
             ...proposal,
-            summary: 'Η ώρα δεν είναι διαθέσιμη',
+            summary: past ? 'Η ώρα έχει ήδη περάσει' : 'Η ώρα δεν είναι διαθέσιμη',
             command: {
               ...proposal.command,
               action: 'clarify',
               intended_action: proposal.command.action as Intent,
-              clarification: 'Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Πείτε μια άλλη ώρα για να συνεχίσουμε.',
-              missing_fields: ['time'],
+              clarification: past
+                ? 'Η ώρα έχει ήδη περάσει. Πείτε νέα ημέρα και ώρα για να συνεχίσουμε.'
+                : 'Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Πείτε μια άλλη ώρα για να συνεχίσουμε.',
+              missing_fields: past ? ['date','time'] : ['time'],
             },
             clarification_options: [],
           });
           busy.current = false;
           setStage('proposal');
+          return;
+        }
+        if (data.code === 'session_already_started') {
+          fail('Η συνεδρία για αυτό το ραντεβού έχει ήδη ξεκινήσει. Ανοίξτε τον φάκελο του ασθενή αντί να αλλάξετε το ραντεβού.');
           return;
         }
         fail(data.error || 'Η αλλαγή δεν αποθηκεύτηκε.');
@@ -316,6 +336,7 @@ export default function CalendarVoiceCommand({
 
       await onApplied(data.event);
       setDoneMessage(proposal.summary);
+      setDonePatientId(data.patient_id || proposal.command.patient_id || null);
       setStage('done');
     } catch {
       fail('Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά.');
@@ -331,6 +352,7 @@ export default function CalendarVoiceCommand({
     setProposal(null);
     setError('');
     setDoneMessage('');
+    setDonePatientId(null);
   }
 
   const isClarify = proposal?.command.action === 'clarify';
@@ -360,19 +382,29 @@ export default function CalendarVoiceCommand({
               </div>
             </div>
 
-            <label className="voice-command-edit-label">
-              Τι άκουσα
-              <textarea
-                className="voice-command-textarea"
-                value={transcript}
-                onChange={event => setTranscript(event.target.value)}
-                rows={3}
-              />
-            </label>
+            <details className="voice-command-transcript">
+              <summary>Τι άκουσα</summary>
+              <label className="voice-command-edit-label">
+                <textarea
+                  className="voice-command-textarea"
+                  value={transcript}
+                  onChange={event => setTranscript(event.target.value)}
+                  rows={3}
+                />
+              </label>
+              <small>Αν η μεταγραφή είναι λάθος, διορθώστε την και πατήστε «Ξανά από την αρχή».</small>
+            </details>
 
             {followUps.length > 0 && (
               <div className="voice-followup-history">
-                {followUps.map((answer, index) => <span key={`${answer}-${index}`}>{answer}</span>)}
+                {followUps.map((answer, index) => <span key={`${answer}-${index}`}>{displayFollowUp(answer)}</span>)}
+              </div>
+            )}
+
+            {proposal.command.new_patient && proposal.command.patient_name && !isAvailability && !isClarify && (
+              <div className="voice-new-patient-note">
+                <strong>Νέος ασθενής</strong>
+                <span>Δεν υπάρχει φάκελος για {proposal.command.patient_name}. Αν επιβεβαιώσετε, θα δημιουργηθεί βασικός φάκελος και θα συνδεθεί με αυτό το ραντεβού. Τα υπόλοιπα στοιχεία μπορούν να συμπληρωθούν αργότερα.</span>
               </div>
             )}
 
@@ -424,7 +456,7 @@ export default function CalendarVoiceCommand({
                       <button onClick={() => selectSlot(slot)}>Κλείσιμο εδώ</button>
                     )}
                   </div>
-                )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ωράριο 09:00–18:00.</span>}
+                )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ζητούμενο διάστημα.</span>}
               </div>
             )}
 
@@ -439,11 +471,11 @@ export default function CalendarVoiceCommand({
 
             <footer>
               <button onClick={clarificationCancelled ? reset : () => void parseCommand(transcript, [])}>
-                {clarificationCancelled ? 'Νέα εντολή' : 'Ανάλυση από την αρχή'}
+                {clarificationCancelled ? 'Νέα εντολή' : 'Ξανά από την αρχή'}
               </button>
               {!isClarify && !isAvailability && (
                 <button className="voice-confirm" onClick={() => void confirm()}>
-                  <Check size={15} /> Επιβεβαίωση
+                  <Check size={15} /> {proposal.command.new_patient ? "Δημιουργία φακέλου & ραντεβού" : "Επιβεβαίωση"}
                 </button>
               )}
             </footer>
@@ -456,6 +488,7 @@ export default function CalendarVoiceCommand({
             <p>{doneMessage}</p>
             <div className="voice-done-actions">
               <button onClick={reset}>Νέα εντολή</button>
+              {donePatientId&&<button onClick={()=>{window.location.href='/patients/demo/'+encodeURIComponent(donePatientId)}}>Άνοιγμα φακέλου</button>}
               <button className="voice-confirm" onClick={onClose}>Τέλος</button>
             </div>
           </div>
@@ -496,6 +529,7 @@ export default function CalendarVoiceCommand({
             {stage === 'ready' && (
               <div className="voice-examples">
                 <span>«Κλείσε τη Μαρία αύριο στις 12»</span>
+                <span>«Κλείσε νέο ασθενή Γιώργο Μανώλη αύριο στις 17:00»</span>
                 <span>«Μετέφερε τον Γιάννη στις 13:00»</span>
                 <span>«Βρες μου κενό την Παρασκευή»</span>
               </div>

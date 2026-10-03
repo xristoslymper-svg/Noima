@@ -38,7 +38,7 @@ function buildBrief(bundle:PatientBundle|null,event?:OverviewEvent):Brief{
  const changes=documentedChanges(bundle).slice(0,3).map(x=>x.label+": "+clip(x.after,105));
  const latestAssessment=[...bundle.assessments].filter(x=>x.status==="completed"&&x.score!==null).sort((a,b)=>Date.parse(b.completed_at||b.created_at)-Date.parse(a.completed_at||a.created_at))[0];
  if(latestAssessment)changes.push(latestAssessment.instrument+": "+latestAssessment.score);
- const latestSide=bundle.medicationSideEffects[0];
+ const latestSide=bundle.medicationSideEffects.find(x=>!x.resolved_on);
  if(latestSide)changes.push("Παρενέργεια: "+clip(latestSide.effect_text+(latestSide.impact?" · "+latestSide.impact:""),105));
  if(!changes.length&&latest){
   const assessment=bundle.sections.find(x=>x.session_id===latest.id&&x.section_key==="assessment")?.content;
@@ -60,12 +60,10 @@ const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZ
 const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
 
 const nav = [
-  [Home, "Επισκόπηση", true],
-  [CalendarDays, "Ημερολόγιο", false],
-  [Users, "Ασθενείς", false],
-  [Activity, "Ψυχομετρικά τεστ", false],
-  [Stethoscope, "Συνεργασία", false],
-  [Settings, "Ρυθμίσεις", false],
+  [Home, "Επισκόπηση", "/"],
+  [CalendarDays, "Ημερολόγιο", "/calendar"],
+  [Users, "Ασθενείς", "/patients"],
+  [Activity, "Ψυχομετρικά τεστ", "/psychometrics"],
 ] as const;
 
 export default function Page() {
@@ -74,7 +72,21 @@ export default function Page() {
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
-  useEffect(()=>{const tester=getDemoTesterId();fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}).then(async response=>{const data=await response.json();if(!response.ok)return;const events=(data.events||[]) as OverviewEvent[];setSchedule(events);const ids=[...new Set(events.map(e=>e.patient_id).filter(Boolean))] as string[];const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));setBundles(Object.fromEntries(loaded.filter(Boolean) as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||null)}).catch(()=>{})},[]);
+  const [startingEvent,setStartingEvent]=useState<string|null>(null);
+  const [actionError,setActionError]=useState("");
+  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();void (async()=>{
+    const [calendarResponse,patientsResponse]=await Promise.all([
+      fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}),
+      fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester),{cache:"no-store"}),
+    ]);
+    const calendarData=await calendarResponse.json();const patientData=await patientsResponse.json();
+    if(!calendarResponse.ok||!patientsResponse.ok||cancelled)return;
+    const events=(calendarData.events||[]) as OverviewEvent[];
+    const ids=(patientData.patients||[]).map((p:{id:string})=>p.id) as string[];
+    const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));
+    if(cancelled)return;
+    setSchedule(events);setBundles(Object.fromEntries(loaded.filter(Boolean) as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);
+  })().catch(()=>{});return()=>{cancelled=true}},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today);
   const selectedEvent=todaySchedule.find(e=>e.patient_id===selectedPatientId)||schedule.find(e=>e.patient_id===selectedPatientId);
@@ -83,7 +95,18 @@ export default function Page() {
   const loadedBundles=Object.values(bundles);
   const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
   const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>(a.status==="assigned"||a.status==="opened")&&new Date(a.expires_at)>new Date()).length,0);
-  const item9Reviews=loadedBundles.filter(b=>b.assessments.some(a=>a.status==="completed"&&a.item9_review&&!a.item9_reviewed_at)).length;
+  const item9Reviews=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>a.status==="completed"&&a.item9_review&&!a.item9_reviewed_at).length,0);
+  async function openAppointmentSession(event:OverviewEvent){
+    if(!event.patient_id||startingEvent)return;
+    setStartingEvent(event.id);setActionError("");
+    try{
+      const response=await fetch("/api/calendar/appointment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id})});
+      const data=await response.json();
+      if(!response.ok||!data.session)throw new Error(data.error||"session");
+      window.location.href="/patients/demo/"+encodeURIComponent(data.session.patient_id)+"?tab=sessions&session="+encodeURIComponent(data.session.id);
+    }catch{setActionError("Δεν ήταν δυνατή η έναρξη της συνεδρίας από το ραντεβού.")}
+    finally{setStartingEvent(null)}
+  }
   return (
     <main className="app-shell">
       <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
@@ -93,33 +116,15 @@ export default function Page() {
         </div>
 
         <nav className="nav">
-          {nav.map(([Icon, label, active]) => label === "Ασθενείς" ? (
-            <Link href="/patients" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
-          ) : label === "Ημερολόγιο" ? (
-            <Link href="/calendar" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
-          ) : label === "Ψυχομετρικά τεστ" ? (
-            <Link href="/psychometrics" className="nav-item" key={label}><Icon size={19}/><span>{label}</span></Link>
-          ) : (
-            <button className={active ? "nav-item active" : "nav-item"} key={label}><Icon size={19}/><span>{label}</span></button>
-          ))}
+          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={label}><Icon size={19}/><span>{label}</span></Link>)}
         </nav>
 
       </aside>
       {mobileNav&&<button className="mobile-nav-backdrop" aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}
       <section className="workspace">
         <header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
-          <div className="search">
-            <Search size={18} />
-            <span>Αναζήτηση ασθενή, σημείωσης, φαρμάκου ή τεστ...</span>
-          </div>
-          <div className="profile">
-            <Bell size={20} />
-            <div className="avatar">ΚΠ</div>
-            <div>
-              <strong>Δρ. Κατερίνα Παπαδάκη</strong>
-              <span>Ψυχίατρος</span>
-            </div>
-          </div>
+          <div className="search"><span>Ψ · δοκιμαστικός κλινικός χώρος</span></div>
+          <div className="profile"><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div>
         </header>
 
         <div className="content">
@@ -141,7 +146,7 @@ export default function Page() {
 
           <section className="main-grid">
             <div className="card sessions">
-              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
+              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>{actionError&&<div className="save-state error" role="alert">{actionError}</div>}
               {todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id&&bundles[event.patient_id]);
                 return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
@@ -152,7 +157,7 @@ export default function Page() {
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
                   {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
-                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id} className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link>:<Link href="/patients" className="small-button link-button folder-button"><FolderOpen size={16}/> Ασθενείς</Link>}
+                  {event.patient_id?<div className="session-row-actions"><button className="small-button" disabled={startingEvent===event.id} onClick={()=>void openAppointmentSession(event)}>{startingEvent===event.id?"Άνοιγμα…":"Έναρξη / συνέχεια"}</button><Link href={"/patients/demo/"+event.patient_id} className="small-button link-button folder-button"><FolderOpen size={16}/> Φάκελος</Link></div>:<Link href="/patients" className="small-button link-button folder-button"><FolderOpen size={16}/> Ασθενείς</Link>}
                 </div>
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
@@ -199,17 +204,15 @@ export default function Page() {
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
                 <div className="agenda-info"><strong>{event.patient_name}</strong><span>{event.detail||event.readiness_label}</span><small><Clock size={13}/> {overviewTime(event.scheduled_start)}–{overviewTime(event.scheduled_end)}</small></div>
-                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id} className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link>}
+                {event.patient_id&&<div className="session-row-actions"><button className="small-button" disabled={startingEvent===event.id} onClick={()=>void openAppointmentSession(event)}>{startingEvent===event.id?"Άνοιγμα…":"Έναρξη"}</button><Link href={"/patients/demo/"+event.patient_id} className="small-button link-button" onClick={()=>setCalendarOpen(false)}>Φάκελος</Link></div>}
               </div>):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
             <aside className="calendar-integrations">
-              <span className="kicker">ΣΥΝΔΕΣΕΙΣ</span>
-              <h3>Συγχρονίστε το πρόγραμμά σας</h3>
-              <p>Φέρτε τα υπάρχοντα ραντεβού σας στο ίδιο ημερολόγιο.</p>
-              <button className="integration-button"><span className="integration-logo google">G</span><div><strong>Google Calendar</strong><small>Σύνδεση ημερολογίου</small></div><ChevronRight size={17}/></button>
-              <button className="integration-button"><span className="integration-logo doctor">D</span><div><strong>Doctoranytime</strong><small>Σύνδεση ραντεβού</small></div><ChevronRight size={17}/></button>
-              <div className="integration-note"><Check size={15}/><span>Οι συνδέσεις είναι demo στο MVP. Δεν γίνεται ακόμη συγχρονισμός δεδομένων.</span></div>
+              <span className="kicker">PILOT</span>
+              <h3>Χρησιμοποιήστε το ημερολόγιο του Ψ</h3>
+              <p>Οι εξωτερικές συνδέσεις ημερολογίου δεν είναι μέρος αυτής της δοκιμής, ώστε κάθε ενέργεια που βλέπετε εδώ να είναι πραγματικά λειτουργική.</p>
+              <div className="integration-note"><Check size={15}/><span>Δημιουργία, μετακίνηση, ακύρωση και φωνητικές εντολές λειτουργούν στο κοινό demo calendar.</span></div>
             </aside>
           </div>
         </section>

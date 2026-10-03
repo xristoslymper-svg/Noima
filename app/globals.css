@@ -462,3 +462,8 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .assessment-assign button{margin:0;min-height:42px}
 .proposal-review :is(input,select,textarea):focus-visible,.assessment-assign select:focus-visible,.assessment-page input:focus-visible{outline:2px solid #477663;outline-offset:2px}
 .assessment-result details{margin-top:12px}.assessment-result summary{cursor:pointer;color:#355e50}
+
+/* Pilot workflow clarity */
+.session-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.session-row-actions .small-button{white-space:nowrap}
+
+.voice-new-patient-note{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid rgba(120,104,78,.18);border-radius:14px;background:rgba(248,244,234,.72);margin:10px 0}.voice-new-patient-note strong{font-size:13px}.voice-new-patient-note span{font-size:13px;line-height:1.45;opacity:.8}

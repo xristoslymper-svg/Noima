@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const timeout = setTimeout(() => controller.abort(), 90_000);
 
   try {
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const response = await fetch(`${process.env.OPENAI_BASE_URL||"https://api.openai.com/v1"}/audio/transcriptions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
       body,

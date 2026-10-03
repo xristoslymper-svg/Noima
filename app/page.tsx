@@ -3,24 +3,22 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getDemoTesterId } from "@/lib/demo-tester";
+import type { PatientBundle } from "@/lib/patients/demo-runtime";
+import { documentedChanges } from "@/lib/clinical/summary";
 
 import {
   Activity,
   Bell,
-  Brain,
   Check,
   Clock,
   X,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
-  FileText,
   FolderOpen,
-  HeartPulse,
   Home,
   Mic2,
   Menu,
-  Pill,
   Search,
   Settings,
   ShieldCheck,
@@ -29,35 +27,33 @@ import {
   TestTube2,
   Users,
 } from "lucide-react";
-const patientBriefs = {
-  "Μαρία": {
-    kicker: "ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ",
-    changed: ["Ο ύπνος έχει βελτιωθεί, αλλά παραμένουν 1–2 νυχτερινές αφυπνίσεις.","PHQ-9: 17 → 7 τους τελευταίους 3 μήνες.","Sertraline αυξήθηκε από 50 mg → 100 mg στις 12/09.","Αναφέρθηκε μειωμένη libido μετά την αύξηση δόσης."],
-    today: ["Επιμένει η σεξουαλική δυσλειτουργία;","Υπήρξε επιστροφή κρίσεων πανικού;","Ανοχή και συνέπεια στη φαρμακευτική αγωγή."],
-    risk: "Τελευταία αξιολόγηση: χωρίς αναφερόμενο αυτοκτονικό ιδεασμό."
-  },
-  "Γιάννης Π.": {
-    kicker: "12:30 · FOLLOW-UP",
-    changed: ["Λιγότερη σωματική ένταση τις τελευταίες 3 εβδομάδες.","GAD-7: 13 → 8 από την προηγούμενη μέτρηση.","Χρησιμοποιεί την τεχνική αναπνοής πριν από επαγγελματικές συναντήσεις.","Παραμένει αποφυγή σε μετακινήσεις με μετρό όταν υπάρχει συνωστισμός."],
-    today: ["Συχνότητα επεισοδίων έντονου άγχους.","Βαθμός αποφυγής και επίδραση στην καθημερινότητα.","Ύπνος και χρήση καφεΐνης."],
-    risk: "Δεν έχει αναφερθεί πρόσφατη μεταβολή κινδύνου."
-  },
-  "Ελένη Δ.": {
-    kicker: "14:00 · FOLLOW-UP ΑΓΩΓΗΣ",
-    changed: ["Σταθερότερη διάθεση μετά την τελευταία προσαρμογή αγωγής.","Αναφέρει πρωινή υπνηλία 2–3 ημέρες την εβδομάδα.","Η λειτουργικότητα στην εργασία παραμένει καλή.","Δεν αναφέρει νέα επεισόδια έντονης ευερεθιστότητας."],
-    today: ["Αν η πρωινή υπνηλία επηρεάζει λειτουργικότητα ή οδήγηση.","Συνέπεια στη λήψη της βραδινής αγωγής.","Επανεκτίμηση διάθεσης και ύπνου."],
-    risk: "Στην τελευταία συνεδρία δεν αναφέρθηκαν σκέψεις αυτοβλάβης."
-  },
-  "Κώστας Σ.": {
-    kicker: "16:00 · ΠΡΩΤΗ ΑΞΙΟΛΟΓΗΣΗ",
-    changed: ["Πρώτη συνάντηση — δεν υπάρχει ακόμη προηγούμενη κλινική πορεία.","Αιτία παραπομπής: επίμονο άγχος και δυσκολία ύπνου περίπου 4 μήνες.","Δεν υπάρχει καταγεγραμμένη προηγούμενη ψυχιατρική αγωγή στο demo.","Έχει συμπληρώσει βασικά στοιχεία πριν το ραντεβού."],
-    today: ["Πλήρες ιστορικό συμπτωμάτων και λειτουργικότητας.","Προηγούμενο ψυχιατρικό/ιατρικό ιστορικό και ουσίες.","Βασική αξιολόγηση κινδύνου και θεραπευτικοί στόχοι."],
-    risk: "Απαιτείται αρχική αξιολόγηση κινδύνου στη σημερινή συνεδρία."
-  }
-} as const;
-
-type PatientName = keyof typeof patientBriefs;
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string};
+type Brief = {kicker:string;changed:string[];today:string[];risk:string};
+
+function clip(value:string,max=145){const clean=value.replace(/\s+/g," ").trim();return clean.length>max?clean.slice(0,max-1)+"…":clean}
+function buildBrief(bundle:PatientBundle|null,event?:OverviewEvent):Brief{
+ if(!bundle)return {kicker:event?"ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ":"ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ",changed:["Δεν υπάρχουν ακόμη διαθέσιμα κλινικά δεδομένα για σύνοψη."],today:["Ανοίξτε τον φάκελο για κλινική αξιολόγηση."],risk:"Δεν υπάρχει διαθέσιμη εκτίμηση κινδύνου."};
+ const completed=[...bundle.sessions].filter(x=>x.status==="completed").sort((a,b)=>Date.parse(b.completed_at||"")-Date.parse(a.completed_at||""));
+ const latest=completed[0];
+ const changes=documentedChanges(bundle).slice(0,3).map(x=>x.label+": "+clip(x.after,105));
+ const latestAssessment=[...bundle.assessments].filter(x=>x.status==="completed"&&x.score!==null).sort((a,b)=>Date.parse(b.completed_at||b.created_at)-Date.parse(a.completed_at||a.created_at))[0];
+ if(latestAssessment)changes.push(latestAssessment.instrument+": "+latestAssessment.score);
+ const latestSide=bundle.medicationSideEffects[0];
+ if(latestSide)changes.push("Παρενέργεια: "+clip(latestSide.effect_text+(latestSide.impact?" · "+latestSide.impact:""),105));
+ if(!changes.length&&latest){
+  const assessment=bundle.sections.find(x=>x.session_id===latest.id&&x.section_key==="assessment")?.content;
+  if(assessment)changes.push(clip(assessment));
+ }
+ if(!changes.length&&bundle.patient.chief_complaint)changes.push("Λόγος προσέλευσης: "+clip(bundle.patient.chief_complaint));
+ const plan=latest&&bundle.sections.find(x=>x.session_id===latest.id&&x.section_key==="plan")?.content;
+ const review=latest&&bundle.sections.find(x=>x.session_id===latest.id&&x.section_key==="review")?.content;
+ const today=[plan&&"Πλάνο: "+clip(plan,105),review&&"Επανεκτίμηση: "+clip(review,105)].filter(Boolean) as string[];
+ if(latestSide&&!today.some(x=>x.includes("Παρενέργεια")))today.push("Επανέλεγχος παρενέργειας: "+clip(latestSide.effect_text,90));
+ const risk=latest?bundle.risks.find(x=>x.session_id===latest.id):undefined;
+ const riskText=!risk?"Δεν υπάρχει δομημένη εκτίμηση κινδύνου στην τελευταία συνεδρία.":risk.suicidal_ideation==="negative"?"Τελευταία εκτίμηση: αρνητικός αυτοκτονικός ιδεασμός.":risk.suicidal_ideation==="positive"?"Τελευταία εκτίμηση: θετικός αυτοκτονικός ιδεασμός — απαιτείται κλινική επανεκτίμηση.":"Τελευταία εκτίμηση αυτοκτονικού ιδεασμού: "+(risk.suicidal_ideation==="unknown"?"άγνωστο.":"δεν διερευνήθηκε.");
+ return {kicker:event?"ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ":"ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ",changed:changes.slice(0,4).length?changes.slice(0,4):["Δεν υπάρχει ακόμη τεκμηριωμένη μεταβολή μεταξύ συνεδριών."],today:today.length?today.slice(0,3):["Δεν έχουν καταγραφεί ειδικά επόμενα βήματα."],risk:riskText};
+}
+
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -75,12 +71,19 @@ const nav = [
 export default function Page() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<PatientName>("Μαρία");
+  const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
-  const brief = patientBriefs[selectedPatient];
-  useEffect(()=>{const tester=getDemoTesterId();fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}).then(async response=>{const data=await response.json();if(response.ok)setSchedule((data.events||[]) as OverviewEvent[])}).catch(()=>{})},[]);
+  const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
+  useEffect(()=>{const tester=getDemoTesterId();fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}).then(async response=>{const data=await response.json();if(!response.ok)return;const events=(data.events||[]) as OverviewEvent[];setSchedule(events);const ids=[...new Set(events.map(e=>e.patient_id).filter(Boolean))] as string[];const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));setBundles(Object.fromEntries(loaded.filter(Boolean) as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||null)}).catch(()=>{})},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today);
+  const selectedEvent=todaySchedule.find(e=>e.patient_id===selectedPatientId)||schedule.find(e=>e.patient_id===selectedPatientId);
+  const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
+  const brief=buildBrief(selectedBundle,selectedEvent);
+  const loadedBundles=Object.values(bundles);
+  const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
+  const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>a.status==="assigned"||a.status==="opened").length,0);
+  const item9Reviews=loadedBundles.filter(b=>b.assessments.some(a=>a.status==="completed"&&a.item9_review)).length;
   return (
     <main className="app-shell">
       <aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
@@ -131,22 +134,21 @@ export default function Page() {
 
           <section className="metric-grid">
             <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value={String(todaySchedule.length)} note={todaySchedule.length?"Από το κοινό ημερολόγιο":"Χωρίς ραντεβού σήμερα"} tone="sage" />
-            <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value="2" note="Από τις τελευταίες συνεδρίες" tone="blue" />
-            <Metric icon={<TestTube2 />} label="Νέα ψυχομετρικά" value="4" note="PHQ-9, GAD-7, PCL-5" tone="gold" />
-            <Metric icon={<HeartPulse />} label="Ασθενείς σε στενή παρακολούθηση" value="3" note="Με ενεργό clinical flag" tone="rose" />
+            <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value={String(pendingProposals)} note="Πραγματικές εκκρεμείς προτάσεις" tone="blue" />
+            <Metric icon={<TestTube2 />} label="Εκκρεμή ψυχομετρικά" value={String(pendingPsychometrics)} note="Assigned ή opened" tone="gold" />
+            <Metric icon={<ShieldCheck />} label="PHQ-9 item 9 για έλεγχο" value={String(item9Reviews)} note="Από ολοκληρωμένα τεστ" tone="rose" />
           </section>
 
           <section className="main-grid">
             <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {todaySchedule.length?todaySchedule.map(event => {
-                const name=event.patient_name as PatientName;
-                const known=Object.prototype.hasOwnProperty.call(patientBriefs,name);
-                return <div className={selectedPatient === name ? "session-row selected-patient" : "session-row"} key={event.id}>
+                const selectable=Boolean(event.patient_id&&bundles[event.patient_id]);
+                return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatient === name ? "patient-name selected" : "patient-name"} disabled={!known} onClick={()=>known&&setSelectedPatient(name)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Follow-up"}</span></div>
+                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Follow-up"}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
                   {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
@@ -155,17 +157,17 @@ export default function Page() {
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
-            <div className="card ai-brief" key={selectedPatient}>
+            <div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head">
                 <div>
                   <span className="kicker">{brief.kicker}</span>
                   <h2><Sparkles size={19} /> Σύνοψη πριν τη συνεδρία</h2>
                 </div>
-                <span className="status-dot">{selectedPatient}</span>
+                <span className="status-dot">{selectedBundle?(selectedBundle.patient.first_name+" "+selectedBundle.patient.last_name):"Χωρίς επιλογή"}</span>
               </div>
 
               <div className="brief-block">
-                <strong>{selectedPatient === "Κώστας Σ." ? "Τι γνωρίζουμε πριν την πρώτη συνάντηση" : "Τι έχει αλλάξει"}</strong>
+                <strong>{selectedBundle?.sessions.some(x=>x.status==="completed")?"Τι έχει αλλάξει":"Τι γνωρίζουμε"}</strong>
                 <ul>{brief.changed.map(item=><li key={item}>{item}</li>)}</ul>
               </div>
 

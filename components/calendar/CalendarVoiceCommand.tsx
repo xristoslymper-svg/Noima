@@ -244,7 +244,7 @@ export default function CalendarVoiceCommand({
     }
   }
 
-  function useSlot(slot: Slot) {
+  function selectSlot(slot: Slot) {
     if (!proposal?.command.patient_name) return;
     const appointmentType = proposal.command.appointment_type || 'follow_up';
     setProposal({
@@ -421,7 +421,7 @@ export default function CalendarVoiceCommand({
                     <ClockIcon />
                     <span>{slot.label}</span>
                     {proposal.command.patient_name && (
-                      <button onClick={() => useSlot(slot)}>Κλείσιμο εδώ</button>
+                      <button onClick={() => selectSlot(slot)}>Κλείσιμο εδώ</button>
                     )}
                   </div>
                 )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ωράριο 09:00–18:00.</span>}

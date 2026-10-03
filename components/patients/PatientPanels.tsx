@@ -1,44 +1,34 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Check, ChevronRight, History, Pill, Plus, TestTube2, X } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { Check, Plus, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
+import MedicationTimeline from './MedicationTimeline';
 import { demoPost } from '@/lib/patients/demo-client';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
-const section=(bundle:PatientBundle,sessionId:string,key:string)=>bundle.sections.find(x=>x.session_id===sessionId&&x.section_key===key)?.content||'';
-export function SummaryPanel({bundle,onStart,onHistory,onSessions}:{bundle:PatientBundle;onStart:()=>void;onHistory:()=>void;onSessions:(sessionId?:string)=>void}){
- const completed=bundle.sessions.filter(x=>x.status==='completed'); const latest=completed[0]; const previous=completed[1]; const active=bundle.medications.filter(x=>x.status==='active');
- if(!latest)return <section className="empty-clinical-state"><span className="kicker">ΣΥΝΟΨΗ</span><h2>Δεν υπάρχει ακόμη ολοκληρωμένη αξιολόγηση</h2><p>Η σύνοψη δεν συμπληρώνεται με στατικό περιεχόμενο. Θα δημιουργηθεί μόνο αποριστικοποιημένη συνεδρία και δομημένη αγωγή.</p><button className="record" onClick={onStart}><Plus size={16}/> Έναρξη αρχικής αξιολόγησης</button><button className="text-button" onClick={onHistory}>Καταχώρηση ιστορικού <ChevronRight size={15}/></button></section>;
- const current=section(bundle,latest.id,'assessment')||section(bundle,latest.id,'interview'); const plan=section(bundle,latest.id,'plan'); const review=section(bundle,latest.id,'review'); const changed=previous?`Νεότερη οριστικοποιημένη συνεδρία σε σχέση με ${date(previous.completed_at)}. Ανοίξτε την πηγή για κλινική σύγκριση.`:'Δεν υπάρχει προηγούμενη ολοκληρωμένη συνεδρία για σύγκριση.';
- return <div className="summary-source-grid"><SummaryCard title="Τρέχουσα εικόνα" text={current||'Δεν καταγράφηκε κλινική εκτίμηση.'} source={`Συνεδρία · ${date(latest.completed_at)}`} onSource={()=>onSessions(latest.id)}/><SummaryCard title="Τι άλλαξε" text={changed} source={previous?`Προηγούμενη συνεδρία · ${date(previous.completed_at)}`:'Χωρίς προηγούμενη πηγή'} onSource={previous?()=>onSessions(previous.id):undefined}/><SummaryCard title="Ενεργή αγωγή" text={active.length?active.map(m=>`${m.medication_name} ${m.dose} ${m.unit} · ${m.frequency}`).join('\n'):'Δεν υπάρχει ενεργή αγωγή.'} source={active.length?`Αγωγή · ενημέρωση ${date(active[0].updated_at)}`:'Αγωγή'} /><SummaryCard title="Επόμενα βήματα" text={[plan,review].filter(Boolean).join('\n')||'Δεν καταγράφηκαν επόμενα βήματα.'} source={`Συνεδρία · ${date(latest.completed_at)}`} onSource={()=>onSessions(latest.id)}/></div>
-}
-function SummaryCard({title,text,source,onSource}:{title:string;text:string;source:string;onSource?:()=>void}){return <article className="summary-source-card"><h3>{title}</h3><p>{text}</p><button onClick={onSource} disabled={!onSource}><CalendarDays size={13}/>{source}</button></article>}
-
 const historyFields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Προηγούμενες θεραπείες'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνική λειτουργικότητα'],['allergies','Αλλεργίες']] as const;
 export function HistoryPanel({bundle,reload}:{bundle:PatientBundle;reload:()=>Promise<unknown>}){
- const initial=Object.fromEntries(historyFields.map(([key])=>[key,bundle.history?.[key]||''])) as Record<string,string>; const [values,setValues]=useState(initial); const [saving,setSaving]=useState(false); const [state,setState]=useState('');
- useEffect(()=>setValues(Object.fromEntries(historyFields.map(([key])=>[key,bundle.history?.[key]||'']))),[bundle.history]);
- async function save(){setSaving(true);setState('');try{await demoPost({action:'save_history',patient_id:bundle.patient.id,history:values});setState('Αποθηκεύτηκε');await reload()}catch(cause){setState(cause instanceof Error?cause.message:'Αποτυχία αποθήκευσης')}finally{setSaving(false)}}
- return <section className="panel-stack"><div className="panel-heading"><div><span className="kicker">ΙΣΤΟΡΙΚΟ</span><h2>Στοχευμένη καταγραφή ιστορικού</h2><p>Κενό πεδίο σημαίνει «δεν έχει καταγραφεί» — ποτέ αρνητικό εύρημα.</p></div><button className="record compact" onClick={()=>void save()} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></div>{state&&<div className={state==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{state}</div>}<div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>setValues(v=>({...v,[key]:e.target.value}))} placeholder="Δεν έχει καταγραφεί"/></label>)}</div></section>
+ const initial=Object.fromEntries(historyFields.map(([key])=>[key,bundle.history?.[key]||''])) as Record<string,string>; const [values,setValues]=useState(initial); const [saving,setSaving]=useState(false); const [state,setState]=useState(''); const dirty=useRef(false);
+ useEffect(()=>{if(!dirty.current)setValues(Object.fromEntries(historyFields.map(([key])=>[key,bundle.history?.[key]||''])))},[bundle.history]);
+ async function save(){setSaving(true);setState('');try{await demoPost({action:'save_history',patient_id:bundle.patient.id,history:values});dirty.current=false;setState('Αποθηκεύτηκε');await reload()}catch(cause){setState(cause instanceof Error?cause.message:'Αποτυχία αποθήκευσης')}finally{setSaving(false)}}
+ return <section className="panel-stack"><div className="panel-heading"><div><span className="kicker">ΙΣΤΟΡΙΚΟ</span><h2>Στοχευμένη καταγραφή ιστορικού</h2><p>Κενό πεδίο σημαίνει «δεν έχει καταγραφεί» — ποτέ αρνητικό εύρημα.</p></div><button className="record compact" onClick={()=>void save()} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></div>{state&&<div className={state==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{state}</div>}<div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea disabled={saving} rows={4} value={values[key]} onChange={e=>{dirty.current=true;setValues(v=>({...v,[key]:e.target.value}))}} placeholder="Δεν έχει καταγραφεί"/></label>)}</div></section>
 }
 
-export function MedicationsPanel({bundle,onAdd}:{bundle:PatientBundle;onAdd:()=>void}){
+export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onAdd:()=>void;reload:()=>Promise<unknown>}){
  const active=bundle.medications.filter(x=>x.status==='active');
  const today=new Date().toISOString().slice(0,10);
  const medName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
  const doseText=(state:Record<string,unknown>|null)=>state&&state.dose!=null?String(state.dose)+' '+String(state.unit||''):'—';
  return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">ΑΓΩΓΗ</span><h2>Τρέχουσα αγωγή & ιστορικό αλλαγών</h2><p>Οι μελλοντικές αλλαγές εμφανίζονται στο ιστορικό χωρίς να αλλάζουν πρόωρα την ενεργή δόση.</p></div><button className="record compact" onClick={onAdd}><Plus size={15}/> Διαχείριση αγωγής</button></div>
+  <div className="panel-heading"><div><span className="kicker">ΑΓΩΓΗ</span><h2>Τρέχουσα αγωγή & ιστορικό αλλαγών</h2><p>Η ενεργή δόση εμφανίζεται χωριστά από τις προγραμματισμένες αλλαγές.</p></div><button className="record compact" onClick={onAdd}><Plus size={15}/> Διαχείριση αγωγής</button></div>
   {active.length?<div className="med-runtime-list">{active.map(m=><article key={m.id}><div><span className="kicker">ΕΝΕΡΓΟ</span><h3>{m.medication_name}</h3></div><strong>{m.dose} {m.unit}</strong><span>{m.frequency}</span><small>Από {date(m.effective_from)}</small></article>)}</div>:<div className="panel-empty">Δεν υπάρχει ενεργή αγωγή.</div>}
-  <div className="med-events"><h3><History size={16}/> Ιστορικό αλλαγών</h3>{bundle.medicationEvents.length?bundle.medicationEvents.map(e=>{const future=e.effective_on>today;return <div key={e.id}><span>{date(e.effective_on)}{future?' · προγραμματισμένο':''}</span><strong>{e.event_type==='started'?'Έναρξη':e.event_type==='stopped'?'Διακοπή':'Αλλαγή δόσης'}</strong><p><b>{medName(e.medication_id)}</b>{e.event_type==='changed'?' · '+doseText(e.previous_state)+' → '+doseText(e.new_state):''}{e.reason?' · '+e.reason:''}</p></div>}):<p>Δεν υπάρχουν αλλαγές αγωγής.</p>}</div>
+  <MedicationTimeline bundle={bundle} reload={reload}/>
   <div className="med-side-effects"><h3>Καταγεγραμμένες παρενέργειες</h3>{bundle.medicationSideEffects.length?bundle.medicationSideEffects.map(effect=><article key={effect.id}><div><strong>{effect.effect_text}</strong><span>{medName(effect.medication_id)} · {date(effect.noted_on)}</span></div><i className={'severity '+effect.severity}>{effect.severity==='mild'?'Ήπια':effect.severity==='severe'?'Σοβαρή':'Μέτρια'}</i><p>{effect.impact||effect.note||'Δεν καταγράφηκε επίδραση στη λειτουργικότητα.'}</p></article>):<p>Δεν έχουν καταγραφεί παρενέργειες.</p>}</div>
  </section>
 }
 
-export function PsychometricsPanel(){return <section className="empty-clinical-state"><TestTube2 size={25}/><span className="kicker">ΨΥΧΟΜΕΤΡΙΚΑ</span><h2>Δεν υπάρχουν ακόμη μετρήσεις για αυτόν τον ασθενή</h2><p>Στο P0 demo δεν εμφανίζουμε ψεύτικη επιτυχία αποστολής. Η ανάθεση, οι απαντήσεις και το server-side scoring θα συνδεθούν στην επόμενη φάση.</p><a className="text-button" href="/psychometrics">Άνοιγμα βιβλιοθήκης τεστ <ChevronRight size={15}/></a></section>}
-
 export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;onClose:()=>void;onSaved:()=>Promise<unknown>}){
- const active=bundle.medications.filter(x=>x.status==='active');
+ const active=bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
  const [mode,setMode]=useState<'start'|'change'|'stop'|'side_effect'>(active.length?'change':'start');
  const [medId,setMedId]=useState(active[0]?.id||'');
  const selected=useMemo(()=>active.find(x=>x.id===medId),[active,medId]);
@@ -65,8 +55,8 @@ export function MedicationModal({bundle,onClose,onSaved}:{bundle:PatientBundle;o
   try{
    const draft=bundle.sessions.find(x=>x.status==='draft');
    if(mode==='start')await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:draft?.id||null,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='change')await demoPost({action:'medication_change',medication_id:medId,session_id:draft?.id||null,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='stop')await demoPost({action:'medication_stop',medication_id:medId,session_id:draft?.id||null,effective_on:effective,reason});
+   if(mode==='change')await demoPost({action:'medication_event',event_type:'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,dose:Number(dose),unit,frequency,effective_on:effective,reason});
+   if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,effective_on:effective,reason});
    if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:draft?.id||null,effect,severity,impact,noted_on:effective,note:reason});
    await onSaved();onClose();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{setSaving(false)}

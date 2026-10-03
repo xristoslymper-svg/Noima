@@ -35,12 +35,12 @@ begin
       phone=trim(coalesce(p_phone,'')),
       email=trim(coalesce(p_email,'')),
       chief_complaint=trim(coalesce(p_complaint,'')),
-      updated_at=now()
+      updated_at=clock_timestamp()
   where id=p_patient and tester_id=p_tester
   returning * into p;
 
   update public.demo_calendar_events
-  set patient_name=trim(p.first_name||' '||p.last_name),updated_at=now()
+  set patient_name=trim(p.first_name||' '||p.last_name),updated_at=clock_timestamp()
   where tester_id=p_tester and patient_id=p_patient;
 
   return p;

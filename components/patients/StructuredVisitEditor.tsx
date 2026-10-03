@@ -1,0 +1,21 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {initialDocument,mseItems,type VisitDocument,type DocumentField} from '@/lib/clinical/visit-document';
+import type {DemoSection,PatientBundle} from '@/lib/patients/demo-runtime';
+import {demoPost} from '@/lib/patients/demo-client';
+import {useClinicalDraft} from './useClinicalDraft';
+import ICD10Picker from './ICD10Picker';
+export default function StructuredVisitEditor({sessionId,kind,existing,followup,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;kind:'mse'|'assessment';existing?:DemoSection;followup:boolean;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
+ const key='section:'+kind;const [conflict,setConflict]=useState<DemoSection|null|undefined>();
+ const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialDocument(kind,existing?.content,existing?.document),version:existing?.version??null,write:async(document,version)=>{const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
+ useEffect(()=>registerFlusher(key,draft.flush),[key,registerFlusher,draft.flush]);
+ function change(index:number,field:Partial<DocumentField>){draft.change({...draft.value,fields:draft.value.fields.map((f,i)=>i===index?{...f,...field}:f)})}
+ return <div className={'visit-structured '+kind}>
+ {kind==='mse'&&<p className="visit-hint">{followup?'Καταγράψτε μόνο τις μεταβολές. Οι προηγούμενες παρατηρήσεις παραμένουν στην προηγούμενη συνεδρία.':'Επιλέξτε μια περιοχή και καταγράψτε τα σημερινά ευρήματα.'}</p>}
+ {draft.value.fields.map((field,index)=>kind==='mse'?<details className="mse-item" key={field.key}><summary><span>{field.label}</span><small>{field.text?field.text.slice(0,90):'Δεν καταγράφηκε'}</small></summary><p>{mseItems.find(([k])=>k===field.key)?.[2]}</p><label>{field.label}<textarea rows={2} value={field.text} onChange={e=>change(index,{text:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})}/></label></details>:<div className="visit-assessment-field" key={field.key}><label>{field.label}<textarea rows={2} value={field.text} onChange={e=>change(index,{text:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})}/></label>{field.key.startsWith('differential-')&&<label>Βεβαιότητα<select value={field.status||'under_investigation'} onChange={e=>change(index,{status:e.target.value as DocumentField['status']})}><option value="under_investigation">Υπό διερεύνηση</option><option value="provisional">Προσωρινή</option><option value="confirmed">Επιβεβαιωμένη</option></select></label>}{(field.key.startsWith('differential-')||field.key==='diagnosis')&&<ICD10Picker value={field.codes||[]} onChange={codes=>change(index,{codes})}/>}</div>)}
+ {kind==='assessment'&&<button type="button" className="visit-text-button" onClick={()=>draft.change({...draft.value,fields:[{key:'differential-'+crypto.randomUUID(),label:'Differential Diagnosis',text:'',status:'under_investigation',codes:[]},...draft.value.fields]})}>+ Διαφορική διάγνωση</button>}
+ <p role="status" className={draft.error?'save-state error':'visit-save'}>{draft.saving?'Αποθήκευση…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:existing?'Αποθηκευμένο':'')}</p>
+ {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void onSaved().then(b=>{if(b)setConflict((b as PatientBundle).sections.find(s=>s.session_id===sessionId&&s.section_key===kind)||null)})}>Σύγκριση εκδόσεων</button></>}
+ {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><pre>{conflict?.content||'Κενή'}</pre><button onClick={()=>{draft.acceptServer(initialDocument(kind,conflict?.content,conflict?.document),conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,initialDocument(kind,conflict?.content,conflict?.document),conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με τη δική μου</button></div>}
+ </div>;
+}

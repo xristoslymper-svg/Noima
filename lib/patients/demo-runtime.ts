@@ -1,3 +1,4 @@
+import type {VisitDocument} from '@/lib/clinical/visit-document';
 import type { ClinicalProposal, Addendum, Assessment } from '@/lib/clinical/core-types';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
@@ -5,8 +6,8 @@ const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`
 
 export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
 export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
-export type DemoSection = { id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
-export type DemoRisk = { session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
+export type DemoSection = { document?:VisitDocument|null; id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
+export type DemoRisk = { harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
 export type DemoHistory = { patient_id:string; psychiatric_history:string; medical_history:string; previous_treatments:string; hospitalizations:string; family_history:string; substance_history:string; social_functioning:string; allergies:string; version:number; updated_at:string };
 export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string; started_at:string; ended_at:string|null; status:string; notes:string; updated_at:string };
 export type DemoMedicationEvent = { id:string; patient_id:string; medication_id:string; session_id:string|null; event_type:string; previous_state:Record<string,unknown>|null; new_state:Record<string,unknown>|null; reason:string; effective_on:string; created_at:string };
@@ -14,7 +15,7 @@ export type DemoMedicationSideEffect = { id:string; patient_id:string; medicatio
 export type PatientBundle = { clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; assessments:Assessment[]; appointments:{id:string;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
 
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
-async function request(path:string, init:RequestInit={}){
+export async function request(path:string, init:RequestInit={}){
   configured();
   const response=await fetch(`${URL}/rest/v1/${path}`,{...init,headers:{...headers(),...(init.headers||{})},cache:'no-store'});
   const text=await response.text();

@@ -52,6 +52,36 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('visit documents reload as one canonical section, reject stale writes and remain immutable after finalization', async()=>{
+ const t='90000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const doc={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Denies low mood; uncertain reliability.'}]};
+ const [saved]=await sql("select * from demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]);
+ const [loaded]=await sql("select * from demo_session_sections where id=$1",[saved.id]);assert.deepEqual(loaded.document,doc);assert.equal(loaded.content,'Mood: Denies low mood; uncertain reliability.');
+ await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]),/stale_section/);
+ for(const invalid of [null,{}, {kind:'mse',fields:null},{kind:'mse',fields:[{key:'invented',label:'X',text:'X'}]}])await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,1)",[t,s.id,JSON.stringify(invalid)]),/invalid_document/);
+ const assessment={kind:'assessment',fields:[{key:'differential-1',label:'Differential Diagnosis',text:'Requires reassessment.',status:'under_investigation',codes:[{code:'F32.9',label:'Depressive episode, unspecified',system:'WHO ICD-10',edition:'2019'}]},{key:'formulation',label:'Formulation',text:'Stress associated symptoms.'}]};
+ const [a]=await sql("select * from demo_session_save_document($1,$2,'assessment',$3,null)",[t,s.id,JSON.stringify(assessment)]);assert.match(a.content,/υπό διερεύνηση/);assert.match(a.content,/F32.9/);assert.match(a.content,/Formulation/);
+ await sql("select demo_session_save_section($1,$2,'assessment','Reviewed narrative replaces structure','manual',1)",[t,s.id]);assert.equal((await sql('select document from demo_session_sections where id=$1',[a.id]))[0].document,null);
+ for(const k of ['interview','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,s.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'negative',harm_to_others:'positive'})]);
+ await sql('select demo_session_save_risk($1,$2,$3,1)',[t,s.id,JSON.stringify({suicidal_ideation:'negative'})]);assert.equal((await sql('select harm_to_others from demo_risk_assessments where session_id=$1',[s.id]))[0].harm_to_others,'positive');
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[s.id]);await sql('select demo_session_finalize($1,$2,$3)',[t,s.id,version]);
+ await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,1)",[t,s.id,JSON.stringify(doc)]),/session_unavailable/);
+ await assert.rejects(sql("update demo_session_sections set document=null where id=$1",[saved.id]),/immutable_record/);
+ const [follow]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);assert.notEqual(follow.id,s.id);assert.equal((await sql('select count(*)::int n from demo_session_sections where session_id=$1',[follow.id]))[0].n,0);
+ assert.deepEqual((await sql('select document from demo_session_sections where id=$1',[saved.id]))[0].document,doc);
+});
+
+test('blank structured headings cannot satisfy finalization and previous medications are atomic temporal events', async()=>{
+ const t='90000000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const [blank]=await sql("select * from demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify({kind:'mse',fields:[{key:'mood',label:'Mood',text:''}]})]);assert.equal(blank.content,'');
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[s.id]);await assert.rejects(sql('select demo_session_finalize($1,$2,$3)',[t,s.id,version]),/missing_sections/);
+ const [med]=await sql("select * from demo_medication_record_history($1,$2,$3,'Fictional old med',25,'mg','daily',current_date-20,current_date-10,'Historical exposure')",[t,p.id,s.id]);
+ const [{state}]=await sql('select demo_medication_state($1,current_date) state',[med.id]);assert.equal(state.status,'stopped');assert.equal((await sql('select count(*)::int n from demo_medication_events where medication_id=$1',[med.id]))[0].n,2);
+ await assert.rejects(sql("select demo_medication_record_history($1,$2,$3,'Invalid history',25,'mg','daily',current_date-5,current_date-10,'bad dates')",[t,p.id,s.id]),/invalid_medication_history/);
+ assert.equal((await sql("select count(*)::int n from demo_medications where patient_id=$1 and medication_name='Invalid history'",[p.id]))[0].n,0);
+});
+
 test('every table has RLS; anonymous reads are limited to fictional demo tables', async () => {
   const tables = await sql("select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','private') and c.relkind='r'");
   assert.ok(tables.length >= 20);

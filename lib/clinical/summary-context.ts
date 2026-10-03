@@ -1,12 +1,12 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=4;
+export const SUMMARY_POLICY_VERSION=5;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
 export type Finding={key:string;label:Category;text:string;source_ids:string[];attention:boolean;origin:'canonical'|'documented'|'synthesis'};
 const names:Record<string,string>={interview:'Interview',mse:'MSE',assessment:'Assessment',plan:'Πλάνο',review:'Επανεκτίμηση',effects:'Παρενέργειες',functioning:'Λειτουργικότητα',adherence:'Λήψη αγωγής'};
-const riskNames:Record<string,string>={suicidal_ideation:'Ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',attempt_history:'Ιστορικό απόπειρας'};
+const riskNames:Record<string,string>={suicidal_ideation:'Ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',attempt_history:'Ιστορικό απόπειρας',harm_to_others:'Κίνδυνος προς άλλους'};
 const states:Record<string,string>={positive:'θετικό',negative:'αρνητικό',unknown:'άγνωστο',not_assessed:'δεν διερευνήθηκε'};
 const medStates:Record<string,string>={active:'ενεργή',stopped:'διακοπείσα',planned:'μελλοντική'};
 export const clinicDay=(now=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);

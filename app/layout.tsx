@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./clinical-refinement.css";
+import "./visit-workspace.css";
 
 export const metadata: Metadata = {
   title: "Ψυχιατρικό Workspace",

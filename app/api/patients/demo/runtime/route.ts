@@ -28,7 +28,7 @@ export async function POST(request:Request){
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα βασικά στοιχεία.'},{status:400});
     return Response.json({patient:await createPatient(tester,{first_name:firstName,last_name:String(body.last_name||'').trim(),age,phone:String(body.phone||'').trim(),email:String(body.email||'').trim(),chief_complaint:String(body.chief_complaint||'').trim()})});
    }
-   case 'start_session': return Response.json({session:first(await rpc('demo_session_start',{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
+   case 'start_session': return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});
    case 'save_risk': return Response.json({risk:first(await rpc('demo_session_save_risk',{p_tester:tester,p_session:body.session_id,p_risk:body.risk||{},p_expected_version:body.expected_version??null}))});
    case 'save_history': return Response.json({history:first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{}}))});

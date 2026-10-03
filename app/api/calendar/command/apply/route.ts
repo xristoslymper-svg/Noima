@@ -1,9 +1,9 @@
 import {
   applyDemoCalendarMutation,
-  createDemoPatientAppointment,
   type DemoCalendarMutation,
 } from "@/lib/calendar/demo-supabase";
-import { listPatients } from "@/lib/patients/demo-runtime";
+import { fetchDemoCalendarEvents } from "@/lib/calendar/demo-supabase";
+import { createPatient, listPatients } from "@/lib/patients/demo-runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,25 +100,32 @@ export async function POST(request: Request) {
         { status: 422 },
       );
     }
-    const parts = mutation.patient_name.trim().split(/\s+/);
-    try {
-      const created = await createDemoPatientAppointment(tester, {
-        first_name: parts[0],
-        last_name: parts.slice(1).join(" "),
-        scheduled_start: mutation.scheduled_start!,
-        scheduled_end: mutation.scheduled_end!,
-        appointment_type: mutation.appointment_type === "other" ? "other" : "initial_assessment",
-      });
-      return Response.json({ event: created.event, patient_created: true, patient_id: created.patient.id });
-    } catch (error) {
-      if (error instanceof Error && error.message === "calendar_conflict") {
-        return Response.json({ error: "Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Δεν δημιουργήθηκε νέος φάκελος.", code: "calendar_conflict" }, { status: 409 });
-      }
-      if (error instanceof Error && error.message === "past_appointment") {
-        return Response.json({ error: "Η ώρα του ραντεβού έχει ήδη περάσει. Δεν δημιουργήθηκε νέος φάκελος.", code: "past_appointment" }, { status: 409 });
-      }
-      return Response.json({ error: "Δεν δημιουργήθηκε ο νέος φάκελος και το ραντεβού.", code: "patient_create_failed" }, { status: 502 });
+    const startMs = new Date(mutation.scheduled_start!).getTime();
+    const endMs = new Date(mutation.scheduled_end!).getTime();
+    const events = await fetchDemoCalendarEvents(tester);
+    const conflict = events.some(event => new Date(event.scheduled_start).getTime() < endMs && new Date(event.scheduled_end).getTime() > startMs);
+    if (conflict) {
+      return Response.json({ error: "Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Δεν δημιουργήθηκε νέος φάκελος.", code: "calendar_conflict" }, { status: 409 });
     }
+    const parts = mutation.patient_name.trim().split(/\s+/);
+    const created = await createPatient(tester, {
+      first_name: parts[0],
+      last_name: parts.slice(1).join(" "),
+      age: null,
+      phone: "",
+      email: "",
+      chief_complaint: "",
+    });
+    patientCreated = true;
+    patientId = created.id;
+    patientName = (created.first_name + " " + created.last_name).trim();
+    mutation = {
+      ...mutation,
+      action: "create",
+      patient_id: patientId,
+      patient_name: patientName,
+      appointment_type: mutation.appointment_type === "other" ? "other" : "initial_assessment",
+    };
   }
 
   try {
@@ -135,18 +142,6 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Δεν βρέθηκε αντίστοιχος φάκελος ασθενή.", code: "patient_not_found" },
         { status: 422 },
-      );
-    }
-    if (error instanceof Error && error.message === "session_already_started") {
-      return Response.json(
-        { error: "Η κλινική συνεδρία για αυτό το ραντεβού έχει ήδη ξεκινήσει. Δεν μετακινήθηκε ή ακυρώθηκε από το ημερολόγιο.", code: "session_already_started" },
-        { status: 409 },
-      );
-    }
-    if (error instanceof Error && error.message === "past_appointment") {
-      return Response.json(
-        { error: "Η νέα ώρα του ραντεβού έχει ήδη περάσει.", code: "past_appointment" },
-        { status: 409 },
       );
     }
     return Response.json({ error: "Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά." }, { status: 502 });

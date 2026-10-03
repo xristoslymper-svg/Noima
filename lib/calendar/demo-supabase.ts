@@ -90,8 +90,6 @@ export async function applyDemoCalendarMutation(
   if (!response.ok) {
     const message = await response.text();
     if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
-    if (message.includes("session_already_started")) throw new Error("session_already_started");
-    if (message.includes("past_appointment")) throw new Error("past_appointment");
     if (message.includes("patient_not_found") || message.includes("patient_required")) throw new Error("patient_not_found");
     throw new Error(`calendar_write_failed:${response.status}`);
   }
@@ -108,31 +106,4 @@ export async function startDemoCalendarSession(tester: string, eventId: string) 
   });
   if (!response.ok) throw new Error(`calendar_session_failed:${response.status}`);
   return response.json() as Promise<{ id: string; patient_id: string; status: "draft" | "completed" }>;
-}
-
-
-export async function createDemoPatientAppointment(
-  tester: string,
-  input: { first_name: string; last_name: string; scheduled_start: string; scheduled_end: string; appointment_type?: string | null },
-): Promise<{ patient: { id: string; first_name: string; last_name: string }; event: DemoCalendarEvent }> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_create_patient_appointment`, {
-    method: "POST",
-    headers: headers(),
-    cache: "no-store",
-    body: JSON.stringify({
-      p_tester: tester,
-      p_first_name: input.first_name,
-      p_last_name: input.last_name,
-      p_scheduled_start: input.scheduled_start,
-      p_scheduled_end: input.scheduled_end,
-      p_appointment_type: input.appointment_type ?? "initial_assessment",
-    }),
-  });
-  if (!response.ok) {
-    const message = await response.text();
-    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
-    if (message.includes("past_appointment")) throw new Error("past_appointment");
-    throw new Error(`calendar_patient_create_failed:${response.status}`);
-  }
-  return response.json() as Promise<{ patient: { id: string; first_name: string; last_name: string }; event: DemoCalendarEvent }>;
 }

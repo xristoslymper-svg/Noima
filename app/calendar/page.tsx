@@ -358,8 +358,6 @@ export default function CalendarPage() {
           <Link href="/calendar" className="nav-item active"><CalendarDays size={19} /><span>Ημερολόγιο</span></Link>
           <Link href="/patients" className="nav-item"><Users size={19} /><span>Ασθενείς</span></Link>
           <Link href="/psychometrics" className="nav-item"><Activity size={19} /><span>Ψυχομετρικά τεστ</span></Link>
-          <button className="nav-item"><Stethoscope size={19} /><span>Συνεργασία</span></button>
-          <button className="nav-item"><Settings size={19} /><span>Ρυθμίσεις</span></button>
         </nav>
       </aside>
 
@@ -380,18 +378,8 @@ export default function CalendarPage() {
           >
             <Menu size={21} />
           </button>
-          <div className="search">
-            <Search size={18} />
-            <span>Αναζήτηση ασθενή, σημείωσης, φαρμάκου ή τεστ...</span>
-          </div>
-          <div className="profile">
-            <Bell size={20} />
-            <div className="avatar">ΚΠ</div>
-            <div>
-              <strong>Δρ. Κατερίνα Παπαδάκη</strong>
-              <span>Ψυχίατρος</span>
-            </div>
-          </div>
+          <div className="search"><span>Ψ · ημερολόγιο</span></div>
+          <div className="profile"><div className="avatar">Ψ</div><div><strong>Pilot workspace</strong><span>Ψυχίατρος</span></div></div>
         </header>
 
         <div className="calendar-page-content">

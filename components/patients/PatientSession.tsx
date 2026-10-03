@@ -122,7 +122,9 @@ export default function PatientSession({
  const risk=bundle.risks.find(x=>x.session_id===draft.id);
  const sections=bundle.sections.filter(x=>x.session_id===draft.id);
  const completeKeys=new Set(sections.filter(x=>x.content.trim()).map(x=>x.section_key));
- const ready=[...required].every(x=>completeKeys.has(x))&&risk?.suicidal_ideation!=='not_assessed'&&Boolean(risk);
+ const requiredDone=[...required].filter(x=>completeKeys.has(x)).length;
+ const riskReady=Boolean(risk)&&risk?.suicidal_ideation!=='not_assessed';
+ const ready=requiredDone===required.size&&riskReady;
 
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
@@ -131,13 +133,13 @@ export default function PatientSession({
   </div>
 
   <div className="sections-label"><span className="kicker">ΚΛΙΝΙΚΗ ΚΑΤΑΓΡΑΦΗ</span><span>* απαιτείται για ολοκλήρωση</span></div>
-  <p className="dictation-guidance">Μετά το ραντεβού: υπαγορεύστε ανά ενότητα και ελέγξτε την πρόταση πριν την καταχώρηση.</p><fieldset disabled={flushing||finalizing} className="clinical-sections">
+  <p className="dictation-guidance">Μετά το ραντεβού: συμπληρώστε τις 5 βασικές ενότητες με * και την εκτίμηση κινδύνου. Λειτουργικότητα, παρενέργειες και συμμόρφωση είναι προαιρετικές όταν δεν έχουν κάτι σχετικό να καταγραφεί. Μπορείτε να γράψετε ή να υπαγορεύσετε ανά ενότητα.</p><fieldset disabled={flushing||finalizing} className="clinical-sections">
    {definitions.map(([key,title,hint])=><SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title,hint}} existing={sections.find(x=>x.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>)}
    <RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   </fieldset>
 
   <div className="finalize-bar">
-   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Όλες οι βασικές ενότητες και η εκτίμηση κινδύνου έχουν καταγραφεί.':'Συμπληρώστε τις ενότητες με * και εκτιμήστε αυτοκτονικό ιδεασμό.'}</span></div>
+   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Οι 5 βασικές ενότητες και η εκτίμηση κινδύνου έχουν καταγραφεί.':requiredDone+'/5 βασικές ενότητες · '+(riskReady?'κίνδυνος καταγράφηκε':'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού')}</span></div>
    <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Έλεγχος & ολοκλήρωση'}</button>
   </div>
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}

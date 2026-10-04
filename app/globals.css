@@ -565,3 +565,22 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .minimal-start .clinical-start-cta{width:min(100%,430px);margin:0}
 .minimal-start .clinical-start-scope{margin-top:16px;max-width:600px}
 .minimal-start .patient-details-link{margin-top:44px}
+
+
+/* Medication record: list first, temporal detail on demand. */
+.medication-record{gap:14px}
+.medication-record-head{align-items:center;margin-bottom:0}
+.medication-record-head h2{margin-bottom:0}
+.medication-record .clinical-table-wrap{margin:0;border:1px solid #e2e8e3;border-radius:12px;background:#fffefa;overflow-x:auto}
+.medication-record .clinical-lean-table caption{padding:12px 14px 8px;color:#6f8077;font-size:10px;font-weight:650}
+.medication-record .clinical-lean-table thead th{background:#f5f7f3;padding:9px 11px}
+.medication-record .clinical-lean-table tbody td,.medication-record .clinical-lean-table tbody th{padding:11px}
+.medication-record .medication-lean-table tbody th{font-size:12px;color:#2f473c}
+.medication-record .med-inline-effect textarea{background:#f8faf7!important;border-color:#e4e9e4!important}
+.medication-history-details{border-top:1px solid #e4e9e5;margin-top:4px;padding-top:4px}
+.medication-history-details>summary{display:flex;align-items:center;gap:8px;width:max-content;cursor:pointer;list-style:none;padding:10px 2px;color:#5f7469;font-size:11px;font-weight:650}
+.medication-history-details>summary::-webkit-details-marker{display:none}
+.medication-history-details>summary:after{content:'›';font-size:16px;color:#8a9991;transition:transform .15s}
+.medication-history-details[open]>summary:after{transform:rotate(90deg)}
+.medication-history-details>summary span{min-width:18px;text-align:center;padding:2px 5px;border-radius:999px;background:#eef3ef;color:#72847a;font-size:9px}
+.medication-history-details .med-events{margin-top:8px}

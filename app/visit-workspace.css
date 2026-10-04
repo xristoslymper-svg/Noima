@@ -205,3 +205,9 @@
 /* Make calendar intent explicit: this scheduler is for the next encounter. */
 .visit-next-heading{margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--visit-line)}
 .visit-next-heading strong{font-size:12px;font-weight:680;color:var(--visit-ink)}
+
+
+/* Fast follow-up scheduling: cadence first, exact slot second. */
+.visit-next-quick{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px}
+.visit-next-quick button{border:1px solid #dfe7e1;background:#f8faf8;color:#65786e;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:650;cursor:pointer}
+.visit-next-quick button:hover,.visit-next-quick button.active{background:#eaf2ed;border-color:#c9d9cf;color:#356653}

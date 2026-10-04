@@ -256,17 +256,30 @@ export default function CalendarPage() {
   const waiting = dayEvents.find(event => event.readiness === "waiting");
   const nextEvent = dayEvents.find(event => new Date(event.scheduled_end).getTime() >= Date.now()) ?? dayEvents[0];
   const draggingEvent = draggingEventId ? events.find(event => event.id === draggingEventId) ?? null : null;
+  const weekWindow = useMemo(() => {
+    const keys = new Set(days.map(day => day.key));
+    const weekEvents = events.filter(event => keys.has(dateKey(new Date(event.scheduled_start))));
+    if (!weekEvents.length) return { start: WEEK_START_MINUTE, end: 20 * 60 };
+    const earliest = Math.min(...weekEvents.map(event => athensMinutes(event.scheduled_start)));
+    const latest = Math.max(...weekEvents.map(event => athensMinutes(event.scheduled_end)));
+    return {
+      start: Math.max(WEEK_START_MINUTE, Math.floor((earliest - 60) / 60) * 60),
+      end: Math.min(WEEK_END_MINUTE, Math.ceil((latest + 60) / 60) * 60),
+    };
+  }, [days, events]);
+  const weekHourHeight = 68;
+  const weekTotalHeight = ((weekWindow.end - weekWindow.start) / 60) * weekHourHeight;
   const weekHours = Array.from(
-    { length: (WEEK_END_MINUTE - WEEK_START_MINUTE) / 60 + 1 },
-    (_, index) => WEEK_START_MINUTE / 60 + index,
+    { length: (weekWindow.end - weekWindow.start) / 60 + 1 },
+    (_, index) => weekWindow.start / 60 + index,
   );
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    const raw = WEEK_START_MINUTE + ((clientY - rect.top) / rect.height) * (WEEK_END_MINUTE - WEEK_START_MINUTE);
+    const raw = weekWindow.start + ((clientY - rect.top) / rect.height) * (weekWindow.end - weekWindow.start);
     const snapped = Math.round(raw / 30) * 30;
-    return Math.max(WEEK_START_MINUTE, Math.min(WEEK_END_MINUTE - 30, snapped));
-  }, []);
+    return Math.max(weekWindow.start, Math.min(weekWindow.end - 30, snapped));
+  }, [weekWindow]);
 
   const prepareMove = useCallback((event: CalendarEvent, dayKey: string, startMinute: number) => {
     const duration = eventDurationMinutes(event);
@@ -465,11 +478,11 @@ export default function CalendarPage() {
                     </button>;
                   })}
 
-                  <div className="week-time-axis" style={{ height: WEEK_TOTAL_HEIGHT }}>
+                  <div className="week-time-axis" style={{ height: weekTotalHeight }}>
                     {weekHours.map(hour => (
                       <span
                         key={hour}
-                        style={{ top: ((hour * 60 - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT }}
+                        style={{ top: ((hour * 60 - weekWindow.start) / 60) * weekHourHeight }}
                       >
                         {String(hour).padStart(2, "0")}:00
                       </span>
@@ -488,7 +501,7 @@ export default function CalendarPage() {
                           (previewMinute !== null ? " drag-target" : "")
                         }
                         key={day.key}
-                        style={{ height: WEEK_TOTAL_HEIGHT }}
+                        style={{ height: weekTotalHeight }}
                         onClick={click => {
                           if (click.target !== click.currentTarget) return;
                           const minute = minuteFromDrop(click.clientY, click.currentTarget);
@@ -515,8 +528,8 @@ export default function CalendarPage() {
                           <div
                             className="week-drop-preview"
                             style={{
-                              top: ((previewMinute - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT,
-                              height: Math.max(28, (eventDurationMinutes(draggingEvent) / 60) * WEEK_HOUR_HEIGHT),
+                              top: ((previewMinute - weekWindow.start) / 60) * weekHourHeight,
+                              height: Math.max(28, (eventDurationMinutes(draggingEvent) / 60) * weekHourHeight),
                             }}
                           >
                             {timeLabel(localAthensToIso(day.key, previewMinute))}
@@ -526,9 +539,9 @@ export default function CalendarPage() {
                         {items.map(event => {
                           const startMinute = athensMinutes(event.scheduled_start);
                           const duration = eventDurationMinutes(event);
-                          const top = ((startMinute - WEEK_START_MINUTE) / 60) * WEEK_HOUR_HEIGHT;
-                          const height = Math.max(38, (duration / 60) * WEEK_HOUR_HEIGHT);
-                          const outsideRange = startMinute < WEEK_START_MINUTE || startMinute >= WEEK_END_MINUTE;
+                          const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
+                          const height = Math.max(38, (duration / 60) * weekHourHeight);
+                          const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
 
                           if (outsideRange) return null;
 
@@ -537,11 +550,12 @@ export default function CalendarPage() {
                               className={
                                 "week-event draggable" +
                                 (draggingEventId === event.id ? " dragging" : "") +
-                                (event.readiness === "waiting" ? " waiting" : "")
+                                (event.readiness === "waiting" ? " waiting" : "") +
+                                (event.appointment_type === "initial_assessment" ? " initial" : " follow-up")
                               }
                               key={event.id}
                               draggable
-                              title="Σύρετε για αλλαγή ημέρας ή ώρας"
+                              title={event.patient_name + " · " + appointmentType(event.appointment_type)}
                               style={{ top, height }}
                               onDragStart={dragEvent => {
                                 setDraggingEventId(event.id);
@@ -711,6 +725,9 @@ export default function CalendarPage() {
         .week-time-column.today{background-color:#fbfdfb!important}
         .week-event{left:5px!important;right:5px!important;width:auto!important;border:0!important;border-left:3px solid #709585!important;border-radius:7px!important;background:#edf4f0!important;color:#30483e!important;box-shadow:none!important;padding:6px 7px!important;overflow:hidden;cursor:pointer}
         .week-event:hover{background:#e5f0ea!important}.week-event.waiting{border-left-color:#c39a61!important;background:#faf5ea!important}
+        .week-event.initial{border-left-color:#a98b68!important;background:#f7f1e9!important}.week-event.initial:hover{background:#f3eadf!important}
+        .week-event.follow-up{border-left-color:#709585!important}
+        .week-time-column:hover{background-color:#fcfdfc!important}
         .week-event-grip{display:none!important}.week-event strong{font-size:9px!important;color:#5d756a!important}.week-event span{font-size:10.5px!important;font-weight:700!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.week-event small{font-size:8.5px!important;color:#819087!important;white-space:nowrap}
         .week-drop-preview{left:5px!important;right:5px!important;border-radius:7px!important;background:rgba(72,119,99,.10)!important;border:1px dashed #6e9a88!important;color:#4f7565!important;font-size:9px!important}
 

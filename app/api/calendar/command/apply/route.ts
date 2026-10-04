@@ -1,6 +1,7 @@
 import {
   applyDemoCalendarMutation,
   createDemoPatientAppointment,
+  createDemoRecurringAppointments,
   type DemoCalendarMutation,
 } from "@/lib/calendar/demo-supabase";
 import { listPatients } from "@/lib/patients/demo-runtime";
@@ -18,6 +19,8 @@ type ApplyBody = {
   end_iso?: unknown;
   appointment_type?: unknown;
   create_new_patient?: unknown;
+  recurrence_interval_weeks?: unknown;
+  recurrence_occurrences?: unknown;
 };
 
 const allowed = new Set(["move", "cancel", "create", "schedule_follow_up"]);
@@ -141,6 +144,21 @@ export async function POST(request: Request) {
         return errorResponse(error);
       }
     }
+  }
+
+  const recurrenceInterval = Number(body.recurrence_interval_weeks ?? 0);
+  const recurrenceOccurrences = Number(body.recurrence_occurrences ?? 0);
+  if (action === "create" && recurrenceInterval > 0) {
+    if (!patientId || !startIso || !endIso || ![1, 2, 4].includes(recurrenceInterval) || recurrenceOccurrences < 2 || recurrenceOccurrences > 52) {
+      return Response.json({ error: "Μη έγκυλη επανάληψη ραντεβού." }, { status: 400 });
+    }
+    try {
+      const series = await createDemoRecurringAppointments(tester, {
+        patient_id: patientId, scheduled_start: startIso, scheduled_end: endIso,
+        appointment_type: appointmentType, interval_weeks: recurrenceInterval, occurrences: recurrenceOccurrences,
+      });
+      return Response.json({ event: series.events[0], series_id: series.series_id, events: series.events, patient_created: false, patient_id: patientId });
+    } catch (error) { return errorResponse(error); }
   }
 
   const mutation: DemoCalendarMutation = {

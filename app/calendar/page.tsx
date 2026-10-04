@@ -163,7 +163,7 @@ function eventDurationMinutes(event: CalendarEvent) {
 
 export default function CalendarPage() {
   const [mobileNav, setMobileNav] = useState(false);
-  const [view, setView] = useState<"day" | "week">("day");
+  const [view, setView] = useState<"day" | "week">("week");
   const [voice, setVoice] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -459,13 +459,14 @@ export default function CalendarPage() {
 
                 <div className="calendar-time-grid">
                   <div className="week-time-corner" />
-                  {days.map(day => (
-                    <div className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key}>
+                  {days.map(day => {
+                    const count = events.filter(event => dateKey(new Date(event.scheduled_start)) === day.key).length;
+                    return <button className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
                       <span>{day.day}</span>
                       <strong>{day.date}</strong>
-                      {day.key === focusDate && <i>Σήμερα</i>}
-                    </div>
-                  ))}
+                      <small>{count ? count + (count === 1 ? " ραντεβού" : " ραντεβού") : "—"}</small>
+                    </button>;
+                  })}
 
                   <div className="week-time-axis" style={{ height: WEEK_TOTAL_HEIGHT }}>
                     {weekHours.map(hour => (
@@ -549,7 +550,7 @@ export default function CalendarPage() {
                                 setDraggingEventId(null);
                                 setDragPreview(null);
                               }}
-                              onDoubleClick={() => setAppointmentEditor({ mode: "edit", event })}
+                              onClick={() => setAppointmentEditor({ mode: "edit", event })}
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
                               <strong>{timeLabel(event.scheduled_start)}</strong>
@@ -658,18 +659,40 @@ export default function CalendarPage() {
       )}
 
       <style jsx global>{`
-        .calendar-page-content{max-width:1380px;margin:0 auto;padding:34px 42px 64px}
-        .calendar-page-heading{align-items:center;margin-bottom:22px}
+        .calendar-page-content{max-width:1500px;margin:0 auto;padding:32px 38px 64px}
+        .calendar-page-heading{align-items:center;margin-bottom:20px}
         .calendar-page-heading h1{font-size:34px;letter-spacing:-.045em;margin:0;color:#263c33}
         .calendar-page-actions{gap:8px}.voice-calendar-button{border:0!important;background:transparent!important;box-shadow:none!important;color:#647a70!important}
         .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
-        .calendar-control-bar{min-height:48px;padding:7px 9px 7px 5px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
+        .calendar-control-bar{min-height:48px;padding:7px 8px 7px 4px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
         .calendar-date-nav strong{font-size:13px;color:#334b40}.calendar-date-nav>button{border:0!important;background:transparent!important}
         .calendar-day-count{margin-left:auto;color:#8a9690;font-size:10px}.calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
         .calendar-view-switch button{border:0!important;border-radius:6px!important;padding:6px 10px!important;background:transparent!important;font-size:10px!important}
         .calendar-view-switch button.active{background:#fff!important;box-shadow:0 1px 4px rgba(48,70,60,.08)!important;color:#315f50!important}
-        .calendar-page-grid{grid-template-columns:minmax(0,1fr) 260px;gap:32px;align-items:start;margin-top:20px}
-        .calendar-day-card{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+
+        /* Desktop is the product surface: the week owns the available width. */
+        .calendar-page-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;margin-top:20px}
+        .calendar-page-grid>.calendar-side-card{display:none}
+        .calendar-week-card{width:100%;border:1px solid #e2e8e4!important;border-radius:14px!important;background:#fff!important;box-shadow:0 8px 28px rgba(45,67,57,.035)!important;overflow:hidden}
+        .week-interaction-hint{min-height:34px!important;padding:8px 16px!important;background:#fbfcfb!important;border-bottom:1px solid #e7ebe8!important;color:#89958f!important;font-size:9.5px!important}
+        .calendar-time-grid{grid-template-columns:64px repeat(7,minmax(118px,1fr))!important;min-width:0!important}
+        .week-time-corner{background:#fbfcfb!important;border-bottom:1px solid #e7ebe8!important}
+        .week-day-head.time-grid-head{appearance:none;border:0!important;border-left:1px solid #edf0ee!important;border-bottom:1px solid #e7ebe8!important;border-radius:0!important;background:#fbfcfb!important;min-width:0!important;padding:12px 10px 11px!important;text-align:left!important;cursor:pointer}
+        .week-day-head.time-grid-head:hover{background:#f6f9f7!important}.week-day-head.time-grid-head.today{background:#eef5f1!important}
+        .week-day-head span{display:block;font-size:9px!important;letter-spacing:.08em;color:#87958e!important;font-weight:750;text-transform:uppercase}
+        .week-day-head strong{display:block;margin-top:3px;font-size:12px!important;color:#33483f!important;white-space:nowrap}
+        .week-day-head small{display:block;margin-top:4px;font-size:8.5px;color:#a0aaa5;font-weight:500}
+        .week-day-head.today strong{color:#2f6f5b!important}.week-day-head.today small{color:#66877a}
+        .week-time-axis{background:#fcfdfc!important}.week-time-axis span{font-size:9px!important;color:#a0aaa5!important;right:10px!important}
+        .week-time-column{border-left:1px solid #edf0ee!important;background-image:linear-gradient(to bottom,transparent calc(100% / 28 - 1px),#f1f3f1 calc(100% / 28 - 1px),#f1f3f1 calc(100% / 28))!important}
+        .week-time-column.today{background-color:#fbfdfb!important}
+        .week-event{left:5px!important;right:5px!important;width:auto!important;border:0!important;border-left:3px solid #709585!important;border-radius:7px!important;background:#edf4f0!important;color:#30483e!important;box-shadow:none!important;padding:6px 7px!important;overflow:hidden;cursor:pointer}
+        .week-event:hover{background:#e5f0ea!important}.week-event.waiting{border-left-color:#c39a61!important;background:#faf5ea!important}
+        .week-event-grip{display:none!important}.week-event strong{font-size:9px!important;color:#5d756a!important}.week-event span{font-size:10.5px!important;font-weight:700!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.week-event small{font-size:8.5px!important;color:#819087!important;white-space:nowrap}
+        .week-drop-preview{left:5px!important;right:5px!important;border-radius:7px!important;background:rgba(72,119,99,.10)!important;border:1px dashed #6e9a88!important;color:#4f7565!important;font-size:9px!important}
+
+        /* Day remains a secondary drill-down; Overview owns the daily snapshot. */
+        .calendar-day-card{max-width:1040px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
         .clinical-agenda-row{min-height:78px;border-bottom:1px solid #e7ebe8!important;border-radius:0!important;background:transparent!important;padding:0 4px!important;transition:background .15s}
         .clinical-agenda-row:hover{background:#f8faf8!important}.clinical-agenda-row.next{background:linear-gradient(90deg,rgba(235,244,239,.75),rgba(255,255,255,0))!important}
         .clinical-agenda-row.next .clinical-event-line{background:#67917f!important}.clinical-event-time{width:66px!important}
@@ -677,19 +700,14 @@ export default function CalendarPage() {
         .agenda-patient>a,.agenda-patient>strong{display:block;font-size:13px;font-weight:700;color:#2f453b}.agenda-patient>a:hover{color:#39715e}
         .agenda-patient>span{display:block;margin-top:4px;font-size:10.5px;color:#7b8982}
         .agenda-actions{gap:4px!important}.agenda-session{display:inline-flex!important;align-items:center;gap:6px;border:0!important;border-radius:8px!important;background:#eaf2ed!important;color:#356653!important;padding:8px 10px!important;font-size:10px!important;font-weight:700!important}
-        .agenda-more{border:0!important;background:transparent!important;color:#8a9891!important;padding:7px!important}
-        .readiness.waiting{border:0!important;background:#faf4e8!important;color:#8a744d!important;font-size:9px!important}
-        .calendar-day-context{border:0!important;border-left:1px solid #e7ebe8!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:8px 0 8px 24px!important;position:sticky;top:92px}
-        .calendar-day-context h3{font-size:18px;margin:7px 0 16px;color:#30483e}.calendar-next-card{display:flex;flex-direction:column;gap:5px}
-        .calendar-next-card>strong{font-size:12px;color:#30483e}.calendar-next-card>span{font-size:10px;color:#829088}.calendar-next-card>small{display:flex;align-items:center;gap:5px;color:#94764c;font-size:9.5px;margin-top:5px}
-        .calendar-next-card>div{display:flex;align-items:center;gap:10px;margin-top:13px}.calendar-next-card button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:8px;background:#356b59;color:#fff;padding:8px 10px;font-size:10px;font-weight:700}.calendar-next-card a{font-size:10px;color:#55766a;font-weight:650}
-        .calendar-quiet-attention{display:flex;gap:7px;align-items:flex-start;margin-top:18px;padding-top:14px;border-top:1px solid #e7ebe8;color:#8a744d;font-size:9.5px;line-height:1.45}
-        .week-interaction-hint{min-height:34px!important;padding:7px 10px!important;background:transparent!important;border-bottom:1px solid #e7ebe8!important;color:#89958f!important;font-size:9.5px!important}
-        .calendar-week-card{box-shadow:none!important;border-color:#e3e8e4!important}.week-event{box-shadow:none!important;border-radius:7px!important}
+        .agenda-more{border:0!important;background:transparent!important;color:#8a9891!important;padding:7px!important}.readiness.waiting{border:0!important;background:#faf4e8!important;color:#8a744d!important;font-size:9px!important}
+
         .calendar-appointment-dialog{border-radius:18px!important;box-shadow:0 24px 70px rgba(37,55,47,.16)!important}.calendar-appointment-dialog>h3{font-size:22px!important;letter-spacing:-.02em;margin-bottom:4px!important}
         .appointment-editor-type{display:block;color:#819087;font-size:10px;margin-bottom:16px}.appointment-linked-record{background:#f5f8f5!important;border-color:#e3e9e4!important}
-        @media(max-width:900px){.calendar-page-content{padding:24px 20px 52px}.calendar-page-grid{grid-template-columns:1fr}.calendar-day-context{display:none}.calendar-day-count{display:none}}
-        @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}.calendar-page-heading h1{font-size:30px}}
+
+        /* Mobile only degrades gracefully; design decisions are desktop-first. */
+        @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
+        @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.calendar-page-heading h1{font-size:30px}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}}
       `}</style>
 
       {voice && (

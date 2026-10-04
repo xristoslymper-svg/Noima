@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AppointmentStartConfirmation from "@/components/calendar/AppointmentStartConfirmation";
 import SummaryPeek from "@/components/patients/SummaryPeek";
 import {calendarSegment as segment, calendarWindow, calendarLanes} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
@@ -181,6 +182,7 @@ export default function CalendarPage() {
   const quickBusyRef=useRef(false);
   const [undoEvent,setUndoEvent]=useState<CalendarEvent|null>(null);
   const [quickError,setQuickError]=useState("");
+  const [pendingStart,setPendingStart]=useState<CalendarEvent|null>(null);
   const [openingSession, setOpeningSession] = useState<string | null>(null);
   const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
@@ -213,9 +215,9 @@ export default function CalendarPage() {
     }
   }, []);
 
-  const openAppointmentSession = useCallback(async (event: CalendarEvent) => {
+  const openAppointmentSession = useCallback(async (event: CalendarEvent, confirmed=false) => {
     if (!event.patient_id || openingSession) return;
-    if(!event.session_id&&dateKey(new Date(event.scheduled_start))!==dateKey(new Date())&&!window.confirm('Το ραντεβού είναι '+dateTimeLabel(event.scheduled_start)+'. Έναρξη επίσκεψης σήμερα; Θα συνδεθεί με αυτό το ραντεβού και η υπενθύμισή του θα ακυρωθεί.'))return;
+    if(!event.session_id&&dateKey(new Date(event.scheduled_start))!==dateKey(new Date())&&!confirmed){setPendingStart(event);return;}
     setOpeningSession(event.id);
     setCalendarError("");
     try {
@@ -680,6 +682,7 @@ export default function CalendarPage() {
         />
       )}
 
+      {pendingStart&&<AppointmentStartConfirmation scheduledStart={pendingStart.scheduled_start} onCancel={()=>setPendingStart(null)} onConfirm={()=>{const pending=pendingStart;setPendingStart(null);void openAppointmentSession(pending,true)}}/>}
       {pendingMove && (
         <div className="calendar-move-overlay" onClick={() => !moveSaving && setPendingMove(null)}>
           <section ref={dialogRef} tabIndex={-1} aria-label="Μετακίνηση ραντεβού" className="calendar-move-dialog" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>

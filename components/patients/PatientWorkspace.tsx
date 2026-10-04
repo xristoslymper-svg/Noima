@@ -1,4 +1,5 @@
 'use client';
+import AppointmentStartConfirmation from '@/components/calendar/AppointmentStartConfirmation';
 import ClinicalSummary from './ClinicalSummary';
 import VisitWorkspace from './VisitWorkspace';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ import { formatClinicAppointment } from '@/lib/clinic-time';
 
 type Tab=WorkspaceTab;
 export default function PatientWorkspace({patientRef}:{patientRef:string}){
+ const [pendingStart,setPendingStart]=useState<{appointment:PatientBundle['appointments'][number];type:'initial_assessment'|'follow_up'}|null>(null);
  const beforeNavigate=useRef<(()=>Promise<void>)|null>(null);
  const currentUrl=useRef('');
  const historyRead=useRef<()=>Promise<void>>(async()=>{});
@@ -27,7 +29,7 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
  useEffect(()=>{currentUrl.current=window.location.href;applyLocation(window.location.search);void loadShell();const read=()=>{void historyRead.current()};window.addEventListener('popstate',read);return()=>window.removeEventListener('popstate',read)},[patientRef]);
  useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible'&&tab==='summary')void load()};const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh)}},[patientRef,tab]);
  async function setTab(next:Tab,sessionId?:string|null){try{await beforeNavigate.current?.()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν οι αλλαγές.');return}setError('');setVisitId(next==='sessions'&&sessionId&&bundle?.sessions.some(s=>s.id===sessionId&&s.status==='draft')?sessionId:null);setTabState(next);setSessionRef(next==='sessions'?(sessionId||null):null);const url=new URL(window.location.href);if(next==='summary')url.searchParams.delete('tab');else url.searchParams.set('tab',next);if(next==='sessions'&&sessionId)url.searchParams.set('session',sessionId);else url.searchParams.delete('session');window.history.pushState({},'',url);currentUrl.current=url.href}
- async function startSession(appointmentId?:string,type=visitType){
+ async function startSession(appointmentId?:string,type=visitType,confirmed=false){
   setVisitType(type);
   if(!bundle)return;
   try{await beforeNavigate.current?.()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν οι αλλαγές.');return}
@@ -42,7 +44,7 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
   if(requestedId&&!requested){setError('Το συγκεκριμένο ραντεβού δεν ανήκει στον φάκελο.');return}
   if(requested?.session_id){setTab('sessions',requested.session_id);return}
   const appointment=requested||linked||(sameDay.length===1?sameDay[0]:undefined);
-  if(appointment&&!appointment.session_id&&new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(appointment.scheduled_start))!==today&&!window.confirm('Το ραντεβού είναι '+formatClinicAppointment(appointment.scheduled_start)+'. Έναρξη επίσκεψης σήμερα; Θα συνδεθεί με αυτό το ραντεβού και η υπενθύμισή του θα ακυρωθεί.'))return;
+  if(appointment&&!appointment.session_id&&new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(appointment.scheduled_start))!==today&&!confirmed){setPendingStart({appointment,type});return}
   setStarting(true);setError('');
   try{
    const result=await demoPost({action:'start_session',patient_id:bundle.patient.id,session_type:appointment?.appointment_type||type,appointment_id:appointment?.id||null}) as {session?:{id?:string}};
@@ -60,6 +62,7 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
   <div className="patient-workspace-shell"><aside className="patient-nav"><span className="patient-nav-label">ΦΑΚΕΛΟΣ</span><Nav active={tab==='summary'} onClick={()=>setTab('summary')} icon={<FileText size={16}/>} label="Σύνοψη"/><Nav active={tab==='sessions'} onClick={()=>setTab('sessions')} icon={<ClipboardCheck size={16}/>} label="Επισκέψεις" badge={draft?'1':undefined}/><Nav active={tab==='history'} onClick={()=>setTab('history')} icon={<HistoryIcon size={16}/>} label="Ιστορικό"/><Nav active={tab==='medications'} onClick={()=>setTab('medications')} icon={<Pill size={16}/>} label="Αγωγή"/><Nav active={tab==='psychometrics'} onClick={()=>setTab('psychometrics')} icon={<TestTube2 size={16}/>} label="Ψυχομετρικά"/><div className="patient-nav-divider"/><button className="patient-action" onClick={()=>void exportRecord()}><FileText size={16}/> Εξαγωγή φακέλου</button></aside>
    <div className="patient-workspace-content">{!contextReady&&<p role="status">Φόρτωση διαχρονικού φακέλου… Μπορείτε να ανοίξετε την επίσκεψη.</p>}{contextReady&&<>{tab==='summary'&&!error&&(isEstablished?<ClinicalSummary bundle={bundle} onSessions={(sessionId)=>setTab('sessions',sessionId)} onPsychometrics={()=>setTab('psychometrics')} onMedications={()=>setTab('medications')} onHistory={()=>setTab('history')}/>:<NewPatientSummary bundle={bundle} onDetails={()=>setTab('history')} onStart={()=>void startSession(undefined,'initial_assessment')}/>) } {tab==='sessions'&&!visitId&&(draft&&!sessionRef?<div className="panel-stack"><button onClick={()=>setTab('sessions',draft.id)}>Συνέχεια πρόχειρου · {draft.session_type==='initial_assessment'?'First Visit':'Follow-up'}</button><PatientSession bundle={{...bundle,sessions:completed}} reload={load} onFinalize={finalize} finalizing={finalizing} finalizeError={finalizeError} selectedSessionId={null} onSelectSession={(id)=>setTab('sessions',id)}/></div>:<PatientSession bundle={bundle} reload={load} onFinalize={finalize} finalizing={finalizing} finalizeError={finalizeError} selectedSessionId={sessionRef} onSelectSession={(id)=>setTab('sessions',id)}/>)} {tab==='history'&&<HistoryPanel bundle={bundle} reload={load} beforeNavigate={beforeNavigate}/>} {tab==='medications'&&<MedicationsPanel bundle={bundle} reload={load} onAdd={()=>setMedOpen(true)}/>} {tab==='psychometrics'&&<PatientPsychometrics bundle={bundle} reload={load}/>}</>}</div></div>
  </div></section>{medOpen&&<MedicationModal bundle={bundle} onClose={()=>setMedOpen(false)} onSaved={load}/>}
+ {pendingStart&&<AppointmentStartConfirmation scheduledStart={pendingStart.appointment.scheduled_start} onCancel={()=>setPendingStart(null)} onConfirm={()=>{const pending=pendingStart;setPendingStart(null);void startSession(pending.appointment.id,pending.type,true)}}/>}
  {appointmentChoices.length>1&&<div className="entry-modal-backdrop" onClick={()=>setAppointmentChoices([])}><section className="entry-modal appointment-choice-modal" onClick={e=>e.stopPropagation()}><button className="entry-close" onClick={()=>setAppointmentChoices([])} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΕΝΑΡΞΗ ΣΥΝΕΔΡΙΑΣ</span><h2>Ποιο σημερινό ραντεβού;</h2><p>Υπάρχουν περισσότερα από ένα προγραμματισμένα ραντεβού για τον ίδιο ασθενή. Επιλέξτε ποιο συνδέεται με αυτή τη συνεδρία.</p><div className="appointment-choice-list">{appointmentChoices.map(a=><button key={a.id} disabled={starting} onClick={()=>void startSession(a.id)}><strong>{formatClinicAppointment(a.scheduled_start)}</strong><span>{a.appointment_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</span></button>)}</div><button disabled={starting} onClick={()=>setAppointmentChoices([])}>Ακύρωση</button></section></div>}
  {visitId&&<VisitWorkspace beforeNavigate={beforeNavigate} key={visitId} sessionId={visitId} patientId={p.id} context={contextReady?bundle:null} reloadContext={load} onClose={()=>{setVisitId(null);setTab('summary');void load()}} onFinalized={()=>{setVisitId(null);setContextReady(false);setTab('summary');void load()}} onSelect={(id)=>setTab('sessions',id)}/>}
  </main>

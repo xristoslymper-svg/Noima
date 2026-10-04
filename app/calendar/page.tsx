@@ -43,6 +43,8 @@ type CalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  sms_reminder_enabled?:boolean;
+  sms_reminder?:{status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
   series_id: string | null;
   recurrence_interval_weeks: number | null;
@@ -57,6 +59,7 @@ type PendingMove = {
 };
 
 type PatientOption = {
+  phone?:string;
   id: string;
   first_name: string;
   last_name: string;
@@ -648,6 +651,7 @@ export default function CalendarPage() {
               {selectedEvent.patient_id && <button disabled={quickBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}><CalendarPlus size={20}/><span>Επόμενο</span></button>}
               {selectedEvent.status==="completed" && selectedEvent.session_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?tab=sessions&session="+selectedEvent.session_id}><Stethoscope size={20}/><span>Επίσκεψη</span></Link>}
             </div>
+            {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
             {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
             {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
             {selectedEvent.status==="cancelled" && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button>}
@@ -799,6 +803,7 @@ export default function CalendarPage() {
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
 
+        .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
         /* Compact calendar with quiet time guides and prominent appointment cards. */
         .calendar-page-content{max-width:1180px;padding:32px 30px 56px}
         .calendar-control-bar{border:1px solid #e6ebe7;border-radius:16px;background:#fff;padding:12px;gap:8px;box-shadow:0 4px 18px rgba(35,55,45,.025)}
@@ -876,6 +881,9 @@ function AppointmentEditor({
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
+  const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
+  const patientMobile=patients.find(p=>p.id===patientId)?.phone||"";
+  const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [recurrence, setRecurrence] = useState("none");
@@ -911,6 +919,7 @@ function AppointmentEditor({
         body: JSON.stringify({
           tester: getDemoTesterId(),
           action,
+          sms_reminder_enabled:smsReminder,
           event_id: event?.id || null,
           expected_updated_at: event?.updated_at,
           expected_series_updated_at: event?.series_updated_at,
@@ -953,6 +962,7 @@ function AppointmentEditor({
         {mode === "create" && <label>Επανάληψη<select value={recurrence} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
         {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </fieldset>
+      <div className="calendar-sms-setting"><label><input type="checkbox" checked={smsReminder} disabled={saving||event?.status==="completed"||event?.status==="cancelled"||Boolean(event?.session_id)} onChange={e=>setSmsReminder(e.target.checked)}/> Υπενθύμιση SMS · 24 ώρες πριν</label><small>{hasMobile ? "Κινητό …"+patientMobile.replace(/\D/g,"").slice(-4)+" · Προσομοίωση αποστολής" : "Χρειάζεται έγκυρο κινητό στον φάκελο ασθενή."}</small><small>Σε ραντεβού εντός 24 ωρών, προγραμματίζεται στον επόμενο έλεγχο. Δεν αποστέλλεται πραγματικό SMS.</small>{event?.sms_reminder&&<small>{event.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":event.sms_reminder.status==="queued"?"Προγραμματισμένη: "+dateTimeLabel(event.sms_reminder.due_at):event.sms_reminder.status==="missing_phone"?"Δεν υπάρχει έγκυρο κινητό":event.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Η υπενθύμιση ακυρώθηκε"}</small>}</div>
       {event?.series_id && event.status !== "completed" && !event.session_id && <label className="calendar-series-scope">Εφαρμογή σε <select value={scope} disabled={saving} onChange={e=>setScope(e.target.value)}><option value="one">Μόνο αυτό το ραντεβού</option><option value="future">Αυτό και τα επόμενα</option><option value="series">Όλα τα {event.status === "cancelled" ? "ακυρωμένα" : "προγραμματισμένα"} της σειράς</option></select></label>}
       {mode === "create" && recurrence !== "none" && date && <p className="calendar-recurrence-preview">{occurrences} ραντεβού · κάθε {recurrence} εβδομάδα/ες · {time}, ώρα Αθήνας. Η ώρα παραμένει σταθερή στις αλλαγές θερινής ώρας.</p>}
       {confirmCancel && <div className="calendar-dialog-confirm" role="alert">Να ακυρωθεί {scope === "one" ? "αυτό το ραντεβού" : "το επιλεγμένο σύνολο της σειράς"};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>Επιβεβαίωση ακύρωσης</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>Επιστροφή</button></div>}

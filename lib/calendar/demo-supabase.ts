@@ -16,6 +16,8 @@ export type DemoCalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  sms_reminder_enabled?: boolean;
+  sms_reminder?: {status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
   series_id: string | null;
   recurrence_interval_weeks: number | null;
@@ -44,7 +46,7 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,updated_at,series_id,recurrence_interval_weeks",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,sms_reminder_enabled,updated_at,series_id,recurrence_interval_weeks",
     tester_id: `eq.${tester}`,
     order: "scheduled_start.asc",
   });
@@ -58,7 +60,10 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   const events = (await response.json()) as DemoCalendarEvent[];
   const revisions = new Map<string, string>();
   for (const event of events) if (event.series_id && (!revisions.has(event.series_id) || Date.parse(event.updated_at) > Date.parse(revisions.get(event.series_id)!) || (Date.parse(event.updated_at) === Date.parse(revisions.get(event.series_id)!) && event.updated_at > revisions.get(event.series_id)!))) revisions.set(event.series_id, event.updated_at);
-  return events.map(event => ({ ...event, series_updated_at: event.series_id ? revisions.get(event.series_id) : undefined }));
+  const reminderResponse=await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_reminders',{method:'POST',headers:headers(),cache:'no-store',body:JSON.stringify({p_tester:tester})});
+  if(!reminderResponse.ok)throw new Error('calendar_reminders_failed');
+  const reminders=await reminderResponse.json() as Array<{event_id:string;status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string}>;
+  return events.map(event => ({ ...event, sms_reminder:reminders.find(r=>r.event_id===event.id), series_updated_at: event.series_id ? revisions.get(event.series_id) : undefined }));
 }
 
 export type DemoCalendarMutation = {
@@ -73,34 +78,16 @@ export type DemoCalendarMutation = {
   scheduled_end?: string | null;
   appointment_type?: string | null;
   detail?: string | null;
+  sms_reminder_enabled?: boolean;
 };
 
 export async function applyDemoCalendarMutation(
   tester: string,
   mutation: DemoCalendarMutation,
 ): Promise<DemoCalendarEvent> {
-  const editing = ["move", "cancel", "restore"].includes(mutation.action);
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${editing ? "demo_calendar_edit" : "demo_calendar_apply_v2"}`, {
-    method: "POST",
-    headers: headers(),
-    cache: "no-store",
-    body: JSON.stringify(editing ? {
-      p_tester: tester, p_action: mutation.action, p_event: mutation.event_id,
-      p_expected_updated_at: mutation.expected_updated_at,
-      p_expected_series_updated_at: mutation.expected_series_updated_at ?? null,
-      p_start: mutation.scheduled_start ?? null, p_end: mutation.scheduled_end ?? null,
-      p_scope: mutation.scope ?? "one",
-    } : {
-      p_tester: tester,
-      p_action: mutation.action,
-      p_event_id: mutation.event_id ?? null,
-      p_patient_id: mutation.patient_id ?? null,
-      p_patient_name: mutation.patient_name ?? null,
-      p_scheduled_start: mutation.scheduled_start ?? null,
-      p_scheduled_end: mutation.scheduled_end ?? null,
-      p_appointment_type: mutation.appointment_type ?? "follow_up",
-      p_detail: mutation.detail ?? "",
-    }),
+  const response = await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_write_sms',{
+    method:'POST',headers:headers(),cache:'no-store',
+    body:JSON.stringify({p_tester:tester,p_payload:mutation,p_sms:mutation.sms_reminder_enabled??null})
   });
 
   if (!response.ok) {
@@ -120,16 +107,10 @@ export async function applyDemoCalendarMutation(
 
 export async function createDemoRecurringAppointments(tester: string, input: {
   patient_id: string; scheduled_start: string; scheduled_end: string; appointment_type: string;
-  interval_weeks: number; occurrences: number;
+  interval_weeks: number; occurrences: number; sms_reminder_enabled?:boolean;
 }) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_create_recurring`, {
-    method: "POST", headers: headers(), cache: "no-store",
-    body: JSON.stringify({
-      p_tester: tester, p_patient_id: input.patient_id, p_scheduled_start: input.scheduled_start,
-      p_scheduled_end: input.scheduled_end, p_appointment_type: input.appointment_type,
-      p_interval_weeks: input.interval_weeks, p_occurrences: input.occurrences,
-    }),
-  });
+  const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_write_sms',{method:'POST',headers:headers(),cache:'no-store',body:JSON.stringify({p_tester:tester,p_payload:{...input,action:'create'},p_sms:input.sms_reminder_enabled??null})});
+
   if (!response.ok) {
     const message = await response.text();
     if (message.includes("calendar_conflict")) throw new Error(JSON.parse(message).message);

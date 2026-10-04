@@ -425,3 +425,24 @@ test('medication timeline derives current/future state without bootstrap and pre
  await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'changed',90,'mg','daily',current_date+2,'same day',7,null,false)",[t,m.id]),/event_date_conflict/);
  assert.equal((await state(3)).dose,125);
 });
+
+test('SMS simulation queues atomically, reschedules, cancels, revalidates phone and processes only once',async()=>{
+ const tester='71000000-0000-4000-8000-000000000001';await sql('select public.demo_tester_bootstrap($1)',[tester]);
+ const patient=(await sql('select id from public.demo_patients where tester_id=$1 limit 1',[tester]))[0];
+ await sql("update public.demo_patients set phone='+306900000000' where id=$1",[patient.id]);
+ async function write(payload,sms=true){return (await sql('select public.demo_calendar_write_sms($1,$2::jsonb,$3) as event',[tester,JSON.stringify(payload),sms]))[0].event;}
+ const event=await write({action:'create',patient_id:patient.id,scheduled_start:'2098-10-10T09:00Z',scheduled_end:'2098-10-10T09:50Z'});
+ let job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(job.status,'queued');assert.equal(new Date(job.due_at).toISOString(),'2098-10-09T09:00:00.000Z');
+ let moved=await write({action:'move',event_id:event.id,expected_updated_at:event.updated_at,scheduled_start:'2098-10-11T09:00Z',scheduled_end:'2098-10-11T09:50Z'});
+ job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(new Date(job.due_at).toISOString(),'2098-10-10T09:00:00.000Z');
+ await sql("select private.process_demo_sms_reminders('2098-10-09T12:00Z')");assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ await sql("select private.process_demo_sms_reminders('2098-10-10T09:01Z')");job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(job.status,'simulated');const processed=job.processed_at;
+ await sql("select private.process_demo_sms_reminders('2098-10-10T09:02Z')");assert.deepEqual((await sql('select processed_at from private.demo_sms_reminders where event_id=$1',[event.id]))[0].processed_at,processed);
+ moved=await write({action:'cancel',event_id:event.id,expected_updated_at:moved.updated_at});assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'cancelled');
+ moved=await write({action:'restore',event_id:event.id,expected_updated_at:moved.updated_at});assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ await sql("update public.demo_patients set phone='' where id=$1",[patient.id]);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'missing_phone');
+ await sql("update public.demo_patients set phone='6900000000' where id=$1",[patient.id]);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ moved=await write({action:'move',event_id:event.id,expected_updated_at:moved.updated_at,scheduled_start:'2098-10-12T09:00Z',scheduled_end:'2098-10-12T09:50Z'},false);assert.equal(moved.sms_reminder_enabled,false);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'cancelled');
+ assert.equal((await sql('select public.demo_calendar_reminders($1) as jobs',[b]))[0].jobs.length,0);
+ await db.exec('begin;set local role anon;');try{await assert.rejects(sql('select private.process_demo_sms_reminders()'),/permission denied/);}finally{await db.exec('rollback');}
+});

@@ -24,6 +24,7 @@ type ApplyBody = {
   expected_updated_at?: unknown;
   expected_series_updated_at?: unknown;
   scope?: unknown;
+  sms_reminder_enabled?:unknown;
 };
 
 const allowed = new Set(["move", "cancel", "restore", "create", "schedule_follow_up"]);
@@ -89,6 +90,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Η εντολή δεν μπορεί να εκτελεστεί." }, { status: 400 });
   }
 
+  if(body.sms_reminder_enabled!==undefined&&typeof body.sms_reminder_enabled!=="boolean")return Response.json({error:"Μη έγκυρη επιλογή υπενθύμισης."},{status:400});
+  const smsReminder=body.sms_reminder_enabled as boolean|undefined;
   const eventId = textOrNull(body.event_id);
   const startIso = textOrNull(body.start_iso);
   const endIso = textOrNull(body.end_iso);
@@ -176,13 +179,14 @@ export async function POST(request: Request) {
     try {
       const series = await createDemoRecurringAppointments(tester, {
         patient_id: patientId, scheduled_start: startIso, scheduled_end: endIso,
-        appointment_type: appointmentType, interval_weeks: Number(recurrenceInterval), occurrences: Number(recurrenceOccurrences),
+        appointment_type: appointmentType, interval_weeks: Number(recurrenceInterval), occurrences: Number(recurrenceOccurrences), sms_reminder_enabled:smsReminder,
       });
       return Response.json({ event: series.events[0], series_id: series.series_id, events: series.events, patient_created: false, patient_id: patientId });
     } catch (error) { return errorResponse(error); }
   }
 
   const mutation: DemoCalendarMutation = {
+    sms_reminder_enabled:smsReminder,
     action: action as DemoCalendarMutation["action"],
     expected_updated_at: expected,
     expected_series_updated_at: expectedSeries,

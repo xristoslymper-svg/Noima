@@ -56,3 +56,38 @@
 .history-question strong{display:block;font-size:12px;color:#31473f;margin-bottom:5px}.history-question>span{display:block;font-size:11px;line-height:1.5;color:#78877f;margin-bottom:10px}
 .history-question textarea{width:100%;min-height:72px;background:#fff!important}
 .visit-history-shell>p[role=status]{margin:7px 15px 9px;font-size:10px;color:#89968f}
+
+/* Unified pastel clinical design system */
+.visit-dialog{
+ --visit-canvas:#f8f6f1;--visit-surface:#fffefa;--visit-sage:#dfece5;--visit-sage-2:#edf4f0;
+ --visit-sage-ink:#315e50;--visit-blue:#e8eff2;--visit-peach:#f6e9df;--visit-rose:#f5e7e5;
+ --visit-ink:#263a34;--visit-muted:#7c8b84;--visit-line:#e2e7e3;
+ background:var(--visit-canvas);color:var(--visit-ink);font-family:var(--font-sans,Arial,sans-serif)
+}
+.visit-dialog h2,.visit-dialog h3,.visit-dialog strong,.visit-dialog label,.visit-dialog button{font-family:inherit}
+.visit-dialog .session-work-head h2{font-size:21px;font-weight:680;color:var(--visit-ink)}
+.visit-part>header h3{font-size:16px;font-weight:680;color:var(--visit-ink)}
+.visit-hint,.risk-principle,.visit-history-intro span{font-size:11px;line-height:1.55;color:var(--visit-muted)}
+.visit-scroll-nav{position:sticky;top:61px;z-index:8;display:flex;align-items:flex-start;justify-content:center;padding:10px 18px 9px;margin:0 -20px 8px;background:rgba(248,246,241,.94);backdrop-filter:blur(12px);border-bottom:1px solid rgba(220,227,222,.75)}
+.visit-scroll-nav button{position:relative;flex:1;max-width:125px;border:0;background:transparent;color:#98a39e;font-size:9px;padding:0 4px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.visit-scroll-nav button:before{content:"";position:absolute;top:5px;left:-50%;width:100%;height:1px;background:#dce3df;z-index:-1}.visit-scroll-nav button:first-child:before{display:none}
+.visit-scroll-nav i{display:block;width:10px;height:10px;border-radius:50%;background:#d8e0dc;border:2px solid var(--visit-canvas);box-shadow:0 0 0 1px #ccd7d1;transition:transform .2s,background .2s,box-shadow .2s}
+.visit-scroll-nav button.active{color:var(--visit-sage-ink);font-weight:700}.visit-scroll-nav button.active i{background:#78a18f;box-shadow:0 0 0 3px #e2eee8;transform:scale(1.12)}
+.visit-part{scroll-margin-top:118px}.visit-part:nth-of-type(2n){}.visit-part>header{margin-bottom:15px}
+.visit-structured.mse{gap:0 16px}
+.mse-item{border:0!important;margin:5px 0;background:var(--visit-surface);border-radius:12px!important;box-shadow:inset 0 0 0 1px var(--visit-line);overflow:hidden;transition:box-shadow .18s,background .18s,transform .18s}
+.mse-item:hover{background:#fff;box-shadow:inset 0 0 0 1px #cfdcd5,0 4px 16px rgba(53,79,69,.045)}
+.mse-item summary{padding:10px 13px!important;min-height:62px!important;cursor:pointer}.mse-item summary>span{font-size:12px!important;font-weight:650!important}.mse-item summary>small{font-size:10.5px!important;line-height:1.35!important}.mse-item summary>small.mse-empty{color:#a0aaa5!important;font-weight:400}
+.mse-item[open]{padding:0 13px 13px!important;background:#fff;box-shadow:inset 0 0 0 1px #a9c5b8,0 6px 22px rgba(52,83,70,.055)}
+.mse-item[open] summary{padding-left:0!important;padding-right:0!important}.mse-item[open] p{font-size:10px;line-height:1.45;color:var(--visit-muted)}
+.mse-writing textarea{border-radius:9px!important;background:#fbfcfa!important;border-color:#dfe7e2!important}
+.mse-mic{color:#78988b!important}.mse-mic:hover{background:var(--visit-sage-2)!important}
+.risk-choice-group button{background:var(--visit-surface);border-color:var(--visit-line);color:#68776f}.risk-choice-group button.selected{background:var(--visit-sage);border-color:#9bbcac;color:var(--visit-sage-ink)}
+.visit-history-shell{background:#f3f5f1;border-color:var(--visit-line);box-shadow:0 6px 24px rgba(50,70,62,.025)}
+.visit-history-intro{background:#f8faf6;border-color:var(--visit-line)}.visit-history-scroll{background:rgba(255,254,250,.72)}
+.history-question textarea{border-color:#e1e6e2!important;background:var(--visit-surface)!important}
+.visit-dialog textarea,.visit-dialog input,.visit-dialog select{font-family:inherit;color:var(--visit-ink)}
+.visit-dialog textarea:focus,.visit-dialog input:focus{border-color:#9dbdad!important;box-shadow:0 0 0 3px rgba(134,172,154,.11)!important}
+.review-signal{background:var(--visit-peach)!important;border-color:#ead7c7!important;color:#694f3f}
+.visit-dialog .finalize-bar{background:rgba(247,249,245,.95);border-color:#dfe6e1}.visit-dialog .finalize-bar>button{background:#426f60}.visit-dialog .finalize-bar>button:hover{background:#365f52}
+@media(max-width:700px){.visit-scroll-nav{top:55px;overflow-x:auto;justify-content:flex-start}.visit-scroll-nav button{min-width:70px}.visit-scroll-nav span{font-size:8px}}

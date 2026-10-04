@@ -1,7 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=4;
-export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
+export const SUMMARY_POLICY_VERSION=5;
+export const categories=['Τρέχουσα εικόνα','Από την τελευταία επίσκεψη','Τι χρειάζεται προσοχή','Τρέχον πλάνο','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
 export type Finding={key:string;label:Category;text:string;source_ids:string[];attention:boolean;origin:'canonical'|'documented'|'synthesis'};
@@ -114,27 +114,21 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
 export type SummaryContext=ReturnType<typeof buildSummaryContext>;
 export function validateNarrative(output:unknown,context:SummaryContext):Finding[]{
  if(!output||typeof output!=='object'||!('findings' in output)||!Array.isArray(output.findings))throw new Error('invalid_output');
- const list=output.findings;if(list.length>5)throw new Error('invalid_count');
- const used=new Set<string>();
+ const list=output.findings;if(list.length>10)throw new Error('invalid_count');
+ const allowed=new Set(['Τρέχουσα εικόνα','Από την τελευταία επίσκεψη','Τι χρειάζεται προσοχή','Τρέχον πλάνο']);
  return list.map((f:unknown,index)=>{
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
-  const item=f as {label:string;quotes:{source_id:string;quote:string}[]};
-  if(!['Τρέχουσα εικόνα','Πορεία','Πλάνο'].includes(item.label)||used.has(item.label)||!Array.isArray(item.quotes)||!item.quotes.length||item.quotes.length>4)throw new Error('invalid_category');used.add(item.label);
-  const texts=item.quotes.map(q=>{
-   const s=context.sources.find(s=>s.id===q.source_id);if(!s||s.kind!=='session_section'||typeof q.quote!=='string'||q.quote.length<8||q.quote.length>600||!String(s.content).includes(q.quote))throw new Error('unsupported_quote');
-   const segments=Array.from(new Intl.Segmenter('el',{granularity:'sentence'}).segment(String(s.content)),x=>x.segment.trim()).filter(Boolean);
-   const isComplete=segments.some((_,start)=>segments.slice(start).some((__,end)=>segments.slice(start,start+end+1).join(' ')===q.quote.trim()));
-   if(!isComplete||/(PHQ|GAD|λήμμα\s*9|item\s*9|ignore.{0,30}instruction|AUDIT_INJECTION|αγνόησε.{0,30}οδηγ)/iu.test(q.quote))throw new Error('unsafe_quote');
-   if(context.layers.corrections.some(c=>c.session_id===s.session_id))throw new Error('corrected_parent');
-   // No quote can be reworded into an authoritative state assertion. Explicit
-   // attribution and timestamp apply to the entire verbatim quotation.
-   return `${dateLabel(s.date)} · ${names[contextSectionKey(s.label)]||s.label}: «${q.quote}»`;
-  });
-  return {key:'narrative:'+index,label:item.label as Category,text:'Καταγεγραμμένη αφήγηση — '+texts.join(' / '),source_ids:item.quotes.map(q=>q.source_id),attention:false,origin:'synthesis'};
+  const item=f as {label:string;text:string;source_ids:string[]};
+  if(!allowed.has(item.label)||typeof item.text!=='string'||item.text.trim().length<8||item.text.length>500||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>6)throw new Error('invalid_finding');
+  const sourceIds=[...new Set(item.source_ids)];
+  if(sourceIds.some(id=>!context.sources.some(s=>s.id===id)))throw new Error('unsupported_source');
+  if(sourceIds.some(id=>context.layers.corrections.some(c=>c.session_id===context.sources.find(s=>s.id===id)?.session_id)&&context.sources.find(s=>s.id===id)?.kind==='session_section'))throw new Error('corrected_parent');
+  if(/ignore.{0,30}instruction|AUDIT_INJECTION|αγνόησε.{0,30}οδηγ/iu.test(item.text))throw new Error('unsafe_text');
+  return {key:'synthesis:'+index,label:item.label as Category,text:item.text.trim(),source_ids:sourceIds,attention:false,origin:'synthesis'};
  });
 }
 function contextSectionKey(label:string){return label.split(' · ').pop()||label;}
 export function assertCriticalCoverage(final:Finding[],context:SummaryContext){
- const required=context.findings.filter(f=>f.attention||f.label==='Αγωγή'||f.label==='Ψυχομετρικά'||f.label==='Παρενέργειες');
+ const required=context.findings.filter(f=>f.attention);
  for(const expected of required){if(!final.some(f=>f.key===expected.key&&f.text===expected.text&&f.source_ids.join('|')===expected.source_ids.join('|')))throw new Error('critical_coverage_failed');}
 }

@@ -13,7 +13,7 @@ export function hasCompletedClinicalHistory(bundle:Pick<PatientBundle,'sessions'
 export const riskChoices=[['not_assessed','Δεν διερευνήθηκε','—'],['unknown','Άγνωστο','Άγνωστο'],['negative','Αρνητικό','Όχι'],['positive','Θετικό','Ναι']] as const;
 export const visitSteps={
  initial_assessment:[['interview','Λόγος'],['mse','MSE'],['risk','Risk'],['history','Ιστορικό'],['assessment','Αξιολόγηση'],['medication','Αγωγή'],['plan','Πλάνο']],
- follow_up:[['interview','Πορεία'],['mse','MSE'],['risk','Risk'],['psychometrics','Scores'],['adherence','Λήψη / παρενέργειες'],['medication','Αγωγή'],['assessment','Αξιολόγηση'],['plan','Πλάνο']],
+ follow_up:[['interview','Συμπτώματα'],['adherence','Παρενέργειες / λήψη'],['mse','MSE αλλαγές'],['risk','Risk'],['psychometrics','Scores'],['medication','Αγωγή'],['assessment','Εκτίμηση'],['plan','Επανεκτίμηση']],
 } as const;
 // Use all measured section positions, including long sections spanning the viewport.
 export function activeVisitPart(parts:{key:string;top:number}[],readingLine:number){

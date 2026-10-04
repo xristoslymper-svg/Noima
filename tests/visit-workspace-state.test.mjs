@@ -37,7 +37,7 @@ test('previous MSE includes corrections and never becomes today’s document',()
  assert.equal(previousMseReference(null,'today','2026-10-04'),null);
 });
 test('navigator order covers distinct follow-up adherence and medication; long sections track stably',()=>{
- assert.deepEqual(visitSteps.follow_up.map(x=>x[0]),['interview','mse','risk','psychometrics','adherence','medication','assessment','plan']);
+ assert.deepEqual(visitSteps.follow_up.map(x=>x[0]),['interview','adherence','mse','risk','psychometrics','medication','assessment','plan']);
  assert.equal(visitSteps.follow_up.find(x=>x[1]==='Αγωγή')[0],'medication');
  assert.equal(activeVisitPart([{key:'interview',top:-900},{key:'mse',top:400}],125),'interview');
  assert.equal(activeVisitPart([{key:'interview',top:-900},{key:'mse',top:120},{key:'risk',top:900}],125),'mse');

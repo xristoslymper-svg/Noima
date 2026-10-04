@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import MedicationTimeline from './MedicationTimeline';
+import MedicationTable from './MedicationTable';
 import { demoPost } from '@/lib/patients/demo-client';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
@@ -60,22 +61,22 @@ export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onA
  const doseText=(state:Record<string,unknown>|null)=>state&&state.dose!=null?String(state.dose)+' '+String(state.unit||''):'—';
  return <section className="panel-stack">
   <div className="panel-heading"><div><span className="kicker">ΑΓΩΓΗ</span><h2>Τρέχουσα αγωγή & ιστορικό αλλαγών</h2><p>Η ενεργή δόση εμφανίζεται χωριστά από τις προγραμματισμένες αλλαγές.</p></div><button className="record compact" onClick={onAdd}><Plus size={15}/> Διαχείριση αγωγής</button></div>
-  {active.length?<div className="med-runtime-list">{active.map(m=><article key={m.id}><div><span className="kicker">ΕΝΕΡΓΟ</span><h3>{m.medication_name}</h3></div><strong>{m.dose} {m.unit}</strong><span>{m.frequency}</span><small>Από {date(m.effective_from)}</small></article>)}</div>:<div className="panel-empty">Δεν υπάρχει ενεργή αγωγή.</div>}
+  <MedicationTable bundle={bundle} reload={reload} editableEffects/>
   <MedicationTimeline bundle={bundle} reload={reload}/>
   <div className="med-side-effects"><h3>Καταγεγραμμένες παρενέργειες</h3>{bundle.medicationSideEffects.length?bundle.medicationSideEffects.map(effect=><article key={effect.id} className={effect.resolved_on?'resolved':''}><div><strong>{effect.effect_text}</strong><span>{medName(effect.medication_id)} · {date(effect.noted_on)}</span></div><i className={'severity '+effect.severity}>{effect.severity==='mild'?'Ήπια':effect.severity==='severe'?'Σοβαρή':'Μέτρια'}</i><p>{effect.impact||effect.note||'Δεν καταγράφηκε επίδραση στη λειτουργικότητα.'}</p>{effect.resolved_on?<small>Επιλύθηκε {date(effect.resolved_on)}</small>:<button onClick={async()=>{await demoPost({action:'medication_side_effect_resolve',side_effect_id:effect.id,resolved_on:today});await reload()}}>Σήμανση ως επιλυμένη</button>}</article>):<p>Δεν έχουν καταγραφεί παρενέργειες.</p>}</div>
  </section>
 }
 
-export function MedicationModal({bundle,onClose,onSaved,sessionId}:{bundle:PatientBundle;sessionId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
+export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,initialMedicationId}:{bundle:PatientBundle;sessionId?:string;initialMode?:'start'|'history'|'change'|'stop'|'side_effect';initialMedicationId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
  const active=bundle.medications.filter(x=>x.status==='active');
- const [mode,setMode]=useState<'start'|'history'|'change'|'stop'|'side_effect'>(active.length?'change':'start');
+ const [mode,setMode]=useState<'start'|'history'|'change'|'stop'|'side_effect'>(initialMode||(active.length?'change':'start'));
  const selectable=mode==='side_effect'?bundle.medications:bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
- const [medId,setMedId]=useState(active[0]?.id||selectable[0]?.id||'');
+ const [medId,setMedId]=useState(initialMedicationId||active[0]?.id||selectable[0]?.id||'');
  const selected=useMemo(()=>selectable.find(x=>x.id===medId),[selectable,medId]);
  const [name,setName]=useState('');
- const [dose,setDose]=useState(selected?String(selected.dose):'');
+ const [dose,setDose]=useState(mode==='change'&&selected?String(selected.dose):'');
  const [unit,setUnit]=useState(selected?.unit||'mg');
- const [frequency,setFrequency]=useState(selected?.frequency||'');
+ const [frequency,setFrequency]=useState(mode==='change'?selected?.frequency||'':'');
  const athensToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const [effective,setEffective]=useState(athensToday);
  const [stopped,setStopped]=useState(athensToday);
@@ -86,7 +87,7 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId}:{bundle:Patie
  const [saving,setSaving]=useState(false);
  const [error,setError]=useState('');
 
- useEffect(()=>{if(selected){setDose(String(selected.dose));setUnit(selected.unit);setFrequency(selected.frequency)}},[selected]);
+ useEffect(()=>{if(mode==='change'&&selected){setDose(String(selected.dose));setUnit(selected.unit);setFrequency(selected.frequency)}},[selected,mode]);
 
  async function save(){
   if((mode==='start'||mode==='history')&&(!name.trim()||!dose||!frequency.trim())){setError('Συμπληρώστε φάρμακο, δόση και συχνότητα.');return}
@@ -106,18 +107,18 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId}:{bundle:Patie
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{setSaving(false)}
  }
 
- const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Νέα αγωγή':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
+ const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
  return <div className="entry-modal-backdrop" onClick={()=>{if(!saving)onClose()}}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()}>
   <button className="entry-close" onClick={()=>{if(!saving)onClose()}} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
   <div className="mode-switch medication-modes">
    <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
-   <button className={mode==='start'?'active':''} onClick={()=>setMode('start')}>Νέα αγωγή</button>
-   <button className={mode==='history'?'active':''} onClick={()=>setMode('history')}>Προηγούμενη αγωγή</button>
+   <button className={mode==='start'||mode==='history'?'active':''} onClick={()=>{setMode('start');setName('');setDose('');setFrequency('')}}>Προσθήκη φαρμάκου</button>
    <button className={mode==='stop'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('stop')}}>Διακοπή</button>
    <button className={mode==='side_effect'?'active':''} disabled={!bundle.medications.length} onClick={()=>{setMedId(active[0]?.id||bundle.medications[0]?.id||'');setMode('side_effect')}}>Παρενέργεια</button>
   </div>
 
   {mode!=='start'&&mode!=='history'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{selectable.map(m=><option key={m.id} value={m.id}>{m.medication_name}{m.status==='planned'?' · προγραμματισμένη':m.status==='stopped'?' · διακοπείσα':''}</option>)}</select></label>{selected&&<div className="current-dose">{selected.status==='stopped'?'Τελευταία δόση πριν τη διακοπή':selected.status==='planned'?'Προγραμματισμένη αγωγή':'Τρέχουσα αγωγή'} <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
+  {(mode==='start'||mode==='history')&&<label>Κατάσταση λήψης<select value={mode} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει τώρα / προγραμματισμένη έναρξη</option><option value="history">Έχει διακοπεί · προηγούμενη αγωγή</option></select></label>}
   {(mode==='start'||mode==='history')&&<label>Φάρμακο<input value={name} onChange={e=>setName(e.target.value)} placeholder="π.χ. Sertraline"/></label>}
 
   {(mode==='start'||mode==='history'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>Συχνότητα<input value={frequency} onChange={e=>setFrequency(e.target.value)} placeholder="π.χ. 1× πρωί"/></label><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}

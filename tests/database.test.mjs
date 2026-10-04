@@ -52,6 +52,26 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('visit questionnaire assignment is scoped, idempotent and cannot move between visits',async()=>{
+ const t='90000000-0000-4000-8000-000000000009';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [s]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
+ const id='91000000-0000-4000-8000-000000000009',token='9'.repeat(64);
+ const args=[t,p.id,s.id,id,'PHQ-9',token];
+ const query='select demo_assessment_assign_to_session($1,$2,$3,$4,$5,$6) result';
+ const [first]=await sql(query,args);assert.equal(first.result.session_id,s.id);assert.equal(first.result.token_hash,undefined);
+ const [retry]=await sql(query,args);assert.deepEqual(first.result,retry.result);
+ await assert.rejects(sql(query,[a,...args.slice(1)]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,patientA,...args.slice(2)]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,p.id,null,...args.slice(3)]),/session_unavailable/);
+ // Existing assignment must never be reassigned, even with an identical request token.
+ const [otherPatient]=await sql('select id from demo_patients where tester_id=$1 and id<>$2 limit 1',[t,p.id]);
+ const [other]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,otherPatient.id]);
+ await sql("update private.demo_assessments set session_id=$1 where id=$2",[other.id,id]);
+ await assert.rejects(sql(query,args),/request_conflict/);
+ assert.equal((await sql('select session_id from private.demo_assessments where id=$1',[id]))[0].session_id,other.id);
+});
+
 test('visit documents reload as one canonical section, reject stale writes and remain immutable after finalization', async()=>{
  const t='90000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
  const doc={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Denies low mood; uncertain reliability.'}]};

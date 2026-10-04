@@ -99,6 +99,29 @@ export async function applyDemoCalendarMutation(
   return (await response.json()) as DemoCalendarEvent;
 }
 
+
+export async function createDemoRecurringAppointments(tester: string, input: {
+  patient_id: string; scheduled_start: string; scheduled_end: string; appointment_type: string;
+  interval_weeks: number; occurrences: number;
+}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_create_recurring`, {
+    method: "POST", headers: headers(), cache: "no-store",
+    body: JSON.stringify({
+      p_tester: tester, p_patient_id: input.patient_id, p_scheduled_start: input.scheduled_start,
+      p_scheduled_end: input.scheduled_end, p_appointment_type: input.appointment_type,
+      p_interval_weeks: input.interval_weeks, p_occurrences: input.occurrences,
+    }),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
+    if (message.includes("past_appointment")) throw new Error("past_appointment");
+    if (message.includes("patient_not_found")) throw new Error("patient_not_found");
+    throw new Error(`calendar_recurring_failed:${response.status}`);
+  }
+  return response.json() as Promise<{ series_id: string; events: DemoCalendarEvent[] }>;
+}
+
 export async function startDemoCalendarSession(tester: string, eventId: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_start_session`, {
     method: "POST",

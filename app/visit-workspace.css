@@ -91,3 +91,16 @@
 .review-signal{background:var(--visit-peach)!important;border-color:#ead7c7!important;color:#694f3f}
 .visit-dialog .finalize-bar{background:rgba(247,249,245,.95);border-color:#dfe6e1}.visit-dialog .finalize-bar>button{background:#426f60}.visit-dialog .finalize-bar>button:hover{background:#365f52}
 @media(max-width:700px){.visit-scroll-nav{top:55px;overflow-x:auto;justify-content:flex-start}.visit-scroll-nav button{min-width:70px}.visit-scroll-nav span{font-size:8px}}
+
+/* Lightweight risk matrix */
+.risk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 54px}
+.risk-grid label{display:grid;grid-template-columns:minmax(155px,1fr) auto;align-items:center;gap:18px;min-height:48px;padding:5px 0;border-bottom:1px solid rgba(222,229,224,.7);font-size:12px;font-weight:620;color:#48655a}
+.risk-choice-group{display:inline-flex;align-items:center;gap:2px;margin:0;padding:2px;background:#f2f5f2;border-radius:999px}
+.risk-choice-group button{min-width:34px;height:29px;padding:0 8px;border:0!important;background:transparent!important;border-radius:999px;color:#8b9992;font-size:10.5px;font-weight:600;box-shadow:none!important}
+.risk-choice-group button:hover{color:#4e6d61;background:rgba(255,255,255,.75)!important}
+.risk-choice-group button.selected{background:#dfece5!important;color:#315e50!important;box-shadow:0 1px 3px rgba(48,81,68,.07)!important}
+.risk-choice-group button.selected.positive{background:#f4e5df!important;color:#8a5f4e!important}
+.risk-editor .risk-principle{margin-bottom:8px}
+.risk-note{display:block;margin-top:15px!important;font-size:11px!important;color:#60766c}.risk-note textarea{margin-top:6px;min-height:64px}
+@media(max-width:900px){.risk-grid{grid-template-columns:1fr;gap:0}.risk-grid label{grid-template-columns:1fr auto}}
+@media(max-width:520px){.risk-grid label{grid-template-columns:1fr;gap:7px;padding:10px 0}.risk-choice-group{justify-self:start}}

@@ -152,7 +152,7 @@ export default function PatientSession({
  const riskReady=Boolean(risk)&&risk?.suicidal_ideation!=='not_assessed'&&riskFollowupReady;
  const ready=requiredDone===required.size&&riskReady;
 
- const editor=(key:string)=>{const d=definitions.find(([k])=>k===key)!;return <SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:d[1],hint:d[2]}} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
+ const editor=(key:string)=>{const d=definitions.find(([k])=>k===key)!;return <SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:d[1]}} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
  const assessment=()=> <VisitPart anchor="assessment" number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική αξιολόγηση">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
@@ -227,7 +227,7 @@ function RiskRead({label,value}:{label:string;value:string}){
  return <div><strong>{label}</strong><p>{riskLabel(value)}</p></div>;
 }
 
-function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;definition:{key:string;title:string;hint:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
+function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;definition:{key:string;title:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
  const [dictating,setDictating]=useState(false),[transcript,setTranscript]=useState(''),[review,setReview]=useState<ClinicalProposal|undefined>(),[reviewOpen,setReviewOpen]=useState(false),[conflict,setConflict]=useState<DemoSection|null|undefined>();
  const key='section:'+definition.key;
  const [recoverable,setRecoverable]=useState('');
@@ -236,8 +236,8 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  const reviewRef=useRef(false);reviewRef.current=reviewOpen;
  useEffect(()=>registerFlusher(key,async()=>{if(reviewRef.current)throw new Error('Ολοκληρώστε ή κλείστε τον έλεγχο υπαγόρευσης.');await draft.flush()}),[key,registerFlusher,draft.flush]);
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}
- return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3><span>{definition.hint}</span></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
- <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Γράψτε ή υπαγορεύστε ανά ενότητα."/>
+ return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
+ <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder=""/>
  <div role="status">{draft.saving?'Αποθηκεύεται…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:existing?'Αποθηκευμένο':'Δεν έχει καταγραφεί')}</div>
  {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void compare()}>Σύγκριση με αποθηκευμένο</button></>}
  {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><p>{conflict?.content||'Κενή ενότητα'}</p><p>Το δικό σας κείμενο παραμένει στον επεξεργαστή. Επεξεργαστείτε το πριν επιλέξετε αντικατάσταση.</p><button onClick={()=>{draft.acceptServer(conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με το δικό μου</button><button onClick={()=>{draft.resolve([conflict?.content,draft.value].filter(Boolean).join('\n\n'),conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Συνένωση των δύο</button></div>}

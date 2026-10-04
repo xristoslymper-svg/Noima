@@ -88,13 +88,13 @@ function appointmentType(value: string) {
 function weekKeys(focus: string) {
   const [year, month, day] = focus.split("-").map(Number);
   const base = new Date(Date.UTC(year, month - 1, day, 12));
-  const weekday = base.getUTCDay() || 7;
-  const monday = new Date(base);
-  monday.setUTCDate(base.getUTCDate() - (weekday - 1));
+  // The selected date anchors the middle of this rolling seven-day view.
+  const first = new Date(base);
+  first.setUTCDate(base.getUTCDate() - 3);
 
   return Array.from({ length: 7 }, (_, index) => {
-    const value = new Date(monday);
-    value.setUTCDate(monday.getUTCDate() + index);
+    const value = new Date(first);
+    value.setUTCDate(first.getUTCDate() + index);
     const key = value.toISOString().slice(0, 10);
     return {
       key,
@@ -172,7 +172,6 @@ export default function CalendarPage() {
   const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
-  const didCenterTodayRef = useRef(false);
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -262,18 +261,16 @@ export default function CalendarPage() {
   );
 
   useEffect(() => {
-    if (view !== "week" || didCenterTodayRef.current) return;
+    if (view !== "week") return;
     const scroller = weekScrollerRef.current;
     if (!scroller) return;
-    const today = dateKey(new Date());
-    const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${today}"]`);
+    const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${focusDate}"]`);
     if (!target) return;
     requestAnimationFrame(() => {
       const left = target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2;
       scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
-      didCenterTodayRef.current = true;
     });
-  }, [view, days]);
+  }, [view, days, focusDate]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -417,7 +414,7 @@ export default function CalendarPage() {
               <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
               <strong>{focusTitle(focusDate)}</strong>
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
-              {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {didCenterTodayRef.current=false;setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
+              {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
             </div>
             <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + " ραντεβού" : "Χωρίς ραντεβού"}</span>
             <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">

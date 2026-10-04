@@ -1,7 +1,8 @@
+import { cookies } from 'next/headers';
 import type { ClinicalProposal, Addendum, Assessment } from '@/lib/clinical/core-types';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
-const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json' });
+async function authHeaders(){const token=(await cookies()).get('noima-access-token')?.value;return {apikey:KEY||'',Authorization:`Bearer ${token||KEY||''}`,'Content-Type':'application/json'}}
 
 export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
 export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
@@ -16,7 +17,7 @@ export type PatientBundle = { clinical_day?:string; patient:DemoPatient; session
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
 async function request(path:string, init:RequestInit={}){
   configured();
-  const response=await fetch(`${URL}/rest/v1/${path}`,{...init,headers:{...headers(),...(init.headers||{})},cache:'no-store'});
+  const response=await fetch(`${URL}/rest/v1/${path}`,{...init,headers:{...(await authHeaders()),...(init.headers||{})},cache:'no-store'});
   const text=await response.text();
   let data:unknown=null; try{data=text?JSON.parse(text):null}catch{data=text}
   if(!response.ok){const message=typeof data==='object'&&data&&'message' in data?String((data as {message?:unknown}).message):`demo_http_${response.status}`;throw new Error(message)}

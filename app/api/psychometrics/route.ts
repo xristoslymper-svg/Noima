@@ -1,6 +1,7 @@
+import { withPilot } from '@/lib/pilot/route';
 import {rpc} from '@/lib/patients/demo-runtime';
 export const dynamic='force-dynamic';
-export async function POST(request:Request){
+async function handlePOST(request:Request){
  const b=await request.json().catch(()=>({}));const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  try{
   if(b.action==='open'||b.action==='submit'){
@@ -19,3 +20,5 @@ export async function POST(request:Request){
   return Response.json({error:'Μη έγκυρη ενέργεια.'},{status:400});
  }catch(e){const message=e instanceof Error?e.message:'';const expired=message.includes('link_expired'),done=message.includes('already_completed');return Response.json({error:expired?'Ο σύνδεσμος έχει λήξει. Ζητήστε νέο από τον γιατρό σας.':done?'Το ερωτηματολόγιο έχει ήδη υποβληθεί.':message.includes('invalid_answers')?'Απαντήστε σε όλες τις ερωτήσεις.':'Η ενέργεια δεν ολοκληρώθηκε. Ο σύνδεσμος μπορεί να έχει ανακληθεί. Οι απαντήσεις παραμένουν διαθέσιμες για επανάληψη.'},{status:expired?410:done?409:400})}
 }
+
+export const POST = withPilot(handlePOST, true);

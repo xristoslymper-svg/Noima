@@ -32,7 +32,7 @@ async function rejected(id, query, params = [], pattern = /permission denied|row
 before(async () => {
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
-    create schema auth; create table auth.users(id uuid primary key, email text);
+    create schema auth; create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to anon, authenticated;
@@ -51,6 +51,61 @@ before(async () => {
   await asUser(a, () => sql("insert into clinical_sessions(id,patient_id,practice_id,session_type,scheduled_at) values($1,$2,$3,'initial_assessment',now())", [session,patientA,pa]));
 });
 after(async () => { await db.close(); });
+
+test('pilot invitations require confirmed identity, are single-user, and never grant access from metadata',async()=>{
+ const code='fixture-invitation-A';
+ await sql("update auth.users set email='a@example.invalid',email_confirmed_at=now() where id=$1",[a]);
+ await sql("insert into private.pilot_invitations(token_hash,email) values(encode(sha256(convert_to($1,'UTF8')),'hex'),'a@example.invalid')",[code]);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[code,'Dr B'],/verified_email_required|invalid_invitation/);
+ const [{identity}]=await asUser(a,()=>sql('select pilot_redeem_invitation($1,$2) identity',[code,'Dr A']));
+ assert.ok(identity.workspace_id);assert.equal(identity.full_name,'Dr A');
+ await sql("update auth.users set email='b@example.invalid',email_confirmed_at=now() where id=$1",[b]);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[code,'Dr B'],/invalid_invitation/);
+ assert.deepEqual((await asUser(b,()=>sql('select pilot_identity() identity')))[0],{identity:null});
+});
+
+test('pilot table RLS and every public tester RPC deny another owner and anonymous callers',async()=>{
+ const [{identity:ia}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Dr B')",[b]);
+ const [{identity:ib}]=await asUser(b,()=>sql('select pilot_identity() identity'));
+ await asUser(a,()=>sql('select demo_tester_bootstrap($1)',[ia.workspace_id]));
+ await asUser(b,()=>sql('select demo_tester_bootstrap($1)',[ib.workspace_id]));
+ assert.deepEqual(await asUser(a,()=>sql('select id from demo_patients')),[]);
+ await asUser(a,()=>sql("select demo_patient_create_v2($1,'TEST A','Manual entry')",[ia.workspace_id]));
+ await asUser(b,()=>sql("select demo_patient_create_v2($1,'TEST B','Manual entry')",[ib.workspace_id]));
+ const patients=await asUser(a,()=>sql('select id,tester_id from demo_patients'));
+ assert.ok(patients.length>0);assert.ok(patients.every(p=>p.tester_id===ia.workspace_id));
+ assert.deepEqual(await asUser(b,()=>sql('select id from demo_patients where tester_id=$1',[ia.workspace_id])),[]);
+ await rejected(b,'select demo_tester_bootstrap($1)',[ia.workspace_id],/pilot_not_authorized/);
+ await rejected(b,'select demo_assessment_list($1,$2)',[ia.workspace_id,patients[0].id],/pilot_not_authorized/);
+ await rejected(b,'select demo_calendar_reminders($1)',[ia.workspace_id],/pilot_not_authorized/);
+ await rejected(b,'select demo_history_save($1,$2,$3::jsonb,null)',[ia.workspace_id,patients[0].id,'{}'],/pilot_not_authorized/);
+ await db.exec('begin;set local role anon;');
+ try{await assert.rejects(sql('select demo_tester_bootstrap($1)',[ia.workspace_id]),/permission denied/)}finally{await db.exec('rollback')}
+ const unsafe=await sql("select p.proname from pg_proc p where p.pronamespace='public'::regnamespace and p.proname like 'demo_%' and 'p_tester'=any(p.proargnames) and (has_function_privilege('anon',p.oid,'EXECUTE') or not has_function_privilege('authenticated',p.oid,'EXECUTE'))");
+ assert.deepEqual(unsafe,[]);
+ const exposed=await sql("select routine_name from information_schema.role_routine_grants where routine_schema='private' and routine_name like 'pilot_impl_%' and grantee in ('PUBLIC','anon','authenticated')");assert.deepEqual(exposed,[]);
+});
+
+test('pilot reset archives rather than deletes and restore recovers the original workspace',async()=>{
+ const [{identity:old}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const [p]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Durable',$2)).id id",[old.workspace_id,'Fixture']));
+ const id=p.id;
+ const [{identity:newSpace}]=await asUser(a,()=>sql('select pilot_reset_workspace(false) identity'));
+ assert.notEqual(old.workspace_id,newSpace.workspace_id);assert.equal(newSpace.can_restore,true);
+ assert.deepEqual(await asUser(a,()=>sql('select id from demo_patients where id=$1',[id])),[]);
+ assert.equal((await sql('select id from demo_patients where id=$1',[id])).length,1);
+ await rejected(a,'select demo_assessment_list($1,$2)',[old.workspace_id,id],/pilot_not_authorized/);
+ const [{identity:restored}]=await asUser(a,()=>sql('select pilot_reset_workspace(true) identity'));
+ assert.equal(restored.workspace_id,old.workspace_id);assert.equal((await asUser(a,()=>sql('select id from demo_patients where id=$1',[id]))).length,1);
+});
+
+test('pilot feedback records verified actor and stays private',async()=>{
+ await asUser(a,()=>sql("select pilot_feedback_submit('bug','TEST fictional report','/calendar')"));
+ const [row]=await sql("select user_id,message from private.pilot_feedback where user_id=$1",[a]);assert.equal(row.user_id,a);assert.equal(row.message,'TEST fictional report');
+ await rejected(b,'select * from private.pilot_feedback',[],/permission denied/);
+ await rejected(colleague,"select pilot_feedback_submit('bug','TEST unauthorized report','/calendar')",[],/pilot_not_authorized/);
+});
 
 test('recurring appointments retain Athens wall time across DST, are canonical and reject a conflicting series atomically',async()=>{
  const t='80000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
@@ -155,7 +210,7 @@ test('blank structured headings cannot satisfy finalization and previous medicat
  assert.equal((await sql("select count(*)::int n from demo_medications where patient_id=$1 and medication_name='Invalid history'",[p.id]))[0].n,0);
 });
 
-test('every table has RLS; anonymous reads are limited to fictional demo tables', async () => {
+test('every table has RLS; the private pilot exposes no anonymous table reads', async () => {
   const tables = await sql("select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','private') and c.relkind='r'");
   assert.ok(tables.length >= 20);
   for (const table of tables) assert.equal(table.relrowsecurity, true, table.relname);
@@ -163,21 +218,7 @@ test('every table has RLS; anonymous reads are limited to fictional demo tables'
   await assert.rejects(sql('select * from patients'), /permission denied/);
   await db.exec('rollback');
   const allowed = await sql("select table_name, privilege_type from information_schema.role_table_grants where grantee = 'anon' and table_schema in ('public','private') order by table_name, privilege_type");
-  const demoReadable = [
-    'demo_calendar_events',
-    'demo_clinical_entries',
-    'demo_medication_events',
-    'demo_medication_side_effects',
-    'demo_session_addenda',
-    'demo_medication_event_revisions',
-    'demo_medications',
-    'demo_patient_history',
-    'demo_patients',
-    'demo_risk_assessments',
-    'demo_session_sections',
-    'demo_sessions',
-  ];
-  assert.deepEqual(allowed, demoReadable.sort().map(table_name => ({ table_name, privilege_type: 'SELECT' })));
+  assert.deepEqual(allowed, []);
 });
 
 test('practice membership isolates patient reads and writes, including direct API-shaped access', async () => {

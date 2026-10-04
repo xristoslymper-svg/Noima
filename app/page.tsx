@@ -1,4 +1,5 @@
 "use client";
+import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -86,7 +87,7 @@ export default function Page() {
       <section className="workspace">
         <header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
           <div className="search"><span>Ψ · δοκιμαστικός κλινικός χώρος</span></div>
-          <div className="profile"><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div>
+          <PilotProfile/>
         </header>
 
         <div className="content">

@@ -1,8 +1,9 @@
+import {pilotAuthorization} from '@/lib/pilot/request-scope';
 import type {VisitDocument} from '@/lib/clinical/visit-document';
 import type { ClinicalProposal, Addendum, Assessment } from '@/lib/clinical/core-types';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
-const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json' });
+const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json', ...pilotAuthorization() });
 
 export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; landline:string; contact_phone:string; amka:string; address:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
 export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
@@ -26,7 +27,7 @@ export async function request(path:string, init:RequestInit={}){
 export async function rpc(name:string,args:Record<string,unknown>){return request(`rpc/${name}`,{method:'POST',body:JSON.stringify(args)})}
 const rows=<T>(value:unknown):T[]=>Array.isArray(value)?value as T[]:value?[value as T]:[];
 const one=<T>(value:unknown):T=>rows<T>(value)[0];
-export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester});await rpc('demo_seed_maria_record',{p_tester:tester})}
+export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester})}
 export async function listPatients(tester:string){await bootstrap(tester);return rows<DemoPatient>(await request(`demo_patients?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=updated_at.desc`))}
 export async function listPatientRows(tester:string){
  const patients=await listPatients(tester);

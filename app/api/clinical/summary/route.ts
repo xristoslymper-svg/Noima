@@ -1,3 +1,4 @@
+import { withPilot } from '@/lib/pilot/route';
 import {patientBundle} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,type Finding} from '@/lib/clinical/summary-context';
@@ -16,7 +17,7 @@ async function generate(context:ReturnType<typeof buildSummaryContext>){
  const findings=[...context.findings,...narrative];assertCriticalCoverage(findings,context);
  return {findings,generated_at:new Date().toISOString()};
 }
-export async function POST(req:Request){
+async function handlePOST(req:Request){
  const raw=await req.json().catch(()=>null);if(!raw||typeof raw!=='object'||Array.isArray(raw))return Response.json({error:'Μη έγκυρο αίτημα.'},{status:400});const b=raw;
  if(!isClinicalId(b.tester)||!isClinicalId(b.patient_id))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
@@ -35,3 +36,5 @@ export async function POST(req:Request){
   return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:result?.generated_at||new Date().toISOString(),mode,reason,model:mode==='synthesis'?model:null},{headers:{'Cache-Control':'no-store'}});
  }catch(e){const missing=e instanceof Error&&e.message.includes('patient_not_found');return Response.json({error:missing?'Ο φάκελος δεν βρέθηκε.':'Δεν φορτώθηκαν τα κλινικά δεδομένα. Δεν εμφανίζεται παλαιότερη σύνοψη.'},{status:missing?404:503});}
 }
+
+export const POST = withPilot(handlePOST);

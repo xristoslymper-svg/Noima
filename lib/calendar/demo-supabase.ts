@@ -1,3 +1,4 @@
+import {pilotAuthorization} from '@/lib/pilot/request-scope';
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mgpnaxaquzeoomxdzhic.supabase.co";
 const SUPABASE_KEY =
@@ -28,6 +29,7 @@ function headers(extra?: HeadersInit): HeadersInit {
   return {
     apikey: SUPABASE_KEY,
     "Content-Type": "application/json",
+    ...pilotAuthorization(),
     ...extra,
   };
 }

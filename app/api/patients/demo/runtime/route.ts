@@ -1,3 +1,4 @@
+import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 export const dynamic='force-dynamic';
@@ -16,12 +17,12 @@ function failure(error:unknown){
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
-export async function GET(request:Request){
+async function handleGET(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Αυτός ο χώρος δέχεται μόνο φανταστικά δεδομένα. Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const url=new URL(request.url); const tester=testerOf(url.searchParams.get('tester')); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
  try{const patient=url.searchParams.get('patient');return Response.json(patient?{bundle:await patientBundle(tester,patient)}:{patients:await listPatientRows(tester)})}catch(error){return failure(error)}
 }
-export async function POST(request:Request){
+async function handlePOST(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const body=await request.json().catch(()=>({})); const tester=testerOf(body.tester); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
  try{
@@ -56,3 +57,6 @@ export async function POST(request:Request){
   }
  }catch(error){return failure(error)}
 }
+
+export const GET = withPilot(handleGET);
+export const POST = withPilot(handlePOST);

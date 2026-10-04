@@ -1,9 +1,10 @@
+import { withPilot } from '@/lib/pilot/route';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return Response.json(
@@ -80,3 +81,5 @@ export async function POST(request: Request) {
     clearTimeout(timeout);
   }
 }
+
+export const POST = withPilot(handlePOST);

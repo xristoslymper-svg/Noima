@@ -585,3 +585,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .medication-history-details[open]>summary:after{transform:rotate(90deg)}
 .medication-history-details>summary span{min-width:18px;text-align:center;padding:2px 5px;border-radius:999px;background:#eef3ef;color:#72847a;font-size:9px}
 .medication-history-details .med-events{margin-top:8px}
+/* Private pilot access and account controls */
+.pilot-page{min-height:calc(100vh - 24px);display:grid;place-items:center;padding:48px 24px;background:#f3f6f3}
+.pilot-card{width:min(100%,480px);padding:40px;border:1px solid #e2e9e3;border-radius:28px;background:#fff;box-shadow:0 16px 50px #203c3010;display:grid;gap:16px}
+.pilot-card .brand-mark{margin-bottom:8px}.pilot-card h1{font-size:32px;margin:0}.pilot-card h2{font-size:22px;margin:0}.pilot-card p{line-height:1.6;color:#65776e;margin:0}.pilot-card fieldset{border:0;padding:0;margin:0;display:grid;gap:18px;min-width:0}
+.pilot-card label{display:grid;gap:8px;font-weight:600}.pilot-card input:not([type=checkbox]),.pilot-card select,.pilot-card textarea{width:100%;padding:12px 14px;border:1px solid #dce5df;border-radius:12px;background:#fafcfb;font:inherit;box-sizing:border-box}.pilot-card input:focus,.pilot-card textarea:focus,.pilot-card select:focus{outline:2px solid #72a696;outline-offset:2px}
+.pilot-card button{padding:12px 18px;border:1px solid #dce5df;border-radius:12px;background:#f5f8f6;font:inherit;cursor:pointer}.pilot-card button:disabled{opacity:.5;cursor:default}.pilot-card .pilot-primary{background:#2b6557;color:white;border-color:#2b6557}.pilot-card .pilot-text-button{border:0;background:none;color:#2b6557}.pilot-card .pilot-error{color:#a34444}.pilot-account{width:min(100%,640px)}.pilot-card hr{width:100%;border:0;border-top:1px solid #e5ece7;margin:12px 0}.pilot-card .pilot-check{display:flex;align-items:center;font-size:14px}.pilot-actions{display:flex;gap:12px;flex-wrap:wrap}

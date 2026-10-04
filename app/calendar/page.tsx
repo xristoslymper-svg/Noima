@@ -1,4 +1,5 @@
 "use client";
+import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
 import AppointmentStartConfirmation from "@/components/calendar/AppointmentStartConfirmation";
@@ -422,7 +423,7 @@ export default function CalendarPage() {
             <Menu size={21} />
           </button>
           <div className="search"><span>Ψ · ημερολόγιο</span></div>
-          <div className="profile"><div className="avatar">ΚΠ</div><div><strong>Δρ. Κατερίνα Παπαδάκη</strong><span>Ψυχίατρος</span></div></div>
+          <PilotProfile/>
         </header>
 
         <div className="calendar-page-content">

@@ -1,3 +1,4 @@
+import { withPilot } from '@/lib/pilot/route';
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import { fetchDemoCalendarEvents, type DemoCalendarEvent } from "@/lib/calendar/demo-supabase";
 import { listPatients, type DemoPatient } from "@/lib/patients/demo-runtime";
@@ -245,7 +246,7 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
   return [];
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
@@ -485,3 +486,5 @@ export async function POST(request: Request) {
     clearTimeout(timeout);
   }
 }
+
+export const POST = withPilot(handlePOST);

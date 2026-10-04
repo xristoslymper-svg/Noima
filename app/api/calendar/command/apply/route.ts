@@ -1,3 +1,4 @@
+import { withPilot } from '@/lib/pilot/route';
 import {
   applyDemoCalendarMutation,
   createDemoPatientAppointment,
@@ -71,7 +72,7 @@ function errorResponse(error: unknown) {
   return Response.json({ error: "Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά." }, { status: 502 });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   let body: ApplyBody;
   try {
     const parsed: unknown = await request.json();
@@ -206,3 +207,5 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
+
+export const POST = withPilot(handlePOST);

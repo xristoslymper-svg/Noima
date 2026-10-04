@@ -831,6 +831,8 @@ function AppointmentEditor({
   const [type, setType] = useState(event?.appointment_type || "follow_up");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [recurrence, setRecurrence] = useState("none");
+  const [occurrences, setOccurrences] = useState("6");
 
   async function mutate(action: "create" | "move" | "cancel") {
     if (saving) return;
@@ -863,6 +865,8 @@ function AppointmentEditor({
           start_iso: startIso,
           end_iso: endIso,
           appointment_type: action === "create" ? type : event?.appointment_type || type,
+          recurrence_interval_weeks: action === "create" && recurrence !== "none" ? Number(recurrence) : 0,
+          recurrence_occurrences: action === "create" && recurrence !== "none" ? Number(occurrences) : 0,
         }),
       });
       const data = (await response.json().catch(() => ({}))) as { event?: CalendarEvent; error?: string; code?: string };
@@ -890,6 +894,8 @@ function AppointmentEditor({
         <label>Ώρα<input type="time" step="1800" value={time} onChange={change => setTime(change.target.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}><option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
         {mode === "create" && <label>Τύπος<select value={type} onChange={change => setType(change.target.value)}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
+        {mode === "create" && <label>Επανάληψη<select value={recurrence} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
+        {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </div>
 
       {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}

@@ -160,3 +160,6 @@
 .mse-column .mse-item summary>small{min-width:0;max-width:100%}
 .visit-structured.mse>.conflict-review{grid-column:1/-1}
 @media(max-width:700px){.mse-columns{grid-template-columns:1fr;gap:6px}}
+
+/* Equal desktop card headers keep both six-domain columns aligned. */
+@media(min-width:701px){.mse-column .mse-item:not([open]) summary{height:112px;box-sizing:border-box;justify-content:center}.mse-column .mse-item summary>small.mse-guide{font-size:11px!important;line-height:1.4!important}}

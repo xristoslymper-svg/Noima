@@ -9,7 +9,7 @@ export const mseItems=[
  ['thought_process','Thought process / form','γραμμική/λογική ή αποδιοργανωμένη, tangentiality, circumstantiality, flight of ideas, loosening, thought blocking'],
  ['thought_content','Thought content','παραληρητικές ιδέες, ιδέες αναφοράς/υπερεκτίμησης, ιδεοληψίες, φοβίες, SI/HI'],
  ['perception','Perception','ψευδαισθήσεις/ψευδαισθησίες και άλλες διαταραχές αντίληψης'],
- ['cognition','Cognition','επίπεδο συνείδησης, προσανατολισμός, attention/concentration, μνήμη, executive functions/abstraction όπου ενδείκνυται'],
+ ['cognition','Cognition','επίπεδο συνείδησης, προσανατολισμός, attention/concentration, μνήμη, executive functions/abstraction'],
  ['insight','Insight','επίγνωση νόσου/συμπτωμάτων και ανάγκης θεραπείας'],
  ['judgment','Judgment','κρίση και ικανότητα λήψης αποφάσεων'],
  ['impulse_control','Impulse control','έλεγχος παρορμήσεων, όπου σχετικό'],

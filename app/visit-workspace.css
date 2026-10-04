@@ -108,3 +108,11 @@
 /* Final chrome reduction */
 .visit-dialog-title{min-height:54px;display:flex;align-items:center;justify-content:space-between}.visit-dialog-title>strong{font-size:14px;font-weight:680;letter-spacing:.01em;color:var(--visit-ink)}
 .visit-dialog .finalize-bar{justify-content:flex-end;padding:9px 12px;min-height:0}.visit-finalize-status{display:none}
+
+/* Contextual completion guidance; shown only after an attempted completion. */
+.visit-dialog .finalize-bar{flex-wrap:wrap}
+.visit-finalize-guidance{font-size:11px;color:#60766c;flex:1;order:-1}
+.visit-finalize-guidance button{border:0;background:transparent;color:#347b64;text-decoration:underline;padding:4px}
+
+.risk-grid label{grid-template-columns:minmax(0,1fr) auto}
+@media(max-width:520px){.risk-grid label{grid-template-columns:1fr}}

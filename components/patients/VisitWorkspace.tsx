@@ -1,11 +1,12 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type MutableRefObject} from 'react';
+import {previousMseReference} from '@/lib/clinical/visit-workspace-state';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {demoPost} from '@/lib/patients/demo-client';
 import PatientSession from './PatientSession';
 
-export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onClose,onFinalized,onSelect}:{sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onClose:()=>void;onFinalized:()=>void;onSelect:(id?:string|null)=>void}){
+export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onClose,onFinalized,onSelect,beforeNavigate}:{beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onClose:()=>void;onFinalized:()=>void;onSelect:(id?:string|null)=>void}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [record,setRecord]=useState<PatientBundle|null>(null),[error,setError]=useState(''),[finalizing,setFinalizing]=useState(false),[finalizeError,setFinalizeError]=useState('');
  const closing=useRef(false);
@@ -22,6 +23,6 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
   <header className="visit-dialog-title"><strong>{(record||context)?.patient.first_name} {(record||context)?.patient.last_name}</strong>{(!record||record.sessions[0]?.status!=='draft')&&<button onClick={onClose}>Κλείσιμο</button>}</header>
   {error&&<p role="alert">{error} <button onClick={()=>void load().catch(e=>setError(e.message))}>Επανάληψη</button></p>}
   {!record&&!error&&<p role="status">Άνοιγμα επίσκεψης…</p>}
-  {record&&<>{!context&&<p className="visit-context-status">Το ιστορικό, η αγωγή και τα ψυχομετρικά φορτώνονται ανεξάρτητα. <button onClick={()=>void refreshContext().catch(e=>setError(e.message))}>Επανάληψη φόρτωσης</button></p>}<PatientSession key={sessionId} bundle={merged(record)} reload={reload} reloadContext={refreshContext} contextReady={Boolean(context)} onFinalize={finalize} finalizing={finalizing} finalizeError={finalizeError} selectedSessionId={sessionId} onSelectSession={onSelect} onClose={onClose}/></>}
+  {record&&<>{!context&&<p className="visit-context-status">Το ιστορικό, η αγωγή και τα ψυχομετρικά φορτώνονται ανεξάρτητα. <button onClick={()=>void refreshContext().catch(e=>setError(e.message))}>Επανάληψη φόρτωσης</button></p>}<PatientSession beforeNavigate={beforeNavigate} previousMse={previousMseReference(context,sessionId,record.sessions[0].started_at)} key={sessionId} bundle={merged(record)} reload={reload} reloadContext={refreshContext} contextReady={Boolean(context)} onFinalize={finalize} finalizing={finalizing} finalizeError={finalizeError} selectedSessionId={sessionId} onSelectSession={onSelect} onClose={onClose}/></>}
  </dialog>;
 }

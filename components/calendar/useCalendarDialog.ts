@@ -13,6 +13,7 @@ export function useCalendarDialog(onClose:()=>void,busy=false,active=true){
   const controls=()=>Array.from(node.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')).filter(e=>e.getClientRects().length);
   (controls()[0]??node).focus();
   const keyboard=(event:KeyboardEvent)=>{
+   if(event.defaultPrevented)return;
    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();if(!action.current.busy)action.current.onClose();}
    if(event.key==='Tab'){
     const items=controls(),first=items[0],last=items[items.length-1];

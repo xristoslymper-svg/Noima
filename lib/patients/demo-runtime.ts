@@ -1,13 +1,14 @@
-import { cookies } from 'next/headers';
+import {pilotAuthorization} from '@/lib/pilot/request-scope';
+import type {VisitDocument} from '@/lib/clinical/visit-document';
 import type { ClinicalProposal, Addendum, Assessment } from '@/lib/clinical/core-types';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
-async function authHeaders(){const token=(await cookies()).get('noima-access-token')?.value;return {apikey:KEY||'',Authorization:`Bearer ${token||KEY||''}`,'Content-Type':'application/json'}}
+const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json', ...pilotAuthorization() });
 
-export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
+export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; landline:string; contact_phone:string; amka:string; address:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
 export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
-export type DemoSection = { id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
-export type DemoRisk = { session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
+export type DemoSection = { document?:VisitDocument|null; id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
+export type DemoRisk = { tree?:import('../clinical/risk-tree').RiskTree; harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
 export type DemoHistory = { patient_id:string; psychiatric_history:string; medical_history:string; previous_treatments:string; hospitalizations:string; family_history:string; substance_history:string; social_functioning:string; allergies:string; version:number; updated_at:string };
 export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string; started_at:string; ended_at:string|null; status:string; notes:string; updated_at:string };
 export type DemoMedicationEvent = { id:string; patient_id:string; medication_id:string; session_id:string|null; event_type:string; previous_state:Record<string,unknown>|null; new_state:Record<string,unknown>|null; reason:string; effective_on:string; created_at:string };
@@ -15,9 +16,9 @@ export type DemoMedicationSideEffect = { id:string; patient_id:string; medicatio
 export type PatientBundle = { clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; assessments:Assessment[]; appointments:{id:string;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
 
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
-async function request(path:string, init:RequestInit={}){
+export async function request(path:string, init:RequestInit={}){
   configured();
-  const response=await fetch(`${URL}/rest/v1/${path}`,{...init,headers:{...(await authHeaders()),...(init.headers||{})},cache:'no-store'});
+  const response=await fetch(`${URL}/rest/v1/${path}`,{...init,headers:{...headers(),...(init.headers||{})},cache:'no-store'});
   const text=await response.text();
   let data:unknown=null; try{data=text?JSON.parse(text):null}catch{data=text}
   if(!response.ok){const message=typeof data==='object'&&data&&'message' in data?String((data as {message?:unknown}).message):`demo_http_${response.status}`;throw new Error(message)}
@@ -26,7 +27,7 @@ async function request(path:string, init:RequestInit={}){
 export async function rpc(name:string,args:Record<string,unknown>){return request(`rpc/${name}`,{method:'POST',body:JSON.stringify(args)})}
 const rows=<T>(value:unknown):T[]=>Array.isArray(value)?value as T[]:value?[value as T]:[];
 const one=<T>(value:unknown):T=>rows<T>(value)[0];
-export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester});await rpc('demo_seed_maria_record',{p_tester:tester})}
+export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester})}
 export async function listPatients(tester:string){await bootstrap(tester);return rows<DemoPatient>(await request(`demo_patients?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=updated_at.desc`))}
 export async function listPatientRows(tester:string){
  const patients=await listPatients(tester);
@@ -45,8 +46,8 @@ export async function listPatientRows(tester:string){
   next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,
  }));
 }
-export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;email:string;chief_complaint:string}){
-  await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v2',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_email:input.email,p_complaint:input.chief_complaint}));
+export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;landline:string;contact_phone:string;amka:string;address:string;email:string;chief_complaint:string}){
+  await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v3',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_landline:input.landline,p_contact_phone:input.contact_phone,p_amka:input.amka,p_address:input.address,p_email:input.email,p_complaint:input.chief_complaint}));
 }
 export async function patientBundle(tester:string,patientRef:string):Promise<PatientBundle>{
   const patients=await listPatients(tester); const normalized=patientRef.toLocaleLowerCase('el');

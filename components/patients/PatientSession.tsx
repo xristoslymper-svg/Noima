@@ -1,8 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, Mic2, RotateCcw, ShieldCheck } from 'lucide-react';
 import Addenda from './Addenda';
+import RiskEditor,{RiskTreeRead} from './RiskTreeEditor';
+import StructuredVisitEditor from './StructuredVisitEditor';
+import VisitHistory from './VisitHistory';
+import VisitNextAppointment from './VisitNextAppointment';
+import VisitScores from './VisitScores';
+import MedicationTable from './MedicationTable';
+import {MedicationModal} from './PatientPanels';
 import ProposalReview from './ProposalReview';
 import {useClinicalDraft} from './useClinicalDraft';
 import type {ClinicalProposal} from '@/lib/clinical/core-types';
@@ -10,6 +17,7 @@ import SectionDictation from '@/components/dictation/SectionDictation';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
 import { formatClinicDateTime } from '@/lib/clinic-time';
+import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference} from '@/lib/clinical/visit-workspace-state';
 
 const definitions=[
  ['interview','Ψυχιατρική συνέντευξη / συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
@@ -38,7 +46,17 @@ export default function PatientSession({
  finalizeError,
  selectedSessionId,
  onSelectSession,
+ contextReady=true,
+ reloadContext=reload,
+ onClose,
+ beforeNavigate,
+ previousMse,
 }:{
+ beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;
+ previousMse?:ReturnType<typeof previousMseReference>;
+ contextReady?:boolean;
+ reloadContext?:()=>Promise<unknown>;
+ onClose?:()=>void;
  bundle:PatientBundle;
  reload:()=>Promise<unknown>;
  onFinalize:(sessionId:string)=>Promise<void>;
@@ -47,6 +65,10 @@ export default function PatientSession({
  selectedSessionId:string|null;
  onSelectSession:(sessionId?:string|null)=>void;
 }){
+ const [medOpen,setMedOpen]=useState(false);
+ const [medTarget,setMedTarget]=useState<{mode:'start'|'history'|'change'|'stop'|'side_effect';id?:string}>({mode:'start'});
+ function manageMedication(mode:typeof medTarget.mode,id?:string){setMedTarget({mode,id});setMedOpen(true)}
+ const [narrativeMode,setNarrativeMode]=useState<Record<string,boolean>>({});
  const completed=bundle.sessions.filter(s=>s.status==='completed');
  const requested=selectedSessionId?bundle.sessions.find(s=>s.id===selectedSessionId):undefined;
  const draft=requested?.status==='draft'?requested:(!selectedSessionId?bundle.sessions.find(s=>s.status==='draft'):undefined);
@@ -56,7 +78,10 @@ export default function PatientSession({
  const [dirtyCount,setDirtyCount]=useState(0);
  const [flushing,setFlushing]=useState(false);
  const [flushError,setFlushError]=useState('');
+ const [showFinalizeGuidance,setShowFinalizeGuidance]=useState(false);
  const finishing=useRef(false);
+ const documentRef=useRef<HTMLFieldSetElement>(null);
+ const [activePart,setActivePart]=useState('interview');
 
  const registerFlusher=useCallback<RegisterFlusher>((key,flush)=>{
   flushers.current.set(key,flush);
@@ -78,13 +103,13 @@ export default function PatientSession({
   return()=>window.removeEventListener('beforeunload',warn);
  },[]);
 
- async function flushAll(){
+ const flushAll=useCallback(async()=>{
   setFlushing(true);
   setFlushError('');
   try{
    const pending=[...flushers.current.values()];
    await Promise.all(pending.map(flush=>flush()));
-   await reload();
+   return await reload();
   }catch(cause){
    const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν όλες οι αλλαγές.';
    setFlushError(message);
@@ -92,12 +117,31 @@ export default function PatientSession({
   }finally{
    setFlushing(false);
   }
- }
+ },[reload]);
+
+ useEffect(()=>{if(!beforeNavigate)return;const flush=async()=>{if(medOpen){setFlushError('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');throw new Error('medication_pending')}await flushAll()};beforeNavigate.current=flush;return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null}},[beforeNavigate,medOpen,flushAll]);
+
+ useEffect(()=>{
+  const root=documentRef.current;if(!root)return;
+  const sections=[...root.querySelectorAll<HTMLElement>('[data-visit-part]')];
+  const scroller=root.closest<HTMLElement>('.visit-dialog')||document.scrollingElement;
+  let frame=0;
+  const update=()=>{frame=0;const top=scroller instanceof HTMLElement&&scroller.matches('.visit-dialog')?scroller.getBoundingClientRect().top:0;setActivePart(activeVisitPart(sections.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
+  const target=scroller?.matches('.visit-dialog')?scroller:window;
+  target.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
+  const observer=new ResizeObserver(schedule);sections.forEach(section=>observer.observe(section));update();
+  return()=>{target.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);observer.disconnect();if(frame)cancelAnimationFrame(frame)};
+ },[draft?.id]);
+ function goToPart(key:string){documentRef.current?.querySelector<HTMLElement>('[data-visit-part="'+key+'"]')?.scrollIntoView({behavior:'smooth',block:'start'})}
 
  async function finalizeSafely(){
   if(finishing.current)return;finishing.current=true;
   try{
-   await flushAll();
+   if(medOpen)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');
+   const fresh=await flushAll() as PatientBundle;
+   const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id));
+   if(blocker){setShowFinalizeGuidance(true);return}
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
    await onFinalize(draft.id);
   }catch{
@@ -122,29 +166,42 @@ export default function PatientSession({
 
  const risk=bundle.risks.find(x=>x.session_id===draft.id);
  const sections=bundle.sections.filter(x=>x.session_id===draft.id);
- const completeKeys=new Set(sections.filter(x=>x.content.trim()).map(x=>x.section_key));
- const requiredDone=[...required].filter(x=>completeKeys.has(x)).length;
- const riskFollowupReady=!risk||risk.suicidal_ideation!=='positive'||[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].every(value=>value!=='not_assessed');
- const riskReady=Boolean(risk)&&risk?.suicidal_ideation!=='not_assessed'&&riskFollowupReady;
- const ready=requiredDone===required.size&&riskReady;
+ const blocker=finalizationBlocker(sections,risk);
+ const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
 
+ const editor=(key:string)=>{const d=definitions.find(([k])=>k===key)!;return <SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:d[1]}} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
+ const assessment=()=> <VisitPart anchor="assessment" number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική εκτίμηση *">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
-   <div><span className="visit-label"><span>ΠΡΟΧΕΙΡΟ</span><i/> {draft.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Αυτόματη αποθήκευση · οριστικοποίηση μετά τον κλινικό έλεγχο.</p></div>
+   <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</h2><p>{fmt(draft.started_at)}</p></div>
    <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Όλες οι αλλαγές αποθηκεύτηκαν'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
-  <div className="sections-label"><span className="kicker">ΚΛΙΝΙΚΗ ΚΑΤΑΓΡΑΦΗ</span><span>* απαιτείται για ολοκλήρωση</span></div>
-  <p className="dictation-guidance">Γράψτε φυσικά ή υπαγορεύστε. Πρόσθετη καταγραφή μόνο όταν χρειάζεται.</p><fieldset disabled={flushing||finalizing} className="clinical-sections">
-   {definitions.filter(([key])=>required.has(key)).map(([key,title,hint])=><SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title,hint}} existing={sections.find(x=>x.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>)}
-   <RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
-   <details className="optional-clinical-sections"><summary>Πρόσθετη καταγραφή <span>Λειτουργικότητα · Παρενέργειες · Συμμόρφωση</span></summary><div>{definitions.filter(([key])=>!required.has(key)).map(([key,title,hint])=><SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title,hint}} existing={sections.find(x=>x.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>)}</div></details>
+  <nav className="visit-scroll-nav" aria-label="Πλοήγηση επίσκεψης">{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=><button type="button" key={key} aria-current={activePart===key?'step':undefined} className={activePart===key?'active':''} onClick={()=>goToPart(key)}><i/><span>{label}</span></button>)}</nav>
+  <fieldset ref={documentRef} disabled={flushing||finalizing||medOpen} className="visit-document">
+   <VisitPart anchor="interview" number="01" title={draft.session_type==='follow_up'?'Συμπτώματα / πορεία':'Λόγος προσέλευσης & παρούσα εικόνα'}>{editor('interview')}</VisitPart>
+   {draft.session_type==='follow_up'&&<VisitPart anchor="adherence" number="02" title="Παρενέργειες & λήψη αγωγής">{contextReady?<MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση αγωγής…</p>}<details className="visit-review-notes"><summary>Συνολική καταγραφή παρενεργειών{sections.find(s=>s.section_key==='effects')?.content.trim()?' · υπάρχει καταγραφή':''}</summary>{editor('effects')}</details>{editor('adherence')}</VisitPart>}
+   <VisitPart anchor="mse" number="02" title={draft.session_type==='follow_up'?'MSE · τι άλλαξε':'Mental Status Examination'}>
+    {draft.session_type==='follow_up'&&<details className="visit-additional mse-reference"><summary>Προηγούμενο MSE · αναφορά</summary>{mseReference?<><small>{fmt(mseReference.session.completed_at||mseReference.session.started_at)} · ιστορική καταγραφή</small><p style={{whiteSpace:'pre-wrap'}}>{mseReference.section.content}</p>{mseReference.addenda.map(a=><div key={a.id}><strong>{a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · {fmt(a.created_at)}</strong><p>{a.reason}</p><p style={{whiteSpace:'pre-wrap'}}>{a.content}</p></div>)}</>:<p>{contextReady?'Δεν υπάρχει προηγούμενο καταγεγραμμένο MSE.':'Φόρτωση προηγούμενου MSE…'}</p>}<p className="visit-hint">Καταγράψτε μόνο τα σημερινά σχετικά ευρήματα. Η προηγούμενη καταγραφή παραμένει ιστορική.</p></details>}
+    {narrativeMode.mse?editor('mse'):<StructuredVisitEditor key={draft.id+':mse'} sessionId={draft.id} kind="mse" existing={sections.find(s=>s.section_key==='mse')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}
+    <details className="visit-additional"><summary>Εναλλακτική καταγραφή MSE</summary><p className="visit-hint">Χρησιμοποιήστε την μόνο όταν χρειάζεστε ενιαίο αφηγηματικό κείμενο ή έλεγχο παλαιότερης υπαγόρευσης.</p><button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,mse:!v.mse}))).catch(()=>{})}>{narrativeMode.mse?'Επιστροφή στο δομημένο MSE':'Άνοιγμα ελεύθερου κειμένου MSE'}</button></details>
+   </VisitPart>
+   <VisitPart anchor="risk" number="03" title="Εκτίμηση κινδύνου"><RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></VisitPart>
+   {draft.session_type==='initial_assessment'&&<VisitPart anchor="history" number="04" title="Ιστορικό">{contextReady?<VisitHistory bundle={bundle} sessionId={draft.id} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση ιστορικού… Μπορείτε να συνεχίσετε την καταγραφή.</p>}</VisitPart>}
+   {draft.session_type==='follow_up'&&<VisitPart anchor="psychometrics" number="05" title="Scores έναντι προηγούμενης επίσκεψης">{contextReady?<VisitScores bundle={bundle} sessionId={draft.id} reload={reloadContext}/>:<p role="status">Φόρτωση ψυχομετρικών…</p>}</VisitPart>}
+   {draft.session_type==='initial_assessment'&&assessment()}
+   <VisitPart anchor="medication" number="06" title={draft.session_type==='follow_up'?'Τροποποίηση αγωγής':'Αγωγή / ιστορικό αγωγής'}>{contextReady?<><MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} onManage={manageMedication} editableEffects={draft.session_type==='initial_assessment'} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/><button type="button" className="visit-text-button" onClick={()=>manageMedication('start')}>＋ Προσθήκη φαρμάκου</button></>:<p role="status">Φόρτωση αγωγής…</p>}</VisitPart>
+   {draft.session_type==='follow_up'&&assessment()}
+   <VisitPart anchor="plan" number={draft.session_type==='follow_up'?'08':'07'} title="Πλάνο / επόμενη επίσκεψη">{editor('plan')}{editor('review')}{contextReady&&<VisitNextAppointment bundle={bundle} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</VisitPart>
+   <details className="visit-additional"><summary>Πρόσθετη καταγραφή & λειτουργικότητα</summary>{editor('functioning')}{draft.session_type==='initial_assessment'&&<>{editor('adherence')}{editor('effects')}</>}{draft.session_type==='follow_up'&&contextReady&&<VisitHistory bundle={bundle} sessionId={draft.id} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</details>
   </fieldset>
+  {medOpen&&<MedicationModal bundle={bundle} sessionId={draft.id} initialMode={medTarget.mode} initialMedicationId={medTarget.id} onClose={()=>setMedOpen(false)} onSaved={reloadContext}/>}
 
   <div className="finalize-bar">
-   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Οι 5 βασικές ενότητες και ο ιδεασμός έχουν καταγραφεί. Ελέγξτε τα υπόλοιπα πεδία κινδύνου πριν ολοκληρώσετε.':requiredDone+'/5 βασικές ενότητες · '+(!risk?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':risk.suicidal_ideation==='not_assessed'?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':!riskFollowupReady?'θετικός ιδεασμός · ολοκληρώστε τα σχετικά πεδία κινδύνου':'κίνδυνος καταγράφηκε')}</span></div>
-   <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Έλεγχος & ολοκλήρωση'}</button>
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||medOpen}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση επίσκεψης'}</button>
+   {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
+  {onClose&&<button data-visit-close className="visit-close" disabled={flushing||finalizing||medOpen} onClick={()=>void flushAll().then(onClose).catch(()=>{})}>Αποθήκευση & κλείσιμο</button>}
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}
   {finalizeError&&<div className="save-state error" role="alert">{finalizeError}</div>}
 
@@ -174,10 +231,10 @@ function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSessio
     <span>Εκτίμηση κινδύνου</span>
     {risk?<div className="completed-risk-grid">
      <RiskRead label="Αυτοκτονικός ιδεασμός" value={risk.suicidal_ideation}/>
-     <RiskRead label="Πρόθεση" value={risk.intent}/>
+     {risk.tree&&<RiskTreeRead tree={risk.tree}/>}<RiskRead label="Πρόθεση" value={risk.intent}/>
      <RiskRead label="Σχέδιο" value={risk.plan}/>
      <RiskRead label="Αυτοτραυματισμός" value={risk.self_harm}/>
-     <RiskRead label="Ιστορικό απόπειρας" value={risk.attempt_history}/>
+     <RiskRead label="Ιστορικό απόπειρας" value={risk.attempt_history}/><RiskRead label="Κίνδυνος προς άλλους" value={risk.harm_to_others||'not_assessed'}/>
      <div><strong>Προστατευτικοί παράγοντες</strong><p>{risk.protective_factors||'Δεν καταγράφηκαν.'}</p></div>
      <div><strong>Κλινική σημείωση</strong><p>{risk.clinical_note||'Δεν καταγράφηκε.'}</p></div>
     </div>:<p>Δεν καταγράφηκε δομημένη εκτίμηση κινδύνου.</p>}
@@ -190,7 +247,7 @@ function RiskRead({label,value}:{label:string;value:string}){
  return <div><strong>{label}</strong><p>{riskLabel(value)}</p></div>;
 }
 
-function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;definition:{key:string;title:string;hint:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
+function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;definition:{key:string;title:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
  const [dictating,setDictating]=useState(false),[transcript,setTranscript]=useState(''),[review,setReview]=useState<ClinicalProposal|undefined>(),[reviewOpen,setReviewOpen]=useState(false),[conflict,setConflict]=useState<DemoSection|null|undefined>();
  const key='section:'+definition.key;
  const [recoverable,setRecoverable]=useState('');
@@ -199,8 +256,8 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  const reviewRef=useRef(false);reviewRef.current=reviewOpen;
  useEffect(()=>registerFlusher(key,async()=>{if(reviewRef.current)throw new Error('Ολοκληρώστε ή κλείστε τον έλεγχο υπαγόρευσης.');await draft.flush()}),[key,registerFlusher,draft.flush]);
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}
- return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3><span>{definition.hint}</span></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
- <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Γράψτε ή υπαγορεύστε ανά ενότητα."/>
+ return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
+ <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder=""/>
  <div role="status">{draft.saving?'Αποθηκεύεται…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:existing?'Αποθηκευμένο':'Δεν έχει καταγραφεί')}</div>
  {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void compare()}>Σύγκριση με αποθηκευμένο</button></>}
  {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><p>{conflict?.content||'Κενή ενότητα'}</p><p>Το δικό σας κείμενο παραμένει στον επεξεργαστή. Επεξεργαστείτε το πριν επιλέξετε αντικατάσταση.</p><button onClick={()=>{draft.acceptServer(conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με το δικό μου</button><button onClick={()=>{draft.resolve([conflict?.content,draft.value].filter(Boolean).join('\n\n'),conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Συνένωση των δύο</button></div>}
@@ -211,14 +268,4 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  </div>
 }
 
-function RiskEditor({sessionId,existing,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;existing?:DemoRisk;onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
- const shape=(r?:DemoRisk)=>({suicidal_ideation:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',self_harm:r?.self_harm||'not_assessed',attempt_history:r?.attempt_history||'not_assessed',protective_factors:r?.protective_factors||'',clinical_note:r?.clinical_note||''});
- const [conflict,setConflict]=useState<DemoRisk|null|undefined>();
- const draft=useClinicalDraft({storageKey:sessionId+':risk',initial:shape(existing),version:existing?.version??null,write:async(risk,version)=>{const d=await demoPost({action:'save_risk',session_id:sessionId,risk,expected_version:version});return {value:shape(d.risk),version:d.risk.version as number}},onSaved,onDirty:d=>onDirtyChange('risk',d)});
- useEffect(()=>registerFlusher('risk',draft.flush),[registerFlusher,draft.flush]);
- const positiveNeedsFollowup=draft.value.suicidal_ideation==='positive'&&[draft.value.intent,draft.value.plan,draft.value.self_harm,draft.value.attempt_history].some(value=>value==='not_assessed');
- return <div className="clinical-section risk-editor"><h3>Εκτίμηση κινδύνου *</h3><p>Δεν διερευνήθηκε ≠ αρνητικό εύρημα.</p>{positiveNeedsFollowup&&<div className="review-signal"><strong>Θετικός αυτοκτονικός ιδεασμός</strong><p>Πριν την ολοκλήρωση της συνεδρίας αξιολογήστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.</p></div>}<div className="risk-grid">{[['suicidal_ideation','Αυτοκτονικός ιδεασμός'],['intent','Πρόθεση'],['plan','Σχέδιο'],['self_harm','Αυτοτραυματισμός'],['attempt_history','Ιστορικό απόπειρας']].map(([k,label])=><label key={k}>{label}<select value={draft.value[k as keyof typeof draft.value]} onChange={e=>draft.change({...draft.value,[k]:e.target.value})}>{riskOptions.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>)}</div>{[['protective_factors','Προστατευτικοί παράγοντες'],['clinical_note','Κλινική σημείωση']].map(([k,label])=><label className="risk-note" key={k}>{label}<textarea value={draft.value[k as keyof typeof draft.value]} onChange={e=>draft.change({...draft.value,[k]:e.target.value})}/></label>)}<p role="status">{draft.saving?'Αποθήκευση…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:'')}</p>
- {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void onSaved().then(b=>{if(b)setConflict((b as PatientBundle).risks.find(r=>r.session_id===sessionId)||null)})}>Σύγκριση με αποθηκευμένο</button></>}
- {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη εκτίμηση</h4>{Object.entries(shape(conflict||undefined)).map(([k,v])=><p key={k}>{k}: {riskLabel(v)}</p>)}<button onClick={()=>{draft.acceptServer(shape(conflict||undefined),conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,shape(conflict||undefined),conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με τις επιλογές μου</button></div>}
- </div>
-}
+function VisitPart({number:_,title,children,anchor}:{number:string;title:string;children:React.ReactNode;anchor?:string}){return <section className="visit-part" data-visit-part={anchor}><header><h3>{title}</h3></header><div>{children}</div></section>}

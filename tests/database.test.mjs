@@ -32,7 +32,7 @@ async function rejected(id, query, params = [], pattern = /permission denied|row
 before(async () => {
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
-    create schema auth; create table auth.users(id uuid primary key, email text);
+    create schema auth; create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, deleted_at timestamptz, banned_until timestamptz);
     create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to anon, authenticated;
@@ -52,7 +52,192 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
-test('every table has RLS; anonymous reads are limited to fictional demo tables', async () => {
+test('pilot invitations require confirmed identity, are single-user, and never grant access from metadata',async()=>{
+ const code='fixture-invitation-A';
+ await sql("update auth.users set email='a@example.invalid',email_confirmed_at=now() where id=$1",[a]);
+ await sql("insert into private.pilot_invitations(token_hash,email) values(encode(sha256(convert_to($1,'UTF8')),'hex'),'a@example.invalid')",[code]);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[code,'Dr B'],/verified_email_required|invalid_invitation/);
+ const [{identity}]=await asUser(a,()=>sql('select pilot_redeem_invitation($1,$2) identity',[code,'Dr A']));
+ assert.ok(identity.workspace_id);assert.equal(identity.full_name,'Dr A');
+ await sql("update auth.users set email='b@example.invalid',email_confirmed_at=now() where id=$1",[b]);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[code,'Dr B'],/invalid_invitation/);
+ assert.deepEqual((await asUser(b,()=>sql('select pilot_identity() identity')))[0],{identity:null});
+});
+
+test('pilot table RLS and every public tester RPC deny another owner and anonymous callers',async()=>{
+ const [{identity:ia}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Dr B')",[b]);
+ const [{identity:ib}]=await asUser(b,()=>sql('select pilot_identity() identity'));
+ await asUser(a,()=>sql('select demo_tester_bootstrap($1)',[ia.workspace_id]));
+ await asUser(b,()=>sql('select demo_tester_bootstrap($1)',[ib.workspace_id]));
+ assert.deepEqual(await asUser(a,()=>sql('select id from demo_patients')),[]);
+ await asUser(a,()=>sql("select demo_patient_create_v2($1,'TEST A','Manual entry')",[ia.workspace_id]));
+ await asUser(b,()=>sql("select demo_patient_create_v2($1,'TEST B','Manual entry')",[ib.workspace_id]));
+ const patients=await asUser(a,()=>sql('select id,tester_id from demo_patients'));
+ assert.ok(patients.length>0);assert.ok(patients.every(p=>p.tester_id===ia.workspace_id));
+ assert.deepEqual(await asUser(b,()=>sql('select id from demo_patients where tester_id=$1',[ia.workspace_id])),[]);
+ await rejected(b,'select demo_tester_bootstrap($1)',[ia.workspace_id],/pilot_not_authorized/);
+ await rejected(b,'select demo_assessment_list($1,$2)',[ia.workspace_id,patients[0].id],/pilot_not_authorized/);
+ await rejected(b,'select demo_calendar_reminders($1)',[ia.workspace_id],/pilot_not_authorized/);
+ await rejected(b,'select demo_history_save($1,$2,$3::jsonb,null)',[ia.workspace_id,patients[0].id,'{}'],/pilot_not_authorized/);
+ await db.exec('begin;set local role anon;');
+ try{await assert.rejects(sql('select demo_tester_bootstrap($1)',[ia.workspace_id]),/permission denied/)}finally{await db.exec('rollback')}
+ const unsafe=await sql("select p.proname from pg_proc p where p.pronamespace='public'::regnamespace and p.proname like 'demo_%' and 'p_tester'=any(p.proargnames) and (has_function_privilege('anon',p.oid,'EXECUTE') or not has_function_privilege('authenticated',p.oid,'EXECUTE'))");
+ assert.deepEqual(unsafe,[]);
+ const exposed=await sql("select routine_name from information_schema.role_routine_grants where routine_schema='private' and routine_name like 'pilot_impl_%' and grantee in ('PUBLIC','anon','authenticated')");assert.deepEqual(exposed,[]);
+});
+
+test('pilot reset archives rather than deletes and restore recovers the original workspace',async()=>{
+ const [{identity:old}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const [p]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Durable',$2)).id id",[old.workspace_id,'Fixture']));
+ const id=p.id;
+ const [{identity:newSpace}]=await asUser(a,()=>sql('select pilot_reset_workspace(false) identity'));
+ assert.notEqual(old.workspace_id,newSpace.workspace_id);assert.equal(newSpace.can_restore,true);
+ assert.deepEqual(await asUser(a,()=>sql('select id from demo_patients where id=$1',[id])),[]);
+ assert.equal((await sql('select id from demo_patients where id=$1',[id])).length,1);
+ await rejected(a,'select demo_assessment_list($1,$2)',[old.workspace_id,id],/pilot_not_authorized/);
+ const [{identity:restored}]=await asUser(a,()=>sql('select pilot_reset_workspace(true) identity'));
+ assert.equal(restored.workspace_id,old.workspace_id);assert.equal((await asUser(a,()=>sql('select id from demo_patients where id=$1',[id]))).length,1);
+});
+
+test('pilot feedback records verified actor and stays private',async()=>{
+ await asUser(a,()=>sql("select pilot_feedback_submit('bug','TEST fictional report','/calendar')"));
+ const [row]=await sql("select user_id,message from private.pilot_feedback where user_id=$1",[a]);assert.equal(row.user_id,a);assert.equal(row.message,'TEST fictional report');
+ await rejected(b,'select * from private.pilot_feedback',[],/permission denied/);
+ await rejected(colleague,"select pilot_feedback_submit('bug','TEST unauthorized report','/calendar')",[],/pilot_not_authorized/);
+});
+
+test('owner can issue open invitations; testers cannot issue invites, reused/revoked invitations fail',async()=>{
+ await sql('update private.pilot_members set can_invite=true where user_id=$1',[a]);
+ const [{invite}]=await asUser(a,()=>sql('select pilot_invite_create(null) invite'));assert.match(invite.code,/^[a-f0-9]{64}$/);
+ await rejected(b,'select pilot_invite_create(null)',[],/owner_required/);
+ await sql("update auth.users set email='colleague@example.invalid',email_confirmed_at=now() where id=$1",[colleague]);
+ const [{identity}]=await asUser(colleague,()=>sql('select pilot_redeem_invitation($1,$2) identity',[invite.code,'Tester C']));assert.equal(identity.can_invite,false);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[invite.code,'Tester B'],/invalid_invitation/);
+ const [{invite:revocable}]=await asUser(a,()=>sql('select pilot_invite_create(null) invite'));
+ const [{list}]=await asUser(a,()=>sql('select pilot_invite_list() list'));
+ const pending=list.find(i=>!i.redeemed_at&&!i.revoked_at);assert.ok(pending);
+ await asUser(a,()=>sql('select pilot_invite_revoke($1)',[pending.id]));
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[revocable.code,'Tester B'],/invalid_invitation/);
+ await rejected(colleague,'select pilot_invite_list()',[],/owner_required/);
+});
+
+test('self registration needs a verified email, creates an empty private workspace and cannot reactivate a suspended account',async()=>{
+ const uid='10000000-0000-4000-8000-000000000099';
+ await sql("insert into auth.users(id,email) values($1,'self@example.invalid')",[uid]);
+ await rejected(uid,"select pilot_join('Self Tester')",[],/verified_email_required/);
+ await sql('update auth.users set email_confirmed_at=now() where id=$1',[uid]);
+ const [{identity}]=await asUser(uid,()=>sql("select pilot_join('Self Tester') identity"));assert.ok(identity.workspace_id);
+ await asUser(uid,()=>sql('select demo_tester_bootstrap($1)',[identity.workspace_id]));
+ assert.deepEqual(await asUser(uid,()=>sql('select id from demo_patients')),[]);
+ await sql('update private.pilot_members set active=false where user_id=$1',[uid]);
+ assert.deepEqual((await asUser(uid,()=>sql("select pilot_join('Self Tester') identity")))[0],{identity:null});
+});
+
+test('recurring appointments retain Athens wall time across DST, are canonical and reject a conflicting series atomically',async()=>{
+ const t='80000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [patient]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [row]=await sql("select demo_calendar_create_recurring($1,$2,'2099-10-01 09:00 Europe/Athens','2099-10-01 09:50 Europe/Athens','follow_up',1,8) as series",[t,patient.id]);
+ assert.equal(row.series.events.length,8);assert.ok(row.series.events.every(e=>e.series_id===row.series.series_id&&e.patient_id===patient.id));
+ const times=await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') as time from demo_calendar_events where series_id=$1",[row.series.series_id]);assert.ok(times.every(e=>e.time==='09:00'));
+ const [{count:before}]=await sql('select count(*)::int count from demo_calendar_events where tester_id=$1',[t]);
+ await assert.rejects(sql("select demo_calendar_create_recurring($1,$2,'2099-09-24 09:00 Europe/Athens','2099-09-24 09:50 Europe/Athens','follow_up',1,8)",[t,patient.id]),/calendar_conflict:01\/10\/2099/);
+ assert.equal((await sql('select count(*)::int count from demo_calendar_events where tester_id=$1',[t]))[0].count,before);
+ await assert.rejects(sql("select demo_calendar_create_recurring($1,$2,now()+interval '1 year',now()+interval '1 year 50 minutes','follow_up',null,6)",[t,patient.id]),/invalid_recurrence/);
+});
+
+test('calendar edits reject stale workspaces, scope future changes, and cancellation can be restored safely',async()=>{
+ const t='80000000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-10-01 12:00 Europe/Athens','2099-10-01 12:50 Europe/Athens','follow_up',1,4) as series",[t,p.id]);
+ const anchor=series.events[1];const [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ const [{event:moved}]=await sql("select demo_calendar_edit($1,'move',$2,$3,'2099-10-08 13:00 Europe/Athens','2099-10-08 13:50 Europe/Athens','future',$4) as event",[t,anchor.id,anchor.updated_at,revision]);
+ const members=await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') time from demo_calendar_events where series_id=$1 order by scheduled_start",[series.series_id]);assert.deepEqual(members.map(e=>e.time),['12:00','13:00','13:00','13:00']);
+ await assert.rejects(sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,anchor.id,anchor.updated_at]),/stale_calendar/);
+ const [{event:cancelled}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,moved.id,moved.updated_at]);assert.equal(cancelled.status,'cancelled');
+ const [{event:restored}]=await sql("select demo_calendar_edit($1,'restore',$2,$3) as event",[t,cancelled.id,cancelled.updated_at]);assert.equal(restored.status,'scheduled');assert.equal(restored.series_id,series.series_id);
+ const [{event:cancelAgain}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,restored.id,restored.updated_at]);
+ await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4)",[t,p.id,restored.scheduled_start,restored.scheduled_end]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'restore',$2,$3) as event",[t,cancelAgain.id,cancelAgain.updated_at]),/calendar_conflict/);
+ assert.equal((await sql('select status from demo_calendar_events where id=$1',[cancelAgain.id]))[0].status,'cancelled');
+});
+
+test('a series editor rejects changes to another instance and rolls back conflicts without altering any member',async()=>{
+ const t='80000000-0000-4000-8000-000000000003';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-11-01 12:00 Europe/Athens','2099-11-01 12:50 Europe/Athens','follow_up',1,3) as series",[t,p.id]);
+ const [{revision:old}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await sql("select demo_calendar_edit($1,'move',$2,$3,'2099-11-08 13:00 Europe/Athens','2099-11-08 13:50 Europe/Athens')",[t,series.events[1].id,series.events[1].updated_at]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'cancel',$2,$3,null,null,'series',$4)",[t,series.events[0].id,series.events[0].updated_at,old]),/stale_calendar/);
+ await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-11-15 14:00 Europe/Athens','2099-11-15 14:50 Europe/Athens')",[t,p.id]);
+ const [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'move',$2,$3,'2099-11-01 14:00 Europe/Athens','2099-11-01 14:50 Europe/Athens','series',$4)",[t,series.events[0].id,series.events[0].updated_at,revision]),/calendar_conflict:15\/11\/2099/);
+ assert.equal((await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') time from demo_calendar_events where id=$1",[series.events[0].id]))[0].time,'12:00');
+});
+
+test('risk tree saves atomically with canonical fields, retains hidden notes and rejects stale or invalid writes',async()=>{
+ const t='90000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
+ const risk={suicidal_ideation:'positive',intent:'unknown',plan:'positive',harm_to_others:'not_assessed',tree:{version:1,answers:{wish:'positive',acted:'negative',ideation:'active',intent:'unknown',plan:'positive'},notes:{plan:'Test explanation'}}};
+ const query='select * from demo_session_save_risk_tree($1,$2,$3,$4)';
+ const [saved]=await sql(query,[t,s.id,JSON.stringify(risk),null]);assert.deepEqual(saved.tree.notes,risk.tree.notes);assert.equal(saved.plan,'positive');
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify(risk),null]),/stale_risk/);
+ await assert.rejects(sql(query,[a,s.id,JSON.stringify(risk),1]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify({...risk,tree:{version:1,answers:{invented:'positive'},notes:{}}}),1]),/invalid_risk_tree/);
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify({...risk,suicidal_ideation:'negative'}),1]),/inconsistent_risk_tree/);
+ risk.suicidal_ideation='negative';risk.tree.answers.wish='negative';const [changed]=await sql(query,[t,s.id,JSON.stringify(risk),1]);assert.equal(changed.tree.answers.plan,'positive');assert.equal(changed.tree.notes.plan,'Test explanation');
+ // Legacy writes keep the shared answers in sync and retain narrative evidence.
+ await sql('select demo_session_save_risk($1,$2,$3,2)',[t,s.id,JSON.stringify({...risk,plan:'unknown'})]);const [legacy]=await sql('select * from demo_risk_assessments where session_id=$1',[s.id]);assert.equal(legacy.tree.answers.plan,'unknown');assert.equal(legacy.tree.notes.plan,'Test explanation');
+});
+
+test('visit questionnaire assignment is scoped, idempotent and cannot move between visits',async()=>{
+ const t='90000000-0000-4000-8000-000000000009';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [s]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
+ const id='91000000-0000-4000-8000-000000000009',token='9'.repeat(64);
+ const args=[t,p.id,s.id,id,'PHQ-9',token];
+ const query='select demo_assessment_assign_to_session($1,$2,$3,$4,$5,$6) result';
+ const [first]=await sql(query,args);assert.equal(first.result.session_id,s.id);assert.equal(first.result.token_hash,undefined);
+ const [retry]=await sql(query,args);assert.deepEqual(first.result,retry.result);
+ await assert.rejects(sql(query,[a,...args.slice(1)]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,patientA,...args.slice(2)]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,p.id,null,...args.slice(3)]),/session_unavailable/);
+ // Existing assignment must never be reassigned, even with an identical request token.
+ const [otherPatient]=await sql('select id from demo_patients where tester_id=$1 and id<>$2 limit 1',[t,p.id]);
+ const [other]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,otherPatient.id]);
+ await sql("update private.demo_assessments set session_id=$1 where id=$2",[other.id,id]);
+ await assert.rejects(sql(query,args),/request_conflict/);
+ assert.equal((await sql('select session_id from private.demo_assessments where id=$1',[id]))[0].session_id,other.id);
+});
+
+test('visit documents reload as one canonical section, reject stale writes and remain immutable after finalization', async()=>{
+ const t='90000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const doc={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Denies low mood; uncertain reliability.'}]};
+ const [saved]=await sql("select * from demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]);
+ const [loaded]=await sql("select * from demo_session_sections where id=$1",[saved.id]);assert.deepEqual(loaded.document,doc);assert.equal(loaded.content,'Mood: Denies low mood; uncertain reliability.');
+ await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]),/stale_section/);
+ for(const invalid of [null,{}, {kind:'mse',fields:null},{kind:'mse',fields:[{key:'invented',label:'X',text:'X'}]}])await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,1)",[t,s.id,JSON.stringify(invalid)]),/invalid_document/);
+ const assessment={kind:'assessment',fields:[{key:'differential-1',label:'Differential Diagnosis',text:'Requires reassessment.',status:'under_investigation',codes:[{code:'F32.9',label:'Depressive episode, unspecified',system:'WHO ICD-10',edition:'2019'}]},{key:'formulation',label:'Formulation',text:'Stress associated symptoms.'}]};
+ const [a]=await sql("select * from demo_session_save_document($1,$2,'assessment',$3,null)",[t,s.id,JSON.stringify(assessment)]);assert.match(a.content,/υπό διερεύνηση/);assert.match(a.content,/F32.9/);assert.match(a.content,/Formulation/);
+ await sql("select demo_session_save_section($1,$2,'assessment','Reviewed narrative replaces structure','manual',1)",[t,s.id]);assert.equal((await sql('select document from demo_session_sections where id=$1',[a.id]))[0].document,null);
+ for(const k of ['interview','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,s.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'negative',harm_to_others:'positive'})]);
+ await sql('select demo_session_save_risk($1,$2,$3,1)',[t,s.id,JSON.stringify({suicidal_ideation:'negative'})]);assert.equal((await sql('select harm_to_others from demo_risk_assessments where session_id=$1',[s.id]))[0].harm_to_others,'positive');
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[s.id]);await sql('select demo_session_finalize($1,$2,$3)',[t,s.id,version]);
+ await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,1)",[t,s.id,JSON.stringify(doc)]),/session_unavailable/);
+ await assert.rejects(sql("update demo_session_sections set document=null where id=$1",[saved.id]),/immutable_record/);
+ const [follow]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);assert.notEqual(follow.id,s.id);assert.equal((await sql('select count(*)::int n from demo_session_sections where session_id=$1',[follow.id]))[0].n,0);
+ assert.deepEqual((await sql('select document from demo_session_sections where id=$1',[saved.id]))[0].document,doc);
+});
+
+test('blank structured headings cannot satisfy finalization and previous medications are atomic temporal events', async()=>{
+ const t='90000000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const [blank]=await sql("select * from demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify({kind:'mse',fields:[{key:'mood',label:'Mood',text:''}]})]);assert.equal(blank.content,'');
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[s.id]);await assert.rejects(sql('select demo_session_finalize($1,$2,$3)',[t,s.id,version]),/missing_sections/);
+ const [med]=await sql("select * from demo_medication_record_history($1,$2,$3,'Fictional old med',25,'mg','daily',current_date-20,current_date-10,'Historical exposure')",[t,p.id,s.id]);
+ const [{state}]=await sql('select demo_medication_state($1,current_date) state',[med.id]);assert.equal(state.status,'stopped');assert.equal((await sql('select count(*)::int n from demo_medication_events where medication_id=$1',[med.id]))[0].n,2);
+ await assert.rejects(sql("select demo_medication_record_history($1,$2,$3,'Invalid history',25,'mg','daily',current_date-5,current_date-10,'bad dates')",[t,p.id,s.id]),/invalid_medication_history/);
+ assert.equal((await sql("select count(*)::int n from demo_medications where patient_id=$1 and medication_name='Invalid history'",[p.id]))[0].n,0);
+});
+
+test('every table has RLS; the private pilot exposes no anonymous table reads', async () => {
   const tables = await sql("select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','private') and c.relkind='r'");
   assert.ok(tables.length >= 20);
   for (const table of tables) assert.equal(table.relrowsecurity, true, table.relname);
@@ -60,21 +245,7 @@ test('every table has RLS; anonymous reads are limited to fictional demo tables'
   await assert.rejects(sql('select * from patients'), /permission denied/);
   await db.exec('rollback');
   const allowed = await sql("select table_name, privilege_type from information_schema.role_table_grants where grantee = 'anon' and table_schema in ('public','private') order by table_name, privilege_type");
-  const demoReadable = [
-    'demo_calendar_events',
-    'demo_clinical_entries',
-    'demo_medication_events',
-    'demo_medication_side_effects',
-    'demo_session_addenda',
-    'demo_medication_event_revisions',
-    'demo_medications',
-    'demo_patient_history',
-    'demo_patients',
-    'demo_risk_assessments',
-    'demo_session_sections',
-    'demo_sessions',
-  ];
-  assert.deepEqual(allowed, demoReadable.sort().map(table_name => ({ table_name, privilege_type: 'SELECT' })));
+  assert.deepEqual(allowed, []);
 });
 
 test('practice membership isolates patient reads and writes, including direct API-shaped access', async () => {
@@ -321,4 +492,59 @@ test('medication timeline derives current/future state without bootstrap and pre
  assert.equal((await sql('select demo_medication_state($1,current_date+20) state',[future.id]))[0].state.status,'cancelled');
  await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'changed',90,'mg','daily',current_date+2,'same day',7,null,false)",[t,m.id]),/event_date_conflict/);
  assert.equal((await state(3)).dose,125);
+});
+
+test('same-day dose correction preserves the original event, requires a reason and rejects stale retries',async()=>{
+ const t='80000000-0000-4000-8000-000000000009';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [m]=await sql("select * from demo_medication_start($1,$2,null,'Same-day test',5,'mg','daily',current_date,'test')",[t,p.id]);
+ const [event]=await sql('select id from demo_medication_events where medication_id=$1',[m.id]);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',10,'mg','daily',current_date,'',2,$3,false)",[t,m.id,event.id]),/reason_required/);
+ await sql("select demo_medication_event_write($1,$2,null,'started',10,'mg','daily',current_date,'Correct initial dose',2,$3,false)",[t,m.id,event.id]);
+ assert.equal((await sql('select demo_medication_state($1,current_date) state',[m.id]))[0].state.dose,10);
+ const [revision]=await sql('select * from demo_medication_event_revisions where event_id=$1',[event.id]);
+ assert.ok(revision.replacement_id);assert.equal(revision.reason,'Correct initial dose');
+ assert.equal((await sql('select new_state from demo_medication_events where id=$1',[event.id]))[0].new_state.dose,5);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',20,'mg','daily',current_date,'Retry',2,$3,false)",[t,m.id,event.id]),/stale_medication/);
+});
+
+test('SMS simulation queues atomically, reschedules, cancels, revalidates phone and processes only once',async()=>{
+ const tester='71000000-0000-4000-8000-000000000001';await sql('select public.demo_tester_bootstrap($1)',[tester]);
+ const patient=(await sql('select id from public.demo_patients where tester_id=$1 limit 1',[tester]))[0];
+ await sql("update public.demo_patients set phone='+306900000000' where id=$1",[patient.id]);
+ async function write(payload,sms=true){return (await sql('select public.demo_calendar_write_sms($1,$2::jsonb,$3) as event',[tester,JSON.stringify(payload),sms]))[0].event;}
+ const event=await write({action:'create',patient_id:patient.id,scheduled_start:'2098-10-10T09:00Z',scheduled_end:'2098-10-10T09:50Z'});
+ let job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(job.status,'queued');assert.equal(new Date(job.due_at).toISOString(),'2098-10-09T09:00:00.000Z');
+ let moved=await write({action:'move',event_id:event.id,expected_updated_at:event.updated_at,scheduled_start:'2098-10-11T09:00Z',scheduled_end:'2098-10-11T09:50Z'});
+ job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(new Date(job.due_at).toISOString(),'2098-10-10T09:00:00.000Z');
+ await sql("select private.process_demo_sms_reminders('2098-10-09T12:00Z')");assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ await sql("select private.process_demo_sms_reminders('2098-10-10T09:01Z')");job=(await sql('select * from private.demo_sms_reminders where event_id=$1',[event.id]))[0];assert.equal(job.status,'simulated');const processed=job.processed_at;
+ await sql("select private.process_demo_sms_reminders('2098-10-10T09:02Z')");assert.deepEqual((await sql('select processed_at from private.demo_sms_reminders where event_id=$1',[event.id]))[0].processed_at,processed);
+ moved=await write({action:'cancel',event_id:event.id,expected_updated_at:moved.updated_at});assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'cancelled');
+ moved=await write({action:'restore',event_id:event.id,expected_updated_at:moved.updated_at});assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ await sql("update public.demo_patients set phone='' where id=$1",[patient.id]);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'missing_phone');
+ await sql("update public.demo_patients set phone='6900000000' where id=$1",[patient.id]);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'queued');
+ moved=await write({action:'move',event_id:event.id,expected_updated_at:moved.updated_at,scheduled_start:'2098-10-12T09:00Z',scheduled_end:'2098-10-12T09:50Z'},false);assert.equal(moved.sms_reminder_enabled,false);assert.equal((await sql('select status from private.demo_sms_reminders where event_id=$1',[event.id]))[0].status,'cancelled');
+ assert.equal((await sql('select public.demo_calendar_reminders($1) as jobs',[b]))[0].jobs.length,0);
+ await db.exec('begin;set local role anon;');try{await assert.rejects(sql('select private.process_demo_sms_reminders()'),/permission denied/);}finally{await db.exec('rollback');}
+});
+
+test('mailboxes and questionnaire deliveries isolate owners and prevent duplicate or ambiguous sends',async()=>{
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ await asUser(a,()=>sql("select pilot_mailbox_save('google','a@example.com',$1)",['ciphertext'.repeat(5)]));
+ assert.equal((await asUser(a,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox.email,'a@example.com');
+ assert.equal((await asUser(b,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox,null);
+ await rejected(b,'select * from private.pilot_mailboxes',[],/permission denied/);
+ const [p]=await asUser(a,()=>sql('select id from demo_patients limit 1'));
+ const id='99000000-0000-4000-8000-000000000001',token='f'.repeat(64);
+ await asUser(a,()=>sql("select demo_assessment_assign($1,$2,null,$3,'PHQ-9',$4)",[identity.workspace_id,p.id,id,token]));
+ await rejected(b,'select pilot_mail_claim($1,$2,$3)',[id,token,'tester@example.com'],/assessment_unavailable/);
+ await rejected(a,'select pilot_mail_claim($1,$2,$3)',[id,'wrong','tester@example.com'],/assessment_unavailable/);
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'new');
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'claimed');
+ await asUser(a,()=>sql("select pilot_mail_finish($1,'unknown')",[id]));
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'unknown');
+ await rejected(b,"select pilot_mail_finish($1,'accepted')",[id],/delivery_unavailable/);
+ await asUser(a,()=>sql('select pilot_mailbox_disconnect()'));
+ assert.equal((await asUser(a,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox,null);
 });

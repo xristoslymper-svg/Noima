@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildSummaryContext,summaryContextHash,summaryContextKey,validateNarrative,assertCriticalCoverage,narrativeRiskRequiresReview} from '../lib/clinical/summary-context.ts';
+import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryContextKey,validateNarrative,assertCriticalCoverage,narrativeRiskRequiresReview} from '../lib/clinical/summary-context.ts';
 import {isClinicalId} from '../lib/clinical/identity.ts';
 const fixture=()=>({patient:{id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',chief_complaint:'Incomplete',note:''},sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],assessments:[],appointments:[]});
 const visit=(b,id,text)=>{b.sessions.push({id,status:'completed',completed_at:`2026-10-0${id}T09:00:00Z`,started_at:`2026-10-0${id}T08:00:00Z`});b.sections.push({id:'s'+id,session_id:id,section_key:'interview',content:text});};
@@ -29,7 +29,7 @@ test('complete canonical hash changes for every relevant mutation and date; pres
 });
 test('narrative accepts exact complete clauses in any section; rejects altered negation, bogus evidence and mislabeled structured states',()=>{
  const b=fixture();visit(b,1,'Δεν αναφέρει πλήρη ύφεση. Ο ύπνος βελτιώθηκε.');const c=buildSummaryContext(b);
- const output=(label,quote,id='section:s1')=>({findings:[{label,quotes:[{source_id:id,quote}]}]});assert.match(validateNarrative(output('Πορεία','Ο ύπνος βελτιώθηκε.'),c)[0].text,/Καταγεγραμμένη/);
+ const output=(label,quote,id='section:s1')=>({findings:[{label,quotes:[{source_id:id,quote}]}]});assert.match(validateNarrative(output('Τρέχουσα εικόνα','Ο ύπνος βελτιώθηκε.'),c)[0].text,/Καταγεγραμμένη/);
  for(const bad of [output('Πορεία','αναφέρει πλήρη ύφεση.'),output('Ψυχομετρικά','Ο ύπνος βελτιώθηκε.'),output('Πορεία','Ο ύπνος βελτιώθηκε.','bogus')])assert.throws(()=>validateNarrative(bad,c));
  assert.throws(()=>validateNarrative({findings:[...output('Πορεία','Ο ύπνος βελτιώθηκε.').findings,...output('Πορεία','Ο ύπνος βελτιώθηκε.').findings]},c));
 });
@@ -51,4 +51,8 @@ test('clear risk denial and concordant medication are not false contradictions',
  assert.equal(narrativeRiskRequiresReview('Αναφέρει αυτοκτονικό ιδεασμό χωρίς σχέδιο.'),true);assert.equal(narrativeRiskRequiresReview('Δεν αναφέρει αυτοκτονικό ιδεασμό, αλλά είχε σκέψεις θανάτου χθες.'),true);assert.equal(narrativeRiskRequiresReview('Χωρίς αυτοκτονικό ιδεασμό.'),false);
  assert.equal(narrativeRiskRequiresReview('Αρνείται αυτοκτονικό ιδεασμό, πρόθεση ή σχέδιο.'),false);assert.equal(narrativeRiskRequiresReview('Δεν αποκλείεται παλαιότερος αυτοκτονικός ιδεασμός.'),true);assert.equal(narrativeRiskRequiresReview('Αναφέρει παθητικές σκέψεις θανάτου χθες.'),true);
  const b=fixture();visit(b,1,'Συνεχίζει Sertraline 100 mg.');b.medications.push({id:'m',medication_name:'Sertraline',dose:100,status:'active'});assert.ok(!buildSummaryContext(b).findings.some(f=>f.key.startsWith('med-review:')));b.medications[0].status='stopped';assert.ok(buildSummaryContext(b).findings.some(f=>f.key.startsWith('med-review:')));b.sections[0].content='Έλαβε Sertraline 100 mg ως προηγούμενη θεραπεία.';assert.ok(!buildSummaryContext(b).findings.some(f=>f.key.startsWith('med-review:')));
+});
+
+test('canonical briefing keeps latest complete notes and plan, omits drafts/corrected parents and forbids obsolete current claims',()=>{
+ const b=fixture();visit(b,1,'Ο ύπνος βελτιώθηκε.');visit(b,2,'Ο ύπνος παραμένει διαταραγμένος.');b.sessions[0].completed_at='2026-10-01';b.sessions[1].completed_at='2026-10-03';b.sections[0].section_key='assessment';b.sections[1].section_key='assessment';const c=buildSummaryContext(b);const facts=canonicalSummaryFindings(c);assert.ok(facts.some(f=>f.key==='record:section:s2'));assert.ok(!facts.some(f=>f.key==='record:section:s1'));assert.throws(()=>validateNarrative({findings:[{label:'Τρέχουσα εικόνα',quotes:[{source_id:'section:s1',quote:'Ο ύπνος βελτιώθηκε.'}]}]},c),/obsolete_current_source/);assert.throws(()=>validateNarrative({findings:[{label:'Πορεία',quotes:[{source_id:'section:s2',quote:'Ο ύπνος παραμένει διαταραγμένος.'}]}]},c),/two_visits/);assert.equal(validateNarrative({findings:[{label:'Πορεία',quotes:[{source_id:'section:s1',quote:'Ο ύπνος βελτιώθηκε.'},{source_id:'section:s2',quote:'Ο ύπνος παραμένει διαταραγμένος.'}]}]},c).length,1);b.addenda.push({id:'x',session_id:2,kind:'correction',content:'Διόρθωση',created_at:'2026-10-04'});assert.ok(!canonicalSummaryFindings(buildSummaryContext(b)).some(f=>f.key==='record:section:s2'));
 });

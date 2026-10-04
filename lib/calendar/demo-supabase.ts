@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import {pilotAuthorization} from '@/lib/pilot/request-scope';
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mgpnaxaquzeoomxdzhic.supabase.co";
 const SUPABASE_KEY =
@@ -17,14 +17,27 @@ export type DemoCalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  sms_reminder_enabled?: boolean;
+  sms_reminder?: {status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
+  updated_at: string;
+  series_id: string | null;
+  recurrence_interval_weeks: number | null;
+  series_updated_at?: string;
 };
 
-async function headers(extra?:HeadersInit):Promise<HeadersInit>{const token=(await cookies()).get('noima-access-token')?.value;return {apikey:SUPABASE_KEY,Authorization:`Bearer ${token||SUPABASE_KEY}`,'Content-Type':'application/json',...extra};}
+function headers(extra?: HeadersInit): HeadersInit {
+  return {
+    apikey: SUPABASE_KEY,
+    "Content-Type": "application/json",
+    ...pilotAuthorization(),
+    ...extra,
+  };
+}
 
 async function bootstrap(tester: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_tester_bootstrap`, {
     method: "POST",
-    headers: await headers(),
+    headers: headers(),
     cache: "no-store",
     body: JSON.stringify({ p_tester: tester }),
   });
@@ -35,23 +48,31 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,sms_reminder_enabled,updated_at,series_id,recurrence_interval_weeks",
     tester_id: `eq.${tester}`,
-    status: "eq.scheduled",
     order: "scheduled_start.asc",
   });
 
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/demo_calendar_events?${params.toString()}`,
-    { headers: await headers(), cache: "no-store" },
+    { headers: headers(), cache: "no-store" },
   );
 
   if (!response.ok) throw new Error(`calendar_read_failed:${response.status}`);
-  return (await response.json()) as DemoCalendarEvent[];
+  const events = (await response.json()) as DemoCalendarEvent[];
+  const revisions = new Map<string, string>();
+  for (const event of events) if (event.series_id && (!revisions.has(event.series_id) || Date.parse(event.updated_at) > Date.parse(revisions.get(event.series_id)!) || (Date.parse(event.updated_at) === Date.parse(revisions.get(event.series_id)!) && event.updated_at > revisions.get(event.series_id)!))) revisions.set(event.series_id, event.updated_at);
+  const reminderResponse=await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_reminders',{method:'POST',headers:headers(),cache:'no-store',body:JSON.stringify({p_tester:tester})});
+  if(!reminderResponse.ok)throw new Error('calendar_reminders_failed');
+  const reminders=await reminderResponse.json() as Array<{event_id:string;status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string}>;
+  return events.map(event => ({ ...event, sms_reminder:reminders.find(r=>r.event_id===event.id), series_updated_at: event.series_id ? revisions.get(event.series_id) : undefined }));
 }
 
 export type DemoCalendarMutation = {
-  action: "move" | "cancel" | "create" | "schedule_follow_up";
+  action: "move" | "cancel" | "restore" | "create" | "schedule_follow_up";
+  expected_updated_at?: string | null;
+  expected_series_updated_at?: string | null;
+  scope?: "one" | "future" | "series";
   event_id?: string | null;
   patient_id?: string | null;
   patient_name?: string | null;
@@ -59,32 +80,23 @@ export type DemoCalendarMutation = {
   scheduled_end?: string | null;
   appointment_type?: string | null;
   detail?: string | null;
+  sms_reminder_enabled?: boolean;
 };
 
 export async function applyDemoCalendarMutation(
   tester: string,
   mutation: DemoCalendarMutation,
 ): Promise<DemoCalendarEvent> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_apply_v2`, {
-    method: "POST",
-    headers: await headers(),
-    cache: "no-store",
-    body: JSON.stringify({
-      p_tester: tester,
-      p_action: mutation.action,
-      p_event_id: mutation.event_id ?? null,
-      p_patient_id: mutation.patient_id ?? null,
-      p_patient_name: mutation.patient_name ?? null,
-      p_scheduled_start: mutation.scheduled_start ?? null,
-      p_scheduled_end: mutation.scheduled_end ?? null,
-      p_appointment_type: mutation.appointment_type ?? "follow_up",
-      p_detail: mutation.detail ?? "",
-    }),
+  const response = await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_write_sms',{
+    method:'POST',headers:headers(),cache:'no-store',
+    body:JSON.stringify({p_tester:tester,p_payload:mutation,p_sms:mutation.sms_reminder_enabled??null})
   });
 
   if (!response.ok) {
     const message = await response.text();
-    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
+    if (message.includes("calendar_conflict")) throw new Error(JSON.parse(message).message);
+    if (message.includes("stale_calendar")) throw new Error("stale_calendar");
+    if (message.includes("event_not_found")) throw new Error("stale_calendar");
     if (message.includes("session_already_started")) throw new Error("session_already_started");
     if (message.includes("past_appointment")) throw new Error("past_appointment");
     if (message.includes("patient_not_found") || message.includes("patient_required")) throw new Error("patient_not_found");
@@ -94,10 +106,28 @@ export async function applyDemoCalendarMutation(
   return (await response.json()) as DemoCalendarEvent;
 }
 
+
+export async function createDemoRecurringAppointments(tester: string, input: {
+  patient_id: string; scheduled_start: string; scheduled_end: string; appointment_type: string;
+  interval_weeks: number; occurrences: number; sms_reminder_enabled?:boolean;
+}) {
+  const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_write_sms',{method:'POST',headers:headers(),cache:'no-store',body:JSON.stringify({p_tester:tester,p_payload:{...input,action:'create'},p_sms:input.sms_reminder_enabled??null})});
+
+  if (!response.ok) {
+    const message = await response.text();
+    if (message.includes("calendar_conflict")) throw new Error(JSON.parse(message).message);
+    if (message.includes("invalid_local_time")) throw new Error(JSON.parse(message).message);
+    if (message.includes("past_appointment")) throw new Error("past_appointment");
+    if (message.includes("patient_not_found")) throw new Error("patient_not_found");
+    throw new Error(`calendar_recurring_failed:${response.status}`);
+  }
+  return response.json() as Promise<{ series_id: string; events: DemoCalendarEvent[] }>;
+}
+
 export async function startDemoCalendarSession(tester: string, eventId: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_start_session`, {
     method: "POST",
-    headers: await headers(),
+    headers: headers(),
     cache: "no-store",
     body: JSON.stringify({ p_tester: tester, p_event: eventId }),
   });
@@ -112,7 +142,7 @@ export async function createDemoPatientAppointment(
 ): Promise<{ patient: { id: string; first_name: string; last_name: string }; event: DemoCalendarEvent }> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_create_patient_appointment`, {
     method: "POST",
-    headers: await headers(),
+    headers: headers(),
     cache: "no-store",
     body: JSON.stringify({
       p_tester: tester,

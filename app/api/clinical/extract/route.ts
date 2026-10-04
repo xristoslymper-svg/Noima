@@ -1,10 +1,11 @@
+import { withPilot } from '@/lib/pilot/route';
 import { rpc } from '@/lib/patients/demo-runtime';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const labels:Record<string,string>={interview:'Ψυχιατρική συνέντευξη',functioning:'Λειτουργικότητα',effects:'Παρενέργειες',adherence:'Συμμόρφωση',mse:'MSE',risk:'Εκτίμηση κινδύνου',assessment:'Κλινική εκτίμηση',plan:'Θεραπευτικό πλάνο',review:'Επανεκτίμηση'};
 const model=process.env.OPENAI_CLINICAL_MODEL||'gpt-6-luna';
 function outputText(payload:{output?:{content?:{type:string;text?:string}[]}[]}){return payload.output?.flatMap(x=>x.content||[]).find(x=>x.type==='output_text')?.text}
-export async function POST(req:Request){
+async function handlePOST(req:Request){
  const key=process.env.OPENAI_API_KEY;if(!key)return Response.json({error:'Η υπηρεσία AI δεν είναι ρυθμισμένη. Η μεταγραφή παραμένει διαθέσιμη.'},{status:503});
  const b=await req.json().catch(()=>({}));const section=typeof b.section==='string'?b.section:'';const transcript=typeof b.transcript==='string'?b.transcript.trim():'';const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
  if(!uuid.test(String(b.tester||''))||!uuid.test(String(b.session_id||''))||!labels[section]||transcript.length<2||transcript.length>20000)return Response.json({error:'Η πρόταση πρέπει να συνδέεται με έγκυρη συνεδρία και ενότητα.'},{status:400});
@@ -20,3 +21,5 @@ export async function POST(req:Request){
   return Response.json({entry:Array.isArray(entry)?entry[0]:entry});
  }catch{return Response.json({error:'Δεν δημιουργήθηκε ή δεν αποθηκεύτηκε πρόταση. Η μεταγραφή παραμένει διαθέσιμη για επανάληψη ή χειροκίνητη χρήση.'},{status:502})}
 }
+
+export const POST = withPilot(handlePOST);

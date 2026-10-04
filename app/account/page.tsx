@@ -2,7 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
 export default function Account(){
- const [identity,setIdentity]=useState<{full_name:string;can_restore:boolean}|null>(null),[email,setEmail]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[category,setCategory]=useState('bug'),[feedback,setFeedback]=useState(''),[confirm,setConfirm]=useState(false);
+ const [identity,setIdentity]=useState<{full_name:string;can_restore:boolean;can_invite:boolean}|null>(null),[email,setEmail]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[category,setCategory]=useState('bug'),[feedback,setFeedback]=useState(''),[confirm,setConfirm]=useState(false);
  useEffect(()=>{void fetch('/api/pilot').then(r=>r.json()).then(d=>{setIdentity(d.identity);setEmail(d.email||'')}).catch(()=>setError('Δεν φορτώθηκε ο λογαριασμός.'))},[]);
  async function action(name:string,extra:Record<string,unknown>={}){setBusy(true);setError('');setMessage('');try{const r=await fetch('/api/pilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:name,...extra})});const d=await r.json();if(!r.ok)throw new Error(d.error);if(name==='feedback'){setMessage('Η αναφορά αποθηκεύτηκε. Ευχαριστούμε.');setFeedback('')}else window.location.assign(name==='logout'?'/login':'/');}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε.')}finally{setBusy(false)}}
  function submit(e:FormEvent){e.preventDefault();void action('feedback',{category,message:feedback,page:location.pathname})}

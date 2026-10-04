@@ -16,7 +16,7 @@ export function withPilot(handler:(request:Request)=>Promise<Response>, publicAs
     const {data:{user},error}=await client.auth.getUser();
     if(error||!user) return Response.json({error:'Συνδεθείτε για να συνεχίσετε.',code:'unauthenticated'},{status:401});
     const {data:identity,error:membershipError}=await client.rpc('pilot_identity');
-    if(membershipError||!identity) return Response.json({error:'Χρειάζεται ενεργή πρόσκληση στον πιλοτικό χώρο.',code:'invitation_required'},{status:403});
+    if(membershipError||!identity) return Response.json({error:'Ολοκληρώστε τη δημιουργία του προσωπικού σας χώρου.',code:'workspace_required'},{status:403});
     const {data:{session}}=await client.auth.getSession();
     if(!session) return Response.json({error:'Η σύνδεση έληξε.'},{status:401});
     const url=new URL(request.url);url.searchParams.set('tester',identity.workspace_id);

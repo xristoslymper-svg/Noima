@@ -32,7 +32,7 @@ async function rejected(id, query, params = [], pattern = /permission denied|row
 before(async () => {
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
-    create schema auth; create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
+    create schema auth; create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, deleted_at timestamptz, banned_until timestamptz);
     create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to anon, authenticated;
@@ -105,6 +105,33 @@ test('pilot feedback records verified actor and stays private',async()=>{
  const [row]=await sql("select user_id,message from private.pilot_feedback where user_id=$1",[a]);assert.equal(row.user_id,a);assert.equal(row.message,'TEST fictional report');
  await rejected(b,'select * from private.pilot_feedback',[],/permission denied/);
  await rejected(colleague,"select pilot_feedback_submit('bug','TEST unauthorized report','/calendar')",[],/pilot_not_authorized/);
+});
+
+test('owner can issue open invitations; testers cannot issue invites, reused/revoked invitations fail',async()=>{
+ await sql('update private.pilot_members set can_invite=true where user_id=$1',[a]);
+ const [{invite}]=await asUser(a,()=>sql('select pilot_invite_create(null) invite'));assert.match(invite.code,/^[a-f0-9]{64}$/);
+ await rejected(b,'select pilot_invite_create(null)',[],/owner_required/);
+ await sql("update auth.users set email='colleague@example.invalid',email_confirmed_at=now() where id=$1",[colleague]);
+ const [{identity}]=await asUser(colleague,()=>sql('select pilot_redeem_invitation($1,$2) identity',[invite.code,'Tester C']));assert.equal(identity.can_invite,false);
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[invite.code,'Tester B'],/invalid_invitation/);
+ const [{invite:revocable}]=await asUser(a,()=>sql('select pilot_invite_create(null) invite'));
+ const [{list}]=await asUser(a,()=>sql('select pilot_invite_list() list'));
+ const pending=list.find(i=>!i.redeemed_at&&!i.revoked_at);assert.ok(pending);
+ await asUser(a,()=>sql('select pilot_invite_revoke($1)',[pending.id]));
+ await rejected(b,'select pilot_redeem_invitation($1,$2)',[revocable.code,'Tester B'],/invalid_invitation/);
+ await rejected(colleague,'select pilot_invite_list()',[],/owner_required/);
+});
+
+test('self registration needs a verified email, creates an empty private workspace and cannot reactivate a suspended account',async()=>{
+ const uid='10000000-0000-4000-8000-000000000099';
+ await sql("insert into auth.users(id,email) values($1,'self@example.invalid')",[uid]);
+ await rejected(uid,"select pilot_join('Self Tester')",[],/verified_email_required/);
+ await sql('update auth.users set email_confirmed_at=now() where id=$1',[uid]);
+ const [{identity}]=await asUser(uid,()=>sql("select pilot_join('Self Tester') identity"));assert.ok(identity.workspace_id);
+ await asUser(uid,()=>sql('select demo_tester_bootstrap($1)',[identity.workspace_id]));
+ assert.deepEqual(await asUser(uid,()=>sql('select id from demo_patients')),[]);
+ await sql('update private.pilot_members set active=false where user_id=$1',[uid]);
+ assert.deepEqual((await asUser(uid,()=>sql("select pilot_join('Self Tester') identity")))[0],{identity:null});
 });
 
 test('recurring appointments retain Athens wall time across DST, are canonical and reject a conflicting series atomically',async()=>{

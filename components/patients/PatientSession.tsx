@@ -146,7 +146,7 @@ export default function PatientSession({
  const assessment=()=> <VisitPart number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική αξιολόγηση">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
-   <div><span className="visit-label"><span>ΠΡΟΧΕΙΡΟ</span><i/> {draft.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Αυτόματη αποθήκευση · οριστικοποίηση μετά τον κλινικό έλεγχο.</p></div>
+   <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</h2><p>{fmt(draft.started_at)}</p></div>
    <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Όλες οι αλλαγές αποθηκεύτηκαν'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
@@ -168,8 +168,8 @@ export default function PatientSession({
   {medOpen&&<MedicationModal bundle={bundle} sessionId={draft.id} onClose={()=>setMedOpen(false)} onSaved={reloadContext}/>}
 
   <div className="finalize-bar">
-   <div><strong>{ready?'Έτοιμη για ολοκλήρωση':'Χρειάζεται έλεγχο'}</strong><span>{ready?'Οι 5 βασικές ενότητες και ο ιδεασμός έχουν καταγραφεί. Ελέγξτε τα υπόλοιπα πεδία κινδύνου πριν ολοκληρώσετε.':requiredDone+'/5 βασικές ενότητες · '+(!risk?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':risk.suicidal_ideation==='not_assessed'?'χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού':!riskFollowupReady?'θετικός ιδεασμός · ολοκληρώστε τα σχετικά πεδία κινδύνου':'κίνδυνος καταγράφηκε')}</span></div>
-   <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||medOpen||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Έλεγχος & ολοκλήρωση'}</button>
+   <div className="visit-finalize-status"><strong>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'✓ Αποθηκεύτηκε'}</strong>{!ready&&<span>{!risk||risk.suicidal_ideation==='not_assessed'?'Η εκτίμηση κινδύνου απαιτείται πριν την ολοκλήρωση.':!riskFollowupReady?'Ολοκληρώστε τα σχετικά πεδία κινδύνου πριν την ολοκλήρωση.':'Συμπληρώστε τις βασικές κλινικές ενότητες πριν την ολοκλήρωση.'}</span>}</div>
+   <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||medOpen||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση επίσκεψης'}</button>
   </div>
   {onClose&&<button data-visit-close className="visit-close" disabled={flushing||finalizing||medOpen} onClick={()=>void flushAll().then(onClose).catch(()=>{})}>Αποθήκευση & κλείσιμο</button>}
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}
@@ -250,4 +250,4 @@ function RiskEditor({sessionId,existing,onSaved,registerFlusher,onDirtyChange}:{
  </div>
 }
 
-function VisitPart({number,title,children}:{number:string;title:string;children:React.ReactNode}){return <section className="visit-part"><header><span>{number}</span><h3>{title}</h3></header><div>{children}</div></section>}
+function VisitPart({number:_,title,children}:{number:string;title:string;children:React.ReactNode}){return <section className="visit-part"><header><h3>{title}</h3></header><div>{children}</div></section>}

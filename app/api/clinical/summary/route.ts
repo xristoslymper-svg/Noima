@@ -29,7 +29,7 @@ export async function POST(req:Request){
    else {try{
     let pending=inflight.get(context_hash);if(!pending){pending=generate(context);inflight.set(context_hash,pending)}
     try{result=await pending;if(cache.size>=128)cache.delete(cache.keys().next().value!);cache.set(context_hash,result)}finally{inflight.delete(context_hash)}
-   }catch{mode='canonical';reason='synthesis_not_verified';}}
+   }catch(e){mode='canonical';reason=e instanceof Error?`synthesis_failed:${e.message}`:'synthesis_not_verified';}}
   }
   const findings=result?.findings||context.findings;assertCriticalCoverage(findings,context);
   return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:result?.generated_at||new Date().toISOString(),mode,reason,model:mode==='synthesis'?model:null},{headers:{'Cache-Control':'no-store'}});

@@ -528,3 +528,23 @@ test('SMS simulation queues atomically, reschedules, cancels, revalidates phone 
  assert.equal((await sql('select public.demo_calendar_reminders($1) as jobs',[b]))[0].jobs.length,0);
  await db.exec('begin;set local role anon;');try{await assert.rejects(sql('select private.process_demo_sms_reminders()'),/permission denied/);}finally{await db.exec('rollback');}
 });
+
+test('mailboxes and questionnaire deliveries isolate owners and prevent duplicate or ambiguous sends',async()=>{
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ await asUser(a,()=>sql("select pilot_mailbox_save('google','a@example.com',$1)",['ciphertext'.repeat(5)]));
+ assert.equal((await asUser(a,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox.email,'a@example.com');
+ assert.equal((await asUser(b,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox,null);
+ await rejected(b,'select * from private.pilot_mailboxes',[],/permission denied/);
+ const [p]=await asUser(a,()=>sql('select id from demo_patients limit 1'));
+ const id='99000000-0000-4000-8000-000000000001',token='f'.repeat(64);
+ await asUser(a,()=>sql("select demo_assessment_assign($1,$2,null,$3,'PHQ-9',$4)",[identity.workspace_id,p.id,id,token]));
+ await rejected(b,'select pilot_mail_claim($1,$2,$3)',[id,token,'tester@example.com'],/assessment_unavailable/);
+ await rejected(a,'select pilot_mail_claim($1,$2,$3)',[id,'wrong','tester@example.com'],/assessment_unavailable/);
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'new');
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'claimed');
+ await asUser(a,()=>sql("select pilot_mail_finish($1,'unknown')",[id]));
+ assert.equal((await asUser(a,()=>sql('select pilot_mail_claim($1,$2,$3) status',[id,token,'tester@example.com'])))[0].status,'unknown');
+ await rejected(b,"select pilot_mail_finish($1,'accepted')",[id],/delivery_unavailable/);
+ await asUser(a,()=>sql('select pilot_mailbox_disconnect()'));
+ assert.equal((await asUser(a,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox,null);
+});

@@ -13,7 +13,9 @@ async function handlePOST(request:Request){
    if(!uuid.test(b.id||'')||!uuid.test(b.patient_id||'')||!/^[a-f0-9]{64}$/.test(b.token||''))return Response.json({error:'Μη έγκυρη ανάθεση.'},{status:400});
    if(b.session_id&&(!uuid.test(b.session_id)||b.appointment_id))return Response.json({error:'Μη έγκυρη επίσκεψη.'},{status:400});
    const args={p_tester:b.tester,p_patient:b.patient_id,p_id:b.id,p_instrument:b.instrument,p_token:b.token};
-   return Response.json(await rpc(b.session_id?'demo_assessment_assign_to_session':'demo_assessment_assign',b.session_id?{...args,p_session:b.session_id}:{...args,p_appointment:b.appointment_id||null}));
+   const assessment=await rpc(b.session_id?'demo_assessment_assign_to_session':'demo_assessment_assign',b.session_id?{...args,p_session:b.session_id}:{...args,p_appointment:b.appointment_id||null});
+   const assessmentLink=new URL('/assessment',process.env.NOIMA_APP_ORIGIN||new URL(request.url).origin).href+'#'+b.token;
+   return Response.json({...assessment as Record<string,unknown>,assessmentLink});
   }
   if(b.action==='review_item9'){await rpc('demo_assessment_item9_review',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
   if(b.action==='revoke'){await rpc('demo_assessment_revoke',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}

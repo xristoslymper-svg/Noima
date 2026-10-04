@@ -505,3 +505,6 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .pilot-auth-mark{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:#2d7768;color:#fff;font:34px Georgia,serif}
 .pilot-auth-card label{display:grid;gap:7px;font-weight:700;font-size:14px}.pilot-auth-card input{width:100%;box-sizing:border-box;border:1px solid #d9dfda;border-radius:12px;padding:13px 14px;font:inherit;outline:none}.pilot-auth-card input:focus{border-color:#2d7768;box-shadow:0 0 0 3px rgba(45,119,104,.1)}
 .pilot-auth-card button{border:0;border-radius:12px;padding:13px 18px;background:#2d7768;color:#fff;font:700 16px inherit;cursor:pointer}.pilot-auth-card button:disabled{opacity:.65}.pilot-auth-error{padding:10px 12px;border-radius:10px;background:#fff1ef;color:#9a4339;font-size:14px}
+
+.pilot-auth-link{background:transparent!important;color:#2d7768!important;padding:5px!important;font-size:14px!important}
+.pilot-auth-notice{padding:10px 12px;border-radius:10px;background:#edf7f2;color:#286553;font-size:14px}

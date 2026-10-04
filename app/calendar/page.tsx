@@ -175,7 +175,8 @@ export default function CalendarPage() {
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent } | null>(null);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [openingSession, setOpeningSession] = useState<string | null>(null);
 
   const refreshEvents = useCallback(async () => {
@@ -392,7 +393,7 @@ export default function CalendarPage() {
               <button className="voice-calendar-button" onClick={() => setVoice(true)}>
                 <Mic2 size={16} /> Φωνητική εντολή
               </button>
-              <button className="add-appointment" onClick={() => setAppointmentEditor({ mode: "create" })}>+ Νέο ραντεβού</button>
+              <button className="add-appointment" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button>
             </div>
           </div>
 
@@ -453,10 +454,6 @@ export default function CalendarPage() {
               </section>
             ) : (
               <section className="calendar-week-card interactive-week">
-                <div className="week-interaction-hint">
-                  <span>Σύρετε ένα ραντεβού για αλλαγή ημέρας ή ώρας.</span>
-                </div>
-
                 <div className="calendar-time-grid">
                   <div className="week-time-corner" />
                   {days.map(day => {
@@ -492,6 +489,12 @@ export default function CalendarPage() {
                         }
                         key={day.key}
                         style={{ height: WEEK_TOTAL_HEIGHT }}
+                        onClick={click => {
+                          if (click.target !== click.currentTarget) return;
+                          const minute = minuteFromDrop(click.clientY, click.currentTarget);
+                          setFocusDate(day.key);
+                          setAppointmentEditor({ mode: "create", date: day.key, minute });
+                        }}
                         onDragOver={event => {
                           if (!draggingEvent) return;
                           event.preventDefault();
@@ -550,12 +553,14 @@ export default function CalendarPage() {
                                 setDraggingEventId(null);
                                 setDragPreview(null);
                               }}
-                              onClick={() => setAppointmentEditor({ mode: "edit", event })}
+                              onClick={click => {
+                                click.stopPropagation();
+                                setSelectedEvent(event);
+                              }}
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
-                              <strong>{timeLabel(event.scheduled_start)}</strong>
                               <span>{event.patient_name}</span>
-                              <small>{appointmentType(event.appointment_type)}</small>
+                              <strong>{timeLabel(event.scheduled_start)} · {appointmentType(event.appointment_type)}</strong>
                             </div>
                           );
                         })}
@@ -588,12 +593,30 @@ export default function CalendarPage() {
         </div>
       </section>
 
+      {selectedEvent && (
+        <div className="calendar-appointment-popover-backdrop" onClick={() => setSelectedEvent(null)}>
+          <section className="calendar-appointment-popover" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
+            <button className="calendar-popover-close" onClick={() => setSelectedEvent(null)} aria-label="Κλείσιμο"><X size={16}/></button>
+            <span className={"calendar-popover-kind " + (selectedEvent.appointment_type === "initial_assessment" ? "initial" : "follow")}>{appointmentType(selectedEvent.appointment_type)}</span>
+            <h3>{selectedEvent.patient_name}</h3>
+            <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′</p>
+            {selectedEvent.readiness === "waiting" && <div className="calendar-popover-attention"><Clock size={13}/>{selectedEvent.readiness_label}</div>}
+            <div className="calendar-popover-actions">
+              {selectedEvent.patient_id && <button className="calendar-popover-primary" onClick={() => void openAppointmentSession(selectedEvent)} disabled={openingSession === selectedEvent.id}><Stethoscope size={15}/>{openingSession === selectedEvent.id ? "Άνοιγμα…" : selectedEvent.session_id ? "Συνέχεια επίσκεψης" : "Έναρξη επίσκεψης"}</button>}
+              {selectedEvent.patient_id && <Link href={"/patients/demo/" + selectedEvent.patient_id + "?appointment=" + selectedEvent.id}>Άνοιγμα φακέλου</Link>}
+              <button onClick={() => { setAppointmentEditor({ mode: "edit", event: selectedEvent }); setSelectedEvent(null); }}>Αλλαγή ραντεβού</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {appointmentEditor && (
         <AppointmentEditor
           mode={appointmentEditor.mode}
           event={appointmentEditor.event}
           patients={patients}
-          focusDate={focusDate}
+          focusDate={appointmentEditor.date || focusDate}
+          initialMinute={appointmentEditor.minute}
           openingSession={openingSession === appointmentEditor.event?.id}
           onClose={() => setAppointmentEditor(null)}
           onSaved={async (event) => {
@@ -705,6 +728,22 @@ export default function CalendarPage() {
         .calendar-appointment-dialog{border-radius:18px!important;box-shadow:0 24px 70px rgba(37,55,47,.16)!important}.calendar-appointment-dialog>h3{font-size:22px!important;letter-spacing:-.02em;margin-bottom:4px!important}
         .appointment-editor-type{display:block;color:#819087;font-size:10px;margin-bottom:16px}.appointment-linked-record{background:#f5f8f5!important;border-color:#e3e9e4!important}
 
+        .week-event span{display:block;font-size:10.5px!important;font-weight:750!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .week-event strong{display:block;margin-top:3px;font-size:8.5px!important;font-weight:600!important;color:#71847a!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .week-time-column{cursor:crosshair}
+        .calendar-appointment-popover-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,50,44,.12);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
+        .calendar-appointment-popover{position:relative;width:min(430px,92vw);padding:26px 28px 24px;border:1px solid #e2e8e4;border-radius:18px;background:#fffefa;box-shadow:0 24px 80px rgba(38,58,49,.18)}
+        .calendar-popover-close{position:absolute;right:16px;top:16px;border:0;background:transparent;color:#89968f;padding:5px;cursor:pointer}
+        .calendar-popover-kind{display:inline-block;padding:4px 8px;border-radius:999px;background:#edf4f0;color:#537466;font-size:9px;font-weight:750;letter-spacing:.03em}
+        .calendar-popover-kind.initial{background:#f4eee5;color:#846e51}
+        .calendar-appointment-popover h3{margin:12px 0 4px;font-size:23px;letter-spacing:-.025em;color:#2c4439}
+        .calendar-appointment-popover>p{margin:0;color:#7d8b84;font-size:11px}
+        .calendar-popover-attention{display:flex;align-items:center;gap:6px;margin-top:14px;padding:8px 10px;border-radius:8px;background:#faf4e8;color:#866f49;font-size:10px}
+        .calendar-popover-actions{display:flex;align-items:center;gap:8px;margin-top:24px;padding-top:18px;border-top:1px solid #e7ebe8}
+        .calendar-popover-actions>a,.calendar-popover-actions>button{border:0;background:transparent;color:#5d7469;font-size:10px;font-weight:700;padding:8px 9px;cursor:pointer;text-decoration:none}
+        .calendar-popover-actions .calendar-popover-primary{display:inline-flex;align-items:center;gap:6px;background:#356b59;color:#fff;border-radius:9px;padding:9px 11px}
+        .calendar-popover-actions>button:last-child{margin-left:auto;color:#7b8882}
+
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
         @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.calendar-page-heading h1{font-size:30px}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}}
@@ -732,6 +771,7 @@ function AppointmentEditor({
   event,
   patients,
   focusDate,
+  initialMinute,
   openingSession,
   onClose,
   onSaved,
@@ -741,6 +781,7 @@ function AppointmentEditor({
   event?: CalendarEvent;
   patients: PatientOption[];
   focusDate: string;
+  initialMinute?: number;
   openingSession: boolean;
   onClose: () => void;
   onSaved: (event?: CalendarEvent) => Promise<void>;
@@ -748,7 +789,7 @@ function AppointmentEditor({
 }) {
   const initialPatient = event?.patient_id || patients[0]?.id || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
-  const eventMinute = event ? athensMinutes(event.scheduled_start) : 9 * 60;
+  const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? 9 * 60;
   const initialTime = String(Math.floor(eventMinute / 60)).padStart(2, "0") + ":" + String(eventMinute % 60).padStart(2, "0");
   const [patientId, setPatientId] = useState(initialPatient);
   const [date, setDate] = useState(initialDate);

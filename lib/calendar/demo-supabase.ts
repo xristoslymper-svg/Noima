@@ -16,6 +16,10 @@ export type DemoCalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  updated_at: string;
+  series_id: string | null;
+  recurrence_interval_weeks: number | null;
+  series_updated_at?: string;
 };
 
 function headers(extra?: HeadersInit): HeadersInit {
@@ -40,9 +44,8 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,updated_at,series_id,recurrence_interval_weeks",
     tester_id: `eq.${tester}`,
-    status: "eq.scheduled",
     order: "scheduled_start.asc",
   });
 
@@ -52,11 +55,17 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   );
 
   if (!response.ok) throw new Error(`calendar_read_failed:${response.status}`);
-  return (await response.json()) as DemoCalendarEvent[];
+  const events = (await response.json()) as DemoCalendarEvent[];
+  const revisions = new Map<string, string>();
+  for (const event of events) if (event.series_id && (!revisions.has(event.series_id) || Date.parse(event.updated_at) > Date.parse(revisions.get(event.series_id)!) || (Date.parse(event.updated_at) === Date.parse(revisions.get(event.series_id)!) && event.updated_at > revisions.get(event.series_id)!))) revisions.set(event.series_id, event.updated_at);
+  return events.map(event => ({ ...event, series_updated_at: event.series_id ? revisions.get(event.series_id) : undefined }));
 }
 
 export type DemoCalendarMutation = {
-  action: "move" | "cancel" | "create" | "schedule_follow_up";
+  action: "move" | "cancel" | "restore" | "create" | "schedule_follow_up";
+  expected_updated_at?: string | null;
+  expected_series_updated_at?: string | null;
+  scope?: "one" | "future" | "series";
   event_id?: string | null;
   patient_id?: string | null;
   patient_name?: string | null;
@@ -70,11 +79,18 @@ export async function applyDemoCalendarMutation(
   tester: string,
   mutation: DemoCalendarMutation,
 ): Promise<DemoCalendarEvent> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_apply_v2`, {
+  const editing = ["move", "cancel", "restore"].includes(mutation.action);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${editing ? "demo_calendar_edit" : "demo_calendar_apply_v2"}`, {
     method: "POST",
     headers: headers(),
     cache: "no-store",
-    body: JSON.stringify({
+    body: JSON.stringify(editing ? {
+      p_tester: tester, p_action: mutation.action, p_event: mutation.event_id,
+      p_expected_updated_at: mutation.expected_updated_at,
+      p_expected_series_updated_at: mutation.expected_series_updated_at ?? null,
+      p_start: mutation.scheduled_start ?? null, p_end: mutation.scheduled_end ?? null,
+      p_scope: mutation.scope ?? "one",
+    } : {
       p_tester: tester,
       p_action: mutation.action,
       p_event_id: mutation.event_id ?? null,
@@ -89,7 +105,9 @@ export async function applyDemoCalendarMutation(
 
   if (!response.ok) {
     const message = await response.text();
-    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
+    if (message.includes("calendar_conflict")) throw new Error(JSON.parse(message).message);
+    if (message.includes("stale_calendar")) throw new Error("stale_calendar");
+    if (message.includes("event_not_found")) throw new Error("stale_calendar");
     if (message.includes("session_already_started")) throw new Error("session_already_started");
     if (message.includes("past_appointment")) throw new Error("past_appointment");
     if (message.includes("patient_not_found") || message.includes("patient_required")) throw new Error("patient_not_found");
@@ -114,7 +132,8 @@ export async function createDemoRecurringAppointments(tester: string, input: {
   });
   if (!response.ok) {
     const message = await response.text();
-    if (message.includes("calendar_conflict")) throw new Error("calendar_conflict");
+    if (message.includes("calendar_conflict")) throw new Error(JSON.parse(message).message);
+    if (message.includes("invalid_local_time")) throw new Error(JSON.parse(message).message);
     if (message.includes("past_appointment")) throw new Error("past_appointment");
     if (message.includes("patient_not_found")) throw new Error("patient_not_found");
     throw new Error(`calendar_recurring_failed:${response.status}`);

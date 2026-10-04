@@ -21,9 +21,12 @@ type ApplyBody = {
   create_new_patient?: unknown;
   recurrence_interval_weeks?: unknown;
   recurrence_occurrences?: unknown;
+  expected_updated_at?: unknown;
+  expected_series_updated_at?: unknown;
+  scope?: unknown;
 };
 
-const allowed = new Set(["move", "cancel", "create", "schedule_follow_up"]);
+const allowed = new Set(["move", "cancel", "restore", "create", "schedule_follow_up"]);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function textOrNull(value: unknown) {
@@ -38,12 +41,14 @@ function errorResponse(error: unknown) {
   if (!(error instanceof Error)) {
     return Response.json({ error: "Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά." }, { status: 502 });
   }
-  if (error.message === "calendar_conflict") {
+  if (error.message.startsWith("calendar_conflict")) {
     return Response.json(
-      { error: "Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Δεν έγινε καμία αλλαγή.", code: "calendar_conflict" },
+      { error: "Υπάρχει ήδη άλλο ραντεβού" + (error.message.includes(":") ? " στις " + error.message.slice(error.message.indexOf(":") + 1) : " σε αυτή την ώρα") + ". Δεν έγινε καμία αλλαγή.", code: "calendar_conflict" },
       { status: 409 },
     );
   }
+  if (error.message === "stale_calendar") return Response.json({ error: "Το ραντεβού άλλαξε σε άλλο παράθυρο. Κλείστε τη φόρμα και ανανεώστε το ημερολόγιο πριν συνεχίσετε.", code: "stale_calendar" }, { status: 409 });
+  if (error.message.startsWith("invalid_local_time")) return Response.json({ error: "Η σειρά περιλαμβάνει μη έγκυρη ή διπλή ώρα λόγω αλλαγής θερινής ώρας. Επιλέξτε διαφορετική ώρα. " + error.message.slice(error.message.indexOf(":")+1) }, { status: 400 });
   if (error.message === "patient_not_found") {
     return Response.json(
       { error: "Δεν βρέθηκε αντίστοιχος φάκελος ασθενή.", code: "patient_not_found" },
@@ -68,7 +73,9 @@ function errorResponse(error: unknown) {
 export async function POST(request: Request) {
   let body: ApplyBody;
   try {
-    body = (await request.json()) as ApplyBody;
+    const parsed: unknown = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid_body");
+    body = parsed as ApplyBody;
   } catch {
     return Response.json({ error: "Μη έγκυρη αλλαγή." }, { status: 400 });
   }
@@ -88,9 +95,24 @@ export async function POST(request: Request) {
   const appointmentType = textOrNull(body.appointment_type) ?? "follow_up";
   const creating = action === "create" || action === "schedule_follow_up";
 
-  if ((action === "move" || action === "cancel") && !eventId) {
+  const editing = ["move", "cancel", "restore"].includes(action);
+  const expected = textOrNull(body.expected_updated_at);
+  const expectedSeries = textOrNull(body.expected_series_updated_at);
+  const scope = body.scope ?? "one";
+  const validIso = (value: string | null) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) return false;
+    const [year,month,day] = value.slice(0,10).split("-").map(Number);
+    return new Date(Date.UTC(year,month-1,day)).toISOString().slice(0,10) === value.slice(0,10);
+  };
+  if (!["one", "future", "series"].includes(String(scope)) || (editing && (!validIso(expected) || (scope !== "one" && !validIso(expectedSeries))))) return Response.json({ error: "Ανανεώστε το ημερολόγιο πριν αλλάξετε το ραντεβού.", code: "stale_calendar" }, { status: 409 });
+  if (editing && (!eventId || !uuid.test(eventId))) {
     return Response.json({ error: "Δεν βρέθηκε το ραντεβού." }, { status: 400 });
   }
+  if ((action === "move" || creating) && (!validIso(startIso) || !validIso(endIso) || Date.parse(endIso!) - Date.parse(startIso!) < 15 * 60_000 || Date.parse(endIso!) - Date.parse(startIso!) > 24 * 60 * 60_000)) return Response.json({ error: "Ελέγξτε ημερομηνία, ώρα και διάρκεια (15 λεπτά έως 24 ώρες)." }, { status: 400 });
+  if (!["follow_up", "initial_assessment", "other"].includes(appointmentType)) return Response.json({ error: "Μη έγκυρος τύπος ραντεβού." }, { status: 400 });
+  const recurrenceInterval = body.recurrence_interval_weeks ?? 0;
+  const recurrenceOccurrences = body.recurrence_occurrences ?? 0;
+  if (!Number.isInteger(recurrenceInterval) || !Number.isInteger(recurrenceOccurrences) || ![0, 1, 2, 4].includes(Number(recurrenceInterval)) || (recurrenceInterval === 0 ? recurrenceOccurrences !== 0 : Number(recurrenceOccurrences) < 2 || Number(recurrenceOccurrences) > 52) || (Number(recurrenceInterval) > 0 && (action !== "create" || body.create_new_patient === true))) return Response.json({ error: "Μη έγκυρη επανάληψη ραντεβού." }, { status: 400 });
   if ((action === "move" || creating) && (!startIso || !endIso)) {
     return Response.json({ error: "Λείπει ημερομηνία ή ώρα." }, { status: 400 });
   }
@@ -100,7 +122,8 @@ export async function POST(request: Request) {
   const wantsNewPatient = body.create_new_patient === true;
 
   if (creating) {
-    const patients = await listPatients(tester);
+    let patients;
+    try { patients = await listPatients(tester); } catch { return Response.json({ error: "Δεν ήταν δυνατή η φόρτωση των ασθενών. Δοκιμάστε ξανά." }, { status: 502 }); }
     if (patientId) {
       const selected = patients.find(patient => patient.id === patientId);
       if (!selected) {
@@ -146,16 +169,14 @@ export async function POST(request: Request) {
     }
   }
 
-  const recurrenceInterval = Number(body.recurrence_interval_weeks ?? 0);
-  const recurrenceOccurrences = Number(body.recurrence_occurrences ?? 0);
-  if (action === "create" && recurrenceInterval > 0) {
-    if (!patientId || !startIso || !endIso || ![1, 2, 4].includes(recurrenceInterval) || recurrenceOccurrences < 2 || recurrenceOccurrences > 52) {
+  if (action === "create" && Number(recurrenceInterval) > 0) {
+    if (!patientId || !startIso || !endIso) {
       return Response.json({ error: "Μη έγκυλη επανάληψη ραντεβού." }, { status: 400 });
     }
     try {
       const series = await createDemoRecurringAppointments(tester, {
         patient_id: patientId, scheduled_start: startIso, scheduled_end: endIso,
-        appointment_type: appointmentType, interval_weeks: recurrenceInterval, occurrences: recurrenceOccurrences,
+        appointment_type: appointmentType, interval_weeks: Number(recurrenceInterval), occurrences: Number(recurrenceOccurrences),
       });
       return Response.json({ event: series.events[0], series_id: series.series_id, events: series.events, patient_created: false, patient_id: patientId });
     } catch (error) { return errorResponse(error); }
@@ -163,6 +184,9 @@ export async function POST(request: Request) {
 
   const mutation: DemoCalendarMutation = {
     action: action as DemoCalendarMutation["action"],
+    expected_updated_at: expected,
+    expected_series_updated_at: expectedSeries,
+    scope: scope as "one" | "future" | "series",
     event_id: eventId,
     patient_id: patientId,
     patient_name: patientName,

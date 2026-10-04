@@ -1,3 +1,4 @@
+import {clinicLocalToIso} from "@/lib/clinic-time";
 import { fetchDemoCalendarEvents, type DemoCalendarEvent } from "@/lib/calendar/demo-supabase";
 import { listPatients, type DemoPatient } from "@/lib/patients/demo-runtime";
 
@@ -75,25 +76,7 @@ function addMinutes(iso: string, minutes: number) {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
 }
 
-function getAthensOffsetMinutes(instant: Date) {
-  const offsetName = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
-    timeZoneName: "shortOffset",
-  }).formatToParts(instant).find(part => part.type === "timeZoneName")?.value;
-  const match = offsetName?.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
-  if (!match) return 0;
-  const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
-  return match[1] === "-" ? -minutes : minutes;
-}
-
-function localAthensToIso(date: string, minutesFromMidnight: number) {
-  const [year, month, day] = date.split("-").map(Number);
-  const hours = Math.floor(minutesFromMidnight / 60);
-  const minutes = minutesFromMidnight % 60;
-  const guess = new Date(Date.UTC(year, month - 1, day, hours, minutes));
-  const offset = getAthensOffsetMinutes(guess);
-  return new Date(guess.getTime() - offset * 60_000).toISOString();
-}
+function localAthensToIso(date:string,minute:number){return clinicLocalToIso(date,String(Math.floor(minute/60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0"))}
 
 function availabilityWindow(text: string) {
   const value = normalized(text);
@@ -199,7 +182,7 @@ function specificClarification(command: ParsedCommand) {
   const newPatientPrefix = command.new_patient && command.patient_name ? `Για τον νέο ασθενή ${command.patient_name}, ` : "";
 
   if (missing.has("recurrence")) {
-    return "Τα επαναλαμβανόμενα ραντεβού δεν υποστηρίζονται ακόμη. Να δημιουργήσω μόνο το πρώτο ραντεβού;";
+    return "Για ολόκληρη σειρά, επιλέξτε «Νέο ραντεβού» και «Επανάληψη» στο ημερολόγιο. Δεν θα δημιουργηθεί μεμονωμένο ραντεβού από αυτή την εντολή.";
   }
   if (missing.has("appointment")) {
     if (intent === "cancel") return "Ποιο ακριβώς ραντεβού θέλετε να ακυρώσω;";
@@ -256,7 +239,6 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
   }
   if (missing.has("recurrence")) {
     return [
-      { label: "Μόνο το πρώτο", value: "Ναι, δημιούργησε μόνο το πρώτο ραντεβού." },
       { label: "Ακύρωση", value: "Όχι, ακύρωσε την εντολή." },
     ];
   }
@@ -295,6 +277,7 @@ export async function POST(request: Request) {
   let patients: DemoPatient[];
   try {
     [events, patients] = await Promise.all([fetchDemoCalendarEvents(tester), listPatients(tester)]);
+    events = events.filter(event => event.status === "scheduled");
   } catch {
     return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
   }
@@ -354,7 +337,7 @@ export async function POST(request: Request) {
     "For move, preserve the existing appointment duration unless a new duration is explicitly given.",
     "For find_availability, a date is required; default duration is 50 minutes. Preserve patient_name if the user names a patient, but do not invent one.",
     "Interpret Greek relative dates (σήμερα, αύριο, μεθαύριο, την άλλη Τρίτη) in Europe/Athens.",
-    "If the user requests recurrence/repeating appointments, do NOT silently discard recurrence. Clarify that only the first occurrence can currently be created; use missing_fields=['recurrence'] until the user explicitly accepts only the first.",
+    "If the user requests recurrence/repeating appointments, do NOT silently discard recurrence. Tell the user to create the full series using New appointment → Repeat; do not offer or create only the first occurrence. Use missing_fields=['recurrence'] until the user explicitly accepts only the first.",
     "If a user says no/cancel while answering a clarification, return action=clarify with clarification='Η εντολή ακυρώθηκε.' and no missing fields.",
     "Do not infer clinical facts. Do not invent a patient name.",
     `Patient registry: ${JSON.stringify(patientContext)}`,
@@ -490,7 +473,7 @@ export async function POST(request: Request) {
     return Response.json({
       transcript,
       follow_ups: followUps,
-      command,
+      command: {...command, expected_updated_at: events.find(event=>event.id===command.event_id)?.updated_at ?? null},
       summary: buildSummary(command, events, command.action === "find_availability" ? availability.label : ""),
       available_slots: availableSlots,
       clarification_options: command.action === "clarify" ? clarificationOptions(command, events, patients) : [],

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, Mic2, Send, ShieldCheck, Sparkles, Square, X } from 'lucide-react';
+import {useCalendarDialog} from '@/components/calendar/useCalendarDialog';
 import { getDemoTesterId } from '@/lib/demo-tester';
 
 type Intent = 'move' | 'cancel' | 'create' | 'schedule_follow_up' | 'find_availability';
@@ -22,6 +23,7 @@ type Command = {
   missing_fields: MissingField[];
   patient_id?: string | null;
   new_patient?: boolean;
+  expected_updated_at?: string | null;
 };
 
 type Slot = { start_iso: string; end_iso: string; label: string };
@@ -51,6 +53,7 @@ export default function CalendarVoiceCommand({
   const captureMode = useRef<'initial' | 'clarification'>('initial');
 
   const [stage, setStage] = useState<Stage>('ready');
+  const dialogRef=useCalendarDialog(onClose,stage==='applying'||stage==='transcribing'||stage==='parsing');
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [followUps, setFollowUps] = useState<string[]>([]);
@@ -289,6 +292,7 @@ export default function CalendarVoiceCommand({
           tester: getDemoTesterId(),
           action: command.action,
           event_id: command.event_id,
+          expected_updated_at: command.expected_updated_at,
           patient_name: command.patient_name,
           start_iso: command.start_iso,
           end_iso: command.end_iso,
@@ -364,9 +368,9 @@ export default function CalendarVoiceCommand({
   const canAnswerClarification = Boolean(isClarify && !clarificationCancelled);
 
   return (
-    <div className="voice-command-overlay" onClick={onClose}>
-      <section className="voice-command-card" onClick={event => event.stopPropagation()} aria-modal="true" role="dialog">
-        <button className="voice-command-close" onClick={onClose} aria-label="Κλείσιμο φωνητικής εντολής">
+    <div className="voice-command-overlay" onClick={() => {if(stage !== 'applying')onClose()}}>
+      <section className="voice-command-card" onClick={event => event.stopPropagation()} aria-modal="true" ref={dialogRef} tabIndex={-1} role="dialog">
+        <button className="voice-command-close" onClick={onClose} disabled={stage === 'applying'} aria-label="Κλείσιμο φωνητικής εντολής">
           <X size={18} />
         </button>
 
@@ -536,8 +540,10 @@ export default function CalendarVoiceCommand({
             )}
 
             {stage === 'recording' && <div className="voice-wave"><i/><i/><i/><i/><i/></div>}
+            {stage === 'ready' && <label>Ή γράψτε την εντολή<textarea aria-label="Γραπτή εντολή ημερολογίου" className="voice-command-textarea" maxLength={1000} value={transcript} onChange={event=>setTranscript(event.target.value)}/></label>}
 
             <div className="voice-capture-actions">
+              {stage === 'ready' && <button disabled={!transcript.trim()} onClick={()=>void parseCommand(transcript,[])}>Ανάλυση εντολής</button>}
               {stage === 'ready' && (
                 <button className="voice-confirm" onClick={() => void start('initial')}>
                   <Mic2 size={16} /> Έναρξη

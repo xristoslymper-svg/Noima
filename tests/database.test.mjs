@@ -52,6 +52,45 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('recurring appointments retain Athens wall time across DST, are canonical and reject a conflicting series atomically',async()=>{
+ const t='80000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [patient]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [row]=await sql("select demo_calendar_create_recurring($1,$2,'2099-10-01 09:00 Europe/Athens','2099-10-01 09:50 Europe/Athens','follow_up',1,8) as series",[t,patient.id]);
+ assert.equal(row.series.events.length,8);assert.ok(row.series.events.every(e=>e.series_id===row.series.series_id&&e.patient_id===patient.id));
+ const times=await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') as time from demo_calendar_events where series_id=$1",[row.series.series_id]);assert.ok(times.every(e=>e.time==='09:00'));
+ const [{count:before}]=await sql('select count(*)::int count from demo_calendar_events where tester_id=$1',[t]);
+ await assert.rejects(sql("select demo_calendar_create_recurring($1,$2,'2099-09-24 09:00 Europe/Athens','2099-09-24 09:50 Europe/Athens','follow_up',1,8)",[t,patient.id]),/calendar_conflict:01\/10\/2099/);
+ assert.equal((await sql('select count(*)::int count from demo_calendar_events where tester_id=$1',[t]))[0].count,before);
+ await assert.rejects(sql("select demo_calendar_create_recurring($1,$2,now()+interval '1 year',now()+interval '1 year 50 minutes','follow_up',null,6)",[t,patient.id]),/invalid_recurrence/);
+});
+
+test('calendar edits reject stale workspaces, scope future changes, and cancellation can be restored safely',async()=>{
+ const t='80000000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-10-01 12:00 Europe/Athens','2099-10-01 12:50 Europe/Athens','follow_up',1,4) as series",[t,p.id]);
+ const anchor=series.events[1];const [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ const [{event:moved}]=await sql("select demo_calendar_edit($1,'move',$2,$3,'2099-10-08 13:00 Europe/Athens','2099-10-08 13:50 Europe/Athens','future',$4) as event",[t,anchor.id,anchor.updated_at,revision]);
+ const members=await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') time from demo_calendar_events where series_id=$1 order by scheduled_start",[series.series_id]);assert.deepEqual(members.map(e=>e.time),['12:00','13:00','13:00','13:00']);
+ await assert.rejects(sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,anchor.id,anchor.updated_at]),/stale_calendar/);
+ const [{event:cancelled}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,moved.id,moved.updated_at]);assert.equal(cancelled.status,'cancelled');
+ const [{event:restored}]=await sql("select demo_calendar_edit($1,'restore',$2,$3) as event",[t,cancelled.id,cancelled.updated_at]);assert.equal(restored.status,'scheduled');assert.equal(restored.series_id,series.series_id);
+ const [{event:cancelAgain}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) as event",[t,restored.id,restored.updated_at]);
+ await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4)",[t,p.id,restored.scheduled_start,restored.scheduled_end]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'restore',$2,$3) as event",[t,cancelAgain.id,cancelAgain.updated_at]),/calendar_conflict/);
+ assert.equal((await sql('select status from demo_calendar_events where id=$1',[cancelAgain.id]))[0].status,'cancelled');
+});
+
+test('a series editor rejects changes to another instance and rolls back conflicts without altering any member',async()=>{
+ const t='80000000-0000-4000-8000-000000000003';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-11-01 12:00 Europe/Athens','2099-11-01 12:50 Europe/Athens','follow_up',1,3) as series",[t,p.id]);
+ const [{revision:old}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await sql("select demo_calendar_edit($1,'move',$2,$3,'2099-11-08 13:00 Europe/Athens','2099-11-08 13:50 Europe/Athens')",[t,series.events[1].id,series.events[1].updated_at]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'cancel',$2,$3,null,null,'series',$4)",[t,series.events[0].id,series.events[0].updated_at,old]),/stale_calendar/);
+ await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-11-15 14:00 Europe/Athens','2099-11-15 14:50 Europe/Athens')",[t,p.id]);
+ const [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'move',$2,$3,'2099-11-01 14:00 Europe/Athens','2099-11-01 14:50 Europe/Athens','series',$4)",[t,series.events[0].id,series.events[0].updated_at,revision]),/calendar_conflict:15\/11\/2099/);
+ assert.equal((await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') time from demo_calendar_events where id=$1",[series.events[0].id]))[0].time,'12:00');
+});
+
 test('risk tree saves atomically with canonical fields, retains hidden notes and rejects stale or invalid writes',async()=>{
  const t='90000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
  const risk={suicidal_ideation:'positive',intent:'unknown',plan:'positive',harm_to_others:'not_assessed',tree:{version:1,answers:{wish:'positive',acted:'negative',ideation:'active',intent:'unknown',plan:'positive'},notes:{plan:'Test explanation'}}};

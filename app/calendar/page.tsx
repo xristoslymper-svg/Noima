@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import {
@@ -178,6 +178,8 @@ export default function CalendarPage() {
   const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [openingSession, setOpeningSession] = useState<string | null>(null);
+  const weekScrollerRef = useRef<HTMLElement | null>(null);
+  const didCenterTodayRef = useRef(false);
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -273,6 +275,20 @@ export default function CalendarPage() {
     { length: (weekWindow.end - weekWindow.start) / 60 + 1 },
     (_, index) => weekWindow.start / 60 + index,
   );
+
+  useEffect(() => {
+    if (view !== "week" || didCenterTodayRef.current) return;
+    const scroller = weekScrollerRef.current;
+    if (!scroller) return;
+    const today = dateKey(new Date());
+    const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${today}"]`);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      const left = target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2;
+      scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
+      didCenterTodayRef.current = true;
+    });
+  }, [view, days]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -466,12 +482,12 @@ export default function CalendarPage() {
                 )}
               </section>
             ) : (
-              <section className="calendar-week-card interactive-week">
+              <section ref={weekScrollerRef} className="calendar-week-card interactive-week">
                 <div className="calendar-time-grid">
                   <div className="week-time-corner" />
                   {days.map(day => {
                     const count = events.filter(event => dateKey(new Date(event.scheduled_start)) === day.key).length;
-                    return <button className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
+                    return <button data-calendar-day={day.key} className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
                       <span>{day.day}</span>
                       <strong>{day.date}</strong>
                       <small>{count ? count + (count === 1 ? " ραντεβού" : " ραντεβού") : "—"}</small>

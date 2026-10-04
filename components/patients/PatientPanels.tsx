@@ -55,18 +55,18 @@ export function HistoryPanel({bundle,reload}:{bundle:PatientBundle;reload:()=>Pr
 }
 
 export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onAdd:()=>void;reload:()=>Promise<unknown>}){
- const active=bundle.medications.filter(x=>x.status==='active');
- const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const medName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
- const doseText=(state:Record<string,unknown>|null)=>state&&state.dose!=null?String(state.dose)+' '+String(state.unit||''):'—';
- return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">ΑΓΩΓΗ</span><h2>Τρέχουσα αγωγή & ιστορικό αλλαγών</h2><p>Η ενεργή δόση εμφανίζεται χωριστά από τις προγραμματισμένες αλλαγές.</p></div><button className="record compact" onClick={onAdd}><Plus size={15}/> Διαχείριση αγωγής</button></div>
+ return <section className="panel-stack medication-record">
+  <div className="panel-heading medication-record-head">
+   <div><span className="kicker">ΑΓΩΓΗ</span><h2>Αγωγή</h2></div>
+   <button className="record compact" onClick={onAdd}><Plus size={15}/> Προσθήκη αγωγής</button>
+  </div>
   <MedicationTable bundle={bundle} reload={reload} editableEffects/>
-  <MedicationTimeline bundle={bundle} reload={reload}/>
-  <div className="med-side-effects"><h3>Καταγεγραμμένες παρενέργειες</h3>{bundle.medicationSideEffects.length?bundle.medicationSideEffects.map(effect=><article key={effect.id} className={effect.resolved_on?'resolved':''}><div><strong>{effect.effect_text}</strong><span>{medName(effect.medication_id)} · {date(effect.noted_on)}</span></div><i className={'severity '+effect.severity}>{effect.severity==='mild'?'Ήπια':effect.severity==='severe'?'Σοβαρή':'Μέτρια'}</i><p>{effect.impact||effect.note||'Δεν καταγράφηκε επίδραση στη λειτουργικότητα.'}</p>{effect.resolved_on?<small>Επιλύθηκε {date(effect.resolved_on)}</small>:<button onClick={async()=>{await demoPost({action:'medication_side_effect_resolve',side_effect_id:effect.id,resolved_on:today});await reload()}}>Σήμανση ως επιλυμένη</button>}</article>):<p>Δεν έχουν καταγραφεί παρενέργειες.</p>}</div>
+  <details className="medication-history-details">
+   <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
+   <MedicationTimeline bundle={bundle} reload={reload}/>
+  </details>
  </section>
 }
-
 export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,initialMedicationId}:{bundle:PatientBundle;sessionId?:string;initialMode?:'start'|'history'|'change'|'stop'|'side_effect';initialMedicationId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
  const active=bundle.medications.filter(x=>x.status==='active');
  const [mode,setMode]=useState<'start'|'history'|'change'|'stop'|'side_effect'>(initialMode||(active.length?'change':'start'));

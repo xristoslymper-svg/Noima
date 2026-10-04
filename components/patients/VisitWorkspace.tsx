@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState,type MutableRefObject} from 'react';
-import {previousMseReference} from '@/lib/clinical/visit-workspace-state';
+import {mergeVisitContext,previousMseReference} from '@/lib/clinical/visit-workspace-state';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {demoPost} from '@/lib/patients/demo-client';
@@ -13,7 +13,7 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
  async function load(){const r=await fetch(`/api/patients/demo/visit?tester=${getDemoTesterId()}&patient=${patientId}&session=${sessionId}`,{cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error);setRecord(d.bundle);setError('');return d.bundle as PatientBundle}
  useEffect(()=>{dialog.current?.showModal();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[]);
  useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:'Δεν φορτώθηκε η επίσκεψη.'))},[sessionId,patientId]);
- function merged(b:PatientBundle,c=context):PatientBundle{return {...(c||b),sessions:b.sessions,sections:b.sections,risks:b.risks,proposals:b.proposals,addenda:b.addenda}}
+ function merged(b:PatientBundle,c=context):PatientBundle{return mergeVisitContext(b,c)}
  async function reload(){return merged(await load())}
  async function refreshContext(){const c=await reloadContext();if(!c)throw new Error('Δεν ανανεώθηκε ο φάκελος. Δοκιμάστε ξανά.');return merged(await load(),c)}
  async function finalize(){setFinalizing(true);setFinalizeError('');try{const b=await load();const s=b.sessions.find(s=>s.id===sessionId&&s.status==='draft');if(!s)throw new Error('Η επίσκεψη δεν είναι πλέον πρόχειρη.');await demoPost({action:'finalize_session',session_id:sessionId,expected_version:s.version});onFinalized()}catch(e){setFinalizeError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{setFinalizing(false)}}

@@ -16,6 +16,13 @@ export const mseAxes:Record<string,MseAxis[]>={
 // Choice lines use the existing canonical narrative field; arbitrary clinical text is never discarded.
 function choiceLine(line:string,axis:MseAxis):boolean{return line.startsWith(axis.label+': ')&&line.slice(axis.label.length+2).split(' · ').every(value=>axis.options.includes(value))}
 export function axisValues(text:string,axis:MseAxis):string[]{const line=text.split('\n').find(line=>choiceLine(line,axis));return line?line.slice(axis.label.length+2).split(' · '):[]}
+export function mseNote(text:string,key:string):string{
+ return text.split('\n').filter(line=>!(mseAxes[key]||[]).some(axis=>choiceLine(line,axis))).join('\n');
+}
+export function replaceMseNote(text:string,key:string,note:string):string{
+ const choices=text.split('\n').filter(line=>(mseAxes[key]||[]).some(axis=>choiceLine(line,axis)));
+ return [...choices,...(note?[note]:[])].join('\n');
+}
 export function toggleMseChoice(text:string,axis:MseAxis,option:string):string{
  const previous=axisValues(text,axis);const values=previous.includes(option)?previous.filter(v=>v!==option):axis.multiple?[...previous,option]:[option];
  if(axis.label==='Αντίληψη'&&option==='Δεν αναφέρονται διαταραχές'&&values.includes(option))values.splice(0,values.length,option);else if(axis.label==='Αντίληψη'&&option!=='Δεν αναφέρονται διαταραχές'){const absent=values.indexOf('Δεν αναφέρονται διαταραχές');if(absent>=0)values.splice(absent,1)}

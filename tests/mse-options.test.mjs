@@ -1,6 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mseAxes,axisValues,toggleMseChoice} from '../lib/clinical/mse-options.ts';
+import {mseAxes,axisValues,toggleMseChoice,mseNote,replaceMseNote} from '../lib/clinical/mse-options.ts';
+
+test('replacing or clearing an explanation preserves selected MSE findings and legacy prose',()=>{
+ const axis=mseAxes.mood[0];
+ const original=toggleMseChoice('Λόγια ασθενούς: έντονη ανησυχία.',axis,'Αγχώδες');
+ assert.equal(mseNote(original,'mood'),'Λόγια ασθενούς: έντονη ανησυχία.');
+ const edited=replaceMseNote(original,'mood','Νέα επεξήγηση.\nΔεύτερη γραμμή.');
+ assert.deepEqual(axisValues(edited,axis),['Αγχώδες']);
+ assert.equal(mseNote(edited,'mood'),'Νέα επεξήγηση.\nΔεύτερη γραμμή.');
+ assert.deepEqual(axisValues(replaceMseNote(edited,'mood',''),axis),['Αγχώδες']);
+ assert.equal(mseNote('Προϋπάρχον κείμενο','legacy'),'Προϋπάρχον κείμενο');
+});
 test('MSE choices preserve free narrative, replace single choices, allow deselection and reload',()=>{
  const axis=mseAxes.appearance[0];const original='Περιποίηση: ο ασθενής εξηγεί τη δυσκολία του\nΠρόσθετη παρατήρηση.';
  let text=toggleMseChoice(original,axis,'Επαρκής');assert.ok(text.includes(original));assert.deepEqual(axisValues(text,axis),['Επαρκής']);

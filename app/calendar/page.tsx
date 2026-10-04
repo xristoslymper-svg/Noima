@@ -215,6 +215,7 @@ export default function CalendarPage() {
 
   const openAppointmentSession = useCallback(async (event: CalendarEvent) => {
     if (!event.patient_id || openingSession) return;
+    if(!event.session_id&&dateKey(new Date(event.scheduled_start))!==dateKey(new Date())&&!window.confirm('Το ραντεβού είναι '+dateTimeLabel(event.scheduled_start)+'. Έναρξη επίσκεψης σήμερα; Θα συνδεθεί με αυτό το ραντεβού και η υπενθύμισή του θα ακυρωθεί.'))return;
     setOpeningSession(event.id);
     setCalendarError("");
     try {

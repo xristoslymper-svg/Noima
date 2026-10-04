@@ -426,6 +426,20 @@ test('medication timeline derives current/future state without bootstrap and pre
  assert.equal((await state(3)).dose,125);
 });
 
+test('same-day dose correction preserves the original event, requires a reason and rejects stale retries',async()=>{
+ const t='80000000-0000-4000-8000-000000000009';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [m]=await sql("select * from demo_medication_start($1,$2,null,'Same-day test',5,'mg','daily',current_date,'test')",[t,p.id]);
+ const [event]=await sql('select id from demo_medication_events where medication_id=$1',[m.id]);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',10,'mg','daily',current_date,'',2,$3,false)",[t,m.id,event.id]),/reason_required/);
+ await sql("select demo_medication_event_write($1,$2,null,'started',10,'mg','daily',current_date,'Correct initial dose',2,$3,false)",[t,m.id,event.id]);
+ assert.equal((await sql('select demo_medication_state($1,current_date) state',[m.id]))[0].state.dose,10);
+ const [revision]=await sql('select * from demo_medication_event_revisions where event_id=$1',[event.id]);
+ assert.ok(revision.replacement_id);assert.equal(revision.reason,'Correct initial dose');
+ assert.equal((await sql('select new_state from demo_medication_events where id=$1',[event.id]))[0].new_state.dose,5);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',20,'mg','daily',current_date,'Retry',2,$3,false)",[t,m.id,event.id]),/stale_medication/);
+});
+
 test('SMS simulation queues atomically, reschedules, cancels, revalidates phone and processes only once',async()=>{
  const tester='71000000-0000-4000-8000-000000000001';await sql('select public.demo_tester_bootstrap($1)',[tester]);
  const patient=(await sql('select id from public.demo_patients where tester_id=$1 limit 1',[tester]))[0];

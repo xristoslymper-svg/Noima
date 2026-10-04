@@ -1,11 +1,12 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {instruments,answerLabels} from '@/lib/psychometrics/instruments';
 import {formatClinicDate,formatClinicDateTime} from '@/lib/clinic-time';
 export default function PatientPsychometrics({bundle,reload,sessionId}:{bundle:PatientBundle;reload:()=>Promise<unknown>;sessionId?:string}){
  const [instrument,setInstrument]=useState('PHQ-9'),[appointment,setAppointment]=useState(''),[link,setLink]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[pending,setPending]=useState<{id:string;token:string}|null>(null);
+ useEffect(()=>{if(sessionId)return;const code=new URLSearchParams(window.location.search).get('instrument');if(code==='PHQ-9'||code==='GAD-7')setInstrument(code)},[sessionId]);
  async function call(body:Record<string,unknown>){const r=await fetch('/api/psychometrics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,tester:getDemoTesterId()})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d}
  async function assign(){setBusy(true);setError('');const request=pending||{id:crypto.randomUUID(),token:Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('')};setPending(request);try{await call({action:'assign',...request,patient_id:bundle.patient.id,instrument,appointment_id:sessionId?null:appointment||null,session_id:sessionId||null});setLink(location.origin+'/assessment#'+request.token);setPending(null);await reload()}catch(e){setError(e instanceof Error?e.message:'Αποτυχία')}finally{setBusy(false)}}
  async function reviewItem9(id:string){setBusy(true);setError('');try{await call({action:'review_item9',id});await reload()}catch(e){setError(e instanceof Error?e.message:'Αποτυχία')}finally{setBusy(false)}}

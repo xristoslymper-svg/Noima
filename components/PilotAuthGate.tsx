@@ -23,7 +23,7 @@ async function persist(s:Session){
 }
 export default function PilotAuthGate({children}:{children:ReactNode}){
  const path=usePathname(); const isPublic=path.startsWith('/assessment')||path.startsWith('/test/');
- const [ready,setReady]=useState(isPublic),[name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [ready,setReady]=useState(isPublic),[name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
  useEffect(()=>{if(isPublic)return;void(async()=>{try{
   const raw=localStorage.getItem(SESSION_KEY);if(!raw){setReady(true);return}let s=JSON.parse(raw) as Session;
   if(!s.expires_at||s.expires_at<Math.floor(Date.now()/1000)+60){
@@ -32,12 +32,13 @@ export default function PilotAuthGate({children}:{children:ReactNode}){
   }
   const who=await persist(s);setName(who.full_name||'');setReady(true);
  }catch{clear();setReady(true)}})()},[isPublic]);
+ async function resetPassword(){if(!email.trim()){setError('Γράψτε πρώτα το email σας.');return}setBusy(true);setError('');setNotice('');try{const redirectTo=`${location.origin}/?recovery=1`;const r=await fetch(`${URL}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:email.trim()})});if(!r.ok)throw new Error('reset_failed');setNotice('Στείλαμε σύνδεσμο επαναφοράς στο email σας.')}catch{setError('Δεν ήταν δυνατή η αποστολή email επαναφοράς. Δοκιμάστε ξανά.')}finally{setBusy(false)}}
  async function login(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{
   const r=await fetch(`${URL}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:email.trim(),password})});
   if(!r.ok)throw new Error('login_failed');const who=await persist(await r.json());setName(who.full_name||'');location.reload();
  }catch{setError('Το email ή ο κωδικός δεν είναι σωστός.');setBusy(false)}}
  if(isPublic)return <>{children}</>;
  if(!ready)return <main className="pilot-auth-shell"><div className="pilot-auth-card"><strong>Ψ</strong><p>Φόρτωση ασφαλούς χώρου…</p></div></main>;
- if(!localStorage.getItem(SESSION_KEY))return <main className="pilot-auth-shell"><form className="pilot-auth-card" onSubmit={login}><strong className="pilot-auth-mark">Ψ</strong><h1>Καλώς ήρθατε</h1><p>Συνδεθείτε στον δοκιμαστικό κλινικό σας χώρο.</p><label>Email<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Κωδικός<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<div className="pilot-auth-error">{error}</div>}<button disabled={busy}>{busy?'Σύνδεση…':'Σύνδεση'}</button></form></main>;
+ if(!localStorage.getItem(SESSION_KEY))return <main className="pilot-auth-shell"><form className="pilot-auth-card" onSubmit={login}><strong className="pilot-auth-mark">Ψ</strong><h1>Καλώς ήρθατε</h1><p>Συνδεθείτε στον δοκιμαστικό κλινικό σας χώρο.</p><label>Email<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Κωδικός<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<div className="pilot-auth-error">{error}</div>}{notice&&<div className="pilot-auth-notice">{notice}</div>}<button disabled={busy}>{busy?'Σύνδεση…':'Σύνδεση'}</button><button type="button" className="pilot-auth-link" onClick={resetPassword} disabled={busy}>Ξέχασα τον κωδικό</button></form></main>;
  return <>{children}</>;
 }

@@ -179,7 +179,6 @@ export default function PatientSession({
   {medOpen&&<MedicationModal bundle={bundle} sessionId={draft.id} onClose={()=>setMedOpen(false)} onSaved={reloadContext}/>}
 
   <div className="finalize-bar">
-   <div className="visit-finalize-status"><strong>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'✓ Αποθηκεύτηκε'}</strong>{!ready&&<span>{!risk||risk.suicidal_ideation==='not_assessed'?'Η εκτίμηση κινδύνου απαιτείται πριν την ολοκλήρωση.':!riskFollowupReady?'Ολοκληρώστε τα σχετικά πεδία κινδύνου πριν την ολοκλήρωση.':'Συμπληρώστε τις βασικές κλινικές ενότητες πριν την ολοκλήρωση.'}</span>}</div>
    <button onClick={()=>void finalizeSafely()} disabled={finalizing||flushing||medOpen||!ready}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση επίσκεψης'}</button>
   </div>
   {onClose&&<button data-visit-close className="visit-close" disabled={flushing||finalizing||medOpen} onClick={()=>void flushAll().then(onClose).catch(()=>{})}>Αποθήκευση & κλείσιμο</button>}

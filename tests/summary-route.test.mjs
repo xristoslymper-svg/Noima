@@ -17,7 +17,7 @@ test('provider failure and unsupported claims return canonical facts, never obso
  }
 });
 test('one unsupported finding rejects entire synthesis, not silent filtering',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const f=async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Πορεία',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]},{label:'Πλάνο',quotes:[{source_id:'bogus',quote:'Unsupported recommendation.'}]}]})}]}]});
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const f=async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Τρέχουσα εικόνα',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]},{label:'Πλάνο',quotes:[{source_id:'bogus',quote:'Unsupported recommendation.'}]}]})}]}]});
  const d=await (await route(b,f).POST(request())).json();assert.equal(d.mode,'canonical');assert.ok(!d.findings.some(x=>x.origin==='synthesis'));
 });
 test('stale hash conflicts before provider call; database errors fail closed',async()=>{
@@ -27,6 +27,6 @@ test('seeded ID succeeds without configured provider and real-data mode is denie
  const r=await route(fixture(),null,{}).POST(request());assert.equal(r.status,200);assert.equal((await r.json()).mode,'canonical');assert.equal((await route(fixture(),null,{CLINICAL_DATA_MODE:'real'}).POST(request())).status,403);
 });
 test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Πορεία',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]}]})}]}]})});
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Τρέχουσα εικόνα',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]}]})}]}]})});
  const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,1);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,2);assert.notEqual(changed.context_hash,first.context_hash);
 });

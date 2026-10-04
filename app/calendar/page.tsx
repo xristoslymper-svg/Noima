@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SummaryPeek from "@/components/patients/SummaryPeek";
 import {calendarSegment as segment, calendarWindow, calendarLanes} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
@@ -641,7 +642,7 @@ export default function CalendarPage() {
           <section ref={dialogRef} tabIndex={-1} aria-label="Λεπτομέρειες ραντεβού" className="calendar-appointment-popover" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
             <button className="calendar-popover-close" onClick={() => setSelectedEvent(null)} aria-label="Κλείσιμο"><X size={16}/></button>
             <span className={"calendar-popover-kind " + (selectedEvent.appointment_type === "initial_assessment" ? "initial" : "follow")}>{appointmentType(selectedEvent.appointment_type)}</span>
-            <h3>{selectedEvent.patient_name}</h3>
+            <div className="calendar-name-row"><h3>{selectedEvent.patient_name}</h3>{selectedEvent.patient_id&&<SummaryPeek patientId={selectedEvent.patient_id}/>}</div>
             <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′ · {statusLabel(selectedEvent)}{selectedEvent.series_id ? " · ↻ Επαναλαμβανόμενο" : ""}</p>
 
             {selectedEvent.patient_id && selectedEvent.status === "scheduled" && <button className="calendar-visit-primary" onClick={()=>void openAppointmentSession(selectedEvent)} disabled={quickBusy||Boolean(openingSession)}><Stethoscope size={18}/>{openingSession ? "Άνοιγμα…" : selectedEvent.session_id ? "Συνέχεια επίσκεψης" : "Έναρξη επίσκεψης"}<ChevronRight size={16}/></button>}

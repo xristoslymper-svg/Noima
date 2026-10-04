@@ -1,6 +1,6 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=5;
+export const SUMMARY_POLICY_VERSION=6;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -112,6 +112,24 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
 }
 
 export type SummaryContext=ReturnType<typeof buildSummaryContext>;
+// A useful record-derived briefing remains available without a model. Whole
+// recorded sections retain date/source attribution; drafts and corrected parents
+// cannot become current conclusions. The UI can collapse long evidence.
+export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
+ const sections=context.sources.filter(s=>s.kind==='session_section');
+ const latest=[...sections].sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''))[0]?.session_id;
+ const corrected=new Set(context.layers.corrections.map(c=>c.session_id));
+ const selected=sections.filter(s=>s.session_id===latest&&!corrected.has(s.session_id));
+ const additions:Finding[]=[];
+ for(const source of selected){
+  const suffix=source.label.split(' · ').pop();
+  const category:Category|undefined=['Assessment','Interview','MSE','Λειτουργικότητα'].includes(suffix||'')?'Τρέχουσα εικόνα':['Πλάνο','Επανεκτίμηση'].includes(suffix||'')?'Πλάνο':undefined;
+  if(!category)continue;
+  additions.push({key:'record:'+source.id,label:category,text:source.label+' — καταγεγραμμένο: '+String(source.content),source_ids:[source.id],attention:false,origin:'documented'});
+ }
+ return [...context.findings,...additions];
+}
+
 export function validateNarrative(output:unknown,context:SummaryContext):Finding[]{
  if(!output||typeof output!=='object'||!('findings' in output)||!Array.isArray(output.findings))throw new Error('invalid_output');
  const list=output.findings;if(list.length>5)throw new Error('invalid_count');
@@ -120,6 +138,10 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
   const item=f as {label:string;quotes:{source_id:string;quote:string}[]};
   if(!['Τρέχουσα εικόνα','Πορεία','Πλάνο'].includes(item.label)||used.has(item.label)||!Array.isArray(item.quotes)||!item.quotes.length||item.quotes.length>4)throw new Error('invalid_category');used.add(item.label);
+  const sessionIds=new Set(item.quotes.map(q=>context.sources.find(s=>s.id===q.source_id)?.session_id));
+  const latest=[...context.sources.filter(s=>s.kind==='session_section')].sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''))[0]?.session_id;
+  if(item.label==='Πορεία'&&(sessionIds.size<2||sessionIds.has(undefined)))throw new Error('trajectory_requires_two_visits');
+  if(item.label!=='Πορεία'&&[...sessionIds].some(id=>id!==latest))throw new Error('obsolete_current_source');
   const texts=item.quotes.map(q=>{
    const s=context.sources.find(s=>s.id===q.source_id);if(!s||s.kind!=='session_section'||typeof q.quote!=='string'||q.quote.length<8||q.quote.length>600||!String(s.content).includes(q.quote))throw new Error('unsupported_quote');
    const segments=Array.from(new Intl.Segmenter('el',{granularity:'sentence'}).segment(String(s.content)),x=>x.segment.trim()).filter(Boolean);

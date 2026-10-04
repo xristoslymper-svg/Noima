@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import type { PatientBundle } from "@/lib/patients/demo-runtime";
-import { buildSummaryContext } from "@/lib/clinical/summary-context";
+import ClinicalSummary from "@/components/patients/ClinicalSummary";
 
 import {
   Activity,
@@ -27,20 +27,7 @@ import {
   TestTube2,
   Users,
 } from "lucide-react";
-type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string};
-type Brief = {kicker:string;changed:string[];today:string[];risk:string};
-
-function clip(value:string,max=145){const clean=value.replace(/\s+/g," ").trim();return clean.length>max?clean.slice(0,max-1)+"…":clean}
-function buildBrief(bundle:PatientBundle|null,event?:OverviewEvent):Brief{
- if(!bundle)return {kicker:event?"ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ":"ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ",changed:["Δεν υπάρχουν ακόμη διαθέσιμα κλινικά δεδομένα για σύνοψη."],today:["Ανοίξτε τον φάκελο για κλινική αξιολόγηση."],risk:"Δεν υπάρχει διαθέσιμη εκτίμηση κινδύνου."};
- const facts=buildSummaryContext(bundle).findings;
- const reviews=facts.filter(f=>f.attention);
- const risk=facts.filter(f=>f.label==='Κίνδυνος').map(f=>f.text).join(' ');
- const riskReviews=facts.filter(f=>f.key.startsWith('risk-review:')).length;
- const today=reviews.slice(0,3).map(f=>clip(f.text));if(reviews.length>3)today.push(`Ακόμη ${reviews.length-3} επισημάνσεις στον πλήρη φάκελο.`);
- return {kicker:event?'ΕΠΟΜΕΝΗ ΣΥΝΕΔΡΙΑ':'ΚΛΙΝΙΚΟΣ ΦΑΚΕΛΟΣ',changed:facts.filter(f=>['Αγωγή','Ψυχομετρικά','Παρενέργειες'].includes(f.label)).slice(0,4).map(f=>clip(f.text)),today:reviews.length?today:['Δεν υπάρχουν δομημένες εκκρεμότητες προς επισήμανση· ελέγξτε τον πλήρη φάκελο.'],risk:(risk||'Δεν υπάρχει διαθέσιμη δομημένη εκτίμηση κινδύνου.')+(riskReviews?` ${riskReviews} αφηγηματικές πηγές χρειάζονται έλεγχο συμφωνίας.`:'')};
-}
-
+type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -73,10 +60,10 @@ export default function Page() {
     setSchedule(events);setBundles(Object.fromEntries(loaded.filter(Boolean) as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);
   })().catch(()=>{});return()=>{cancelled=true}},[]);
   const today=overviewDateKey(new Date());
-  const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today);
-  const selectedEvent=todaySchedule.find(e=>e.patient_id===selectedPatientId)||schedule.find(e=>e.patient_id===selectedPatientId);
+  const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
+
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
-  const brief=buildBrief(selectedBundle,selectedEvent);
+
   const loadedBundles=Object.values(bundles);
   const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
   const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>(a.status==="assigned"||a.status==="opened")&&new Date(a.expires_at)>new Date()).length,0);
@@ -131,32 +118,15 @@ export default function Page() {
                     <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Follow-up"}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
-                  {event.readiness==="waiting"&&<span className="badge">{event.readiness_label}</span>}
+
                   {event.patient_id?<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
                 </div>
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
             <div className="card ai-brief" key={selectedPatientId||"none"}>
-              <div className="card-head">
-                <div>
-                  <span className="kicker">{brief.kicker}</span>
-                  <h2><Sparkles size={19} /> Σύνοψη πριν τη συνεδρία</h2>
-                </div>
-                <span className="status-dot">{selectedBundle?(selectedBundle.patient.first_name+" "+selectedBundle.patient.last_name):"Χωρίς επιλογή"}</span>
-              </div>
-
-              <div className="brief-block">
-                <strong>{"Αγωγή & ευρήματα"}</strong>
-                <ul>{brief.changed.map(item=><li key={item}>{item}</li>)}</ul>
-              </div>
-
-              <div className="brief-block blue">
-                <strong>Χρειάζεται έλεγχο</strong>
-                <ul>{brief.today.map(item=><li key={item}>{item}</li>)}</ul>
-              </div>
-
-              <div className="risk-strip"><ShieldCheck size={17} /> {brief.risk}</div>
+              <div className="card-head"><span className="status-dot">{selectedBundle?selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name:'Χωρίς επιλογή'}</span></div>
+              {selectedBundle?<ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>:<p>Επιλέξτε ασθενή για να εμφανιστούν οι καταγραφές του φακέλου.</p>}
             </div>
           </section>
 

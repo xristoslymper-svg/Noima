@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://mgpnaxaquzeoomxdzhic.supabase.co";
 const SUPABASE_KEY =
@@ -18,18 +19,12 @@ export type DemoCalendarEvent = {
   status: "scheduled" | "cancelled" | "completed";
 };
 
-function headers(extra?: HeadersInit): HeadersInit {
-  return {
-    apikey: SUPABASE_KEY,
-    "Content-Type": "application/json",
-    ...extra,
-  };
-}
+async function headers(extra?:HeadersInit):Promise<HeadersInit>{const token=(await cookies()).get('noima-access-token')?.value;return {apikey:SUPABASE_KEY,Authorization:`Bearer ${token||SUPABASE_KEY}`,'Content-Type':'application/json',...extra};}
 
 async function bootstrap(tester: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_tester_bootstrap`, {
     method: "POST",
-    headers: headers(),
+    headers: await headers(),
     cache: "no-store",
     body: JSON.stringify({ p_tester: tester }),
   });
@@ -48,7 +43,7 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
 
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/demo_calendar_events?${params.toString()}`,
-    { headers: headers(), cache: "no-store" },
+    { headers: await headers(), cache: "no-store" },
   );
 
   if (!response.ok) throw new Error(`calendar_read_failed:${response.status}`);
@@ -72,7 +67,7 @@ export async function applyDemoCalendarMutation(
 ): Promise<DemoCalendarEvent> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_apply_v2`, {
     method: "POST",
-    headers: headers(),
+    headers: await headers(),
     cache: "no-store",
     body: JSON.stringify({
       p_tester: tester,
@@ -102,7 +97,7 @@ export async function applyDemoCalendarMutation(
 export async function startDemoCalendarSession(tester: string, eventId: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_start_session`, {
     method: "POST",
-    headers: headers(),
+    headers: await headers(),
     cache: "no-store",
     body: JSON.stringify({ p_tester: tester, p_event: eventId }),
   });
@@ -117,7 +112,7 @@ export async function createDemoPatientAppointment(
 ): Promise<{ patient: { id: string; first_name: string; last_name: string }; event: DemoCalendarEvent }> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/demo_calendar_create_patient_appointment`, {
     method: "POST",
-    headers: headers(),
+    headers: await headers(),
     cache: "no-store",
     body: JSON.stringify({
       p_tester: tester,

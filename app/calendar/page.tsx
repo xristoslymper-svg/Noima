@@ -239,7 +239,9 @@ export default function CalendarPage() {
   }, []);
 
   const dayEvents = useMemo(
-    () => events.filter(event => dateKey(new Date(event.scheduled_start)) === focusDate),
+    () => events
+      .filter(event => dateKey(new Date(event.scheduled_start)) === focusDate)
+      .sort((a, b) => Date.parse(a.scheduled_start) - Date.parse(b.scheduled_start)),
     [events, focusDate],
   );
 
@@ -251,8 +253,7 @@ export default function CalendarPage() {
     setFocusDate(next.toISOString().slice(0, 10));
   }, [focusDate]);
   const waiting = dayEvents.find(event => event.readiness === "waiting");
-  const newPatient = dayEvents.find(event => event.readiness === "new");
-  const readyCount = dayEvents.filter(event => event.readiness !== "waiting").length;
+  const nextEvent = dayEvents.find(event => new Date(event.scheduled_end).getTime() >= Date.now()) ?? dayEvents[0];
   const draggingEvent = draggingEventId ? events.find(event => event.id === draggingEventId) ?? null : null;
   const weekHours = Array.from(
     { length: (WEEK_END_MINUTE - WEEK_START_MINUTE) / 60 + 1 },
@@ -385,9 +386,7 @@ export default function CalendarPage() {
         <div className="calendar-page-content">
           <div className="calendar-page-heading">
             <div>
-              <span className="kicker">ΠΡΟΓΡΑΜΜΑ</span>
               <h1>Ημερολόγιο</h1>
-              <p>Τα ραντεβού σας, με ό,τι χρειάζεστε για να είστε προετοιμασμένοι.</p>
             </div>
             <div className="calendar-page-actions">
               <button className="voice-calendar-button" onClick={() => setVoice(true)}>
@@ -397,16 +396,14 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div className="calendar-summary">
+          <div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-nav">
               <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
               <strong>{focusTitle(focusDate)}</strong>
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => setFocusDate(dateKey(new Date()))}>Σήμερα</button>}
             </div>
-            <span>{dayEvents.length} συνεδρίες</span>
-            <span className="summary-ready"><Check size={13} /> {readyCount} έτοιμες</span>
-            <span>{dayEvents.filter(event => event.readiness === "waiting").length} αναμένει τεστ</span>
+            <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + " ραντεβού" : "Χωρίς ραντεβού"}</span>
             <div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
@@ -427,29 +424,28 @@ export default function CalendarPage() {
                   <div className="calendar-empty-state">Φόρτωση ημερολογίου…</div>
                 ) : dayEvents.length ? (
                   dayEvents.map(event => (
-                    <div className="clinical-event" key={event.id}>
+                    <article className={"clinical-event clinical-agenda-row" + (event === nextEvent ? " next" : "")} key={event.id}>
                       <div className="clinical-event-time">
                         <strong>{timeLabel(event.scheduled_start)}</strong>
                         <span>{timeLabel(event.scheduled_end)}</span>
                       </div>
                       <div className="clinical-event-line" />
                       <div className="clinical-event-main">
-                        <div>
-                          <strong>{event.patient_name}</strong>
-                          <span>{appointmentType(event.appointment_type)} · {event.detail}</span>
+                        <div className="agenda-patient">
+                          {event.patient_id ? <Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>{event.patient_name}</Link> : <strong>{event.patient_name}</strong>}
+                          <span>{appointmentType(event.appointment_type)}{event.detail ? " · " + event.detail : ""}</span>
                         </div>
-                        <span className={"readiness " + (event.readiness === "waiting" ? "waiting" : "ready")}>
-                          {event.readiness === "waiting" ? <Clock size={12} /> : <Check size={12} />}
-                          {" "}{event.readiness_label}
-                        </span>
+                        {event.readiness === "waiting" && <span className="readiness waiting"><Clock size={12}/> {event.readiness_label}</span>}
                       </div>
-                      <div className="clinical-event-actions">
-                        {event.patient_id && <Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Φάκελος</Link>}
-                        <button onClick={() => setAppointmentEditor({ mode: "edit", event })} aria-label={"Άνοιγμα ραντεβού " + event.patient_name}>
-                          <ChevronRight size={17} />
+                      <div className="clinical-event-actions agenda-actions">
+                        {event.patient_id && <button className="agenda-session" onClick={() => void openAppointmentSession(event)} disabled={openingSession === event.id}>
+                          <Stethoscope size={14}/>{openingSession === event.id ? "Άνοιγμα…" : event.session_id ? "Συνέχεια" : "Έναρξη"}
+                        </button>}
+                        <button className="agenda-more" onClick={() => setAppointmentEditor({ mode: "edit", event })} aria-label={"Λεπτομέρειες ραντεβού " + event.patient_name}>
+                          <ChevronRight size={17}/>
                         </button>
                       </div>
-                    </div>
+                    </article>
                   ))
                 ) : (
                   <div className="calendar-empty-state">Δεν υπάρχουν ραντεβού για σήμερα.</div>
@@ -458,8 +454,7 @@ export default function CalendarPage() {
             ) : (
               <section className="calendar-week-card interactive-week">
                 <div className="week-interaction-hint">
-                  <span><strong>Σύρετε</strong> ένα ραντεβού σε άλλη ημέρα ή ώρα.</span>
-                  <small>Η μετακίνηση αποθηκεύεται μόνο μετά την επιβεβαίωσή σας · βήμα 30′.</small>
+                  <span>Σύρετε ένα ραντεβού για αλλαγή ημέρας ή ώρας.</span>
                 </div>
 
                 <div className="calendar-time-grid">
@@ -570,37 +565,23 @@ export default function CalendarPage() {
               </section>
             )}
 
-            <aside className="calendar-side-card">
-              <span className="kicker">ΣΗΜΕΡΑ</span>
-              <h3><Sparkles size={17} /> Προετοιμασία ημέρας</h3>
-              <p>Μία σύντομη εικόνα για ό,τι χρειάζεται προσοχή πριν ξεκινήσετε.</p>
-
-              {waiting ? (
-                <div className="day-attention">
-                  <strong>{timeLabel(waiting.scheduled_start)} · {waiting.patient_name}</strong>
-                  <span>{waiting.readiness_label}.</span>
+            <aside className="calendar-side-card calendar-day-context">
+              <span className="kicker">{focusDate === dateKey(new Date()) ? "ΣΗΜΕΡΑ" : "ΗΜΕΡΑ"}</span>
+              <h3>{nextEvent ? "Επόμενο" : "Καθαρό πρόγραμμα"}</h3>
+              {nextEvent ? (
+                <div className="calendar-next-card">
+                  <strong>{timeLabel(nextEvent.scheduled_start)} · {nextEvent.patient_name}</strong>
+                  <span>{appointmentType(nextEvent.appointment_type)}</span>
+                  {nextEvent.readiness === "waiting" && <small><Clock size={12}/> {nextEvent.readiness_label}</small>}
+                  <div>
+                    {nextEvent.patient_id && <button onClick={() => void openAppointmentSession(nextEvent)} disabled={openingSession === nextEvent.id}>
+                      <Stethoscope size={14}/>{nextEvent.session_id ? "Συνέχεια συνεδρίας" : "Έναρξη συνεδρίας"}
+                    </button>}
+                    {nextEvent.patient_id && <Link href={"/patients/demo/" + nextEvent.patient_id + "?appointment=" + nextEvent.id}>Φάκελος</Link>}
+                  </div>
                 </div>
-              ) : (
-                <div className="day-attention neutral">
-                  <strong>Δεν εκκρεμεί τεστ</strong>
-                  <span>Τα σημερινά ραντεβού είναι έτοιμα.</span>
-                </div>
-              )}
-
-              {newPatient && (
-                <div className="day-attention neutral">
-                  <strong>{timeLabel(newPatient.scheduled_start)} · {newPatient.patient_name}</strong>
-                  <span>{newPatient.readiness_label}.</span>
-                </div>
-              )}
-
-              <div className="calendar-sync">
-                <strong>Ημερολόγιο demo</strong>
-                <span>Supabase · πραγματική αποθήκευση αλλαγών</span>
-                <button disabled title="Οι εξωτερικές συνδέσεις δεν έχουν ενεργοποιηθεί ακόμη">
-                  Εξωτερικές συνδέσεις αργότερα
-                </button>
-              </div>
+              ) : <p>Δεν υπάρχουν ραντεβού για αυτή την ημέρα.</p>}
+              {waiting && waiting.id !== nextEvent?.id && <div className="calendar-quiet-attention"><Clock size={13}/><span>{waiting.patient_name} · {waiting.readiness_label}</span></div>}
             </aside>
           </div>
         </div>
@@ -675,6 +656,41 @@ export default function CalendarPage() {
           </section>
         </div>
       )}
+
+      <style jsx global>{`
+        .calendar-page-content{max-width:1380px;margin:0 auto;padding:34px 42px 64px}
+        .calendar-page-heading{align-items:center;margin-bottom:22px}
+        .calendar-page-heading h1{font-size:34px;letter-spacing:-.045em;margin:0;color:#263c33}
+        .calendar-page-actions{gap:8px}.voice-calendar-button{border:0!important;background:transparent!important;box-shadow:none!important;color:#647a70!important}
+        .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
+        .calendar-control-bar{min-height:48px;padding:7px 9px 7px 5px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
+        .calendar-date-nav strong{font-size:13px;color:#334b40}.calendar-date-nav>button{border:0!important;background:transparent!important}
+        .calendar-day-count{margin-left:auto;color:#8a9690;font-size:10px}.calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
+        .calendar-view-switch button{border:0!important;border-radius:6px!important;padding:6px 10px!important;background:transparent!important;font-size:10px!important}
+        .calendar-view-switch button.active{background:#fff!important;box-shadow:0 1px 4px rgba(48,70,60,.08)!important;color:#315f50!important}
+        .calendar-page-grid{grid-template-columns:minmax(0,1fr) 260px;gap:32px;align-items:start;margin-top:20px}
+        .calendar-day-card{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+        .clinical-agenda-row{min-height:78px;border-bottom:1px solid #e7ebe8!important;border-radius:0!important;background:transparent!important;padding:0 4px!important;transition:background .15s}
+        .clinical-agenda-row:hover{background:#f8faf8!important}.clinical-agenda-row.next{background:linear-gradient(90deg,rgba(235,244,239,.75),rgba(255,255,255,0))!important}
+        .clinical-agenda-row.next .clinical-event-line{background:#67917f!important}.clinical-event-time{width:66px!important}
+        .clinical-event-time strong{font-size:14px!important}.clinical-event-time span{font-size:9px!important;color:#9aa49f!important}
+        .agenda-patient>a,.agenda-patient>strong{display:block;font-size:13px;font-weight:700;color:#2f453b}.agenda-patient>a:hover{color:#39715e}
+        .agenda-patient>span{display:block;margin-top:4px;font-size:10.5px;color:#7b8982}
+        .agenda-actions{gap:4px!important}.agenda-session{display:inline-flex!important;align-items:center;gap:6px;border:0!important;border-radius:8px!important;background:#eaf2ed!important;color:#356653!important;padding:8px 10px!important;font-size:10px!important;font-weight:700!important}
+        .agenda-more{border:0!important;background:transparent!important;color:#8a9891!important;padding:7px!important}
+        .readiness.waiting{border:0!important;background:#faf4e8!important;color:#8a744d!important;font-size:9px!important}
+        .calendar-day-context{border:0!important;border-left:1px solid #e7ebe8!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:8px 0 8px 24px!important;position:sticky;top:92px}
+        .calendar-day-context h3{font-size:18px;margin:7px 0 16px;color:#30483e}.calendar-next-card{display:flex;flex-direction:column;gap:5px}
+        .calendar-next-card>strong{font-size:12px;color:#30483e}.calendar-next-card>span{font-size:10px;color:#829088}.calendar-next-card>small{display:flex;align-items:center;gap:5px;color:#94764c;font-size:9.5px;margin-top:5px}
+        .calendar-next-card>div{display:flex;align-items:center;gap:10px;margin-top:13px}.calendar-next-card button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:8px;background:#356b59;color:#fff;padding:8px 10px;font-size:10px;font-weight:700}.calendar-next-card a{font-size:10px;color:#55766a;font-weight:650}
+        .calendar-quiet-attention{display:flex;gap:7px;align-items:flex-start;margin-top:18px;padding-top:14px;border-top:1px solid #e7ebe8;color:#8a744d;font-size:9.5px;line-height:1.45}
+        .week-interaction-hint{min-height:34px!important;padding:7px 10px!important;background:transparent!important;border-bottom:1px solid #e7ebe8!important;color:#89958f!important;font-size:9.5px!important}
+        .calendar-week-card{box-shadow:none!important;border-color:#e3e8e4!important}.week-event{box-shadow:none!important;border-radius:7px!important}
+        .calendar-appointment-dialog{border-radius:18px!important;box-shadow:0 24px 70px rgba(37,55,47,.16)!important}.calendar-appointment-dialog>h3{font-size:22px!important;letter-spacing:-.02em;margin-bottom:4px!important}
+        .appointment-editor-type{display:block;color:#819087;font-size:10px;margin-bottom:16px}.appointment-linked-record{background:#f5f8f5!important;border-color:#e3e9e4!important}
+        @media(max-width:900px){.calendar-page-content{padding:24px 20px 52px}.calendar-page-grid{grid-template-columns:1fr}.calendar-day-context{display:none}.calendar-day-count{display:none}}
+        @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}.calendar-page-heading h1{font-size:30px}}
+      `}</style>
 
       {voice && (
         <CalendarVoiceCommand
@@ -773,8 +789,8 @@ function AppointmentEditor({
   return <div className="calendar-move-overlay" onClick={() => !saving && onClose()}>
     <section className="calendar-appointment-dialog" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
       <button className="calendar-move-close" onClick={onClose} disabled={saving} aria-label="Κλείσιμο"><X size={18}/></button>
-      <span className="kicker">{mode === "create" ? "ΝΕΟ ΡΑΝΤΕΒΟΥ" : "ΡΑΝΤΕΒΟΥ"}</span>
-      <h3>{mode === "create" ? "Προγραμματισμός" : event?.patient_name}</h3>
+      <h3>{mode === "create" ? "Νέο ραντεβού" : event?.patient_name}</h3>
+      {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
       <div className="appointment-form-grid">
         {mode === "create" && <label>Ασθενής<select value={patientId} onChange={change => setPatientId(change.target.value)}><option value="">Επιλέξτε…</option>{patients.map(patient => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name}</option>)}</select></label>}

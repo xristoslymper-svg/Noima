@@ -8,6 +8,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import {
+  FolderOpen,
+  Pencil,
+  CalendarPlus,
+  RotateCcw,
+  Ban,
   Activity,
   Bell,
   CalendarDays,
@@ -155,7 +160,7 @@ export default function CalendarPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [view, setView] = useState<"day" | "week">("week");
   const [voice, setVoice] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("current");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [calendarError, setCalendarError] = useState("");
@@ -166,10 +171,14 @@ export default function CalendarPage() {
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number } | null>(null);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; nextFor?: CalendarEvent } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [quickBusy,setQuickBusy]=useState(false);
+  const quickBusyRef=useRef(false);
+  const [undoEvent,setUndoEvent]=useState<CalendarEvent|null>(null);
+  const [quickError,setQuickError]=useState("");
   const [openingSession, setOpeningSession] = useState<string | null>(null);
-  const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
+  const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
 
@@ -239,6 +248,19 @@ export default function CalendarPage() {
       .sort((a, b) => Date.parse(a.scheduled_start) - Date.parse(b.scheduled_start)),
     [visibleEvents, focusDate],
   );
+
+  async function quickMutation(event:CalendarEvent,action:"cancel"|"restore") {
+    if(quickBusyRef.current)return;
+    quickBusyRef.current=true;setQuickBusy(true);setQuickError("");
+    try {
+      const response=await fetch("/api/calendar/command/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action,event_id:event.id,expected_updated_at:event.updated_at,scope:"one"})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Η αλλαγή δεν αποθηκεύτηκε.");
+      setStatusFilter("all");setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
+      await refreshEvents();
+    }catch(error){setQuickError(error instanceof Error?error.message:"Η αλλαγή δεν αποθηκεύτηκε.");await refreshEvents();}
+    finally{quickBusyRef.current=false;setQuickBusy(false);}
+  }
 
   const days = useMemo(() => weekKeys(focusDate), [focusDate]);
 
@@ -417,7 +439,7 @@ export default function CalendarPage() {
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
             </div>
             <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + " ραντεβού" : "Χωρίς ραντεβού"}</span>
-            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
+            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
             </div>
@@ -437,7 +459,7 @@ export default function CalendarPage() {
                   <div className="calendar-empty-state">Φόρτωση ημερολογίου…</div>
                 ) : dayEvents.length ? (
                   dayEvents.map(event => (
-                    <article className={"clinical-event clinical-agenda-row" + (event === nextEvent ? " next" : "")} key={event.id}>
+                    <article className={"clinical-event clinical-agenda-row status-"+event.status + (event === nextEvent ? " next" : "")} key={event.id}>
                       <div className="clinical-event-time">
                         <strong>{timeLabel(event.scheduled_start)}</strong>
                         <span>{timeLabel(event.scheduled_end)}</span>
@@ -445,16 +467,16 @@ export default function CalendarPage() {
                       <div className="clinical-event-line" />
                       <div className="clinical-event-main">
                         <div className="agenda-patient">
-                          {event.patient_id ? <Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>{event.patient_name}</Link> : <strong>{event.patient_name}</strong>}
+                          <button className="agenda-patient-name" onClick={()=>{setQuickError("");setSelectedEvent(event)}}>{event.patient_name}</button>
                           <span>{event.series_id ? "↻ " : ""}{appointmentType(event.appointment_type)} · {statusLabel(event)}{event.detail ? " · " + event.detail : ""}</span>
                         </div>
-                        {event.readiness === "waiting" && <span className="readiness waiting"><Clock size={12}/> {event.readiness_label}</span>}
+
                       </div>
                       <div className="clinical-event-actions agenda-actions">
                         {event.patient_id && event.status === "scheduled" && <button className="agenda-session" onClick={() => void openAppointmentSession(event)} disabled={openingSession === event.id}>
                           <Stethoscope size={14}/>{openingSession === event.id ? "Άνοιγμα…" : event.session_id ? "Συνέχεια" : "Έναρξη"}
                         </button>}
-                        <button className="agenda-more" onClick={() => setAppointmentEditor({ mode: "edit", event })} aria-label={"Λεπτομέρειες ραντεβού " + event.patient_name}>
+                        <button className="agenda-more" onClick={() => {setQuickError("");setSelectedEvent(event)}} aria-label={"Λεπτομέρειες ραντεβού " + event.patient_name}>
                           <ChevronRight size={17}/>
                         </button>
                       </div>
@@ -558,7 +580,7 @@ export default function CalendarPage() {
                               draggable={event.status === "scheduled" && !event.session_id}
                               role="button" tabIndex={0}
                               aria-label={event.patient_name + " · " + timeLabel(event.scheduled_start) + " · " + statusLabel(event)}
-                              onKeyDown={key=>{if(key.key==="Enter"||key.key===" "){key.preventDefault();setSelectedEvent(event)}}}
+                              onKeyDown={key=>{if(key.key==="Enter"||key.key===" "){key.preventDefault();setQuickError("");setSelectedEvent(event)}}}
                               title={event.patient_name + " · " + appointmentType(event.appointment_type)}
                               style={{ top, height, left: `calc(${(lanes.get(event.id)?.lane ?? 0)*100/(lanes.get(event.id)?.total ?? 1)}% + 5px)`, right: "auto", width: `calc(${100/(lanes.get(event.id)?.total ?? 1)}% - 10px)` }}
                               onDragStart={dragEvent => {
@@ -573,7 +595,7 @@ export default function CalendarPage() {
                               }}
                               onClick={click => {
                                 click.stopPropagation();
-                                setSelectedEvent(event);
+                                setQuickError("");setSelectedEvent(event);
                               }}
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
@@ -618,13 +640,17 @@ export default function CalendarPage() {
             <span className={"calendar-popover-kind " + (selectedEvent.appointment_type === "initial_assessment" ? "initial" : "follow")}>{appointmentType(selectedEvent.appointment_type)}</span>
             <h3>{selectedEvent.patient_name}</h3>
             <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′ · {statusLabel(selectedEvent)}{selectedEvent.series_id ? " · ↻ Επαναλαμβανόμενο" : ""}</p>
-            {selectedEvent.readiness === "waiting" && <div className="calendar-popover-attention"><Clock size={13}/>{selectedEvent.readiness_label}</div>}
-            <div className="calendar-popover-actions">
-              {selectedEvent.patient_id && selectedEvent.status === "scheduled" && <button className="calendar-popover-primary" onClick={() => void openAppointmentSession(selectedEvent)} disabled={openingSession === selectedEvent.id}><Stethoscope size={15}/>{openingSession === selectedEvent.id ? "Άνοιγμα…" : selectedEvent.session_id ? "Συνέχεια επίσκεψης" : "Έναρξη επίσκεψης"}</button>}
-              {selectedEvent.patient_id && <Link href={"/patients/demo/" + selectedEvent.patient_id + "?appointment=" + selectedEvent.id}>Άνοιγμα φακέλου</Link>}
-              {selectedEvent.patient_id && selectedEvent.status === "completed" && selectedEvent.session_id && <Link href={"/patients/demo/" + selectedEvent.patient_id + "?tab=sessions&session=" + selectedEvent.session_id}>Προβολή επίσκεψης</Link>}
-              <button onClick={() => { setAppointmentEditor({ mode: "edit", event: selectedEvent }); setSelectedEvent(null); }}>Αλλαγή ραντεβού</button>
+
+            {selectedEvent.patient_id && selectedEvent.status === "scheduled" && <button className="calendar-visit-primary" onClick={()=>void openAppointmentSession(selectedEvent)} disabled={quickBusy||Boolean(openingSession)}><Stethoscope size={18}/>{openingSession ? "Άνοιγμα…" : selectedEvent.session_id ? "Συνέχεια επίσκεψης" : "Έναρξη επίσκεψης"}<ChevronRight size={16}/></button>}
+            <div className="calendar-popover-actions calendar-icon-actions">
+              {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>Φάκελος</span></Link>}
+              <button disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}><Pencil size={20}/><span>{selectedEvent.status==="scheduled"&&!selectedEvent.session_id?"Αλλαγή":"Στοιχεία"}</span></button>
+              {selectedEvent.patient_id && <button disabled={quickBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}><CalendarPlus size={20}/><span>Επόμενο</span></button>}
+              {selectedEvent.status==="completed" && selectedEvent.session_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?tab=sessions&session="+selectedEvent.session_id}><Stethoscope size={20}/><span>Επίσκεψη</span></Link>}
             </div>
+            {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
+            {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
+            {selectedEvent.status==="cancelled" && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button>}
           </section>
         </div>
       )}
@@ -636,6 +662,7 @@ export default function CalendarPage() {
           patients={patients}
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
+          nextFor={appointmentEditor.nextFor}
           openingSession={openingSession === appointmentEditor.event?.id}
           onClose={() => setAppointmentEditor(null)}
           onSaved={async (event) => {
@@ -701,6 +728,7 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {undoEvent && <div className="calendar-undo" role="status"><span>Το ραντεβού ακυρώθηκε.</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/> Αναίρεση</button><button aria-label="Κλείσιμο ειδοποίησης" onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{quickError}</span>}</div>}
       <style jsx global>{`
         .calendar-page-content{max-width:1500px;margin:0 auto;padding:32px 38px 64px}
         .calendar-page-heading{align-items:center;margin-bottom:20px}
@@ -770,6 +798,32 @@ export default function CalendarPage() {
         .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#faf2f0!important;border-left-color:#c0a49b!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
+
+        /* Compact calendar with quiet time guides and prominent appointment cards. */
+        .calendar-page-content{max-width:1180px;padding:32px 30px 56px}
+        .calendar-control-bar{border:1px solid #e6ebe7;border-radius:16px;background:#fff;padding:12px;gap:8px;box-shadow:0 4px 18px rgba(35,55,45,.025)}
+        .calendar-week-card{border-radius:24px!important;box-shadow:0 14px 48px rgba(35,55,45,.065)!important;border-color:#e7ece8!important}
+        .calendar-time-grid{grid-template-columns:52px repeat(7,minmax(100px,1fr))!important}
+        .week-day-head.time-grid-head{border-left:0!important;border-bottom:0!important;background:#fff!important;padding:18px 10px!important}
+        .week-day-head.time-grid-head.today{background:#eef5f1!important;border-radius:16px 16px 0 0!important}
+        .week-time-column{border-left:1px solid rgba(70,95,80,.045)!important;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 67px,rgba(70,95,80,.07) 67px,rgba(70,95,80,.07) 68px)!important}
+        .week-time-axis,.week-time-corner{background:#fff!important;border-bottom:0!important}
+        .week-event{border-radius:12px!important;padding:9px!important;box-shadow:0 3px 10px rgba(40,65,50,.045)!important;border-left-width:2px!important}
+        .week-event.waiting{background:#edf4f0!important;border-left-color:#709585!important}
+        .week-event.status-cancelled{background:#fcebea!important;border-left-color:#d49a97!important;color:#975b59!important}
+        .week-event.status-cancelled strong,.week-event.status-cancelled small{color:#a56c69!important}
+        .calendar-day-card{background:#fff!important;border:1px solid #e7ece8!important;border-radius:24px!important;padding:12px 20px!important}
+        .clinical-agenda-row.status-cancelled{background:#fff0ef!important;border-radius:12px!important;margin:5px 0;padding:8px!important}
+        .agenda-patient-name{border:0;background:none;padding:0;font:inherit;font-size:14px;font-weight:700;color:#2f453b;cursor:pointer;text-align:left}
+        .calendar-appointment-popover{width:min(410px,92vw);border-radius:26px;background:#fff;padding:30px;box-shadow:0 24px 80px rgba(38,58,49,.15)}
+        .calendar-visit-primary{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:24px;padding:14px;border:0;border-radius:14px;background:#356b59;color:white;font-size:14px;font-weight:650;cursor:pointer}
+        .calendar-visit-primary svg:last-child{margin-left:auto}.calendar-visit-primary svg:first-child{margin-right:auto}
+        .calendar-icon-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:0;border-top:0}
+        .calendar-icon-actions>a,.calendar-icon-actions>button{display:flex;flex-direction:column;align-items:center;gap:9px;background:#f6f8f6;border-radius:14px;padding:14px 8px;color:#536d60;font-size:11px;font-weight:600;text-decoration:none;border:0;cursor:pointer}
+        .calendar-icon-actions>button:last-child{margin-left:0;color:#536d60}.calendar-icon-actions>a:hover,.calendar-icon-actions>button:hover{background:#edf3ef}
+        .calendar-quick-cancel{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:none;margin-top:20px;padding:8px;color:#ac6a65;font-size:12px;cursor:pointer}
+        .calendar-quick-error{color:#a85350!important;margin-top:12px!important}.calendar-undo{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:90vw;padding:16px 20px;background:#fff;border:1px solid #ead9d7;border-radius:18px;box-shadow:0 12px 40px rgba(40,55,45,.15);font-size:13px;color:#725651}.calendar-undo button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#356b59;cursor:pointer;font-weight:650}
+        @media(max-width:1050px){.calendar-time-grid{min-width:850px!important}.calendar-week-card{overflow-x:auto}}
         @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.calendar-page-heading h1{font-size:30px}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}}
       `}</style>
 
@@ -796,6 +850,7 @@ function AppointmentEditor({
   patients,
   focusDate,
   initialMinute,
+  nextFor,
   openingSession,
   onClose,
   onSaved,
@@ -806,19 +861,20 @@ function AppointmentEditor({
   patients: PatientOption[];
   focusDate: string;
   initialMinute?: number;
+  nextFor?: CalendarEvent;
   openingSession: boolean;
   onClose: () => void;
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
 }) {
-  const initialPatient = event?.patient_id || "";
+  const initialPatient = event?.patient_id || nextFor?.patient_id || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
-  const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? 9 * 60;
+  const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? (nextFor?athensMinutes(nextFor.scheduled_start):9 * 60);
   const initialTime = String(Math.floor(eventMinute / 60)).padStart(2, "0") + ":" + String(eventMinute % 60).padStart(2, "0");
   const [patientId, setPatientId] = useState(initialPatient);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
-  const [duration, setDuration] = useState(event ? String(eventDurationMinutes(event)) : "50");
+  const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

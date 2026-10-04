@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, Mic2, RotateCcw, ShieldCheck } from 'lucide-react';
 import Addenda from './Addenda';
+import RiskEditor,{RiskTreeRead} from './RiskTreeEditor';
 import StructuredVisitEditor from './StructuredVisitEditor';
 import VisitHistory from './VisitHistory';
 import VisitNextAppointment from './VisitNextAppointment';
@@ -16,7 +17,7 @@ import SectionDictation from '@/components/dictation/SectionDictation';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
 import { formatClinicDateTime } from '@/lib/clinic-time';
-import {activeVisitPart,finalizationBlocker,riskChoices,visitSteps,previousMseReference} from '@/lib/clinical/visit-workspace-state';
+import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference} from '@/lib/clinical/visit-workspace-state';
 
 const definitions=[
  ['interview','Ψυχιατρική συνέντευξη / συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
@@ -230,7 +231,7 @@ function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSessio
     <span>Εκτίμηση κινδύνου</span>
     {risk?<div className="completed-risk-grid">
      <RiskRead label="Αυτοκτονικός ιδεασμός" value={risk.suicidal_ideation}/>
-     <RiskRead label="Πρόθεση" value={risk.intent}/>
+     {risk.tree&&<RiskTreeRead tree={risk.tree}/>}<RiskRead label="Πρόθεση" value={risk.intent}/>
      <RiskRead label="Σχέδιο" value={risk.plan}/>
      <RiskRead label="Αυτοτραυματισμός" value={risk.self_harm}/>
      <RiskRead label="Ιστορικό απόπειρας" value={risk.attempt_history}/><RiskRead label="Κίνδυνος προς άλλους" value={risk.harm_to_others||'not_assessed'}/>
@@ -264,18 +265,6 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  {!reviewOpen&&<>{proposals.filter(p=>p.status==='proposal').slice(0,3).map(p=><button key={p.id} onClick={()=>{setReview(p);setTranscript(p.transcript);setReviewOpen(true)}}>Συνέχεια ελέγχου πρότασης · {fmt(p.created_at)}</button>)}{recoverable&&<button className="text-button" onClick={()=>{setTranscript(recoverable);setReview(undefined);setReviewOpen(true)}}>Ανάκτηση τελευταίας μεταγραφής</button>}</>}
  {reviewOpen&&<ProposalReview sessionId={sessionId} section={definition.key} title={definition.title} transcript={transcript} initial={review} current={draft.value} beforeApprove={async()=>{await draft.flush();return draft.version()}} onCancel={()=>setReviewOpen(false)} onApproved={s=>{draft.acceptServer(s.content,s.version);setReviewOpen(false);setRecoverable('');try{sessionStorage.removeItem(sessionId+':transcript:'+definition.key);sessionStorage.removeItem(`noima-proposal:${sessionId}:${definition.key}`)}catch{};void onSaved()}}/>}
  {proposals.some(p=>p.status==='approved')&&<details><summary>Προέλευση εγκεκριμένων υπαγορεύσεων</summary>{proposals.filter(p=>p.status==='approved').map(p=><div key={p.id}><small>Εγκρίθηκε {fmt(p.approved_at)}</small><p>Μεταγραφή: {p.transcript}</p><p>Εγκεκριμένο: {p.approved_text}</p></div>)}</details>}
- </div>
-}
-
-function RiskEditor({sessionId,existing,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;existing?:DemoRisk;onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
- const [riskMore,setRiskMore]=useState(false);
- const shape=(r?:DemoRisk)=>({suicidal_ideation:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',self_harm:r?.self_harm||'not_assessed',attempt_history:r?.attempt_history||'not_assessed',harm_to_others:r?.harm_to_others||'not_assessed',protective_factors:r?.protective_factors||'',clinical_note:r?.clinical_note||''});
- const [conflict,setConflict]=useState<DemoRisk|null|undefined>();
- const draft=useClinicalDraft({storageKey:sessionId+':risk',initial:shape(existing),version:existing?.version??null,write:async(risk,version)=>{const d=await demoPost({action:'save_risk',session_id:sessionId,risk,expected_version:version});return {value:shape(d.risk),version:d.risk.version as number}},onSaved,onDirty:d=>onDirtyChange('risk',d)});
- useEffect(()=>registerFlusher('risk',draft.flush),[registerFlusher,draft.flush]);
- return <div className="clinical-section risk-editor"><h3>Εκτίμηση κινδύνου *</h3><p className="risk-principle">Καταγράψτε μόνο ό,τι διερευνήθηκε σήμερα.</p><div className="risk-grid">{[['suicidal_ideation','Αυτοκτονικός ιδεασμός'],['intent','Πρόθεση'],['plan','Σχέδιο'],['self_harm','Αυτοτραυματισμός'],['attempt_history','Ιστορικό απόπειρας'],['harm_to_others','Κίνδυνος προς άλλους']].filter(([k])=>!['intent','plan'].includes(k)||draft.value.suicidal_ideation==='positive'||riskMore||draft.value[k as 'intent'|'plan']!=='not_assessed').map(([k,label])=><label key={k}>{label}<span className="risk-choice-group">{riskChoices.map(([v,t,caption])=><button type="button" key={v} title={t} aria-label={label+': '+t} aria-pressed={draft.value[k as keyof typeof draft.value]===v} className={(draft.value[k as keyof typeof draft.value]===v?'selected ':'')+(v==='positive'?'positive':'') } onClick={()=>draft.change({...draft.value,[k]:v})}>{caption}</button>)}</span></label>)}</div>{draft.value.suicidal_ideation!=='positive'&&!riskMore&&<button type="button" className="visit-text-button" onClick={()=>setRiskMore(true)}>Πρόθεση / σχέδιο · επιπλέον διερεύνηση</button>}{[['protective_factors','Προστατευτικοί παράγοντες'],['clinical_note','Κλινική σημείωση']].map(([k,label])=><label className="risk-note" key={k}>{label}<textarea value={draft.value[k as keyof typeof draft.value]} onChange={e=>draft.change({...draft.value,[k]:e.target.value})}/></label>)}<p role="status">{draft.saving?'Αποθήκευση…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:'')}</p>
- {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void onSaved().then(b=>{if(b)setConflict((b as PatientBundle).risks.find(r=>r.session_id===sessionId)||null)})}>Σύγκριση με αποθηκευμένο</button></>}
- {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη εκτίμηση</h4>{Object.entries(shape(conflict||undefined)).map(([k,v])=><p key={k}>{k}: {riskLabel(v)}</p>)}<button onClick={()=>{draft.acceptServer(shape(conflict||undefined),conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,shape(conflict||undefined),conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με τις επιλογές μου</button></div>}
  </div>
 }
 

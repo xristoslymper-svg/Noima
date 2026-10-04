@@ -52,6 +52,20 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('risk tree saves atomically with canonical fields, retains hidden notes and rejects stale or invalid writes',async()=>{
+ const t='90000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
+ const risk={suicidal_ideation:'positive',intent:'unknown',plan:'positive',harm_to_others:'not_assessed',tree:{version:1,answers:{wish:'positive',acted:'negative',ideation:'active',intent:'unknown',plan:'positive'},notes:{plan:'Test explanation'}}};
+ const query='select * from demo_session_save_risk_tree($1,$2,$3,$4)';
+ const [saved]=await sql(query,[t,s.id,JSON.stringify(risk),null]);assert.deepEqual(saved.tree.notes,risk.tree.notes);assert.equal(saved.plan,'positive');
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify(risk),null]),/stale_risk/);
+ await assert.rejects(sql(query,[a,s.id,JSON.stringify(risk),1]),/session_unavailable/);
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify({...risk,tree:{version:1,answers:{invented:'positive'},notes:{}}}),1]),/invalid_risk_tree/);
+ await assert.rejects(sql(query,[t,s.id,JSON.stringify({...risk,suicidal_ideation:'negative'}),1]),/inconsistent_risk_tree/);
+ risk.suicidal_ideation='negative';risk.tree.answers.wish='negative';const [changed]=await sql(query,[t,s.id,JSON.stringify(risk),1]);assert.equal(changed.tree.answers.plan,'positive');assert.equal(changed.tree.notes.plan,'Test explanation');
+ // Legacy writes keep the shared answers in sync and retain narrative evidence.
+ await sql('select demo_session_save_risk($1,$2,$3,2)',[t,s.id,JSON.stringify({...risk,plan:'unknown'})]);const [legacy]=await sql('select * from demo_risk_assessments where session_id=$1',[s.id]);assert.equal(legacy.tree.answers.plan,'unknown');assert.equal(legacy.tree.notes.plan,'Test explanation');
+});
+
 test('visit questionnaire assignment is scoped, idempotent and cannot move between visits',async()=>{
  const t='90000000-0000-4000-8000-000000000009';await sql('select demo_tester_bootstrap($1)',[t]);
  const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);

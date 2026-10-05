@@ -7,6 +7,7 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryContextKey,clinicDay,type Finding,type Evidence,categories} from '@/lib/clinical/summary-context';
 import {formatClinicDateTime} from '@/lib/clinic-time';
 import {evidenceText} from '@/lib/clinical/evidence-text';
+import {summaryDisplayState} from '@/lib/clinical/summary-display';
 type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;generated_at:string;mode:string;reason?:string|null;model?:string|null;stale?:boolean};
 export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychometrics,onMedications,onHistory,compact=false}:{compact?:boolean;bundle:PatientBundle;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void}){
  const [retry,setRetry]=useState(0);

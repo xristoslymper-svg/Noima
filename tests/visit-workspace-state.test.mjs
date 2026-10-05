@@ -67,4 +67,8 @@ test('non-linear workspace paths keep draft recovery reachable and URL state coh
  search=workspaceTransitionSearch(search,'summary');
  assert.equal(search,'?appointment=appt-1');
  assert.deepEqual(workspaceLocation(search),{tab:'summary',sessionId:null});
+ search=workspaceTransitionSearch('?appointment=appt-1&tab=history','sessions','draft-1',{clearAppointment:true});
+ assert.equal(search,'?tab=sessions&session=draft-1');
+ search=workspaceTransitionSearch('?appointment=appt-1&tab=sessions&session=draft-1','summary',null,{clearAppointment:true});
+ assert.equal(search,'');
 });

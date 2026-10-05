@@ -14,7 +14,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   const snapshot=latest.current;setSaving(true);setError('');
   const task=(async()=>{try{const result=await callbacks.current.write(snapshot,v.current);v.current=result.version;saved.current=JSON.stringify(result.value);
    if(JSON.stringify(latest.current)===JSON.stringify(snapshot)){latest.current=result.value;setValue(result.value);clearRecovery(storageKey)}
-   callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));await callbacks.current.onSaved();
+   callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
   }catch(e){const message=e instanceof Error?e.message:'Αποτυχία αποθήκευσης';if(/άλλαξε|Επαναφορτώστε|stale/.test(message))blocked.current=true;setError(message);callbacks.current.onDirty(true);throw e}})();
   flight.current=task;try{await task}finally{flight.current=null;setSaving(false)}
   if(JSON.stringify(latest.current)!==saved.current)return flush();

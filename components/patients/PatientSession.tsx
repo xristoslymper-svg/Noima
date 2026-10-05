@@ -150,7 +150,7 @@ export default function PatientSession({
  }
 
  if(selected){
-  return <CompletedSessionView session={selected} bundle={bundle} reload={reload} onBack={()=>onSelectSession(null)} />;
+  return <CompletedSessionView session={selected} bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onBack={()=>onSelectSession(null)} />;
  }
 
  if(selectedSessionId&&!requested){
@@ -213,7 +213,7 @@ function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:
  return <div className="completed-session-list">{sessions.map(session=><button className="completed-session-row" key={session.id} onClick={()=>onSelect(session.id)}><CheckCircle2 size={18}/><div><strong>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</strong><span>Οριστικοποιήθηκε {fmt(session.completed_at)}</span></div><span className="open-session-label">Άνοιγμα</span></button>)}</div>;
 }
 
-function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>}){
+function CompletedSessionView({session,bundle,onBack,reload,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
  const sections=bundle.sections.filter(item=>item.session_id===session.id);
  const risk=bundle.risks.find(item=>item.session_id===session.id);
  return <section className="session-workspace completed-session-view">
@@ -221,7 +221,7 @@ function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSessio
    <div><button className="session-back-button" onClick={onBack}><ArrowLeft size={15}/> Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Οριστικοποιημένη καταγραφή · διορθώσεις μέσω προσθήκης.</p></div>
    <span className="draft-updated">Ολοκληρώθηκε {fmt(session.completed_at)}</span>
   </div>
-  <Addenda bundle={bundle} sessionId={session.id} reload={reload}/><div className="completed-section-stack">
+  <Addenda bundle={bundle} sessionId={session.id} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/><div className="completed-section-stack">
    {definitions.map(([key,title])=>{
     const item=sections.find(section=>section.section_key===key);
     const approved=bundle.proposals.filter(p=>p.session_id===session.id&&p.section_key===key&&p.status==='approved');
@@ -253,8 +253,9 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  const [recoverable,setRecoverable]=useState('');
  useEffect(()=>{try{setRecoverable(sessionStorage.getItem(sessionId+':transcript:'+definition.key)||'')}catch{}},[sessionId,definition.key]);
  const draft=useClinicalDraft({storageKey:sessionId+':'+key,initial:existing?.content||'',version:existing?.version??null,write:async(content,version)=>{const d=await demoPost({action:'save_section',session_id:sessionId,section_key:definition.key,content,source:'manual',expected_version:version});return {value:d.section.content as string,version:d.section.version as number}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
- const reviewRef=useRef(false);reviewRef.current=reviewOpen;
- useEffect(()=>registerFlusher(key,async()=>{if(reviewRef.current)throw new Error('Ολοκληρώστε ή κλείστε τον έλεγχο υπαγόρευσης.');await draft.flush()}),[key,registerFlusher,draft.flush]);
+ const reviewRef=useRef(false),dictatingRef=useRef(false);reviewRef.current=reviewOpen;dictatingRef.current=dictating;
+ useEffect(()=>{const pending=dictating||reviewOpen;onDirtyChange(key+':dictation',pending);return()=>onDirtyChange(key+':dictation',false)},[key,dictating,reviewOpen,onDirtyChange]);
+ useEffect(()=>registerFlusher(key,async()=>{if(dictatingRef.current)throw new Error('Ολοκληρώστε ή κλείστε την υπαγόρευση πριν συνεχίσετε.');if(reviewRef.current)throw new Error('Ολοκληρώστε ή κλείστε τον έλεγχο υπαγόρευσης.');await draft.flush()}),[key,registerFlusher,draft.flush]);
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}
  return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
  <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder=""/>

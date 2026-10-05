@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryContextKey,validateNarrative,assertCriticalCoverage,narrativeRiskRequiresReview} from '../lib/clinical/summary-context.ts';
 import {isClinicalId} from '../lib/clinical/identity.ts';
+import {summaryDisplayState} from '../lib/clinical/summary-display.ts';
 const fixture=()=>({patient:{id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',chief_complaint:'Incomplete',note:''},sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],assessments:[],appointments:[]});
 const visit=(b,id,text)=>{b.sessions.push({id,status:'completed',completed_at:`2026-10-0${id}T09:00:00Z`,started_at:`2026-10-0${id}T08:00:00Z`});b.sections.push({id:'s'+id,session_id:id,section_key:'interview',content:text});};
 test('durable safety facts and old corrections survive six visits without canonical promotion',()=>{
@@ -84,4 +85,23 @@ test('rich longitudinal records need a useful briefing and complete sentences; s
 test('explicit unresolved severe narrative effects remain mandatory; routine monitoring and denied/resolved effects do not',()=>{
  const b=fixture();visit(b,1,'Αναφέρει σοβαρή ανεπιθύμητη ενέργεια με σύγχυση.');assert.ok(buildSummaryContext(b).findings.find(f=>f.key==='narrative-effect:section:s1').attention);
  for(const text of ['Αρνείται σοβαρές παρενέργειες.','Η σοβαρή ανεπιθύμητη ενέργεια υποχώρησε.','Παρακολούθηση ανεπιθύμητων ενεργειών.']){b.sections[0].content=text;assert.equal(buildSummaryContext(b).findings.find(f=>f.key==='narrative-effect:section:s1').attention,false);}
+});
+
+
+test('stale verified summaries keep prior synthesis but surface fresh canonical critical state',()=>{
+ const cachedFindings=[
+  {key:'briefing:0',label:'Πορεία',text:'Παλαιότερη επαληθευμένη σύνοψη.',source_ids:['old'],attention:false,origin:'synthesis'},
+  {key:'old-risk',label:'Κίνδυνος',text:'Παλιό critical state.',source_ids:['old-risk-source'],attention:true,origin:'canonical'},
+ ];
+ const cachedSources=[{id:'old',label:'Παλαιά πηγή'},{id:'old-risk-source',label:'Παλαιός κίνδυνος'}];
+ const canonicalFindings=[
+  {key:'risk',label:'Κίνδυνος',text:'Τρέχον critical state.',source_ids:['fresh-risk'],attention:true,origin:'canonical'},
+  {key:'record',label:'Τρέχουσα εικόνα',text:'Νέα μη κρίσιμη καταγραφή.',source_ids:['fresh'],attention:false,origin:'canonical'},
+ ];
+ const currentSources=[{id:'fresh-risk',label:'Τρέχων κίνδυνος'},{id:'fresh',label:'Τρέχουσα επίσκεψη'}];
+ const display=summaryDisplayState(cachedFindings,cachedSources,canonicalFindings,currentSources,true);
+ assert.deepEqual(display.findings.map(f=>f.key),['briefing:0']);
+ assert.deepEqual(display.freshCritical.map(f=>f.key),['risk']);
+ assert.equal(display.sources[0].id,'fresh-risk');
+ assert.ok(display.sources.some(s=>s.id==='old'));
 });

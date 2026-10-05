@@ -118,6 +118,9 @@ begin
  end loop;
 end $$;
 
+-- This implementation is moved into private by the wrapper loop above.
+alter function private.pilot_impl_demo_apply_due_medication_events(uuid) set search_path = '';
+
 -- The summary cache was created before pilot ownership existed. The generic
 -- table hardening above intentionally grants read-only access; this derived
 -- cache also needs owner-scoped writes from the authenticated server client.

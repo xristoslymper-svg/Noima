@@ -100,8 +100,7 @@ async function handlePOST(req:Request){
    mode='canonical';const safe=error instanceof Error?error.message:'';
    if(safe==='stale_generation'){
     const freshBundle=await patientBundle(b.tester,b.patient_id);const freshContext=buildSummaryContext(freshBundle);const freshHash=await summaryContextHash(freshBundle,freshContext.day);
-    const freshFindings=canonicalSummaryFindings(freshContext);assertCriticalCoverage(freshFindings,freshContext);
-    return Response.json({findings:freshFindings,sources:freshContext.sources,context_hash:freshHash,as_of:freshContext.day,generated_at:new Date().toISOString(),mode:'canonical',reason:'stale_generation',model:null},{headers:{'Cache-Control':'no-store'}});
+    return Response.json({error:'Ο φάκελος άλλαξε κατά την ενημέρωση της σύνοψης.',code:'stale_context',context_hash:freshHash},{status:409,headers:{'Cache-Control':'no-store'}});
    }
    reason=/^(provider_unavailable|record_exceeds_synthesis_limit|provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed|summary_cache_failed)$/.test(safe)?safe:'synthesis_not_verified';
   }

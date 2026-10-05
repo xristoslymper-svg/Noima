@@ -161,6 +161,24 @@ test('calendar edits reject stale workspaces, scope future changes, and cancella
  assert.equal((await sql('select status from demo_calendar_events where id=$1',[cancelAgain.id]))[0].status,'cancelled');
 });
 
+test('non-linear calendar starts never steal an already-linked draft and can attach an unlinked draft',async()=>{
+ const t='80000000-0000-4000-8000-000000000004';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p1}]=await sql("select (demo_patient_create_v2($1,'TEST Flow A')).id id",[t]);
+ const [{event:e1}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-01 09:00 Europe/Athens','2099-12-01 09:50 Europe/Athens','initial_assessment') event",[t,p1]);
+ const [{event:e2}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-01 11:00 Europe/Athens','2099-12-01 11:50 Europe/Athens','follow_up') event",[t,p1]);
+ const [started]=await sql('select * from demo_calendar_start_session($1,$2)',[t,e1.id]);
+ assert.equal((await sql('select session_id from demo_calendar_events where id=$1',[e1.id]))[0].session_id,started.id);
+ await assert.rejects(sql('select * from demo_calendar_start_session($1,$2)',[t,e2.id]),/draft_linked_elsewhere/);
+ const [untouched]=await sql('select session_id,status from demo_calendar_events where id=$1',[e2.id]);assert.equal(untouched.session_id,null);assert.equal(untouched.status,'scheduled');
+
+ const [{id:p2}]=await sql("select (demo_patient_create_v2($1,'TEST Flow B')).id id",[t]);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p2]);
+ const [{event:e3}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-02 09:00 Europe/Athens','2099-12-02 09:50 Europe/Athens','initial_assessment') event",[t,p2]);
+ const [linked]=await sql('select * from demo_calendar_start_session($1,$2)',[t,e3.id]);
+ assert.equal(linked.id,draft.id);
+ assert.equal((await sql('select session_id from demo_calendar_events where id=$1',[e3.id]))[0].session_id,draft.id);
+});
+
 test('a series editor rejects changes to another instance and rolls back conflicts without altering any member',async()=>{
  const t='80000000-0000-4000-8000-000000000003';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
  const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-11-01 12:00 Europe/Athens','2099-11-01 12:50 Europe/Athens','follow_up',1,3) as series",[t,p.id]);

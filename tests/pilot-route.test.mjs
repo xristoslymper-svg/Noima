@@ -18,12 +18,20 @@ test('verified ownership replaces body/query IDs and concurrent requests retain 
  const [a,b]=await Promise.all([handler(request('forged-A')),handler(request('forged-B'))]);
  for(const response of [a,b]){assert.equal(response.headers.get('cache-control'),'private, no-store');assert.deepEqual(await response.json(),{body:{tester:'owned',action:'save'},tester:'owned',token:'verified-token'})}
 });
-test('missing login/membership and cross-origin mutations fail before a clinical handler runs',async()=>{
+test('missing login/membership and browser cross-site mutations fail before a clinical handler runs',async()=>{
  let calls=0;const handler=async()=>{calls++;return Response.json({ok:true})};
  assert.equal((await wrapper({user:null}).withPilot(handler)(request())).status,401);
  assert.equal((await wrapper({identity:null}).withPilot(handler)(request())).status,403);
  assert.equal((await wrapper().withPilot(handler)(new Request('https://noima.test/api/patients',{method:'POST',headers:{Origin:'https://attacker.test'}}))).status,403);
+ assert.equal((await wrapper().withPilot(handler)(new Request('https://noima.test/api/patients',{method:'POST',headers:{'Sec-Fetch-Site':'cross-site'}}))).status,403);
  assert.equal(calls,0);
+});
+test('trusted server mutations without browser origin metadata remain available',async()=>{
+ const {withPilot}=wrapper();
+ const handler=withPilot(async r=>Response.json({body:await r.json(),tester:new URL(r.url).searchParams.get('tester')}));
+ const response=await handler(new Request('https://noima.test/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:'forged',patient_id:'patient'})}));
+ assert.equal(response.status,200);
+ assert.deepEqual(await response.json(),{body:{tester:'owned',patient_id:'patient'},tester:'owned'});
 });
 test('public questionnaire permission is limited to token open/submit; assignment still needs login',async()=>{
  const {withPilot}=wrapper({user:null});let calls=0;const handler=withPilot(async()=>{calls++;return Response.json({ok:true})},true);

@@ -177,6 +177,12 @@ test('non-linear calendar starts never steal an already-linked draft and can att
  const [linked]=await sql('select * from demo_calendar_start_session($1,$2)',[t,e3.id]);
  assert.equal(linked.id,draft.id);
  assert.equal((await sql('select session_id from demo_calendar_events where id=$1',[e3.id]))[0].session_id,draft.id);
+
+ const [{id:p3}]=await sql("select (demo_patient_create_v2($1,'TEST Flow C')).id id",[t]);
+ await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p3]);
+ const [{event:e4}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-03 09:00 Europe/Athens','2099-12-03 09:50 Europe/Athens','follow_up') event",[t,p3]);
+ await assert.rejects(sql('select * from demo_calendar_start_session($1,$2)',[t,e4.id]),/open_draft_conflict/);
+ assert.equal((await sql('select session_id from demo_calendar_events where id=$1',[e4.id]))[0].session_id,null);
 });
 
 test('a series editor rejects changes to another instance and rolls back conflicts without altering any member',async()=>{

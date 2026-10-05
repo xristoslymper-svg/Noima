@@ -22,6 +22,12 @@ async function handlePOST(request: Request) {
         { status: 409 },
       );
     }
+    if (message.includes("open_draft_conflict")) {
+      return Response.json(
+        { error: "Υπάρχει ήδη ανοιχτή επίσκεψη διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.", code: "open_draft_conflict" },
+        { status: 409 },
+      );
+    }
     if (message.includes("appointment_unavailable")) {
       return Response.json({ error: "Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.", code: "appointment_unavailable" }, { status: 409 });
     }

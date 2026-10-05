@@ -34,7 +34,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
   }
   throw new Error('unexpected_request:'+path);
  };
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle,request:apiRequest}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,Request,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle,request:apiRequest}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 const getRequest=()=>new Request('http://localhost/api/clinical/summary?tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1');

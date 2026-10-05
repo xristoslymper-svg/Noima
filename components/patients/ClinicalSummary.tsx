@@ -7,10 +7,9 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryContextKey,clinicDay,type Finding,type Evidence,categories} from '@/lib/clinical/summary-context';
 import {formatClinicDateTime} from '@/lib/clinic-time';
 import {evidenceText} from '@/lib/clinical/evidence-text';
-type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;generated_at:string;mode:string;reason?:string|null;model?:string|null;stale?:boolean};
+type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;generated_at:string;mode:string;reason?:string|null;model?:string|null};
 export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychometrics,onMedications,onHistory,compact=false}:{compact?:boolean;bundle:PatientBundle;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void}){
  const [retry,setRetry]=useState(0);
- const [regenerate,setRegenerate]=useState(0);
  const inputKey=summaryContextKey(inputBundle,clinicDay());
  const [snapshot,setSnapshot]=useState<{inputKey:string;bundle:PatientBundle}|null>(null);
  const bundle=snapshot?.inputKey===inputKey?snapshot.bundle:inputBundle;
@@ -29,18 +28,12 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
    const recordData=await recordResponse.json();if(!recordResponse.ok||!recordData.bundle)throw new Error('record_unavailable');
    const fresh=recordData.bundle as PatientBundle;const freshKey=summaryContextKey(fresh,day);
    if(active)setSnapshot({inputKey,bundle:fresh});
-   const hash=await summaryContextHash(fresh,day);
-   const r=regenerate>0
-    ?await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})})
-    :await fetch('/api/clinical/summary?patient_id='+encodeURIComponent(fresh.patient.id),{cache:'no-store',signal:controller.signal});
-   const data=await r.json();
-   if(!r.ok){if(r.status===404&&!regenerate){if(active){setResult(null);setState('ready')}void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});return}throw new Error('summary_unavailable')}
-   if(active){setResult({key:freshKey,data:{...data,stale:data.context_hash!==hash}});setState('ready');if(regenerate)setRegenerate(0)}
-   if(!regenerate&&data.context_hash!==hash)void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});
+   const hash=await summaryContextHash(fresh,day);const r=await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})});
+   const data=await r.json();if(!r.ok||data.context_hash!==hash)throw new Error('stale_or_unavailable');if(active){setResult({key:freshKey,data});setState('ready')}
   })().catch(()=>{if(active){setResult(null);setState('unavailable')}});
   return()=>{active=false;controller.abort()};
  // key is the complete canonical record including date and policy version.
- },[inputKey,retry,day,regenerate]);
+ },[inputKey,retry,day]);
  const current=result?.key===key?result.data:null;
  const findings=current?.findings||canonicalSummaryFindings(context);
  const sources=current?.sources||context.sources;
@@ -49,7 +42,7 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
  const order=[...categories].sort((a,b)=>{const priority:Record<string,number>={'Χρειάζεται επιβεβαίωση':0,'Κίνδυνος':1,'Παρενέργειες':2,'Τρέχουσα εικόνα':3,'Πορεία':4,'Αγωγή':5,'Ψυχομετρικά':6,'Πλάνο':7,'Σημαντικό ιστορικό':8};return priority[a]-priority[b]});
  const sourceHref=(source:Evidence)=>source.target==='calendar'?'/calendar':'/patients/demo/'+bundle.patient.id+'?tab='+source.target+(source.session_id?'&session='+source.session_id:'');
  return <section className={compact?"clinical-summary summary-compact":"clinical-summary"}>
-  <header className="clinical-summary-head"><div><h2>Σύνοψη</h2><p>{current?`${current.mode==='synthesis'?'Σύνθεση με AI':'Καταγραφές φακέλου · χωρίς AI'}${current.stale?' · ενημερώνεται':''} · ${formatClinicDateTime(current.generated_at)}`:state==='loading'?'Φόρτωση σύνοψης…':state==='ready'?'Η πρώτη σύνοψη προετοιμάζεται στο παρασκήνιο':'Η σύνοψη δεν είναι προσωρινά διαθέσιμη'}</p><button className="summary-refresh" disabled={state==='loading'} onClick={()=>setRegenerate(n=>n+1)}>Ανανέωση σύνοψης</button></div>{!compact&&next&&<div className="summary-next-compact"><strong>{formatClinicDateTime(next.scheduled_start)}</strong><span>{next.session_id?'Συνδεδεμένη συνεδρία':'Επόμενο ραντεβού'}</span></div>}</header>
+  <header className="clinical-summary-head"><div><h2>Σύνοψη</h2><p>{current?`${current.mode==='synthesis'?'Σύνθεση με AI':'Καταγραφές φακέλου · χωρίς AI'} · ${formatClinicDateTime(current.generated_at)}`:state==='loading'?'Ενημέρωση σύνοψης…':'Η σύνοψη δεν είναι προσωρινά διαθέσιμη'}</p><button className="summary-refresh" disabled={state==='loading'} onClick={()=>setRetry(n=>n+1)}>Ανανέωση σύνοψης</button></div>{!compact&&next&&<div className="summary-next-compact"><strong>{formatClinicDateTime(next.scheduled_start)}</strong><span>{next.session_id?'Συνδεδεμένη συνεδρία':'Επόμενο ραντεβού'}</span></div>}</header>
   <div className="summary-findings">{findings.some(f=>f.origin==='synthesis')&&<section className="summary-category summary-briefing"><h3>Πριν τη σημερινή επίσκεψη</h3>{findings.filter(f=>f.origin==='synthesis').map(f=><article key={f.key} className="summary-finding"><span className="summary-finding-dot" aria-hidden="true"/><div><p>{f.text}</p>{f.source_ids.length>0&&<details className="summary-evidence"><summary>{f.source_ids.length} {f.source_ids.length===1?'πηγή':'πηγές'}</summary><ul>{f.source_ids.map(id=>{const source=sources.find(s=>s.id===id);return source?<li key={id}>{compact?<Link href={sourceHref(source)}>{source.label}</Link>:<button onClick={()=>setEvidence(source)}>{source.label}</button>}</li>:null})}</ul></details>}</div></article>)}</section>}{order.map(category=>{const group=findings.filter(f=>f.origin!=='synthesis'&&f.label===category);if(!group.length)return null;return <section className="summary-category" key={category}><h3>{category}</h3>{group.map(f=><article key={f.key} className={f.attention?'summary-finding attention':'summary-finding'}><span className="summary-finding-dot" aria-hidden="true"/><div><p>{f.text}</p>{f.source_ids.length>0&&<details className="summary-evidence"><summary>{f.source_ids.length} {f.source_ids.length===1?'πηγή':'πηγές'}</summary><ul>{f.source_ids.map(id=>{const source=sources.find(s=>s.id===id);return source?<li key={id}>{compact?<Link href={sourceHref(source)}>{source.label}</Link>:<button onClick={()=>setEvidence(source)}>{source.label}</button>}</li>:null})}</ul></details>}</div></article>)}</section>})}</div>
   {!findings.some(f=>f.origin==='synthesis'||f.label==='Τρέχουσα εικόνα')&&<p className="summary-empty">Δεν υπάρχει διαθέσιμη ολοκληρωμένη καταγραφή της τελευταίας κλινικής εικόνας. Πρόχειρες επισκέψεις δεν περιλαμβάνονται.</p>}
   {compact&&<Link className="summary-full-link" href={'/patients/demo/'+bundle.patient.id+'?tab=summary'}>Πλήρης σύνοψη & πηγές →</Link>}

@@ -8,7 +8,7 @@ import {isClinicalId} from '../lib/clinical/identity.ts';
 const code=ts.transpileModule(await readFile('app/api/clinical/summary/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const fixture=()=>({patient:{id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',chief_complaint:'Fictional'},sessions:[{id:'s',status:'completed',completed_at:'2026-10-03T09:00:00Z'}],sections:[{id:'n',session_id:'s',section_key:'plan',content:'Continue old medication.'}],risks:[{session_id:'s',suicidal_ideation:'unknown',intent:'not_assessed',plan:'not_assessed',self_harm:'unknown',attempt_history:'positive'}],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[{id:'a',session_id:'s',kind:'correction',content:'The old continuation plan is withdrawn.',created_at:'2026-10-03'}],assessments:[{id:'p',instrument:'PHQ-9',status:'completed',score:9,item9_review:true,item9_reviewed_at:null,created_at:'2026-10-03'}],appointments:[]});
 function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'}){
- const module={exports:{}};const sandbox={module,exports:module.exports,Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle}}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle}}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 test('provider failure and unsupported claims return canonical facts, never obsolete narrative',async()=>{
@@ -17,7 +17,7 @@ test('provider failure and unsupported claims return canonical facts, never obso
  }
 });
 test('one unsupported finding rejects entire synthesis, not silent filtering',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const f=async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Τρέχουσα εικόνα',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]},{label:'Πλάνο',quotes:[{source_id:'bogus',quote:'Unsupported recommendation.'}]}]})}]}]});
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const f=async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{text:'Sleep is better.',source_ids:['section:n']},{text:'Unsupported recommendation.',source_ids:['bogus']}]})}]}]});
  const d=await (await route(b,f).POST(request())).json();assert.equal(d.mode,'canonical');assert.ok(!d.findings.some(x=>x.origin==='synthesis'));
 });
 test('stale hash conflicts before provider call; database errors fail closed',async()=>{
@@ -27,6 +27,30 @@ test('seeded ID succeeds without configured provider and real-data mode is denie
  const r=await route(fixture(),null,{}).POST(request());assert.equal(r.status,200);assert.equal((await r.json()).mode,'canonical');assert.equal((await route(fixture(),null,{CLINICAL_DATA_MODE:'real'}).POST(request())).status,403);
 });
 test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Τρέχουσα εικόνα',quotes:[{source_id:'section:n',quote:'Sleep is better.'}]}]})}]}]})});
- const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,1);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,2);assert.notEqual(changed.context_hash,first.context_hash);
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})});
+ const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
+});
+
+const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});
+test('valid IDs alone never establish grounding: verifier rejection, missing and duplicated verdicts fail closed',async()=>{
+ const b=fixture();b.addenda=[];
+ for(const checks of [[{key:'briefing:0',supported:false,issue:'uncertainty'}],[],[{key:'wrong',supported:true,issue:'none'}],[{key:'briefing:0',supported:true,issue:'none'},{key:'briefing:0',supported:true,issue:'none'}]]){
+ let calls=0;const handler=route(b,async()=>++calls===1?response({findings:[{text:'Confirmed bipolar diagnosis without uncertainty.',source_ids:['section:n']}]}):response({checks}));
+ const d=await (await handler.POST(request())).json();assert.equal(d.mode,'canonical');assert.equal(d.reason,'grounding_not_verified');assert.ok(!d.findings.some(f=>f.origin==='synthesis'));
+ }
+});
+test('provider receives the full source contract; verification sees only cited evidence plus canonical/correction safeguards',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';let calls=0;const handler=route(b,async(u,o)=>{
+ const input=JSON.parse(JSON.parse(o.body).input);if(++calls===1){assert.ok(input.sources.some(s=>s.id==='section:n'));assert.ok(input.sources.some(s=>s.id==='assessment:p'));return response({findings:[{text:'Sleep is better.',source_ids:['section:n']}]});}
+ assert.deepEqual(input.findings[0].sources.map(s=>s.id),['section:n']);assert.ok(input.canonical.some(s=>s.id==='assessment:p'));return response({checks:[{key:'briefing:0',supported:true,issue:'none'}]});
+ });assert.equal((await (await handler.POST(request())).json()).mode,'synthesis');
+});
+test('successful synthesis appends only genuine safety warnings, without canonical medication/effect/chart dump',async()=>{
+ const b=fixture();b.addenda=[];b.risks=[{session_id:'s',suicidal_ideation:'negative',intent:'not_assessed',plan:'not_assessed',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative'}];b.assessments=[];b.medications=[{id:'m',status:'active',medication_name:'Escitalopram',dose:10}];b.sections[0].content='Mild nausea nearly resolved.';
+ let calls=0;const d=await(await route(b,async()=>++calls===1?response({findings:[{text:'Reports mild nausea nearly resolved.',source_ids:['section:n']}]}):response({checks:[{key:'briefing:0',supported:true,issue:'none'}]})).POST(request())).json();assert.equal(d.mode,'synthesis');assert.equal(d.findings.length,1);assert.ok(d.findings.every(f=>f.origin==='synthesis'));
+});
+test('incomplete or empty output cannot be cached as successful synthesis',async()=>{
+ for(const payload of [{status:'incomplete',output:[{content:[{type:'output_text',text:JSON.stringify({findings:[]})}]}]},{output:[{content:[{type:'output_text',text:JSON.stringify({findings:[]})}]}]}]){
+ const d=await(await route(fixture(),async()=>Response.json(payload)).POST(request())).json();assert.equal(d.mode,'canonical');assert.ok(['incomplete_output','invalid_count'].includes(d.reason));
+ }
 });

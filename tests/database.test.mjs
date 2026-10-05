@@ -548,3 +548,14 @@ test('mailboxes and questionnaire deliveries isolate owners and prevent duplicat
  await asUser(a,()=>sql('select pilot_mailbox_disconnect()'));
  assert.equal((await asUser(a,()=>sql('select pilot_mailbox_get() mailbox')))[0].mailbox,null);
 });
+
+test('Dokimos seed repair restores timeline without changing the projector or cancelled-event semantics',async()=>{
+ const t='0e11a456-79ac-4540-975e-59656ed6c588',p='5e944898-edd9-40da-b6b8-5967016173dd',m='76d1ca3e-e520-4043-82a8-3a85cdd356ca';
+ await sql("insert into demo_patients(id,tester_id,first_name,last_name) values($1,$2,'Δόκιμος','Α')",[p,t]);
+ await sql("insert into demo_medications(id,tester_id,patient_id,medication_name,dose,unit,frequency,status,started_at,effective_from) values($1,$2,$3,'Escitalopram',10,'mg','1 φορά το πρωί','active','2026-09-24','2026-10-01')",[m,t,p]);
+ assert.equal((await sql("select demo_medication_state($1,'2026-10-05') s",[m]))[0].s.status,'cancelled');
+ const repair=await readFile('docs/repair-dokimos-medication.sql','utf8');await db.exec(repair);await db.exec(repair);
+ const state=async d=>(await sql('select demo_medication_state($1,$2::date) s',[m,d]))[0].s;
+ assert.equal((await state('2026-09-23')).status,'planned');assert.equal((await state('2026-09-24')).dose,5);assert.equal((await state('2026-10-01')).dose,10);assert.equal((await state('2026-10-05')).status,'active');
+ assert.equal((await sql('select count(*)::int n from demo_medication_events where medication_id=$1',[m]))[0].n,2);assert.equal((await sql('select plan_version from demo_medications where id=$1',[m]))[0].plan_version,2);
+});

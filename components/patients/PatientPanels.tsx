@@ -53,16 +53,21 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  </section>
 }
 
-export function MedicationsPanel({bundle,onAdd,reload}:{bundle:PatientBundle;onAdd:()=>void;reload:()=>Promise<unknown>}){
+export function MedicationsPanel({bundle,onAdd,reload,beforeNavigate}:{bundle:PatientBundle;onAdd:()=>void;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>}){
+ const flushers=useRef(new Map<string,()=>Promise<void>>()),dirty=useRef(new Set<string>());
+ const registerFlusher=useCallback((key:string,flush:()=>Promise<void>)=>{flushers.current.set(key,flush);return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)}},[]);
+ const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value)dirty.current.add(key);else dirty.current.delete(key)},[]);
+ useEffect(()=>{if(!beforeNavigate)return;const flush=async()=>{await Promise.all([...flushers.current.values()].map(fn=>fn()))};beforeNavigate.current=flush;return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null}},[beforeNavigate]);
+ useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty.current.size)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[]);
  return <section className="panel-stack medication-record">
   <div className="panel-heading medication-record-head">
    <div><span className="kicker">ΑΓΩΓΗ</span><h2>Αγωγή</h2></div>
    <button className="record compact" onClick={onAdd}><Plus size={15}/> Προσθήκη αγωγής</button>
   </div>
-  <MedicationTable bundle={bundle} reload={reload} editableEffects/>
+  <MedicationTable bundle={bundle} reload={reload} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   <details className="medication-history-details">
    <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
-   <MedicationTimeline bundle={bundle} reload={reload}/>
+   <MedicationTimeline bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   </details>
  </section>
 }

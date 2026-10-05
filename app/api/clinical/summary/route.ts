@@ -45,7 +45,7 @@ async function readCached(tester:string,patient:string){
 async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[]){
  await request('demo_clinical_summary_cache?on_conflict=tester_id,patient_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:new Date().toISOString()})});
 }
-export async function precomputeClinicalSummary(tester:string,patient:string,force=false){
+async function precomputeClinicalSummary(tester:string,patient:string,force=false){
  const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
  if(!force){const existing=await readCached(tester,patient);if(existing?.context_hash===context_hash&&existing.policy_version===SUMMARY_POLICY_VERSION)return existing;}
  if(!process.env.OPENAI_API_KEY)throw new Error('provider_unavailable');

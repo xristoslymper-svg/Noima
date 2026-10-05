@@ -24,6 +24,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
  const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
+const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});
 test('provider failure and unsupported claims return canonical facts, never obsolete narrative',async()=>{
  for(const f of [async()=>{throw Error('network')},async()=>new Response('',{status:503}),async()=>Response.json({output:[{content:[{type:'output_text',text:'invalid JSON'}]}]}),async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Ψυχομετρικά',text:'Item 9 reviewed',source_ids:['assessment:p'],attention:false}]})}]}]})]){
   const r=await route(fixture(),f).POST(request());assert.equal(r.status,200);const d=await r.json();assert.equal(d.mode,'canonical');assert.ok(d.findings.some(x=>x.key==='review:p'&&x.attention));assert.ok(!d.findings.some(x=>x.text.includes('Continue old medication.')));assert.ok(d.findings.some(x=>x.text.includes('withdrawn')));
@@ -47,11 +48,10 @@ test('stale generation claims cannot commit over a newer requested context',asyn
 });
 
 test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})});
- const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis',JSON.stringify(first));assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const db={};const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})},{OPENAI_API_KEY:'local-fixture'},db);
+ const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis',JSON.stringify({first,calls,dbCalls:db.calls}));assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
 });
 
-const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});
 test('valid IDs alone never establish grounding: verifier rejection, missing and duplicated verdicts fail closed',async()=>{
  const b=fixture();b.addenda=[];
  for(const checks of [[{key:'briefing:0',supported:false,issue:'uncertainty'}],[],[{key:'wrong',supported:true,issue:'none'}],[{key:'briefing:0',supported:true,issue:'none'},{key:'briefing:0',supported:true,issue:'none'}]]){

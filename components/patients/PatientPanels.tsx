@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';

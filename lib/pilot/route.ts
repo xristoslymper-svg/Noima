@@ -4,8 +4,12 @@ import { pilotScope } from './request-scope';
 // Verify the cookie with Auth; never authorize from a supplied tester ID.
 export function withPilot(handler:(request:Request)=>Promise<Response>, publicAssessment=false) {
   return async (request:Request):Promise<Response> => {
-    if(request.method!=='GET' && request.headers.get('origin') && request.headers.get('origin')!==new URL(request.url).origin)
-      return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});
+    if(request.method!=='GET') {
+      const origin=request.headers.get('origin');
+      const fetchSite=request.headers.get('sec-fetch-site');
+      if((origin&&origin!==new URL(request.url).origin)||fetchSite==='cross-site')
+        return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});
+    }
     let body:Record<string,unknown>|null=null;
     if (request.headers.get('content-type')?.includes('application/json')) {
       const parsed=await request.clone().json().catch(()=>null);

@@ -35,7 +35,7 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
     :await fetch('/api/clinical/summary?patient_id='+encodeURIComponent(fresh.patient.id),{cache:'no-store',signal:controller.signal});
    const data=await r.json();
    if(!r.ok){if(r.status===404&&!regenerate){if(active){setResult(null);setState('ready')}void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});return}throw new Error('summary_unavailable')}
-   if(active){setResult({key:freshKey,data:{...data,stale:data.context_hash!==hash}});setState('ready')}
+   if(active){setResult({key:freshKey,data:{...data,stale:data.context_hash!==hash}});setState('ready');if(regenerate)setRegenerate(0)}
    if(!regenerate&&data.context_hash!==hash)void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});
   })().catch(()=>{if(active){setResult(null);setState('unavailable')}});
   return()=>{active=false;controller.abort()};

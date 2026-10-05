@@ -22,7 +22,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'}){
   }
   throw Error('unexpected_db_method:'+method);
  }
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:dbRequest}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,Request,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:dbRequest}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const tester='668a6cc0-1692-4c17-a807-c84d09e9f02e',patient='61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1';
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester,patient_id:patient,...body})});

@@ -25,7 +25,7 @@ async function handleGET(request:Request){
 }
 async function handlePOST(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
- const body=await request.json().catch(()=>({})); const tester=testerOf(body.tester); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
+ const body=await request.json().catch(()=>({})); const tester=testerOf(body.tester); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400}); after(()=>Promise.resolve());
  try{
 
   switch(body.action){

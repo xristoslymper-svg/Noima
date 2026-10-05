@@ -39,7 +39,7 @@ export async function POST(request:Request){
  if(action==='change'){
   const current=String(b.current_password||'');
   if(!current||current.length>128)return reply({error:'Συμπληρώστε τον τωρινό κωδικό.'},400);
-  const {error}=await client.auth.updateUser({password,current_password:current});
+  const {error}=await client.auth.updateUser({password,currentPassword:current});
   return error?reply({error:'Ο κωδικός δεν άλλαξε. Ελέγξτε τον τωρινό κωδικό και τις απαιτήσεις ασφαλείας.'},400):reply({ok:true});
  }
 

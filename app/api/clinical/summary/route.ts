@@ -1,5 +1,5 @@
 import { withPilot } from '@/lib/pilot/route';
-import {patientBundle,request} from '@/lib/patients/demo-runtime';
+import {patientBundle,request,rpc} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,SUMMARY_POLICY_VERSION,type Finding,type Evidence} from '@/lib/clinical/summary-context';
 export const runtime='nodejs';
@@ -42,19 +42,29 @@ async function readCached(tester:string,patient:string){
  const rows=cachedRows(await request(`demo_clinical_summary_cache?select=*&tester_id=eq.${encodeURIComponent(tester)}&patient_id=eq.${encodeURIComponent(patient)}&limit=1`));
  return rows[0]||null;
 }
-async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[],started_at:string){
- const row={tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:started_at};
- // First insert only when no cache exists. Then atomically replace only a cache
- // produced by a job that started earlier. A slower old job can never overwrite
- // a newer generation that has already committed.
- await request('demo_clinical_summary_cache?on_conflict=tester_id,patient_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(row)});
- await request(`demo_clinical_summary_cache?tester_id=eq.${encodeURIComponent(tester)}&patient_id=eq.${encodeURIComponent(patient)}&updated_at=lt.${encodeURIComponent(started_at)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(row)});
- return readCached(tester,patient);
+async function claimGeneration(tester:string,patient:string,context_hash:string){
+ await rpc('demo_clinical_summary_request',{p_tester:tester,p_patient:patient,p_context_hash:context_hash});
+}
+async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[]){
+ const committed=await rpc('demo_clinical_summary_commit',{
+  p_tester:tester,
+  p_patient:patient,
+  p_context_hash:context_hash,
+  p_findings:result.findings,
+  p_sources:sources,
+  p_generated_at:result.generated_at,
+  p_model:model,
+  p_policy_version:SUMMARY_POLICY_VERSION,
+ });
+ if(committed!==true)throw new Error('stale_generation');
+ const persisted=await readCached(tester,patient);
+ if(!persisted||persisted.context_hash!==context_hash)throw new Error('summary_cache_failed');
+ return persisted;
 }
 async function precomputeClinicalSummary(tester:string,patient:string,force=false){
- const started_at=new Date().toISOString();
  const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
  if(!force){const existing=await readCached(tester,patient);if(existing?.context_hash===context_hash&&existing.policy_version===SUMMARY_POLICY_VERSION)return existing;}
+ await claimGeneration(tester,patient,context_hash);
  if(!process.env.OPENAI_API_KEY)throw new Error('provider_unavailable');
  if(JSON.stringify({sources:context.sources,corrections:context.layers.corrections}).length>180000)throw new Error('record_exceeds_synthesis_limit');
  const result=await generate(context);
@@ -62,7 +72,7 @@ async function precomputeClinicalSummary(tester:string,patient:string,force=fals
  // Never persist a synthesis that no longer represents the canonical record.
  const latestBundle=await patientBundle(tester,patient);const latestContext=buildSummaryContext(latestBundle);const latestHash=await summaryContextHash(latestBundle,latestContext.day);
  if(latestHash!==context_hash)throw new Error('stale_generation');
- const persisted=await persistVerified(tester,patient,context_hash,result,context.sources,started_at);
+ const persisted=await persistVerified(tester,patient,context_hash,result,context.sources);
  if(!persisted)throw new Error('summary_cache_failed');
  if(persisted.context_hash!==context_hash)throw new Error('stale_generation');
  return persisted;

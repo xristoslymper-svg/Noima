@@ -44,11 +44,10 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
  },[inputKey,retry,day,regenerate]);
  const current=result?.key===key?result.data:null;
  const canonical=canonicalSummaryFindings(context);
- const currentCritical=canonical.filter(f=>f.attention);
- const findings=current?.stale
-  ?(currentCritical.length?canonical:current.findings.filter(f=>f.origin==='synthesis'))
-  :(current?.findings||canonical);
- const sources=current?.stale&&currentCritical.length?context.sources:(current?.sources||context.sources);
+ const display=summaryDisplayState(current?.findings||null,current?.sources||null,canonical,context.sources,Boolean(current?.stale));
+ const findings=display.findings;
+ const staleCritical=display.freshCritical;
+ const sources=display.sources;
  const next=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>Date.now()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0];
  function navigate(source:Evidence){setEvidence(null);if(source.target==='sessions')onSessions(source.session_id);else if(source.target==='medications')onMedications();else if(source.target==='psychometrics')onPsychometrics();else if(source.target==='history')onHistory();else window.location.href='/calendar';}
  const order=[...categories].sort((a,b)=>{const priority:Record<string,number>={'Χρειάζεται επιβεβαίωση':0,'Κίνδυνος':1,'Παρενέργειες':2,'Τρέχουσα εικόνα':3,'Πορεία':4,'Αγωγή':5,'Ψυχομετρικά':6,'Πλάνο':7,'Σημαντικό ιστορικό':8};return priority[a]-priority[b]});

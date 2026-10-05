@@ -1,5 +1,12 @@
 -- Finalize summary-cache permissions after pilot ownership helpers exist.
 -- This migration is idempotent and reconciles fresh installs with production.
+-- Remove an abandoned RPC-based generation guard if it was applied remotely;
+-- the production implementation uses canonical hash re-check + generation start time.
+
+drop function if exists public.demo_clinical_summary_commit(uuid,uuid,text,jsonb,jsonb,timestamptz,text,integer);
+drop function if exists public.demo_clinical_summary_request(uuid,uuid,text);
+drop table if exists private.demo_clinical_summary_requests;
+
 
 alter table public.demo_clinical_summary_cache enable row level security;
 revoke all on public.demo_clinical_summary_cache from public, anon;

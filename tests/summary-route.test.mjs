@@ -8,9 +8,25 @@ import {isClinicalId} from '../lib/clinical/identity.ts';
 const code=ts.transpileModule(await readFile('app/api/clinical/summary/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const fixture=()=>({patient:{id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',chief_complaint:'Fictional'},sessions:[{id:'s',status:'completed',completed_at:'2026-10-03T09:00:00Z'}],sections:[{id:'n',session_id:'s',section_key:'plan',content:'Continue old medication.'}],risks:[{session_id:'s',suicidal_ideation:'unknown',intent:'not_assessed',plan:'not_assessed',self_harm:'unknown',attempt_history:'positive'}],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[{id:'a',session_id:'s',kind:'correction',content:'The old continuation plan is withdrawn.',created_at:'2026-10-03'}],assessments:[{id:'p',instrument:'PHQ-9',status:'completed',score:9,item9_review:true,item9_reviewed_at:null,created_at:'2026-10-03'}],appointments:[]});
 function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'}){
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle}}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ let cache=null;
+ async function dbRequest(path,init={}){
+  if(!path.startsWith('demo_clinical_summary_cache?'))throw Error('unexpected_db_request:'+path);
+  const method=init.method||'GET';
+  if(method==='GET')return cache?[cache]:[];
+  const row=init.body?JSON.parse(init.body):null;
+  if(method==='POST'){if(!cache)cache=row;return null}
+  if(method==='PATCH'){
+   const match=path.match(/updated_at=lt\.([^&]+)/);const cutoff=match?decodeURIComponent(match[1]):'';
+   if(cache&&Date.parse(cache.updated_at)<Date.parse(cutoff))cache=row;
+   return null;
+  }
+  throw Error('unexpected_db_method:'+method);
+ }
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:dbRequest}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
-const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
+const tester='668a6cc0-1692-4c17-a807-c84d09e9f02e',patient='61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1';
+const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester,patient_id:patient,...body})});
+const getRequest=()=>new Request('http://localhost/api/clinical/summary?tester='+tester+'&patient_id='+patient);
 test('provider failure and unsupported claims return canonical facts, never obsolete narrative',async()=>{
  for(const f of [async()=>{throw Error('network')},async()=>new Response('',{status:503}),async()=>Response.json({output:[{content:[{type:'output_text',text:'invalid JSON'}]}]}),async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Ψυχομετρικά',text:'Item 9 reviewed',source_ids:['assessment:p'],attention:false}]})}]}]})]){
   const r=await route(fixture(),f).POST(request());assert.equal(r.status,200);const d=await r.json();assert.equal(d.mode,'canonical');assert.ok(d.findings.some(x=>x.key==='review:p'&&x.attention));assert.ok(!d.findings.some(x=>x.text.includes('Continue old medication.')));assert.ok(d.findings.some(x=>x.text.includes('withdrawn')));
@@ -26,9 +42,12 @@ test('stale hash conflicts before provider call; database errors fail closed',as
 test('seeded ID succeeds without configured provider and real-data mode is denied',async()=>{
  const r=await route(fixture(),null,{}).POST(request());assert.equal(r.status,200);assert.equal((await r.json()).mode,'canonical');assert.equal((await route(fixture(),null,{CLINICAL_DATA_MODE:'real'}).POST(request())).status,403);
 });
-test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})});
- const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
+test('supported synthesis is cached for reads; explicit POST regenerates without writing clinical state',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return response(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})});
+ const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));assert.equal(calls,2);
+ const cached=await (await handler.GET(getRequest())).json();assert.equal(cached.context_hash,first.context_hash);assert.equal(calls,2);
+ const regenerated=await (await handler.POST(request())).json();assert.equal(regenerated.mode,'synthesis');assert.equal(calls,4);assert.equal(JSON.stringify(b),before);
+ b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,6);assert.notEqual(changed.context_hash,first.context_hash);
 });
 
 const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});

@@ -27,7 +27,7 @@ export async function POST(request:Request){
  if(action==='request_reset'){
   const email=String(b.email||'').trim().toLowerCase();
   if(!validEmail(email))return reply({error:'Συμπληρώστε έγκυρο email.'},400);
-  await client.auth.resetPasswordForEmail(email,{redirectTo:new URL('/auth/callback?next=/reset-password',request.url).href});
+  await client.auth.resetPasswordForEmail(email,{redirectTo:new URL('/auth/callback',request.url).href});
   return reply({ok:true});
  }
 

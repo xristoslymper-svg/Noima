@@ -1,10 +1,15 @@
 'use client';
-import {useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import type {PatientBundle,DemoMedicationEvent} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
-export default function MedicationTimeline({bundle,reload}:{bundle:PatientBundle;reload:()=>Promise<unknown>}){
+export default function MedicationTimeline({bundle,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher?:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange?:(key:string,dirty:boolean)=>void}){
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const [editing,setEditing]=useState<DemoMedicationEvent|null>(null),[dose,setDose]=useState(''),[unit,setUnit]=useState(''),[frequency,setFrequency]=useState(''),[date,setDate]=useState(''),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const guardKey='medication-timeline';const pending=Boolean(editing);
+ const guard=useCallback(async()=>{if(editing)throw new Error('Ολοκληρώστε ή κλείστε πρώτα τη διόρθωση αγωγής.')},[editing]);
+ useEffect(()=>registerFlusher?.(guardKey,guard),[guard,registerFlusher]);
+ useEffect(()=>{onDirtyChange?.(guardKey,pending);return()=>onDirtyChange?.(guardKey,false)},[pending,onDirtyChange]);
+
  function open(e:DemoMedicationEvent){setEditing(e);setDose(String(e.new_state?.dose||''));setUnit(String(e.new_state?.unit||'mg'));setFrequency(String(e.new_state?.frequency||''));setDate(e.effective_on);setReason('');setError('')}
  async function save(cancel:boolean){if(!editing)return;setBusy(true);setError('');try{const m=bundle.medications.find(m=>m.id===editing.medication_id)!;await demoPost({action:'medication_event',medication_id:m.id,event_type:editing.event_type,dose:Number(dose),unit,frequency,effective_on:date,reason,expected_version:m.plan_version,replace_id:editing.id,cancel,session_id:editing.effective_on>today?(bundle.sessions.find(s=>s.status==='draft')?.id||null):null});await reload();setEditing(null)}catch(e){setError(e instanceof Error?e.message:'Δεν αποθηκεύτηκε')}finally{setBusy(false)}}
  const revised=(id:string)=>bundle.medicationRevisions.find(r=>r.event_id===id);

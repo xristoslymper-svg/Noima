@@ -177,7 +177,7 @@ export default function CalendarPage() {
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; nextFor?: CalendarEvent } | null>(null);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [quickBusy,setQuickBusy]=useState(false);
   const quickBusyRef=useRef(false);
@@ -243,12 +243,19 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
+    const patient = url.searchParams.get("patient");
+    if (patient && patients.some(item => item.id === patient)) {
+      setAppointmentEditor({ mode: "create", date: focusDate, patientId: patient });
+      url.searchParams.delete("patient");
+      window.history.replaceState({}, "", url.pathname + url.search);
+      return;
+    }
     if (url.searchParams.get("voice") === "1") {
       setVoice(true);
       url.searchParams.delete("voice");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, []);
+  }, [patients, focusDate]);
 
   const dayEvents = useMemo(
     () => visibleEvents
@@ -862,6 +869,7 @@ function AppointmentEditor({
   focusDate,
   initialMinute,
   nextFor,
+  initialPatientId,
   openingSession,
   onClose,
   onSaved,
@@ -873,12 +881,13 @@ function AppointmentEditor({
   focusDate: string;
   initialMinute?: number;
   nextFor?: CalendarEvent;
+  initialPatientId?: string;
   openingSession: boolean;
   onClose: () => void;
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
 }) {
-  const initialPatient = event?.patient_id || nextFor?.patient_id || "";
+  const initialPatient = event?.patient_id || nextFor?.patient_id || initialPatientId || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
   const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? (nextFor?athensMinutes(nextFor.scheduled_start):9 * 60);
   const initialTime = String(Math.floor(eventMinute / 60)).padStart(2, "0") + ":" + String(eventMinute % 60).padStart(2, "0");

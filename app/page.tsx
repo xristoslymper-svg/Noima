@@ -47,19 +47,23 @@ export default function Page() {
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
-  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();void (async()=>{
+  const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
+  const [overviewRetry,setOverviewRetry]=useState(0);
+  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();setOverviewState('loading');void (async()=>{
     const [calendarResponse,patientsResponse]=await Promise.all([
       fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}),
       fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester),{cache:"no-store"}),
     ]);
     const calendarData=await calendarResponse.json();const patientData=await patientsResponse.json();
-    if(!calendarResponse.ok||!patientsResponse.ok||cancelled)return;
+    if(!calendarResponse.ok||!patientsResponse.ok)throw new Error('overview_unavailable');
+    if(cancelled)return;
     const events=(calendarData.events||[]) as OverviewEvent[];
     const ids=(patientData.patients||[]).map((p:{id:string})=>p.id) as string[];
     const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));
     if(cancelled)return;
-    setSchedule(events);setBundles(Object.fromEntries(loaded.filter(Boolean) as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);
-  })().catch(()=>{});return()=>{cancelled=true}},[]);
+    if(loaded.some(item=>item===null))throw new Error('overview_incomplete');
+    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);setOverviewState('ready');
+  })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
 
@@ -100,17 +104,18 @@ export default function Page() {
             <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>
 
+          {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value={String(todaySchedule.length)} note={todaySchedule.length?"Από το κοινό ημερολόγιο":"Χωρίς ραντεβού σήμερα"} tone="sage" />
-            <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value={String(pendingProposals)} note="Πραγματικές εκκρεμείς προτάσεις" tone="blue" />
-            <Metric icon={<TestTube2 />} label="Εκκρεμή ψυχομετρικά" value={String(pendingPsychometrics)} note="Assigned ή opened" tone="gold" />
-            <Metric icon={<ShieldCheck />} label="PHQ-9 item 9 για έλεγχο" value={String(item9Reviews)} note="Από ολοκληρωμένα τεστ" tone="rose" />
+            <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value={overviewState==='ready'?String(todaySchedule.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':todaySchedule.length?"Από το κοινό ημερολόγιο":"Χωρίς ραντεβού σήμερα"} tone="sage" />
+            <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value={overviewState==='ready'?String(pendingProposals):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Πραγματικές εκκρεμείς προτάσεις'} tone="blue" />
+            <Metric icon={<TestTube2 />} label="Εκκρεμή ψυχομετρικά" value={overviewState==='ready'?String(pendingPsychometrics):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Assigned ή opened'} tone="gold" />
+            <Metric icon={<ShieldCheck />} label="PHQ-9 item 9 για έλεγχο" value={overviewState==='ready'?String(item9Reviews):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Από ολοκληρωμένα τεστ'} tone="rose" />
           </section>
 
           <section className="main-grid">
             <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
-              {todaySchedule.length?todaySchedule.map(event => {
+              {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id&&bundles[event.patient_id]);
                 return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
@@ -127,7 +132,7 @@ export default function Page() {
 
             <div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head"><span className="status-dot">{selectedBundle?selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name:'Χωρίς επιλογή'}</span></div>
-              {selectedBundle?<ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>:<p>Επιλέξτε ασθενή για να εμφανιστούν οι καταγραφές του φακέλου.</p>}
+              {overviewState==='loading'?<p>Φόρτωση φακέλων…</p>:overviewState==='error'?<p>Οι φάκελοι δεν φορτώθηκαν. Δοκιμάστε ξανά από την ειδοποίηση επάνω.</p>:selectedBundle?<ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>:<p>Επιλέξτε ασθενή για να εμφανιστούν οι καταγραφές του φακέλου.</p>}
             </div>
           </section>
 

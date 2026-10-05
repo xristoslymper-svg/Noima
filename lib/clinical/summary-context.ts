@@ -1,6 +1,6 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=9;
+export const SUMMARY_POLICY_VERSION=10;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -132,26 +132,23 @@ export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
 
 export function validateNarrative(output:unknown,context:SummaryContext):Finding[]{
  if(!output||typeof output!=='object'||!('findings' in output)||!Array.isArray(output.findings))throw new Error('invalid_output');
- const list=output.findings;if(list.length>3)throw new Error('invalid_count');
- const used=new Set<string>();
- const latest=[...context.sources.filter(s=>s.kind==='session_section')].sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''))[0]?.session_id;
+ const list=output.findings;if(list.length>8)throw new Error('invalid_count');
  return list.map((f:unknown,index)=>{
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
-  const item=f as {label:string;text:string;source_ids:string[]};
-  if(!['Τρέχουσα εικόνα','Πορεία','Πλάνο'].includes(item.label)||used.has(item.label)||typeof item.text!=='string'||item.text.trim().length<12||item.text.length>420||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>4)throw new Error('invalid_category');
-  used.add(item.label);
+  const item=f as {text:string;source_ids:string[]};
+  if(typeof item.text!=='string'||item.text.trim().length<12||item.text.length>360||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>5)throw new Error('invalid_finding');
   if(/(ignore.{0,30}instruction|AUDIT_INJECTION|αγνόησε.{0,30}οδηγ)/iu.test(item.text))throw new Error('unsafe_text');
   const sources=item.source_ids.map(id=>context.sources.find(s=>s.id===id));
-  if(sources.some(s=>!s||s.kind!=='session_section'))throw new Error('unsupported_source');
-  if(sources.some(s=>context.layers.corrections.some(c=>c.session_id===s!.session_id)))throw new Error('corrected_parent');
-  const sessionIds=new Set(sources.map(s=>s!.session_id));
-  if(item.label==='Πορεία'&&(sessionIds.size<2||sessionIds.has(undefined)))throw new Error('trajectory_requires_two_visits');
-  if(item.label!=='Πορεία'&&[...sessionIds].some(id=>id!==latest))throw new Error('obsolete_current_source');
-  return {key:'narrative:'+index,label:item.label as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis'};
+  if(sources.some(s=>!s))throw new Error('unsupported_source');
+  const correctedSessions=new Set(context.layers.corrections.map(c=>c.session_id));
+  const usesCorrectedParent=sources.some(s=>s?.kind==='session_section'&&correctedSessions.has(s.session_id));
+  const includesCorrection=sources.some(s=>s?.kind==='addendum'&&s.session_id&&correctedSessions.has(s.session_id));
+  if(usesCorrectedParent&&!includesCorrection)throw new Error('corrected_parent');
+  return {key:'briefing:'+index,label:'Τρέχουσα εικόνα' as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis'};
  });
 }
 function contextSectionKey(label:string){return label.split(' · ').pop()||label;}
 export function assertCriticalCoverage(final:Finding[],context:SummaryContext){
- const required=context.findings.filter(f=>f.attention||f.label==='Αγωγή'||f.label==='Ψυχομετρικά'||f.label==='Παρενέργειες');
+ const required=context.findings.filter(f=>f.attention);
  for(const expected of required){if(!final.some(f=>f.key===expected.key&&f.text===expected.text&&f.source_ids.join('|')===expected.source_ids.join('|')))throw new Error('critical_coverage_failed');}
 }

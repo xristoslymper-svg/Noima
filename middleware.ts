@@ -10,14 +10,15 @@ export async function middleware(request:NextRequest) {
   }});
   const {data:{user}}=await client.auth.getUser();
   const path=request.nextUrl.pathname;
+  const publicPath=path==='/login'||path==='/forgot-password';
   let destination:string|null=null;
-  if(!user && path!=='/login') destination='/login';
+  if(!user&&!publicPath) destination='/login';
   if(user){
     const {data:identity}=await client.rpc('pilot_identity');
     if(identity) {
       response.cookies.set('noima-workspace-id',identity.workspace_id,{sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/'});
-      if(path==='/login'||path==='/pilot') destination='/';
-    } else if(path!=='/pilot'&&path!=='/login'&&path!=='/account') destination='/pilot';
+      if(path==='/login'||path==='/pilot'||path==='/forgot-password') destination='/';
+    } else if(path!=='/pilot'&&path!=='/login'&&path!=='/account'&&path!=='/reset-password') destination='/pilot';
   }
   if(destination){const redirect=NextResponse.redirect(new URL(destination,request.url));response.cookies.getAll().forEach(c=>redirect.cookies.set(c));response=redirect;}
   response.headers.set('Cache-Control','private, no-store');

@@ -23,6 +23,7 @@ create table if not exists private.demo_clinical_summary_requests (
   primary key (tester_id, patient_id)
 );
 
+alter table private.demo_clinical_summary_requests enable row level security;
 revoke all on table private.demo_clinical_summary_requests from public, anon, authenticated;
 
 create or replace function public.demo_clinical_summary_request(

@@ -5,8 +5,6 @@ import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summar
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
-const cache=new Map<string,{findings:Finding[];generated_at:string}>();
-const inflight=new Map<string,Promise<{findings:Finding[];generated_at:string}>>();
 const model=process.env.OPENAI_CLINICAL_MODEL||'gpt-6-luna';
 const schema={type:'object',properties:{findings:{type:'array',minItems:1,maxItems:8,items:{type:'object',properties:{text:{type:'string',minLength:12},source_ids:{type:'array',minItems:1,maxItems:5,items:{type:'string'}}},required:['text','source_ids'],additionalProperties:false}}},required:['findings'],additionalProperties:false};
 const verificationSchema={type:'object',properties:{checks:{type:'array',items:{type:'object',properties:{key:{type:'string'},supported:{type:'boolean'},issue:{type:'string',enum:['none','unsupported_claim','uncertainty','negation','attribution','timing','correction','canonical_conflict','incomplete_text']}},required:['key','supported','issue'],additionalProperties:false}}},required:['checks'],additionalProperties:false};

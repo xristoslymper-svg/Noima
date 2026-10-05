@@ -1,10 +1,12 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=11;
+export const SUMMARY_POLICY_VERSION=12;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
-export type Finding={key:string;label:Category;text:string;source_ids:string[];attention:boolean;origin:'canonical'|'documented'|'synthesis'};
+export const summaryThemes=['general','medication','course','risk','psychometrics','plan','context'] as const;
+export type SummaryTheme=typeof summaryThemes[number];
+export type Finding={key:string;label:Category;text:string;source_ids:string[];attention:boolean;origin:'canonical'|'documented'|'synthesis';group_label?:string;theme?:SummaryTheme};
 const names:Record<string,string>={interview:'Interview',mse:'MSE',assessment:'Assessment',plan:'Πλάνο',review:'Επανεκτίμηση',effects:'Παρενέργειες',functioning:'Λειτουργικότητα',adherence:'Λήψη αγωγής'};
 const riskNames:Record<string,string>={suicidal_ideation:'Ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',attempt_history:'Ιστορικό απόπειρας',harm_to_others:'Κίνδυνος προς άλλους'};
 const states:Record<string,string>={positive:'θετικό',negative:'αρνητικό',unknown:'άγνωστο',not_assessed:'δεν διερευνήθηκε'};
@@ -140,8 +142,9 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
  const list=output.findings;if(list.length<minimumBriefingItems(context)||list.length>8)throw new Error('invalid_count');
  return list.map((f:unknown,index)=>{
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
-  const item=f as {text:string;source_ids:string[]};
+  const item=f as {text:string;source_ids:string[];group_label?:string;theme?:SummaryTheme};
   if(typeof item.text!=='string'||item.text.trim().length<12||item.text.length>360||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>5)throw new Error('invalid_finding');
+  if(typeof item.group_label!=='string'||item.group_label.trim().length<2||item.group_label.trim().length>32||!summaryThemes.includes(item.theme as SummaryTheme))throw new Error('invalid_presentation');
   if(!/[.!?;…»”)]$/u.test(item.text.trim()))throw new Error('invalid_finding');
   if(/(ignore.{0,30}instruction|AUDIT_INJECTION|αγνόησε.{0,30}οδηγ)/iu.test(item.text))throw new Error('unsafe_text');
   if(item.source_ids.some(id=>typeof id!=='string')||new Set(item.source_ids).size!==item.source_ids.length)throw new Error('unsupported_source');
@@ -158,7 +161,7 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
     if(revisions.some(r=>!item.source_ids.includes(r.id)))throw new Error('corrected_parent');
    }
   }
-  return {key:'briefing:'+index,label:'Τρέχουσα εικόνα' as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis'};
+  return {key:'briefing:'+index,label:'Τρέχουσα εικόνα' as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis',group_label:item.group_label!.trim(),theme:item.theme};
  });
 }
 export function assertCriticalCoverage(final:Finding[],context:SummaryContext){

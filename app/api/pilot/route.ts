@@ -5,7 +5,8 @@ export async function GET(){
  const client=await pilotClient();const {data:{user}}=await client.auth.getUser();
  if(!user)return Response.json({error:'Συνδεθείτε.'},{status:401});
  const {data:identity}=await client.rpc('pilot_identity');
- return Response.json({email:user.email,identity},{headers:{'Cache-Control':'private, no-store'}});
+ const providers=Array.isArray(user.app_metadata?.providers)?user.app_metadata.providers:[user.app_metadata?.provider].filter(Boolean);
+ return Response.json({email:user.email,identity,has_password:providers.includes('email')},{headers:{'Cache-Control':'private, no-store'}});
 }
 export async function POST(request:Request){
  const origin=request.headers.get('origin');if(!origin||origin!==new URL(request.url).origin)return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});

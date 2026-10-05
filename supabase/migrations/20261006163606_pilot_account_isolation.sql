@@ -117,3 +117,15 @@ begin
   end if;
  end loop;
 end $$;
+
+-- The summary cache was created before pilot ownership existed. The generic
+-- table hardening above intentionally grants read-only access; this derived
+-- cache also needs owner-scoped writes from the authenticated server client.
+grant insert, update on public.demo_clinical_summary_cache to authenticated;
+drop policy if exists pilot_owner_insert on public.demo_clinical_summary_cache;
+drop policy if exists pilot_owner_update on public.demo_clinical_summary_cache;
+create policy pilot_owner_insert on public.demo_clinical_summary_cache
+for insert to authenticated with check (private.pilot_owns(tester_id));
+create policy pilot_owner_update on public.demo_clinical_summary_cache
+for update to authenticated using (private.pilot_owns(tester_id))
+with check (private.pilot_owns(tester_id));

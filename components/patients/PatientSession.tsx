@@ -159,7 +159,7 @@ export default function PatientSession({
 
  if(!draft){
   return <section className="panel-stack">
-   <div className="panel-heading"><div><span className="kicker">ΣΥΝΕΔΡΙΕΣ</span><h2>Ολοκληρωμένες συνεδρίες</h2><p>Δεν υπάρχει ανοιχτό πρόχειρο. Επιλέξτε συνεδρία για να δείτε ακριβώς τι καταγράφηκε.</p></div></div>
+   <div className="panel-heading"><div><span className="kicker">ΣΥΝΕΔΡΙΕΣ</span><h2>Ολοκληρωμένες συνεδρίες</h2><p>Επιλέξτε ολοκληρωμένη συνεδρία για να δείτε ακριβώς τι καταγράφηκε.</p></div></div>
    {completed.length?<CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/>:<div className="panel-empty">Δεν υπάρχει ακόμη συνεδρία.</div>}
   </section>;
  }

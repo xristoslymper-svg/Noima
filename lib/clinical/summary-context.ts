@@ -144,7 +144,8 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
   const item=f as {text:string;source_ids:string[];group_label?:string;theme?:SummaryTheme};
   if(typeof item.text!=='string'||item.text.trim().length<12||item.text.length>360||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>5)throw new Error('invalid_finding');
-  if(typeof item.group_label!=='string'||item.group_label.trim().length<2||item.group_label.trim().length>32||!summaryThemes.includes(item.theme as SummaryTheme))throw new Error('invalid_presentation');
+  const group_label=typeof item.group_label==='string'&&item.group_label.trim().length>=2&&item.group_label.trim().length<=32?item.group_label.trim():'Γενική εικόνα';
+  const theme=summaryThemes.includes(item.theme as SummaryTheme)?item.theme as SummaryTheme:'general';
   if(!/[.!?;…»”)]$/u.test(item.text.trim()))throw new Error('invalid_finding');
   if(/(ignore.{0,30}instruction|AUDIT_INJECTION|αγνόησε.{0,30}οδηγ)/iu.test(item.text))throw new Error('unsafe_text');
   if(item.source_ids.some(id=>typeof id!=='string')||new Set(item.source_ids).size!==item.source_ids.length)throw new Error('unsupported_source');
@@ -161,7 +162,7 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
     if(revisions.some(r=>!item.source_ids.includes(r.id)))throw new Error('corrected_parent');
    }
   }
-  return {key:'briefing:'+index,label:'Τρέχουσα εικόνα' as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis',group_label:item.group_label!.trim(),theme:item.theme};
+  return {key:'briefing:'+index,label:'Τρέχουσα εικόνα' as Category,text:item.text.trim(),source_ids:item.source_ids,attention:false,origin:'synthesis',group_label,theme};
  });
 }
 export function assertCriticalCoverage(final:Finding[],context:SummaryContext){

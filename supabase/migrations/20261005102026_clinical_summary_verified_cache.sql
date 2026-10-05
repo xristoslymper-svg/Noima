@@ -12,15 +12,7 @@ create table if not exists public.demo_clinical_summary_cache (
 );
 
 alter table public.demo_clinical_summary_cache enable row level security;
-revoke all on public.demo_clinical_summary_cache from anon;
-grant select, insert, update on public.demo_clinical_summary_cache to authenticated;
 
-create policy pilot_owner_read on public.demo_clinical_summary_cache
-for select to authenticated using (private.pilot_owns(tester_id));
-
-create policy pilot_owner_insert on public.demo_clinical_summary_cache
-for insert to authenticated with check (private.pilot_owns(tester_id));
-
-create policy pilot_owner_update on public.demo_clinical_summary_cache
-for update to authenticated using (private.pilot_owns(tester_id))
-with check (private.pilot_owns(tester_id));
+-- Pilot ownership is introduced by a later migration. Keep the cache closed
+-- until that isolation layer exists; its owner policies are installed later.
+revoke all on public.demo_clinical_summary_cache from public, anon, authenticated;

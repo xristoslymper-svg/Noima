@@ -32,15 +32,21 @@ export async function listPatients(tester:string){await bootstrap(tester);return
 export async function listPatientRows(tester:string){
  const patients=await listPatients(tester);
  const tid=encodeURIComponent(tester);
- const [sessionData,appointmentData]=await Promise.all([
+ const [sessionData,appointmentData,sectionData]=await Promise.all([
   request(`demo_sessions?select=*&tester_id=eq.${tid}&order=started_at.desc`),
   request(`demo_calendar_events?select=id,patient_id,session_id,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&order=scheduled_start.asc`),
+  request(`demo_session_sections?select=patient_id,session_id,section_key,document,updated_at&tester_id=eq.${tid}&section_key=eq.assessment&order=updated_at.desc`),
  ]);
  const sessions=rows<DemoSession>(sessionData);
  const appointments=rows<{id:string;patient_id:string|null;session_id:string|null;scheduled_start:string;scheduled_end:string;status:string}>(appointmentData);
+ const diagnosisSections=rows<{patient_id:string;session_id:string;document?:VisitDocument|null;updated_at:string}>(sectionData);
  const now=Date.now();
+ const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
+ const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({
   ...patient,
+  registry_number:registryNumber.get(patient.id)||0,
+  diagnosis:(()=>{const initial=sessions.filter(s=>s.patient_id===patient.id&&s.session_type==='initial_assessment').sort((a,b)=>new Date(a.started_at).getTime()-new Date(b.started_at).getTime())[0];if(!initial)return null;const document=diagnosisSections.find(section=>section.patient_id===patient.id&&section.session_id===initial.id)?.document;const field=document?.kind==='assessment'?document.fields.find(item=>item.key==='diagnosis'):undefined;return field?.codes?.[0]||null;})(),
   draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,
   last_session:sessions.find(s=>s.patient_id===patient.id&&s.status==='completed')||null,
   next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,

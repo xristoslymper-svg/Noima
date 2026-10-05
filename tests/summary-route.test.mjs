@@ -24,7 +24,8 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
  const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
-const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});
+const withPresentation=data=>data&&Array.isArray(data.findings)?{...data,findings:data.findings.map(f=>({...f,group_label:f.group_label||'Γενική εικόνα',theme:f.theme||'general'}))}:data;
+const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(withPresentation(data))}]}]});
 test('provider failure and unsupported claims return canonical facts, never obsolete narrative',async()=>{
  for(const f of [async()=>{throw Error('network')},async()=>new Response('',{status:503}),async()=>Response.json({output:[{content:[{type:'output_text',text:'invalid JSON'}]}]}),async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Ψυχομετρικά',text:'Item 9 reviewed',source_ids:['assessment:p'],attention:false}]})}]}]})]){
   const r=await route(fixture(),f).POST(request());assert.equal(r.status,200);const d=await r.json();assert.equal(d.mode,'canonical');assert.ok(d.findings.some(x=>x.key==='review:p'&&x.attention));assert.ok(!d.findings.some(x=>x.text.includes('Continue old medication.')));assert.ok(d.findings.some(x=>x.text.includes('withdrawn')));
@@ -48,7 +49,7 @@ test('stale generation claims cannot commit over a newer requested context',asyn
 });
 
 test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
- const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const db={};const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})},{OPENAI_API_KEY:'local-fixture'},db);
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const db={};const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:withPresentation({findings:[{text:'Sleep is better.',source_ids:['section:n']}]}) )}]}]})},{OPENAI_API_KEY:'local-fixture'},db);
  const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis',JSON.stringify({first,calls,dbCalls:db.calls}));assert.ok(first.findings.some(f=>f.origin==='synthesis'));
  const cached=await (await handler.GET(new Request('http://localhost/api/clinical/summary?tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1'))).json();assert.equal(calls,2);assert.equal(cached.context_hash,first.context_hash);assert.equal(JSON.stringify(b),before);
  b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
@@ -66,6 +67,12 @@ test('provider receives the full source contract; verification sees only cited e
  const input=JSON.parse(JSON.parse(o.body).input);if(++calls===1){assert.ok(input.sources.some(s=>s.id==='section:n'));assert.ok(input.sources.some(s=>s.id==='assessment:p'));return response({findings:[{text:'Sleep is better.',source_ids:['section:n']}]});}
  assert.deepEqual(input.findings[0].sources.map(s=>s.id),['section:n']);assert.ok(input.canonical.some(s=>s.id==='assessment:p'));return response({checks:[{key:'briefing:0',supported:true,issue:'none'}]});
  });assert.equal((await (await handler.POST(request())).json()).mode,'synthesis');
+});
+
+test('synthesis may choose patient-specific semantic groups without changing grounding',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';let calls=0;
+ const handler=route(b,async()=>++calls===1?response({findings:[{text:'Sleep is better.',source_ids:['section:n'],group_label:'Ύπνος & ενεργοποίηση',theme:'course'}]}):response({checks:[{key:'briefing:0',supported:true,issue:'none'}]}));
+ const d=await(await handler.POST(request())).json();assert.equal(d.mode,'synthesis');assert.equal(d.findings[0].group_label,'Ύπνος & ενεργοποίηση');assert.equal(d.findings[0].theme,'course');assert.deepEqual(d.findings[0].source_ids,['section:n']);
 });
 test('successful synthesis appends only genuine safety warnings, without canonical medication/effect/chart dump',async()=>{
  const b=fixture();b.addenda=[];b.risks=[{session_id:'s',suicidal_ideation:'negative',intent:'not_assessed',plan:'not_assessed',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative'}];b.assessments=[];b.medications=[{id:'m',status:'active',medication_name:'Escitalopram',dose:10}];b.sections[0].content='Mild nausea nearly resolved.';

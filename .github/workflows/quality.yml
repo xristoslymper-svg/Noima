@@ -28,6 +28,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Generate migration filename probe
+        run: |
+          npx supabase migration new clinical_summary_cache_policy_order
+          find supabase/migrations -maxdepth 1 -type f -name '*clinical_summary_cache_policy_order.sql' -print
+
       - name: Typecheck
         run: npm run typecheck
 

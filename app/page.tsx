@@ -63,6 +63,7 @@ export default function Page() {
     if(cancelled)return;
     if(loaded.some(item=>item===null))throw new Error('overview_incomplete');
     setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);setOverviewState('ready');
+    void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");

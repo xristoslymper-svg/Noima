@@ -14,7 +14,17 @@ async function handlePOST(request: Request) {
   try {
     const session = await startDemoCalendarSession(tester, eventId);
     return Response.json({ session });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("draft_linked_elsewhere")) {
+      return Response.json(
+        { error: "Υπάρχει ήδη άλλη ανοιχτή επίσκεψη για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.", code: "draft_linked_elsewhere" },
+        { status: 409 },
+      );
+    }
+    if (message.includes("appointment_unavailable")) {
+      return Response.json({ error: "Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.", code: "appointment_unavailable" }, { status: 409 });
+    }
     return Response.json({ error: "Δεν ήταν δυνατή η έναρξη της συνεδρίας." }, { status: 502 });
   }
 }

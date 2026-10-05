@@ -22,7 +22,7 @@ function failure(error:unknown){
 function queueSummary(request:Request,patientId:string){
  if(!isClinicalId(patientId))return;
  const cookie=request.headers.get('cookie')||'';const origin=new URL(request.url).origin;
- after(async()=>{try{const response=await fetch(origin+'/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({patient_id:patientId})});if(!response.ok)console.error('clinical_summary_background_failed',{patient:patientId,status:response.status})}catch(error){console.error('clinical_summary_background_failed',{patient:patientId,error:error instanceof Error?error.message:'unknown'})}});
+ after(async()=>{try{const response=await fetch(origin+'/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({patient_id:patientId})});if(!response.ok)console.error('clinical_summary_background_failed',{status:response.status})}catch(error){console.error('clinical_summary_background_failed',{error:error instanceof Error?error.message:'unknown'})}});
 }
 async function handleGET(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Αυτός ο χώρος δέχεται μόνο φανταστικά δεδομένα. Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});

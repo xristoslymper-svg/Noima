@@ -72,7 +72,7 @@ test('provider receives the full source contract; verification sees only cited e
 test('synthesis may choose patient-specific semantic groups without changing grounding',async()=>{
  const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';let calls=0;
  const handler=route(b,async()=>++calls===1?response({findings:[{text:'Sleep is better.',source_ids:['section:n'],group_label:'Ύπνος & ενεργοποίηση',theme:'course'}]}):response({checks:[{key:'briefing:0',supported:true,issue:'none'}]}));
- const d=await(await handler.POST(request())).json();assert.equal(d.mode,'synthesis');assert.equal(d.findings[0].group_label,'Ύπνος & ενεργοποίηση');assert.equal(d.findings[0].theme,'course');assert.deepEqual(d.findings[0].source_ids,['section:n']);
+ const d=await(await handler.POST(request())).json();assert.equal(d.mode,'synthesis');const finding=d.findings.find(f=>f.origin==='synthesis');assert.equal(finding.group_label,'Ύπνος & ενεργοποίηση');assert.equal(finding.theme,'course');assert.deepEqual(finding.source_ids,['section:n']);
 });
 test('successful synthesis appends only genuine safety warnings, without canonical medication/effect/chart dump',async()=>{
  const b=fixture();b.addenda=[];b.risks=[{session_id:'s',suicidal_ideation:'negative',intent:'not_assessed',plan:'not_assessed',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative'}];b.assessments=[];b.medications=[{id:'m',status:'active',medication_name:'Escitalopram',dose:10}];b.sections[0].content='Mild nausea nearly resolved.';

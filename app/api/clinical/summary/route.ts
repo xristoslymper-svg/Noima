@@ -1,7 +1,7 @@
 import { withPilot } from '@/lib/pilot/route';
-import {patientBundle} from '@/lib/patients/demo-runtime';
+import {patientBundle,request} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
-import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,type Finding} from '@/lib/clinical/summary-context';
+import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,SUMMARY_POLICY_VERSION,type Finding,type Evidence} from '@/lib/clinical/summary-context';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
@@ -37,6 +37,31 @@ async function generate(context:ReturnType<typeof buildSummaryContext>){
  const critical=context.findings.filter(f=>f.attention);const findings=[...critical,...narrative];assertCriticalCoverage(findings,context);
  return {findings,generated_at:new Date().toISOString()};
 }
+
+type CachedRow={tester_id:string;patient_id:string;context_hash:string;findings:Finding[];sources:Evidence[];generated_at:string;model:string;policy_version:number;updated_at:string};
+const cachedRows=(value:unknown)=>Array.isArray(value)?value as CachedRow[]:[];
+async function readCached(tester:string,patient:string){
+ const rows=cachedRows(await request(`demo_clinical_summary_cache?select=*&tester_id=eq.${encodeURIComponent(tester)}&patient_id=eq.${encodeURIComponent(patient)}&limit=1`));
+ return rows[0]||null;
+}
+async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[]){
+ await request('demo_clinical_summary_cache?on_conflict=tester_id,patient_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:new Date().toISOString()})});
+}
+export async function precomputeClinicalSummary(tester:string,patient:string,force=false){
+ const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
+ if(!force){const existing=await readCached(tester,patient);if(existing?.context_hash===context_hash&&existing.policy_version===SUMMARY_POLICY_VERSION)return existing;}
+ if(!process.env.OPENAI_API_KEY)throw new Error('provider_unavailable');
+ if(JSON.stringify({sources:context.sources,corrections:context.layers.corrections}).length>180000)throw new Error('record_exceeds_synthesis_limit');
+ const result=await generate(context);await persistVerified(tester,patient,context_hash,result,context.sources);
+ return {tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources:context.sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:result.generated_at};
+}
+async function handleGET(req:Request){
+ const url=new URL(req.url);const tester=url.searchParams.get('tester')||'';const patient=url.searchParams.get('patient_id')||'';
+ if(!isClinicalId(tester)||!isClinicalId(patient))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
+ const cached=await readCached(tester,patient);
+ if(!cached)return Response.json({error:'Η σύνοψη προετοιμάζεται.',code:'summary_pending'},{status:404});
+ return Response.json({...cached,mode:'synthesis',reason:null});
+}
 async function handlePOST(req:Request){
  const raw=await req.json().catch(()=>null);if(!raw||typeof raw!=='object'||Array.isArray(raw))return Response.json({error:'Μη έγκυρο αίτημα.'},{status:400});const b=raw;
  if(!isClinicalId(b.tester)||!isClinicalId(b.patient_id))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
@@ -44,17 +69,18 @@ async function handlePOST(req:Request){
  try{
   const bundle=await patientBundle(b.tester,b.patient_id);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
   if(b.context_hash&&b.context_hash!==context_hash)return Response.json({error:'Ο φάκελος άλλαξε. Ενημερώστε τη σύνοψη.',code:'stale_context',context_hash},{status:409});
-  let mode:'synthesis'|'canonical'='synthesis';let reason:string|null=null;let result=cache.get(context_hash);
-  if(!result){
-   if(!process.env.OPENAI_API_KEY||JSON.stringify({sources:context.sources,corrections:context.layers.corrections}).length>180000){mode='canonical';reason=!process.env.OPENAI_API_KEY?'provider_unavailable':'record_exceeds_synthesis_limit';}
-   else {try{
-    let pending=inflight.get(context_hash);if(!pending){pending=generate(context);inflight.set(context_hash,pending)}
-    try{result=await pending;if(cache.size>=128)cache.delete(cache.keys().next().value!);cache.set(context_hash,result)}finally{inflight.delete(context_hash)}
-   }catch(error){mode='canonical';const safe=error instanceof Error?error.message:'';reason=/^(provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed)$/.test(safe)?safe:'synthesis_not_verified';}}
+  let mode:'synthesis'|'canonical'='synthesis';let reason:string|null=null;
+  try{
+   const verified=await precomputeClinicalSummary(b.tester,b.patient_id,true);
+   return Response.json({...verified,as_of:context.day,mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
+  }catch(error){
+   mode='canonical';const safe=error instanceof Error?error.message:'';
+   reason=/^(provider_unavailable|record_exceeds_synthesis_limit|provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed)$/.test(safe)?safe:'synthesis_not_verified';
   }
-  const findings=result?.findings||canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
-  return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:result?.generated_at||new Date().toISOString(),mode,reason,model:mode==='synthesis'?model:null},{headers:{'Cache-Control':'no-store'}});
+  const findings=canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
+  return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:new Date().toISOString(),mode,reason,model:null},{headers:{'Cache-Control':'no-store'}});
  }catch(e){const missing=e instanceof Error&&e.message.includes('patient_not_found');return Response.json({error:missing?'Ο φάκελος δεν βρέθηκε.':'Δεν φορτώθηκαν τα κλινικά δεδομένα. Δεν εμφανίζεται παλαιότερη σύνοψη.'},{status:missing?404:503});}
 }
 
+export const GET = withPilot(handleGET);
 export const POST = withPilot(handlePOST);

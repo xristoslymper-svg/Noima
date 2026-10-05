@@ -42,16 +42,30 @@ async function readCached(tester:string,patient:string){
  const rows=cachedRows(await request(`demo_clinical_summary_cache?select=*&tester_id=eq.${encodeURIComponent(tester)}&patient_id=eq.${encodeURIComponent(patient)}&limit=1`));
  return rows[0]||null;
 }
-async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[]){
- await request('demo_clinical_summary_cache?on_conflict=tester_id,patient_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:new Date().toISOString()})});
+async function persistVerified(tester:string,patient:string,context_hash:string,result:{findings:Finding[];generated_at:string},sources:Evidence[],started_at:string){
+ const row={tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:started_at};
+ // First insert only when no cache exists. Then atomically replace only a cache
+ // produced by a job that started earlier. A slower old job can never overwrite
+ // a newer generation that has already committed.
+ await request('demo_clinical_summary_cache?on_conflict=tester_id,patient_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(row)});
+ await request(`demo_clinical_summary_cache?tester_id=eq.${encodeURIComponent(tester)}&patient_id=eq.${encodeURIComponent(patient)}&updated_at=lt.${encodeURIComponent(started_at)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(row)});
+ return readCached(tester,patient);
 }
 async function precomputeClinicalSummary(tester:string,patient:string,force=false){
+ const started_at=new Date().toISOString();
  const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
  if(!force){const existing=await readCached(tester,patient);if(existing?.context_hash===context_hash&&existing.policy_version===SUMMARY_POLICY_VERSION)return existing;}
  if(!process.env.OPENAI_API_KEY)throw new Error('provider_unavailable');
  if(JSON.stringify({sources:context.sources,corrections:context.layers.corrections}).length>180000)throw new Error('record_exceeds_synthesis_limit');
- const result=await generate(context);await persistVerified(tester,patient,context_hash,result,context.sources);
- return {tester_id:tester,patient_id:patient,context_hash,findings:result.findings,sources:context.sources,generated_at:result.generated_at,model,policy_version:SUMMARY_POLICY_VERSION,updated_at:result.generated_at};
+ const result=await generate(context);
+ // The chart may have changed while the provider and verifier were running.
+ // Never persist a synthesis that no longer represents the canonical record.
+ const latestBundle=await patientBundle(tester,patient);const latestContext=buildSummaryContext(latestBundle);const latestHash=await summaryContextHash(latestBundle,latestContext.day);
+ if(latestHash!==context_hash)throw new Error('stale_generation');
+ const persisted=await persistVerified(tester,patient,context_hash,result,context.sources,started_at);
+ if(!persisted)throw new Error('summary_cache_failed');
+ if(persisted.context_hash!==context_hash)throw new Error('stale_generation');
+ return persisted;
 }
 async function handleGET(req:Request){
  const url=new URL(req.url);const tester=url.searchParams.get('tester')||'';const patient=url.searchParams.get('patient_id')||'';
@@ -73,7 +87,12 @@ async function handlePOST(req:Request){
    return Response.json({...verified,as_of:context.day,mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
   }catch(error){
    mode='canonical';const safe=error instanceof Error?error.message:'';
-   reason=/^(provider_unavailable|record_exceeds_synthesis_limit|provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed)$/.test(safe)?safe:'synthesis_not_verified';
+   if(safe==='stale_generation'){
+    const freshBundle=await patientBundle(b.tester,b.patient_id);const freshContext=buildSummaryContext(freshBundle);const freshHash=await summaryContextHash(freshBundle,freshContext.day);
+    const freshFindings=canonicalSummaryFindings(freshContext);assertCriticalCoverage(freshFindings,freshContext);
+    return Response.json({findings:freshFindings,sources:freshContext.sources,context_hash:freshHash,as_of:freshContext.day,generated_at:new Date().toISOString(),mode:'canonical',reason:'stale_generation',model:null},{headers:{'Cache-Control':'no-store'}});
+   }
+   reason=/^(provider_unavailable|record_exceeds_synthesis_limit|provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed|summary_cache_failed)$/.test(safe)?safe:'synthesis_not_verified';
   }
   const findings=canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
   return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:new Date().toISOString(),mode,reason,model:null},{headers:{'Cache-Control':'no-store'}});

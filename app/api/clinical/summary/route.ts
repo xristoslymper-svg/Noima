@@ -1,5 +1,5 @@
 import { withPilot } from '@/lib/pilot/route';
-import {patientBundle,request} from '@/lib/patients/demo-runtime';
+import {patientBundle,request,rpc} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,SUMMARY_POLICY_VERSION,type Finding,type Evidence} from '@/lib/clinical/summary-context';
 export const runtime='nodejs';
@@ -55,6 +55,7 @@ async function precomputeClinicalSummary(tester:string,patient:string,force=fals
  const started_at=new Date().toISOString();
  const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
  if(!force){const existing=await readCached(tester,patient);if(existing?.context_hash===context_hash&&existing.policy_version===SUMMARY_POLICY_VERSION)return existing;}
+ await claimGeneration(tester,patient,context_hash);
  if(!process.env.OPENAI_API_KEY)throw new Error('provider_unavailable');
  if(JSON.stringify({sources:context.sources,corrections:context.layers.corrections}).length>180000)throw new Error('record_exceeds_synthesis_limit');
  const result=await generate(context);

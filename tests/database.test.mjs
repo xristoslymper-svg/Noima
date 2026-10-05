@@ -248,6 +248,13 @@ test('every table has RLS; the private pilot exposes no anonymous table reads', 
   assert.deepEqual(allowed, []);
 });
 
+test('abandoned summary generation RPC surface is absent', async () => {
+  const [{n:requestTable}]=await sql("select count(*)::int n from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='private' and c.relname='demo_clinical_summary_requests' and c.relkind='r'");
+  assert.equal(requestTable,0);
+  const [{n:functions}]=await sql("select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('demo_clinical_summary_request','demo_clinical_summary_commit')");
+  assert.equal(functions,0);
+});
+
 test('practice membership isolates patient reads and writes, including direct API-shaped access', async () => {
   assert.deepEqual(await asUser(a, () => sql('select id from patients')), [{id:patientA}]);
   assert.deepEqual(await asUser(b, () => sql('select id from patients')), [{id:patientB}]);

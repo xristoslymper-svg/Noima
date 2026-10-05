@@ -42,13 +42,13 @@ test('seeded ID succeeds without configured provider and real-data mode is denie
 test('stale generation claims cannot commit over a newer requested context',async()=>{
  const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const db={commitResult:false};let calls=0;
  const handler=route(b,async()=>{calls++;return response(calls%2===1?{findings:[{text:'Sleep is better.',source_ids:['section:n']}]}:{checks:[{key:'briefing:0',supported:true,issue:'none'}]})},{OPENAI_API_KEY:'local-fixture'},db);
- const r=await handler.POST(request());assert.equal(r.status,409);const d=await r.json();assert.equal(d.code,'stale_context');
+ const r=await handler.POST(request());const d=await r.json();assert.equal(r.status,409,JSON.stringify(d));assert.equal(d.code,'stale_context');
  assert.deepEqual(db.calls.map(x=>x.name),['demo_clinical_summary_request','demo_clinical_summary_commit']);assert.equal(db.cache,undefined);
 });
 
 test('supported synthesis is cached only by exact canonical context and never writes clinical state',async()=>{
  const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';const before=JSON.stringify(b);let calls=0;const handler=route(b,async()=>{calls++;return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(calls%2===0?{checks:[{key:'briefing:0',supported:true,issue:'none'}]}:{findings:[{text:'Sleep is better.',source_ids:['section:n']}]})}]}]})});
- const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis');assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
+ const first=await (await handler.POST(request())).json();assert.equal(first.mode,'synthesis',JSON.stringify(first));assert.ok(first.findings.some(f=>f.origin==='synthesis'));await handler.POST(request());assert.equal(calls,2);assert.equal(JSON.stringify(b),before);b.history={allergies:'New allergy'};const changed=await (await handler.POST(request())).json();assert.equal(calls,4);assert.notEqual(changed.context_hash,first.context_hash);
 });
 
 const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(data)}]}]});

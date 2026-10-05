@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,visitSteps,workspaceLocation} from '../lib/clinical/visit-workspace-state.ts';
+import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch} from '../lib/clinical/visit-workspace-state.ts';
 import {initialDocument} from '../lib/clinical/visit-document.ts';
 
 test('completed follow-up history keeps established patients out of initial entry; drafts do not',()=>{
@@ -42,4 +42,29 @@ test('navigator order covers distinct follow-up adherence and medication; long s
  assert.equal(activeVisitPart([{key:'interview',top:-900},{key:'mse',top:400}],125),'interview');
  assert.equal(activeVisitPart([{key:'interview',top:-900},{key:'mse',top:120},{key:'risk',top:900}],125),'mse');
  assert.equal(activeVisitPart([{key:'interview',top:140}],125),'interview');
+});
+
+
+test('non-linear workspace paths keep draft recovery reachable and URL state coherent',()=>{
+ assert.equal(workspaceHeroAction(false,true,false),'resume','a new patient with an initial draft must always have a resume action');
+ assert.equal(workspaceHeroAction(false,false,true),'resume','an intended appointment is resumable before first completion');
+ assert.equal(workspaceHeroAction(false,false,false),'none');
+ assert.equal(workspaceHeroAction(true,false,false),'new_follow_up');
+ assert.equal(workspaceHeroAction(true,true,false),'resume');
+
+ let search='?appointment=appt-1';
+ search=workspaceTransitionSearch(search,'history');
+ assert.equal(search,'?appointment=appt-1&tab=history');
+ assert.deepEqual(workspaceLocation(search),{tab:'history',sessionId:null});
+ search=workspaceTransitionSearch(search,'sessions','draft-1');
+ assert.equal(search,'?appointment=appt-1&tab=sessions&session=draft-1');
+ assert.deepEqual(workspaceLocation(search),{tab:'sessions',sessionId:'draft-1'});
+ search=workspaceTransitionSearch(search,'medications');
+ assert.equal(search,'?appointment=appt-1&tab=medications');
+ assert.deepEqual(workspaceLocation(search),{tab:'medications',sessionId:null});
+ search=workspaceTransitionSearch(search,'sessions','draft-1');
+ assert.deepEqual(workspaceLocation(search),{tab:'sessions',sessionId:'draft-1'});
+ search=workspaceTransitionSearch(search,'summary');
+ assert.equal(search,'?appointment=appt-1');
+ assert.deepEqual(workspaceLocation(search),{tab:'summary',sessionId:null});
 });

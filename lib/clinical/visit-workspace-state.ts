@@ -1,6 +1,17 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
+export type WorkspaceHeroAction='resume'|'new_follow_up'|'none';
+export function workspaceHeroAction(established:boolean,hasDraft:boolean,hasIntended:boolean):WorkspaceHeroAction{
+ if(hasDraft||hasIntended)return 'resume';
+ return established?'new_follow_up':'none';
+}
+export function workspaceTransitionSearch(search:string,tab:WorkspaceTab,sessionId?:string|null){
+ const params=new URLSearchParams(search);
+ if(tab==='summary')params.delete('tab');else params.set('tab',tab);
+ if(tab==='sessions'&&sessionId)params.set('session',sessionId);else params.delete('session');
+ const next=params.toString();return next?'?'+next:'';
+}
 // A visit response contains only that visit. Keep longitudinal context for scores
 // and historical references, replacing matching records with the fresh response.
 export function mergeVisitContext(visit:PatientBundle,context:PatientBundle|null):PatientBundle{

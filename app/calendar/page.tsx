@@ -679,6 +679,7 @@ export default function CalendarPage() {
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
           nextFor={appointmentEditor.nextFor}
+          initialPatientId={appointmentEditor.patientId}
           openingSession={openingSession === appointmentEditor.event?.id}
           onClose={() => setAppointmentEditor(null)}
           onSaved={async (event) => {

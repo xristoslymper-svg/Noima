@@ -30,7 +30,7 @@ async function handlePOST(req:Request){
    else {try{
     let pending=inflight.get(context_hash);if(!pending){pending=generate(context);inflight.set(context_hash,pending)}
     try{result=await pending;if(cache.size>=128)cache.delete(cache.keys().next().value!);cache.set(context_hash,result)}finally{inflight.delete(context_hash)}
-   }catch(error){mode='canonical';reason=error instanceof Error&&/^provider_failed_\d+$/.test(error.message)?error.message:'synthesis_not_verified';}}
+   }catch(error){mode='canonical';const safe=error instanceof Error?error.message:'';reason=/^(provider_failed_\d+|empty_output|invalid_output|invalid_count|invalid_finding|invalid_category|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed)$/.test(safe)?safe:'synthesis_not_verified';}}
   }
   const findings=result?.findings||canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
   return Response.json({findings,sources:context.sources,context_hash,as_of:context.day,generated_at:result?.generated_at||new Date().toISOString(),mode,reason,model:mode==='synthesis'?model:null},{headers:{'Cache-Control':'no-store'}});

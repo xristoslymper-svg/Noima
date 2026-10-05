@@ -1,6 +1,4 @@
 import { after } from 'next/server';
-import { pilotScope } from '@/lib/pilot/request-scope';
-import { precomputeClinicalSummary } from '@/app/api/clinical/summary/route';
 import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
@@ -21,12 +19,6 @@ function failure(error:unknown){
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
 
-function committedResponse(tester:string,key:string,value:unknown,patientId?:string){
- const patient=patientId||((value&&typeof value==='object'&&'patient_id' in value)?String((value as {patient_id?:unknown}).patient_id||''):'');
- const scope=pilotScope.getStore();
- if(isClinicalId(patient)&&scope)after(async()=>{await pilotScope.run(scope,async()=>{try{await precomputeClinicalSummary(tester,patient,false)}catch(error){console.error('clinical_summary_background_failed',{patient,error:error instanceof Error?error.message:'unknown'})}})});
- return Response.json({[key]:value});
-}
 async function handleGET(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Αυτός ο χώρος δέχεται μόνο φανταστικά δεδομένα. Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const url=new URL(request.url); const tester=testerOf(url.searchParams.get('tester')); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
@@ -35,12 +27,18 @@ async function handleGET(request:Request){
 async function handlePOST(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
  const body=await request.json().catch(()=>({})); const tester=testerOf(body.tester); if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
+ const cookie=request.headers.get('cookie')||'';const origin=new URL(request.url).origin;
+ const committedResponse=(key:string,value:unknown,patientId?:string)=>{
+  const patient=patientId||((value&&typeof value==='object'&&'patient_id' in value)?String((value as {patient_id?:unknown}).patient_id||''):'');
+  if(isClinicalId(patient))after(async()=>{try{await fetch(origin+'/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({patient_id:patient})})}catch(error){console.error('clinical_summary_background_failed',{patient,error:error instanceof Error?error.message:'unknown'})}});
+  return Response.json({[key]:value});
+ };
  try{
 
   switch(body.action){
    case 'save_document': return Response.json({section:first(await rpc('demo_session_save_document',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_document:body.document,p_expected_version:body.expected_version??null}))});
-   case 'approve_proposal': return committedResponse(tester,'section',first(await rpc('demo_proposal_approve',{p_tester:tester,p_id:body.proposal_id,p_text:String(body.text||''),p_mode:body.mode,p_expected_version:body.expected_version??null})));
-   case 'addendum': return committedResponse(tester,'addendum',first(await rpc('demo_addendum_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_kind:body.kind,p_reason:String(body.reason||''),p_content:String(body.content||'')})));
+   case 'approve_proposal': return committedResponse('section',first(await rpc('demo_proposal_approve',{p_tester:tester,p_id:body.proposal_id,p_text:String(body.text||''),p_mode:body.mode,p_expected_version:body.expected_version??null})));
+   case 'addendum': return committedResponse('addendum',first(await rpc('demo_addendum_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_kind:body.kind,p_reason:String(body.reason||''),p_content:String(body.content||'')})));
    case 'create_patient':{
     const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα βασικά στοιχεία.'},{status:400});
@@ -49,20 +47,20 @@ async function handlePOST(request:Request){
    case 'update_patient':{
     const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
-    return committedResponse(tester,'patient',first(await rpc('demo_patient_update_v2',{p_tester:tester,p_patient:body.patient_id,p_first_name:firstName,p_last_name:String(body.last_name||'').trim(),p_age:age,p_phone:String(body.phone||'').trim(),p_landline:String(body.landline||'').trim(),p_contact_phone:String(body.contact_phone||'').trim(),p_amka:String(body.amka||'').trim(),p_address:String(body.address||'').trim(),p_email:String(body.email||'').trim(),p_complaint:String(body.chief_complaint||'').trim(),p_expected_updated_at:body.expected_updated_at||null})));
+    return committedResponse('patient',first(await rpc('demo_patient_update_v2',{p_tester:tester,p_patient:body.patient_id,p_first_name:firstName,p_last_name:String(body.last_name||'').trim(),p_age:age,p_phone:String(body.phone||'').trim(),p_landline:String(body.landline||'').trim(),p_contact_phone:String(body.contact_phone||'').trim(),p_amka:String(body.amka||'').trim(),p_address:String(body.address||'').trim(),p_email:String(body.email||'').trim(),p_complaint:String(body.chief_complaint||'').trim(),p_expected_updated_at:body.expected_updated_at||null})));
    }
    case 'start_session': return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});
    case 'save_risk': return Response.json({risk:first(await rpc('demo_session_save_risk_tree',{p_tester:tester,p_session:body.session_id,p_risk:body.risk||{},p_expected_version:body.expected_version??null}))});
-   case 'save_history': return committedResponse(tester,'history',first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{},p_expected_version:body.expected_version??null}))),body.patient_id);
-   case 'medication_history': return committedResponse(tester,'medication',first(await rpc('demo_medication_record_history',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg'),p_frequency:String(body.frequency||''),p_started:body.started_on,p_stopped:body.stopped_on,p_reason:String(body.reason||'')})));
-   case 'medication_start': return committedResponse(tester,'medication',first(await rpc('demo_medication_start',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg').trim(),p_frequency:String(body.frequency||'').trim(),p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
-   case 'medication_event': return committedResponse(tester,'medication',first(await rpc('demo_medication_event_write',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_type:body.event_type,p_dose:body.dose??null,p_unit:body.unit??null,p_frequency:body.frequency??null,p_effective:body.effective_on,p_reason:String(body.reason||''),p_expected_version:body.expected_version,p_replace:body.replace_id||null,p_cancel:body.cancel===true})));
-   case 'medication_change': return committedResponse(tester,'medication',first(await rpc('demo_medication_change',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_dose:Number(body.dose),p_unit:String(body.unit||'mg').trim(),p_frequency:String(body.frequency||'').trim(),p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
-   case 'medication_stop': return committedResponse(tester,'medication',first(await rpc('demo_medication_stop',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
-   case 'medication_side_effect_resolve': return committedResponse(tester,'side_effect',first(await rpc('demo_medication_side_effect_resolve',{p_tester:tester,p_id:body.side_effect_id,p_resolved_on:body.resolved_on})));
-   case 'medication_side_effect': return committedResponse(tester,'side_effect',first(await rpc('demo_medication_side_effect_add',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effect:String(body.effect||'').trim(),p_severity:body.severity||'moderate',p_impact:String(body.impact||'').trim(),p_noted_on:body.noted_on,p_note:String(body.note||'').trim()})));
-   case 'finalize_session': return committedResponse(tester,'session',first(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)})));
+   case 'save_history': return committedResponse('history',first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{},p_expected_version:body.expected_version??null}))),body.patient_id);
+   case 'medication_history': return committedResponse('medication',first(await rpc('demo_medication_record_history',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg'),p_frequency:String(body.frequency||''),p_started:body.started_on,p_stopped:body.stopped_on,p_reason:String(body.reason||'')})));
+   case 'medication_start': return committedResponse('medication',first(await rpc('demo_medication_start',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg').trim(),p_frequency:String(body.frequency||'').trim(),p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
+   case 'medication_event': return committedResponse('medication',first(await rpc('demo_medication_event_write',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_type:body.event_type,p_dose:body.dose??null,p_unit:body.unit??null,p_frequency:body.frequency??null,p_effective:body.effective_on,p_reason:String(body.reason||''),p_expected_version:body.expected_version,p_replace:body.replace_id||null,p_cancel:body.cancel===true})));
+   case 'medication_change': return committedResponse('medication',first(await rpc('demo_medication_change',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_dose:Number(body.dose),p_unit:String(body.unit||'mg').trim(),p_frequency:String(body.frequency||'').trim(),p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
+   case 'medication_stop': return committedResponse('medication',first(await rpc('demo_medication_stop',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effective:body.effective_on,p_reason:String(body.reason||'').trim()})));
+   case 'medication_side_effect_resolve': return committedResponse('side_effect',first(await rpc('demo_medication_side_effect_resolve',{p_tester:tester,p_id:body.side_effect_id,p_resolved_on:body.resolved_on})));
+   case 'medication_side_effect': return committedResponse('side_effect',first(await rpc('demo_medication_side_effect_add',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effect:String(body.effect||'').trim(),p_severity:body.severity||'moderate',p_impact:String(body.impact||'').trim(),p_noted_on:body.noted_on,p_note:String(body.note||'').trim()})));
+   case 'finalize_session': return committedResponse('session',first(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)})));
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }
  }catch(error){return failure(error)}

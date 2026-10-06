@@ -83,7 +83,7 @@ function NewPatientSummary({bundle,onDetails,onStart}:{bundle:PatientBundle;onDe
  const draft=bundle.sessions.find(s=>s.status==='draft'&&s.session_type==='initial_assessment');
  return <section className="new-patient-home clinical-start minimal-start">
   <div className="clinical-start-copy">
-   <button className="clinical-start-cta" onClick={onStart}><span>{draft?'Συνέχεια αρχικής αξιολόγησης':'Έναρξη αρχικής αξιολόγησης'}</span><span aria-hidden="true">→</span></button>
+   <button className="clinical-start-cta" onClick={onStart}><span>{draft?'Συνέχεια καταγραφής αρχικής αξιολόγησης':'Νέα καταγραφή αρχικής αξιολόγησης'}</span><span aria-hidden="true">→</span></button>
    <div className="clinical-start-scope">Λόγος προσέλευσης <i>·</i> MSE <i>·</i> Risk <i>·</i> Ιστορικό <i>·</i> Διάγνωση <i>·</i> Αγωγή <i>·</i> Πλάνο</div>
   </div>
   <button className="patient-details-link" onClick={onDetails}>Στοιχεία ασθενή <span aria-hidden="true">→</span></button>

@@ -42,6 +42,7 @@ export default function PatientSession({
  bundle,
  reload,
  onFinalize,
+ onFinishLater,
  finalizing,
  finalizeError,
  selectedSessionId,
@@ -60,6 +61,7 @@ export default function PatientSession({
  bundle:PatientBundle;
  reload:()=>Promise<unknown>;
  onFinalize:(sessionId:string)=>Promise<void>;
+ onFinishLater?:(sessionId:string)=>Promise<void>;
  finalizing:boolean;
  finalizeError:string;
  selectedSessionId:string|null;
@@ -79,6 +81,7 @@ export default function PatientSession({
  const [flushing,setFlushing]=useState(false);
  const [flushError,setFlushError]=useState('');
  const [showFinalizeGuidance,setShowFinalizeGuidance]=useState(false);
+ const [finishingLater,setFinishingLater]=useState(false);
  const finishing=useRef(false);
  const documentRef=useRef<HTMLFieldSetElement>(null);
  const [activePart,setActivePart]=useState('interview');
@@ -135,6 +138,11 @@ export default function PatientSession({
  },[draft?.id]);
  function goToPart(key:string){documentRef.current?.querySelector<HTMLElement>('[data-visit-part="'+key+'"]')?.scrollIntoView({behavior:'smooth',block:'start'})}
 
+ async function finishLater(){
+  if(!draft||!onFinishLater||finishingLater)return;
+  setFinishingLater(true);
+  try{if(medOpen)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');await flushAll();await onFinishLater(draft.id)}catch{}finally{setFinishingLater(false)}
+ }
  async function finalizeSafely(){
   if(finishing.current)return;finishing.current=true;
   try{
@@ -178,7 +186,7 @@ export default function PatientSession({
   </div>
 
   <nav className="visit-scroll-nav" aria-label="Πλοήγηση επίσκεψης">{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=><button type="button" key={key} aria-current={activePart===key?'step':undefined} className={activePart===key?'active':''} onClick={()=>goToPart(key)}><i/><span>{label}</span></button>)}</nav>
-  <fieldset ref={documentRef} disabled={flushing||finalizing||medOpen} className="visit-document">
+  <fieldset ref={documentRef} disabled={flushing||finalizing||finishingLater||medOpen} className="visit-document">
    <VisitPart anchor="interview" number="01" title={draft.session_type==='follow_up'?'Συμπτώματα / πορεία':'Λόγος προσέλευσης & παρούσα εικόνα'}>{editor('interview')}</VisitPart>
    {draft.session_type==='follow_up'&&<VisitPart anchor="adherence" number="02" title="Παρενέργειες & λήψη αγωγής">{contextReady?<MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση αγωγής…</p>}<details className="visit-review-notes"><summary>Συνολική καταγραφή παρενεργειών{sections.find(s=>s.section_key==='effects')?.content.trim()?' · υπάρχει καταγραφή':''}</summary>{editor('effects')}</details>{editor('adherence')}</VisitPart>}
    <VisitPart anchor="mse" number="02" title={draft.session_type==='follow_up'?'MSE · τι άλλαξε':'Mental Status Examination'}>
@@ -198,7 +206,7 @@ export default function PatientSession({
   {medOpen&&<MedicationModal bundle={bundle} sessionId={draft.id} initialMode={medTarget.mode} initialMedicationId={medTarget.id} onClose={()=>setMedOpen(false)} onSaved={reloadContext}/>}
 
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||medOpen}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση επίσκεψης'}</button>
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater||medOpen}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση & αποθήκευση καταγραφής'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater||medOpen} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση…':'Ολοκλήρωση αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
   {onClose&&<button data-visit-close className="visit-close" disabled={flushing||finalizing||medOpen} onClick={()=>void flushAll().then(onClose).catch(()=>{})}>Αποθήκευση & κλείσιμο</button>}

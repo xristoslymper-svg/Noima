@@ -28,6 +28,7 @@ import {
   Sparkles,
   Stethoscope,
   Users,
+  UserPlus,
   X,
 } from "lucide-react";
 
@@ -726,6 +727,7 @@ export default function CalendarPage() {
             if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
           }}
           onOpenSession={openAppointmentSession}
+          onPatientCreated={patient=>setPatients(current=>current.some(item=>item.id===patient.id)?current:[patient,...current])}
         />
       )}
 
@@ -881,7 +883,7 @@ export default function CalendarPage() {
         .calendar-icon-actions.calendar-icon-actions-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
         .calendar-appointment-actions-menu{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.calendar-appointment-actions-menu button{border:1px solid #e3e9e5;background:#fff;border-radius:11px;padding:10px;color:#536d60;font-size:11px;font-weight:650;cursor:pointer}.calendar-appointment-actions-menu button:hover{background:#f4f7f5}.calendar-appointment-actions-menu button:disabled{opacity:.45;cursor:not-allowed}
         .calendar-payment-state{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px;padding:14px 15px;border:1px solid #e4e9e6;border-radius:15px;background:#fbfcfb}.calendar-payment-state>div:first-child{display:flex;flex-direction:column;gap:3px}.calendar-payment-state strong{font-size:12px;color:#334b40}.calendar-payment-state span{font-size:10px;color:#7a8a82}.calendar-payment-choice{display:flex;gap:6px}.calendar-payment-choice button{display:inline-flex;align-items:center;gap:5px;border:1px solid #dce5e0;background:#fff;border-radius:999px;padding:7px 11px;color:#61756b;font-size:11px;font-weight:700;cursor:pointer}.calendar-payment-choice button.selected{background:#e7f1ec;border-color:#abc6b9;color:#356b59}.calendar-payment-choice button.selected.pending{background:#f8eee7;border-color:#dfc5b3;color:#8a654e}.calendar-payment-choice button:disabled{opacity:.55;cursor:wait}
-        .appointment-patient-field{position:relative}.appointment-patient-search{position:relative;display:flex;align-items:center}.appointment-patient-search>svg{position:absolute;left:11px;color:#718078;pointer-events:none}.appointment-patient-search input{width:100%;padding-left:36px!important;padding-right:34px!important}.appointment-patient-search>button{position:absolute;right:7px;display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:#78877f;cursor:pointer}.appointment-patient-search>button:hover{background:#eef3f0}.appointment-patient-results{position:absolute;z-index:12;left:0;right:0;top:calc(100% + 5px);max-height:230px;overflow:auto;padding:6px;background:#fff;border:1px solid #dfe6e2;border-radius:12px;box-shadow:0 14px 38px rgba(37,57,48,.14)}.appointment-patient-results button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:transparent;border-radius:9px;padding:9px 10px;text-align:left;color:#344b40;font-size:12px;cursor:pointer}.appointment-patient-results button:hover{background:#f0f5f2}.appointment-patient-results small{display:block;padding:12px 10px;color:#829087;font-size:11px}
+        .appointment-patient-field{position:relative}.appointment-field-label{display:block;margin-bottom:7px;color:#6f7e76;font-size:11px;font-weight:700}.appointment-patient-search{position:relative;display:flex;align-items:center}.appointment-patient-search>svg{position:absolute;left:11px;color:#718078;pointer-events:none}.appointment-patient-search input{width:100%;padding-left:36px!important;padding-right:34px!important}.appointment-patient-search>button{position:absolute;right:7px;display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:#78877f;cursor:pointer}.appointment-patient-search>button:hover{background:#eef3f0}.appointment-patient-results{position:absolute;z-index:12;left:0;right:0;top:calc(100% + 5px);max-height:230px;overflow:auto;padding:6px;background:#fff;border:1px solid #dfe6e2;border-radius:12px;box-shadow:0 14px 38px rgba(37,57,48,.14)}.appointment-patient-results button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:transparent;border-radius:9px;padding:9px 10px;text-align:left;color:#344b40;font-size:12px;cursor:pointer}.appointment-patient-results button:hover{background:#f0f5f2}.appointment-patient-results small{display:block;padding:12px 10px;color:#829087;font-size:11px}.appointment-new-patient-actions{margin-top:5px;padding-top:6px;border-top:1px solid #edf1ee}.appointment-new-patient-actions .appointment-create-patient{color:#356b59;font-weight:750}.appointment-new-patient-actions>a{display:block;padding:7px 10px;color:#71827a;font-size:10px;text-decoration:none}.appointment-new-patient-actions>a:hover{color:#356b59}.appointment-quick-patient{position:absolute;z-index:13;left:0;right:0;top:calc(100% + 5px);padding:14px;background:#fff;border:1px solid #dfe6e2;border-radius:14px;box-shadow:0 16px 42px rgba(37,57,48,.16)}.appointment-quick-patient-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}.appointment-quick-patient-head strong{font-size:12px;color:#334b40}.appointment-quick-patient-head button{border:0;background:transparent;color:#829087;cursor:pointer}.appointment-quick-patient-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.appointment-quick-patient-grid label:last-child{grid-column:1/-1}.appointment-quick-patient-grid label{font-size:9px;color:#718078;font-weight:700}.appointment-quick-patient-grid input{width:100%;margin-top:4px;padding:9px 10px!important;border:1px solid #dfe6e2;border-radius:9px;font-size:11px}.appointment-quick-patient-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid #edf1ee}.appointment-quick-patient-footer>a{color:#6e8178;font-size:9.5px;text-decoration:none}.appointment-quick-patient-footer>button{border:0;border-radius:9px;background:#3f765f;color:#fff;padding:9px 11px;font-size:10px;font-weight:750;cursor:pointer}.appointment-quick-patient-footer>button:disabled{opacity:.5;cursor:default}
         .calendar-quick-cancel{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:none;margin-top:20px;padding:8px;color:#ac6a65;font-size:12px;cursor:pointer}
         .calendar-quick-error{color:#a85350!important;margin-top:12px!important}.calendar-undo{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:90vw;padding:16px 20px;background:#fff;border:1px solid #ead9d7;border-radius:18px;box-shadow:0 12px 40px rgba(40,55,45,.15);font-size:13px;color:#725651}.calendar-undo button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#356b59;cursor:pointer;font-weight:650}
         @media(max-width:1050px){.calendar-time-grid{min-width:850px!important}.calendar-week-card{overflow-x:auto}}
@@ -917,6 +919,7 @@ function AppointmentEditor({
   onClose,
   onSaved,
   onOpenSession,
+  onPatientCreated,
 }: {
   mode: "create" | "edit";
   event?: CalendarEvent;
@@ -929,6 +932,7 @@ function AppointmentEditor({
   onClose: () => void;
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
+  onPatientCreated: (patient: PatientOption) => void;
 }) {
   const initialPatient = event?.patient_id || nextFor?.patient_id || initialPatientId || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
@@ -937,7 +941,12 @@ function AppointmentEditor({
   const [patientId, setPatientId] = useState(initialPatient);
   const [patientSearch,setPatientSearch]=useState("");
   const [patientPickerOpen,setPatientPickerOpen]=useState(false);
-  const patientPickerRef=useRef<HTMLLabelElement|null>(null);
+  const [quickPatientOpen,setQuickPatientOpen]=useState(false);
+  const [quickFirstName,setQuickFirstName]=useState("");
+  const [quickLastName,setQuickLastName]=useState("");
+  const [quickPhone,setQuickPhone]=useState("");
+  const [quickPatientSaving,setQuickPatientSaving]=useState(false);
+  const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
@@ -949,6 +958,34 @@ function AppointmentEditor({
     ? patients.filter(patient=>((patient.first_name+" "+patient.last_name).toLocaleLowerCase("el-GR").includes(normalizedPatientSearch)))
     : patients.slice(0,8);
   const patientMobile=selectedPatient?.phone||"";
+  function openQuickPatient(){
+    const parts=patientSearch.trim().split(/\s+/).filter(Boolean);
+    setQuickFirstName(parts[0]||"");
+    setQuickLastName(parts.slice(1).join(" "));
+    setQuickPhone("");
+    setQuickPatientOpen(true);
+    setPatientPickerOpen(false);
+    setError("");
+  }
+  async function createQuickPatient(){
+    const firstName=quickFirstName.trim();
+    if(!firstName){setError("Συμπληρώστε τουλάχιστον το όνομα.");return}
+    if(quickPatientSaving)return;
+    setQuickPatientSaving(true);setError("");
+    try{
+      const response=await fetch("/api/patients/demo/runtime",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        action:"create_patient",tester:getDemoTesterId(),first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),
+        age:null,landline:"",contact_phone:"",amka:"",address:"",email:"",chief_complaint:""
+      })});
+      const data=(await response.json().catch(()=>({}))) as {patient?:PatientOption;error?:string};
+      if(!response.ok||!data.patient)throw new Error(data.error||"Δεν δημιουργήθηκε ο ασθενής.");
+      onPatientCreated(data.patient);
+      setPatientId(data.patient.id);
+      setPatientSearch("");
+      setQuickPatientOpen(false);
+    }catch(cause){setError(cause instanceof Error?cause.message:"Δεν δημιουργήθηκε ο ασθενής.")}
+    finally{setQuickPatientSaving(false)}
+  }
   const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -957,7 +994,7 @@ function AppointmentEditor({
   const [scope,setScope] = useState("one");
   const [confirmCancel,setConfirmCancel] = useState(false);
   const busyRef=useRef(false);
-  const editorRef=useCalendarDialog(onClose,saving);
+  const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);
   useEffect(()=>{
     if(!patientPickerOpen)return;
     const dismiss=(event:PointerEvent)=>{if(patientPickerRef.current&&!patientPickerRef.current.contains(event.target as Node))setPatientPickerOpen(false)};
@@ -1028,7 +1065,8 @@ function AppointmentEditor({
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
-        {mode === "create" && <label ref={patientPickerRef} className="appointment-patient-field">Ασθενής
+        {mode === "create" && <div ref={patientPickerRef} className="appointment-patient-field">
+          <span className="appointment-field-label">Ασθενής</span>
           <div className="appointment-patient-search">
             <Search size={16}/>
             <input
@@ -1036,18 +1074,35 @@ function AppointmentEditor({
               value={patientSearch}
               placeholder={selectedPatient?(selectedPatient.first_name+" "+selectedPatient.last_name):"Αναζήτηση ασθενή…"}
               autoComplete="off"
-              onFocus={()=>setPatientPickerOpen(true)}
-              onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);if(patientId)setPatientId("")}}
+              onFocus={()=>{if(!quickPatientOpen)setPatientPickerOpen(true)}}
+              onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);setQuickPatientOpen(false);if(patientId)setPatientId("")}}
             />
             {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setPatientPickerOpen(true)}}><X size={14}/></button>}
           </div>
           {patientPickerOpen&&<div className="appointment-patient-results">
-            {matchingPatients.length?matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
+            {matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
               <span>{patient.first_name} {patient.last_name}</span>
               {patient.id===patientId&&<Check size={14}/>}
-            </button>):<small>Δεν βρέθηκε ασθενής.</small>}
+            </button>)}
+            {normalizedPatientSearch&&matchingPatients.length===0&&<small>Δεν βρέθηκε ασθενής.</small>}
+            <div className="appointment-new-patient-actions">
+              <button type="button" className="appointment-create-patient" onClick={openQuickPatient}><UserPlus size={15}/><span>{normalizedPatientSearch?"Νέος ασθενής":"Δημιουργία νέου ασθενή"}</span></button>
+              <Link href="/patients/new" target="_blank" rel="noreferrer" onClick={()=>setPatientPickerOpen(false)}>Πλήρης φάκελος ↗</Link>
+            </div>
           </div>}
-        </label>}
+          {quickPatientOpen&&<div className="appointment-quick-patient">
+            <div className="appointment-quick-patient-head"><strong>Νέος ασθενής</strong><button type="button" onClick={()=>setQuickPatientOpen(false)} aria-label="Κλείσιμο"><X size={14}/></button></div>
+            <div className="appointment-quick-patient-grid">
+              <label>Όνομα *<input autoFocus value={quickFirstName} onChange={e=>setQuickFirstName(e.target.value)}/></label>
+              <label>Επώνυμο<input value={quickLastName} onChange={e=>setQuickLastName(e.target.value)}/></label>
+              <label>Κινητό<input value={quickPhone} onChange={e=>setQuickPhone(e.target.value)} placeholder="Προαιρετικό"/></label>
+            </div>
+            <div className="appointment-quick-patient-footer">
+              <Link href="/patients/new" target="_blank" rel="noreferrer">Δημιουργία πλήρους φακέλου ↗</Link>
+              <button type="button" disabled={quickPatientSaving||!quickFirstName.trim()} onClick={()=>void createQuickPatient()}>{quickPatientSaving?"Δημιουργία…":"Δημιουργία & επιλογή"}</button>
+            </div>
+          </div>}
+        </div>}
         <label>Ημερομηνία<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
         <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>

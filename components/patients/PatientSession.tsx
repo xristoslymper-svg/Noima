@@ -117,6 +117,7 @@ export default function PatientSession({
   }catch(cause){
    const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν όλες οι αλλαγές.';
    setFlushError(message);
+   setFlushing(false);
    throw cause;
   }
   try{

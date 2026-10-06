@@ -80,7 +80,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
     request(`demo_session_addenda?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
     request(`demo_session_corrections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
     request(`demo_calendar_events?select=id,session_id,appointment_type,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
-    request(`demo_medication_event_revisions?select=event_id,replacement_id,reason,created_at&tester_id=eq.${tid}`),
+    rpc('demo_medication_revisions_for_patient',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id}),
   ]);
   return {clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(assessments),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};

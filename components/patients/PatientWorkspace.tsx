@@ -81,10 +81,10 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
 function Nav({active,onClick,icon,label,badge}:{active:boolean;onClick:()=>void;icon:React.ReactNode;label:string;badge?:string}){return <button className={active?'active':''} onClick={onClick}>{icon}<span>{label}</span>{badge&&<i>{badge}</i>}</button>}
 
 function NewPatientSummary({bundle,onDetails,onStart}:{bundle:PatientBundle;onDetails:()=>void;onStart:()=>void}){
- const draft=bundle.sessions.find(s=>s.status==='draft'&&s.session_type==='initial_assessment');
+ const draft=bundle.sessions.find(s=>s.status==='draft');
  return <section className="new-patient-home clinical-start minimal-start">
   <div className="clinical-start-copy">
-   <button className="clinical-start-cta" onClick={onStart}><span>{draft?'Συνέχεια καταγραφής αρχικής αξιολόγησης':'Νέα καταγραφή αρχικής αξιολόγησης'}</span><span aria-hidden="true">→</span></button>
+   <button className="clinical-start-cta" onClick={onStart}><span>{draft?(draft.session_type==='initial_assessment'?'Συνέχεια καταγραφής αρχικής αξιολόγησης':'Συνέχεια καταγραφής follow-up'):'Νέα καταγραφή αρχικής αξιολόγησης'}</span><span aria-hidden="true">→</span></button>
    <div className="clinical-start-scope">Λόγος προσέλευσης <i>·</i> MSE <i>·</i> Risk <i>·</i> Ιστορικό <i>·</i> Διάγνωση <i>·</i> Αγωγή <i>·</i> Πλάνο</div>
   </div>
   <button className="patient-details-link" onClick={onDetails}>Στοιχεία ασθενή <span aria-hidden="true">→</span></button>

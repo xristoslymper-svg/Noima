@@ -872,6 +872,7 @@ export default function CalendarPage() {
         .calendar-icon-actions.calendar-icon-actions-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
         .calendar-appointment-actions-menu{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.calendar-appointment-actions-menu button{border:1px solid #e3e9e5;background:#fff;border-radius:11px;padding:10px;color:#536d60;font-size:11px;font-weight:650;cursor:pointer}.calendar-appointment-actions-menu button:hover{background:#f4f7f5}.calendar-appointment-actions-menu button:disabled{opacity:.45;cursor:not-allowed}
         .calendar-payment-state{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px;padding:14px 15px;border:1px solid #e4e9e6;border-radius:15px;background:#fbfcfb}.calendar-payment-state>div:first-child{display:flex;flex-direction:column;gap:3px}.calendar-payment-state strong{font-size:12px;color:#334b40}.calendar-payment-state span{font-size:10px;color:#7a8a82}.calendar-payment-choice{display:flex;gap:6px}.calendar-payment-choice button{display:inline-flex;align-items:center;gap:5px;border:1px solid #dce5e0;background:#fff;border-radius:999px;padding:7px 11px;color:#61756b;font-size:11px;font-weight:700;cursor:pointer}.calendar-payment-choice button.selected{background:#e7f1ec;border-color:#abc6b9;color:#356b59}.calendar-payment-choice button.selected.pending{background:#f8eee7;border-color:#dfc5b3;color:#8a654e}.calendar-payment-choice button:disabled{opacity:.55;cursor:wait}
+        .appointment-patient-field{position:relative}.appointment-patient-search{position:relative;display:flex;align-items:center}.appointment-patient-search>svg{position:absolute;left:11px;color:#718078;pointer-events:none}.appointment-patient-search input{width:100%;padding-left:36px!important;padding-right:34px!important}.appointment-patient-search>button{position:absolute;right:7px;display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:#78877f;cursor:pointer}.appointment-patient-search>button:hover{background:#eef3f0}.appointment-patient-results{position:absolute;z-index:12;left:0;right:0;top:calc(100% + 5px);max-height:230px;overflow:auto;padding:6px;background:#fff;border:1px solid #dfe6e2;border-radius:12px;box-shadow:0 14px 38px rgba(37,57,48,.14)}.appointment-patient-results button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:transparent;border-radius:9px;padding:9px 10px;text-align:left;color:#344b40;font-size:12px;cursor:pointer}.appointment-patient-results button:hover{background:#f0f5f2}.appointment-patient-results small{display:block;padding:12px 10px;color:#829087;font-size:11px}
         .calendar-quick-cancel{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:none;margin-top:20px;padding:8px;color:#ac6a65;font-size:12px;cursor:pointer}
         .calendar-quick-error{color:#a85350!important;margin-top:12px!important}.calendar-undo{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:90vw;padding:16px 20px;background:#fff;border:1px solid #ead9d7;border-radius:18px;box-shadow:0 12px 40px rgba(40,55,45,.15);font-size:13px;color:#725651}.calendar-undo button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#356b59;cursor:pointer;font-weight:650}
         @media(max-width:1050px){.calendar-time-grid{min-width:850px!important}.calendar-week-card{overflow-x:auto}}
@@ -925,12 +926,19 @@ function AppointmentEditor({
   const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? (nextFor?athensMinutes(nextFor.scheduled_start):9 * 60);
   const initialTime = String(Math.floor(eventMinute / 60)).padStart(2, "0") + ":" + String(eventMinute % 60).padStart(2, "0");
   const [patientId, setPatientId] = useState(initialPatient);
+  const [patientSearch,setPatientSearch]=useState("");
+  const [patientPickerOpen,setPatientPickerOpen]=useState(false);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
-  const patientMobile=patients.find(p=>p.id===patientId)?.phone||"";
+  const selectedPatient=patients.find(p=>p.id===patientId);
+  const normalizedPatientSearch=patientSearch.trim().toLocaleLowerCase("el-GR");
+  const matchingPatients=normalizedPatientSearch
+    ? patients.filter(patient=>((patient.first_name+" "+patient.last_name).toLocaleLowerCase("el-GR").includes(normalizedPatientSearch)))
+    : patients.slice(0,8);
+  const patientMobile=selectedPatient?.phone||"";
   const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1002,7 +1010,26 @@ function AppointmentEditor({
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
-        {mode === "create" && <label>Ασθενής<select value={patientId} onChange={change => setPatientId(change.target.value)}><option value="">Επιλέξτε…</option>{patients.map(patient => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name}</option>)}</select></label>}
+        {mode === "create" && <label className="appointment-patient-field">Ασθενής
+          <div className="appointment-patient-search">
+            <Search size={16}/>
+            <input
+              type="search"
+              value={patientSearch}
+              placeholder={selectedPatient?(selectedPatient.first_name+" "+selectedPatient.last_name):"Αναζήτηση ασθενή…"}
+              autoComplete="off"
+              onFocus={()=>setPatientPickerOpen(true)}
+              onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);if(patientId)setPatientId("")}}
+            />
+            {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setPatientPickerOpen(true)}}><X size={14}/></button>}
+          </div>
+          {patientPickerOpen&&<div className="appointment-patient-results">
+            {matchingPatients.length?matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
+              <span>{patient.first_name} {patient.last_name}</span>
+              {patient.id===patientId&&<Check size={14}/>}
+            </button>):<small>Δεν βρέθηκε ασθενής.</small>}
+          </div>}
+        </label>}
         <label>Ημερομηνία<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
         <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>

@@ -18,6 +18,7 @@ async function handlePOST(request:Request){
    return Response.json({...assessment as Record<string,unknown>,assessmentLink});
   }
   if(b.action==='review_item9'){await rpc('demo_assessment_item9_review',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
+  if(b.action==='review'){if(!uuid.test(b.id||''))return Response.json({error:'Μη έγκυρη αξιολόγηση.'},{status:400});await rpc('demo_assessment_review',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
   if(b.action==='revoke'){await rpc('demo_assessment_revoke',{p_tester:b.tester,p_id:b.id});return Response.json({ok:true})}
   return Response.json({error:'Μη έγκυρη ενέργεια.'},{status:400});
  }catch(e){const message=e instanceof Error?e.message:'';const expired=message.includes('link_expired'),done=message.includes('already_completed');return Response.json({error:expired?'Ο σύνδεσμος έχει λήξει. Ζητήστε νέο από τον γιατρό σας.':done?'Το ερωτηματολόγιο έχει ήδη υποβληθεί.':message.includes('invalid_answers')?'Απαντήστε σε όλες τις ερωτήσεις.':'Η ενέργεια δεν ολοκληρώθηκε. Ο σύνδεσμος μπορεί να έχει ανακληθεί. Οι απαντήσεις παραμένουν διαθέσιμες για επανάληψη.'},{status:expired?410:done?409:400})}

@@ -1,6 +1,6 @@
 import {request,type PatientBundle,type DemoPatient} from './demo-runtime';
 import {isClinicalId} from '../clinical/identity';
-const empty=(patient:DemoPatient):PatientBundle=>({patient,sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],assessments:[],appointments:[]});
+const empty=(patient:DemoPatient):PatientBundle=>({patient,sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],corrections:[],assessments:[],appointments:[]});
 export async function visitBundle(tester:string,patientRef:string,sessionId?:string):Promise<PatientBundle>{
  if(!isClinicalId(patientRef))throw new Error('patient_not_found');
  const tid=encodeURIComponent(tester),id=encodeURIComponent(patientRef);
@@ -13,6 +13,6 @@ export async function visitBundle(tester:string,patientRef:string,sessionId?:str
  if(!isClinicalId(sessionId))throw new Error('session_unavailable');
  const ss=await request(`demo_sessions?select=*&${filter}&id=eq.${sessionId}`) as PatientBundle['sessions'];if(!ss.length)throw new Error('session_unavailable');
  const child=`${filter}&session_id=eq.${sessionId}`;
- const [sections,risks,proposals,addenda]=await Promise.all([request(`demo_session_sections?select=*&${child}`),request(`demo_risk_assessments?select=*&${child}`),request(`demo_clinical_entries?select=*&${child}&order=created_at.desc`),request(`demo_session_addenda?select=*&${child}&order=created_at.asc`)]);
- return {...b,sessions:ss,sections:sections as PatientBundle['sections'],risks:risks as PatientBundle['risks'],proposals:proposals as PatientBundle['proposals'],addenda:addenda as PatientBundle['addenda']};
+ const [sections,risks,proposals,addenda,corrections]=await Promise.all([request(`demo_session_sections?select=*&${child}`),request(`demo_risk_assessments?select=*&${child}`),request(`demo_clinical_entries?select=*&${child}&order=created_at.desc`),request(`demo_session_addenda?select=*&${child}&order=created_at.asc`),request(`demo_session_corrections?select=*&${child}&order=created_at.asc`)]);
+ return {...b,sessions:ss,sections:sections as PatientBundle['sections'],risks:risks as PatientBundle['risks'],proposals:proposals as PatientBundle['proposals'],addenda:addenda as PatientBundle['addenda'],corrections:corrections as PatientBundle['corrections']};
 }

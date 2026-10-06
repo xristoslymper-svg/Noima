@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
 type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
+type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -51,6 +52,7 @@ export default function Page() {
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
   const [tasks,setTasks]=useState<TodoTask[]>([]);
+  const [psychometricsForReview,setPsychometricsForReview]=useState<OverviewPsychometric[]>([]);
   const [widgetOpen,setWidgetOpen]=useState<"payments"|"psychometrics"|"todo"|null>(null);
   const [taskTitle,setTaskTitle]=useState("");
   const [widgetBusy,setWidgetBusy]=useState(false);
@@ -59,38 +61,26 @@ export default function Page() {
   const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
   const [overviewRetry,setOverviewRetry]=useState(0);
   useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();setOverviewState('loading');void (async()=>{
-    const [calendarResponse,patientsResponse,tasksResponse]=await Promise.all([
-      fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}),
-      fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester),{cache:"no-store"}),
-      fetch("/api/tasks?tester="+encodeURIComponent(tester),{cache:"no-store"}),
-    ]);
-    const calendarData=await calendarResponse.json();const patientData=await patientsResponse.json();const taskData=await tasksResponse.json();
-    if(!calendarResponse.ok||!patientsResponse.ok||!tasksResponse.ok)throw new Error('overview_unavailable');
+    const response=await fetch("/api/overview?tester="+encodeURIComponent(tester),{cache:"no-store"});
+    const data=await response.json();if(!response.ok)throw new Error('overview_unavailable');
     if(cancelled)return;
-    const events=(calendarData.events||[]) as OverviewEvent[];
-    const ids=(patientData.patients||[]).map((p:{id:string})=>p.id) as string[];
-    const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));
-    if(cancelled)return;
-    if(loaded.some(item=>item===null))throw new Error('overview_incomplete');
+    const events=(data.events||[]) as OverviewEvent[];
     const todayKey=overviewDateKey(new Date());
     const todayPatientIds=events.filter(event=>overviewDateKey(new Date(event.scheduled_start))===todayKey&&event.status!=="cancelled"&&event.patient_id).map(event=>event.patient_id as string);
-    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setTasks((taskData.tasks||[]) as TodoTask[]);
+    setSchedule(events);setTasks((data.tasks||[]) as TodoTask[]);setPsychometricsForReview((data.psychometrics||[]) as OverviewPsychometric[]);
     setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:todayPatientIds[0]||null);
     setOverviewState('ready');
-    void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{});
+    void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
+  useEffect(()=>{if(!selectedPatientId)return;let cancelled=false;const controller=new AbortController();const load=async()=>{try{const tester=getDemoTesterId();const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(selectedPatientId),{cache:"no-store",signal:controller.signal});const d=await r.json();if(r.ok&&d.bundle&&!cancelled)setBundles(current=>({...current,[selectedPatientId]:d.bundle as PatientBundle}))}catch{}};void load();const refresh=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('focus',refresh);return()=>{cancelled=true;controller.abort();window.removeEventListener('focus',refresh)}},[selectedPatientId]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
 
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
 
-  const loadedBundles=Object.values(bundles);
   const remainingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_end).getTime()>nowMs);
   const pendingPayments=schedule.filter(event=>event.status!=="cancelled"&&event.payment_status==="pending");
-  const psychometricsForReview=loadedBundles.flatMap(bundle=>bundle.assessments
-    .filter(assessment=>assessment.status==="completed"&&(!assessment.reviewed_at||(assessment.item9_review&&!assessment.item9_reviewed_at)))
-    .map(assessment=>({assessment,patient:bundle.patient})));
   const openTasks=tasks.filter(task=>task.status==="open");
 
   async function markPaymentPaid(event:OverviewEvent){
@@ -243,9 +233,9 @@ export default function Page() {
           </div>}
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
-            {psychometricsForReview.length?psychometricsForReview.map(({assessment,patient})=><div className="dashboard-widget-row" key={assessment.id}>
-              <div><strong>{patient.first_name} {patient.last_name} · {assessment.instrument}</strong><span>{assessment.completed_at?new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(assessment.completed_at)):"Συμπληρώθηκε"}{assessment.score!==null?" · score "+assessment.score:""}</span></div>
-              <Link href={"/patients/demo/"+patient.id+"?tab=psychometrics"}>Έλεγχος <ChevronRight size={15}/></Link>
+            {psychometricsForReview.length?psychometricsForReview.map(assessment=><div className="dashboard-widget-row" key={assessment.id}>
+              <div><strong>{assessment.patient_name} · {assessment.instrument}</strong><span>{assessment.completed_at?new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(assessment.completed_at)):"Συμπληρώθηκε"}{assessment.score!==null?" · score "+assessment.score:""}</span></div>
+              <Link href={"/patients/demo/"+assessment.patient_id+"?tab=psychometrics"}>Έλεγχος <ChevronRight size={15}/></Link>
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν νέα ψυχομετρικά για έλεγχο.</div>}
           </div>}
 

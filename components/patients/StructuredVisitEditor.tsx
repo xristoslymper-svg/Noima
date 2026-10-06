@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {initialDocument,mseItems,type VisitDocument,type DocumentField} from '@/lib/clinical/visit-document';
 import type {DemoSection,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
@@ -12,8 +12,15 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
  const baselineDocument=kind==='mse'&&baseline?initialDocument('mse',baseline.content,baseline.document):null;
  const initialValue=initialDocument(kind,existing?.content,existing?.document);
  const inheritedMse=kind==='mse'&&followup&&baselineDocument&&!existing?{...initialValue,fields:initialValue.fields.map(field=>({...field,text:baselineDocument.fields.find(item=>item.key===field.key)?.text||field.text}))}:null;
+ const baselineHandled=useRef(false);
+ const baselineKey=baseline?baseline.id+':'+baseline.version+':'+JSON.stringify(baseline.document||baseline.content):'';
  const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialValue,version:existing?.version??null,write:async(document,version)=>{const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
- useEffect(()=>{if(inheritedMse)draft.change(inheritedMse)},[sessionId]);
+ useEffect(()=>{baselineHandled.current=false},[sessionId]);
+ useEffect(()=>{
+  if(!inheritedMse||existing||baselineHandled.current)return;
+  baselineHandled.current=true;
+  if(JSON.stringify(draft.value)===JSON.stringify(initialValue))draft.change(inheritedMse);
+ },[sessionId,baselineKey,existing?.id]);
  useEffect(()=>registerFlusher(key,draft.flush),[key,registerFlusher,draft.flush]);
  function change(index:number,field:Partial<DocumentField>){draft.change({...draft.value,fields:draft.value.fields.map((f,i)=>i===index?{...f,...field}:f)})}
  const mseChanges=kind==='mse'&&baselineDocument?draft.value.fields.filter(field=>field.key!=='legacy'&&field.text!==(baselineDocument.fields.find(item=>item.key===field.key)?.text||'')).length:0;

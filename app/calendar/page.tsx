@@ -289,7 +289,7 @@ export default function CalendarPage() {
       const response=await fetch("/api/calendar/command/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action,event_id:event.id,expected_updated_at:event.updated_at,scope:"one"})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Η αλλαγή δεν αποθηκεύτηκε.");
-      setStatusFilter("all");setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
+      setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
       await refreshEvents();
     }catch(error){setQuickError(error instanceof Error?error.message:"Η αλλαγή δεν αποθηκεύτηκε.");await refreshEvents();}
     finally{quickBusyRef.current=false;setQuickBusy(false);}

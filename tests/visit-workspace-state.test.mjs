@@ -99,3 +99,19 @@ test('previous MSE follows encounter time, not late documentation completion tim
  assert.equal(reference.session.id,'older');
  assert.equal(reference.section.document.fields[0].text,'Υποκειμενικό συναίσθημα: Αγχώδες');
 });
+
+
+test('previous MSE never skips the immediately previous completed visit',()=>{
+ const bundle={
+  sessions:[
+   {id:'older',status:'completed',started_at:'2026-10-01T09:00:00Z',completed_at:'2026-10-01T10:00:00Z'},
+   {id:'previous',status:'completed',started_at:'2026-10-03T09:00:00Z',completed_at:'2026-10-03T10:00:00Z'},
+   {id:'current',status:'draft',started_at:'2026-10-05T09:00:00Z'},
+  ],
+  sections:[{id:'old-mse',session_id:'older',section_key:'mse',content:'Older MSE'}],
+  appointments:[],addenda:[],corrections:[],
+ };
+ assert.equal(previousMseReference(bundle,'current','2026-10-05T09:00:00Z'),null);
+ bundle.sections.push({id:'previous-mse',session_id:'previous',section_key:'mse',content:'Immediate MSE'});
+ assert.equal(previousMseReference(bundle,'current','2026-10-05T09:00:00Z').section.id,'previous-mse');
+});

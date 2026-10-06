@@ -569,7 +569,9 @@ export default function CalendarPage() {
                         key={day.key}
                         style={{ height: weekTotalHeight }}
                         onClick={click => {
-                          if (click.target !== click.currentTarget) return;
+                          if (draggingEventId) return;
+                          const target=click.target as HTMLElement;
+                          if(target.closest('.week-event')||target.closest('.week-drop-preview'))return;
                           const minute = minuteFromDrop(click.clientY, click.currentTarget);
                           setFocusDate(day.key);
                           setAppointmentEditor({ mode: "create", date: day.key, minute });

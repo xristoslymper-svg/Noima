@@ -3,6 +3,7 @@ import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 export const dynamic='force-dynamic';
+export const preferredRegion='fra1';
 const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){

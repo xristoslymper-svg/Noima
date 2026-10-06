@@ -94,6 +94,7 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
  const [severity,setSeverity]=useState<'mild'|'moderate'|'severe'>('moderate');
  const [impact,setImpact]=useState('');
  const [saving,setSaving]=useState(false);
+ const [touched,setTouched]=useState(false);
  const savingRef=useRef(false);
  const [error,setError]=useState('');
  const [correctSameDay,setCorrectSameDay]=useState(false);
@@ -121,13 +122,14 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
    if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:draft?.id||null,effect,severity,impact,noted_on:effective,note:reason});
    committed=true;
    try{await onSaved()}catch{/* mutation is committed; the folder can refresh independently */}
-   onClose();
+   setTouched(false);onClose();
   }catch(cause){if(!committed)setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{savingRef.current=false;setSaving(false)}
  }
 
- const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
- return <div className="entry-modal-backdrop" onClick={()=>{if(!saving)onClose()}}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()}>
-  <button className="entry-close" onClick={()=>{if(!saving)onClose()}} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
+ function safeClose(){if(saving)return;if(touched&&!window.confirm('Υπάρχουν μη αποθηκευμένες αλλαγές. Κλείσιμο χωρίς αποθήκευση;'))return;onClose()}
+  const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
+ return <div className="entry-modal-backdrop" onClick={safeClose}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()} onChangeCapture={()=>setTouched(true)}>
+  <button className="entry-close" onClick={safeClose} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
   <div className="mode-switch medication-modes">
    <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
    <button className={mode==='start'||mode==='history'?'active':''} onClick={()=>{setMode('start');setName('');setDose('');setFrequency('')}}>Προσθήκη φαρμάκου</button>
@@ -155,6 +157,6 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
   }</p>{(mode==='change'||mode==='stop')&&effective>athensToday&&<small>Η αλλαγή είναι μελλοντική και δεν θα μεταβάλει την ενεργή αγωγή πριν από αυτή την ημερομηνία.</small>}</div>
   {sameDayEvent&&<div className="current-dose"><p>Υπάρχει ήδη καταγραφή αγωγής στις {effective}. Η διόρθωση κρατά την αρχική καταγραφή στο ιστορικό· δεν καταγράφει δεύτερη αλλαγή μέσα στην ίδια ημέρα.</p><label><input type="checkbox" checked={correctSameDay} onChange={e=>setCorrectSameDay(e.target.checked)}/> Διόρθωση καταγραφής ίδιας ημέρας</label><small>Συμπληρώστε την αιτία διόρθωσης.</small></div>}
   {error&&<div className="save-state error" role="alert">{error}</div>}
-  <footer className="entry-footer"><button onClick={()=>{if(!saving)onClose()}}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
+  <footer className="entry-footer"><button onClick={safeClose}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
  </section></div>
 }

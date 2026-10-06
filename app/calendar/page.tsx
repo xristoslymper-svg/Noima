@@ -1156,7 +1156,7 @@ function AppointmentEditor({
         {event?.status === "cancelled" && <button disabled={saving} onClick={()=>void mutate("restore")}>Επαναφορά ραντεβού</button>}
         <span/>
         <button onClick={onClose} disabled={saving}>Κλείσιμο</button>
-        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια συνεδρίας" : "Έναρξη συνεδρίας"}</button>}
+        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια καταγραφής" : "Νέα καταγραφή"}</button>}
         {(!event || (event.status === "scheduled" && !event.session_id)) && <button className="calendar-move-confirm" onClick={() => void mutate(mode === "create" ? "create" : "move")} disabled={saving}>{saving ? "Αποθήκευση…" : mode === "create" ? "Δημιουργία" : "Αποθήκευση αλλαγών"}</button>}
       </footer>
     </section>

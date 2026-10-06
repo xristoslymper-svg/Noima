@@ -727,6 +727,7 @@ export default function CalendarPage() {
             if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
           }}
           onOpenSession={openAppointmentSession}
+          onPatientCreated={patient=>setPatients(current=>current.some(item=>item.id===patient.id)?current:[patient,...current])}
         />
       )}
 

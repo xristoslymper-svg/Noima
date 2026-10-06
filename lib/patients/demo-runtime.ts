@@ -63,7 +63,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
   if(!patient) throw new Error('patient_not_found');
   const clinicalDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const patientId=encodeURIComponent(patient.id);
-  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions]=await Promise.all([
+  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions,assessments]=await Promise.all([
     request(`demo_sessions?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=started_at.desc`),
     request(`demo_session_sections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
     request(`demo_risk_assessments?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
@@ -76,6 +76,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
     request(`demo_session_corrections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
     request(`demo_calendar_events?select=id,session_id,appointment_type,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
     request(`demo_medication_event_revisions?select=event_id,replacement_id,reason,created_at&tester_id=eq.${tid}`),
+    rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id}),
   ]);
-  return {clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(await rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id})),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
+  return {clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(assessments),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
 }

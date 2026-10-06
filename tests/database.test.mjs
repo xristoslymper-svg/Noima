@@ -607,3 +607,22 @@ test('finish-later creates one session-linked task and finalization closes only 
  assert.equal((await sql('select status from demo_tasks where id=$1',[manual.id]))[0].status,'open');
  await assert.rejects(sql('select demo_task_for_session($1,$2)',[t,draft.id]),/session_unavailable/);
 });
+
+
+test('structured corrections are append-only and belong to completed sessions', async()=>{
+ const t='62000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Corrected Record')).id id",[t]);
+ const [session]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const request='62000000-0000-4000-8000-000000000011';
+ const patch={mse:{before:{kind:'mse',fields:[]},after:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Υποκειμενικό συναίσθημα: Αγχώδες'}]}}};
+ await assert.rejects(sql('select demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,request,'Correction',JSON.stringify(patch)]),/completed_session_required/);
+ for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,session.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,session.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[session.id]);
+ await sql('select demo_session_finalize($1,$2,$3)',[t,session.id,version]);
+ const [correction]=await sql('select * from demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,request,'Correction',JSON.stringify(patch)]);
+ assert.equal(correction.session_id,session.id);assert.deepEqual(correction.patch,patch);
+ const [retry]=await sql('select * from demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,request,'Correction',JSON.stringify(patch)]);assert.equal(retry.id,correction.id);
+ await assert.rejects(sql("update demo_session_corrections set reason='changed' where id=$1",[correction.id]),/immutable_record/);
+ await assert.rejects(sql('select demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,'62000000-0000-4000-8000-000000000012','',JSON.stringify(patch)]),/correction_reason_required/);
+});

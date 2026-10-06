@@ -42,6 +42,9 @@ test('cancelled history uses the 25/75 split only for the exact replacement slot
  const partial={...event('partial','2026-10-05T09:20Z','2026-10-05T10:10Z'),status:'scheduled'};
  assert.equal(cancelledHistoryPlacement(partial,[cancelled,partial]),null);
  assert.equal(cancelledHistoryPlacement(cancelled,[cancelled,partial]),null);
+ const extra={...event('extra','2026-10-05T09:30Z','2026-10-05T10:20Z'),status:'cancelled'};
+ assert.equal(cancelledHistoryPlacement(active,[cancelled,active,extra]),null);
+ assert.equal(cancelledHistoryPlacement(cancelled,[cancelled,active,extra]),null);
 });
 
 test('multiple cancelled histories remain individually clickable within the history quarter',()=>{

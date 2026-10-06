@@ -98,6 +98,8 @@ test('previous MSE follows encounter time, not late documentation completion tim
  const reference=previousMseReference(bundle,'current',bundle.sessions[1].started_at);
  assert.equal(reference.session.id,'older');
  assert.equal(reference.section.document.fields[0].text,'Υποκειμενικό συναίσθημα: Αγχώδες');
+ assert.match(reference.section.content,/Αγχώδες/);
+ assert.doesNotMatch(reference.section.content,/Ευθυμικό/);
 });
 
 

@@ -48,7 +48,7 @@ test('navigator order covers distinct follow-up adherence and medication; long s
 test('non-linear workspace paths keep draft recovery reachable and URL state coherent',()=>{
  assert.equal(workspaceHeroAction(false,true,false),'resume','a new patient with an initial draft must always have a resume action');
  assert.equal(workspaceHeroAction(false,false,true),'resume','an intended appointment is resumable before first completion');
- assert.equal(workspaceHeroAction(false,false,false),'none');
+ assert.equal(workspaceHeroAction(false,false,false),'new_initial','a new patient without a draft should expose the initial assessment as the obvious next action');
  assert.equal(workspaceHeroAction(true,false,false),'new_follow_up');
  assert.equal(workspaceHeroAction(true,true,false),'resume');
 

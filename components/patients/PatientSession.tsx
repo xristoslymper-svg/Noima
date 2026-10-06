@@ -99,13 +99,13 @@ export default function PatientSession({
 
  useEffect(()=>{
   const warn=(event:BeforeUnloadEvent)=>{
-   if(!dirtyKeys.current.size)return;
+   if(!dirtyKeys.current.size&&!medOpen)return;
    event.preventDefault();
    event.returnValue='';
   };
   window.addEventListener('beforeunload',warn);
   return()=>window.removeEventListener('beforeunload',warn);
- },[]);
+ },[medOpen]);
 
  const flushAll=useCallback(async(requireRefresh=false)=>{
   setFlushing(true);

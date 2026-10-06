@@ -1,4 +1,5 @@
 import {pilotAuthorization} from '@/lib/pilot/request-scope';
+import {isClinicalId} from '@/lib/clinical/identity';
 import type {VisitDocument} from '@/lib/clinical/visit-document';
 import type { ClinicalProposal, Addendum, Assessment, StructuredCorrection } from '@/lib/clinical/core-types';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
@@ -56,8 +57,9 @@ export async function createPatient(tester:string,input:{first_name:string;last_
   await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v3',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_landline:input.landline,p_contact_phone:input.contact_phone,p_amka:input.amka,p_address:input.address,p_email:input.email,p_complaint:input.chief_complaint}));
 }
 export async function patientBundle(tester:string,patientRef:string):Promise<PatientBundle>{
-  const patients=await listPatients(tester); const normalized=patientRef.toLocaleLowerCase('el');
-  const patient=patients.find(p=>p.id===patientRef)||patients.find(p=>p.first_name.toLocaleLowerCase('el')===normalized);
+  if(!isClinicalId(patientRef))throw new Error('patient_not_found');
+  const patients=await listPatients(tester);
+  const patient=patients.find(p=>p.id===patientRef);
   if(!patient) throw new Error('patient_not_found');
   const clinicalDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const id=encodeURIComponent(patient.id); const tid=encodeURIComponent(tester);

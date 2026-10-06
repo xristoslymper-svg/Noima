@@ -657,6 +657,22 @@ test('creating a patient creates only the patient entity and same-name patients 
  assert.equal((await sql('select patient_id from demo_sessions where id=$1',[draft.id]))[0].patient_id,p1.id);
 });
 
+test('patient details and longitudinal history reject stale-tab overwrites and allow explicit retry',async()=>{
+ const t='80000000-0000-4000-8000-000000000008';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p,updated_at:revision}]=await sql("select (demo_patient_create_v3($1,'TEST','Concurrency',null,'','','','','','','')).*",[t]);
+ const [first]=await sql("select * from demo_patient_update_v2($1,$2,'TEST','First',null,'','','','','','','',$3)",[t,p,revision]);
+ await assert.rejects(sql("select * from demo_patient_update_v2($1,$2,'TEST','Stale',null,'','','','','','','',$3)",[t,p,revision]),/stale_patient/);
+ assert.equal((await sql('select last_name from demo_patients where id=$1',[p]))[0].last_name,'First');
+ const [retry]=await sql("select * from demo_patient_update_v2($1,$2,'TEST','Retry',null,'','','','','','','',$3)",[t,p,first.updated_at]);
+ assert.equal(retry.last_name,'Retry');
+
+ const [h1]=await sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'first'}),0]);
+ await assert.rejects(sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'stale'}),0]),/stale_history/);
+ assert.equal((await sql('select psychiatric_history from demo_patient_history where patient_id=$1',[p]))[0].psychiatric_history,'first');
+ const [h2]=await sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'retry'}),h1.version]);
+ assert.equal(h2.psychiatric_history,'retry');assert.equal(h2.version,h1.version+1);
+});
+
 test('direct patient-folder starts resume only compatible drafts',async()=>{
  const t='61500000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Direct Draft')).id id",[t]);

@@ -702,7 +702,3 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .correction-save-bar>div{display:flex;justify-content:flex-end;gap:9px}.correction-save-bar button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;background:#326b59;color:white;padding:9px 13px;font-weight:750;cursor:pointer}.correction-save-bar button.finalize-later{background:white;color:#53645d;border:1px solid #dce5df}.correction-save-bar button:disabled{opacity:.45;cursor:default}
 .correction-audit{margin-top:18px;border-top:1px solid #e6ebe7;padding-top:14px;color:#63736c}.correction-audit summary{cursor:pointer;font-size:12px;font-weight:750}.correction-audit article{display:grid;grid-template-columns:150px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid #eef1ee;font-size:11px}.correction-audit article span{color:#405249}.correction-audit article small{color:#8a9691}
 @media(max-width:760px){.completed-correction-grid{grid-template-columns:1fr}.completed-record-actions{align-items:flex-start}.correction-audit article{grid-template-columns:1fr}.correction-save-bar{bottom:8px}}
-
-
-/* Patient mental-model refinements: context without restructuring the workspace. */
-.patient-context-back{display:inline-flex;align-items:center;gap:5px;margin:0 0 10px;color:#71827a;font-size:10px;font-weight:700;text-decoration:none}.patient-context-back:hover{color:#376f5d}.pending-session-row span{line-height:1.45}.patient-record-context{min-height:1.4em}

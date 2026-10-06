@@ -4,7 +4,7 @@ import PilotProfile from '@/components/PilotProfile';
 import Link from "next/link";
 import AppointmentStartConfirmation from "@/components/calendar/AppointmentStartConfirmation";
 import SummaryPeek from "@/components/patients/SummaryPeek";
-import {calendarSegment as segment, calendarWindow, calendarLanes} from "@/lib/calendar/layout";
+import {calendarSegment as segment, calendarWindow, calendarLanes, cancelledHistoryPlacement} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -627,15 +627,11 @@ export default function CalendarPage() {
                           const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
                           const height = Math.max(38, (duration / 60) * weekHourHeight);
                           const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
-                          const overlaps=(other:CalendarEvent)=>other.id!==event.id&&Date.parse(other.scheduled_start)<Date.parse(event.scheduled_end)&&Date.parse(other.scheduled_end)>Date.parse(event.scheduled_start);
-                          const pairedWithCancelled=event.status!=="cancelled"&&items.some(other=>other.status==="cancelled"&&overlaps(other));
-                          const pairedWithActive=event.status==="cancelled"&&items.some(other=>other.status!=="cancelled"&&overlaps(other));
+                          const historyPlacement=cancelledHistoryPlacement(event,items);
                           const lane=lanes.get(event.id);
-                          const position=pairedWithCancelled
-                            ?{left:"calc(25% + 3px)",width:"calc(75% - 8px)"}
-                            :pairedWithActive
-                              ?{left:"5px",width:"calc(25% - 8px)"}
-                              :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
+                          const position=historyPlacement
+                            ?{left:`calc(${historyPlacement.leftPercent}% + 5px)`,width:`calc(${historyPlacement.widthPercent}% - 8px)`}
+                            :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
 
                           if (outsideRange) return null;
 
@@ -645,7 +641,7 @@ export default function CalendarPage() {
                                 "week-event draggable" +
                                 (draggingEventId === event.id ? " dragging" : "") +
                                 (event.readiness === "waiting" ? " waiting" : "") +
-                                ((pairedWithCancelled||pairedWithActive) ? " paired-cancelled-history" : "") +
+                                (historyPlacement?.paired ? " paired-cancelled-history" : "") +
                                 (event.appointment_type === "initial_assessment" ? " initial" : " follow-up") + " status-" + event.status
                               }
                               key={event.id}

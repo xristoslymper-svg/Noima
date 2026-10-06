@@ -17,6 +17,7 @@ export type DemoCalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  payment_status: "unknown" | "pending" | "paid" | "not_applicable";
   sms_reminder_enabled?: boolean;
   sms_reminder?: {status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
@@ -48,7 +49,7 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,sms_reminder_enabled,updated_at,series_id,recurrence_interval_weeks",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,payment_status,sms_reminder_enabled,updated_at,series_id,recurrence_interval_weeks",
     tester_id: `eq.${tester}`,
     order: "scheduled_start.asc",
   });

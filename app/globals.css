@@ -631,3 +631,15 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .todo-metric-add:hover{color:#4c6c60}
 .todo-metric :is(button):focus-visible{outline:2px solid #91b1a4;outline-offset:2px}
 @media(max-width:760px){.main-grid.single{grid-template-columns:1fr}.todo-metric-preview{grid-template-columns:26px minmax(0,1fr)}.todo-metric-preview small{grid-column:2}}
+
+
+/* Follow-up MSE: previous state stays visible while today's delta remains obvious. */
+.mse-compare-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:11px 13px;border:1px solid #e4e9e4;border-radius:13px;background:#fbfcfa;color:#69766f;font-size:12px}
+.mse-compare-head strong{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#edf4ef;color:#386b5d}
+.mse-compare-head strong.changed{background:#fff3df;color:#8a641d}
+.mse-delta-label{display:inline-flex;width:max-content;margin-top:5px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:750;letter-spacing:.01em}
+.mse-delta-label.same{background:#eef4f0;color:#597268}.mse-delta-label.changed{background:#fff1d8;color:#88621b}
+.mse-item.mse-changed{border-color:#e8d8b8}
+.mse-options button.was-previous{position:relative;border-style:dashed}
+.mse-options button.was-previous small{margin-left:6px;font-size:9px;font-weight:700;opacity:.58}
+.mse-options button.was-previous[aria-pressed="true"] small{opacity:.72}

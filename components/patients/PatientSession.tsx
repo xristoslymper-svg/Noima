@@ -209,7 +209,7 @@ export default function PatientSession({
    <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater||medOpen}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση & αποθήκευση καταγραφής'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater||medOpen} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση…':'Ολοκλήρωση αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
-  {onClose&&<button data-visit-close className="visit-close" disabled={flushing||finalizing||medOpen} onClick={()=>void flushAll().then(onClose).catch(()=>{})}>Αποθήκευση & κλείσιμο</button>}
+  
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}
   {finalizeError&&<div className="save-state error" role="alert">{finalizeError}</div>}
 

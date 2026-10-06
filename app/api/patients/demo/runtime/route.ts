@@ -63,6 +63,12 @@ async function handlePOST(request:Request){
    case 'medication_stop': {const medication=first<{patient_id:string}>(await rpc('demo_medication_stop',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effective:body.effective_on,p_reason:String(body.reason||'').trim()}));queueSummary(request,medication.patient_id);return Response.json({medication})}
    case 'medication_side_effect_resolve': {const side_effect=first<{patient_id:string}>(await rpc('demo_medication_side_effect_resolve',{p_tester:tester,p_id:body.side_effect_id,p_resolved_on:body.resolved_on}));queueSummary(request,side_effect.patient_id);return Response.json({side_effect})}
    case 'medication_side_effect': {const side_effect=first<{patient_id:string}>(await rpc('demo_medication_side_effect_add',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effect:String(body.effect||'').trim(),p_severity:body.severity||'moderate',p_impact:String(body.impact||'').trim(),p_noted_on:body.noted_on,p_note:String(body.note||'').trim()}));queueSummary(request,side_effect.patient_id);return Response.json({side_effect})}
+   case 'finish_session_later': {
+    const session=first<{id:string;patient_id:string;session_type:string}>(await rpc('demo_session_owned',{p_tester:tester,p_session:body.session_id}));
+    const patient=await patientBundle(tester,session.patient_id);const name=[patient.patient.first_name,patient.patient.last_name].filter(Boolean).join(' ');
+    await rpc('demo_task_for_session',{p_tester:tester,p_patient:session.patient_id,p_session:session.id,p_title:'Ολοκλήρωση καταγραφής · '+name});
+    return Response.json({ok:true});
+   }
    case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }

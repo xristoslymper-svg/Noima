@@ -37,6 +37,8 @@ test('cancelled history uses the 25/75 split only for the exact replacement slot
  const active={...event('active',start,end),status:'scheduled'};
  assert.deepEqual(cancelledHistoryPlacement(active,[cancelled,active]),{paired:true,leftPercent:25,widthPercent:75});
  assert.deepEqual(cancelledHistoryPlacement(cancelled,[cancelled,active]),{paired:true,leftPercent:0,widthPercent:25});
+ const equivalent={...event('equivalent','2026-10-05T11:00+02:00','2026-10-05T11:50+02:00'),status:'scheduled'};
+ assert.deepEqual(cancelledHistoryPlacement(equivalent,[cancelled,equivalent]),{paired:true,leftPercent:25,widthPercent:75});
  const partial={...event('partial','2026-10-05T09:20Z','2026-10-05T10:10Z'),status:'scheduled'};
  assert.equal(cancelledHistoryPlacement(partial,[cancelled,partial]),null);
  assert.equal(cancelledHistoryPlacement(cancelled,[cancelled,partial]),null);

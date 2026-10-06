@@ -19,10 +19,10 @@ function correctedSection(bundle:PatientBundle,section:PatientBundle['sections']
 }
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
-export type WorkspaceHeroAction='resume'|'new_follow_up'|'none';
+export type WorkspaceHeroAction='resume'|'new_initial'|'new_follow_up';
 export function workspaceHeroAction(established:boolean,hasDraft:boolean,hasIntended:boolean):WorkspaceHeroAction{
  if(hasDraft||hasIntended)return 'resume';
- return established?'new_follow_up':'none';
+ return established?'new_follow_up':'new_initial';
 }
 export function workspaceTransitionSearch(search:string,tab:WorkspaceTab,sessionId?:string|null,options:{clearAppointment?:boolean}={}){
  const params=new URLSearchParams(search);

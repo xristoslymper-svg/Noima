@@ -47,7 +47,7 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
    if(requestedId&&!requested){const clean=workspaceTransitionSearch(window.location.search,tab,sessionRef,{clearAppointment:true});window.history.replaceState({},'',window.location.pathname+clean+window.location.hash);throw new Error('Το συγκεκριμένο ραντεβού δεν ανήκει πλέον στον φάκελο.');}
    if(requested&&requested.status!=='scheduled'&&!requested.session_id){const clean=workspaceTransitionSearch(window.location.search,tab,sessionRef,{clearAppointment:true});window.history.replaceState({},'',window.location.pathname+clean+window.location.hash);throw new Error('Το συγκεκριμένο ραντεβού δεν είναι πλέον ενεργό.');}
    if(requested?.session_id){navigationSequence.current++;applyTab('sessions',requested.session_id,activeBundle,{clearAppointment:true});return}
-   if(draft){navigationSequence.current++;applyTab('sessions',draft.id,activeBundle,{clearAppointment:true});return}
+   if(draft&&!requested){navigationSequence.current++;applyTab('sessions',draft.id,activeBundle,{clearAppointment:true});return}
    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const sameDay=activeBundle.appointments.filter(a=>a.status==='scheduled'&&!a.session_id&&new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(a.scheduled_start))===today);
    if(!requestedId&&sameDay.length>1){setAppointmentChoices(sameDay);return}

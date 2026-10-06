@@ -248,6 +248,7 @@ export default function CalendarPage() {
     void refreshEvents();
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
+  useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')void refreshPatients()};window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh)},[refreshPatients]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),60_000);return()=>window.clearInterval(timer)},[]);
   useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
   useEffect(()=>{

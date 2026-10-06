@@ -25,6 +25,11 @@ create index if not exists demo_tasks_tester_status_idx
 
 alter table public.demo_tasks enable row level security;
 revoke all on table public.demo_tasks from anon, authenticated;
+drop policy if exists pilot_owner_read on public.demo_tasks;
+create policy pilot_owner_read on public.demo_tasks
+  for select to authenticated
+  using (private.pilot_owns(tester_id));
+grant select on public.demo_tasks to authenticated;
 
 create or replace function private.pilot_impl_demo_payment_set(
   p_tester uuid,

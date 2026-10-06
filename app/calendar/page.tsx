@@ -93,6 +93,7 @@ function timeLabel(iso: string) {
 function appointmentType(value: string) {
   if (value === "initial_assessment") return "Πρώτη αξιολόγηση";
   if (value === "follow_up") return "Follow-up";
+  if (value === "other") return "Άλλο";
   return value;
 }
 

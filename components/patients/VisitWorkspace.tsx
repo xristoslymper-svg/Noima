@@ -1,12 +1,12 @@
 'use client';
 import {useEffect,useRef,useState,type MutableRefObject} from 'react';
 import {mergeVisitContext,previousMseReference} from '@/lib/clinical/visit-workspace-state';
-import type {PatientBundle} from '@/lib/patients/demo-runtime';
+import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {demoPost} from '@/lib/patients/demo-client';
 import PatientSession from './PatientSession';
 
-export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onClose,onFinalized,onDeferred,onSelect,beforeNavigate}:{beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onClose:()=>void;onFinalized:(sessionId:string)=>void|Promise<void>;onDeferred:(sessionId:string)=>void|Promise<void>;onSelect:(id?:string|null)=>void}){
+export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onClose,onFinalized,onDeferred,onSelect,beforeNavigate}:{beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onClose:()=>void;onFinalized:(session:DemoSession)=>void|Promise<void>;onDeferred:(sessionId:string)=>void|Promise<void>;onSelect:(id?:string|null)=>void}){
  const dialog=useRef<HTMLDialogElement>(null);
  const [record,setRecord]=useState<PatientBundle|null>(null),[error,setError]=useState(''),[finalizing,setFinalizing]=useState(false),[finalizeError,setFinalizeError]=useState('');
  const closing=useRef(false);
@@ -16,7 +16,7 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
  function merged(b:PatientBundle,c=context):PatientBundle{return mergeVisitContext(b,c)}
  async function reload(){return merged(await load())}
  async function refreshContext(){const c=await reloadContext();if(!c)throw new Error('Δεν ανανεώθηκε ο φάκελος. Δοκιμάστε ξανά.');return merged(await load(),c)}
- async function finalize(){setFinalizing(true);setFinalizeError('');try{const b=await load();const s=b.sessions.find(s=>s.id===sessionId&&s.status==='draft');if(!s)throw new Error('Η καταγραφή δεν είναι πλέον πρόχειρη.');await demoPost({action:'finalize_session',session_id:sessionId,expected_version:s.version});await onFinalized(sessionId)}catch(e){setFinalizeError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η καταγραφή.')}finally{setFinalizing(false)}}
+ async function finalize(){setFinalizing(true);setFinalizeError('');let committed=false;try{const b=await load();const s=b.sessions.find(s=>s.id===sessionId&&s.status==='draft');if(!s)throw new Error('Η καταγραφή δεν είναι πλέον πρόχειρη.');const result=await demoPost({action:'finalize_session',session_id:sessionId,expected_version:s.version}) as {session:DemoSession};committed=true;await onFinalized(result.session)}catch(e){setFinalizeError(committed?'Η καταγραφή ολοκληρώθηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.':e instanceof Error?e.message:'Δεν ολοκληρώθηκε η καταγραφή.')}finally{setFinalizing(false)}}
  async function defer(){setFinalizeError('');try{await demoPost({action:'finish_session_later',session_id:sessionId});await onDeferred(sessionId)}catch(e){const message=e instanceof Error?e.message:'Δεν αποθηκεύτηκε η πρόχειρη καταγραφή.';setFinalizeError(message);throw e}}
  async function requestClose(){if(closing.current)return;closing.current=true;try{if(record?.sessions[0]?.status==='draft'){await beforeNavigate.current?.();await defer();return}onClose()}catch(e){setFinalizeError(e instanceof Error?e.message:'Δεν αποθηκεύτηκε η πρόχειρη καταγραφή.')}finally{closing.current=false}}
  function backdropClose(event:React.MouseEvent<HTMLDialogElement>){if(event.target!==dialog.current)return;const rect=dialog.current.getBoundingClientRect();const outside=event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom;if(outside)requestClose()}

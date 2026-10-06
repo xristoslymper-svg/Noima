@@ -132,7 +132,13 @@ export async function startDemoCalendarSession(tester: string, eventId: string) 
     cache: "no-store",
     body: JSON.stringify({ p_tester: tester, p_event: eventId }),
   });
-  if (!response.ok) throw new Error(`calendar_session_failed:${response.status}`);
+  if (!response.ok) {
+    const payload=await response.text();
+    for(const code of ["draft_linked_elsewhere","open_draft_conflict","appointment_unavailable","calendar_session_patient_mismatch","patient_not_found"]){
+      if(payload.includes(code))throw new Error(code);
+    }
+    throw new Error(`calendar_session_failed:${response.status}`);
+  }
   return response.json() as Promise<{ id: string; patient_id: string; status: "draft" | "completed" }>;
 }
 

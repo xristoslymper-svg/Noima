@@ -53,14 +53,62 @@ function medicationNeedsReview(text:string,med:PatientBundle['medications'][numb
  });
 }
 const dateLabel=(date?:string)=>date?date.slice(0,10):'';
+function clinicalSessionTime(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
+ const appointment=bundle.appointments?.find(a=>a.session_id===session.id);
+ return appointment?.scheduled_start||session.started_at||session.completed_at||'';
+}
+function structuredCorrections(bundle:PatientBundle,sessionId:string){
+ return (bundle.corrections||[]).filter(c=>c.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id));
+}
+function correctedRisk(bundle:PatientBundle,sessionId:string){
+ let value=bundle.risks.find(r=>r.session_id===sessionId);
+ for(const correction of structuredCorrections(bundle,sessionId)){
+  const after=correction.patch?.risk?.after;
+  if(after&&typeof after==='object')value={...(value||{session_id:sessionId,patient_id:bundle.patient.id,suicidal_ideation:'not_assessed',intent:'not_assessed',plan:'not_assessed',self_harm:'not_assessed',attempt_history:'not_assessed',protective_factors:'',clinical_note:'',version:0,updated_at:''}),...(after as Partial<PatientBundle['risks'][number]>)};
+ }
+ if(value?.tree){
+  const answers={...value.tree.answers};
+  if(value.suicidal_ideation)answers.wish=value.suicidal_ideation;
+  if(value.intent)answers.intent=value.intent;
+  if(value.plan)answers.plan=value.plan;
+  if(value.harm_to_others)answers.others=value.harm_to_others;
+  value={...value,tree:{...value.tree,answers}};
+ }
+ return value;
+}
+function renderedDocument(value:unknown){
+ if(!value||typeof value!=='object'||!('fields' in value)||!Array.isArray((value as {fields?:unknown}).fields))return null;
+ const fields=(value as {fields:Array<{label?:string;text?:string;status?:string;codes?:Array<{code?:string;label?:string}>}>}).fields;
+ const text=fields.flatMap(field=>{
+  const body=(field.text||'').trim();
+  const codes=(field.codes||[]).map(code=>[code.code,code.label].filter(Boolean).join(' · ')).filter(Boolean).join('; ');
+  if(!body&&!codes)return [];
+  const status=field.status==='confirmed'?' · επιβεβαιωμένη':field.status==='provisional'?' · προσωρινή':field.status==='under_investigation'?' · υπό διερεύνηση':'';
+  return [(field.label||'Πεδίο')+status+': '+[body,codes].filter(Boolean).join('\n')];
+ });
+ return text.join('\n\n');
+}
+function correctedSectionContent(bundle:PatientBundle,section:PatientBundle['sections'][number]){
+ let value:string=section.content;
+ for(const correction of structuredCorrections(bundle,section.session_id)){
+  const after=correction.patch?.[section.section_key]?.after;
+  if(typeof after==='string')value=after;
+  else {const rendered=renderedDocument(after);if(rendered!==null)value=rendered;}
+ }
+ return value;
+}
 
 export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
- const completed=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.completed_at||b.started_at)-Date.parse(a.completed_at||a.started_at));
+ const completed=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(clinicalSessionTime(bundle,b))-Date.parse(clinicalSessionTime(bundle,a)));
  const ids=new Set(completed.map(s=>s.id));const latest=completed[0];const sources:Evidence[]=[];
  const add=(s:Evidence)=>sources.push(s);
  for(const session of completed){
-  for(const section of bundle.sections.filter(s=>s.session_id===session.id&&s.content.trim()))add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(session.completed_at||session.started_at)} · ${names[section.section_key]||section.section_key}`,date:session.completed_at||session.started_at,session_id:session.id,content:section.content,target:'sessions',record_id:section.id});
-  const risk=bundle.risks.find(r=>r.session_id===session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(session.completed_at||session.started_at)} · Κίνδυνος`,date:session.completed_at||session.started_at,session_id:session.id,content:risk,target:'sessions',record_id:session.id});
+  const encounterTime=clinicalSessionTime(bundle,session);
+  for(const section of bundle.sections.filter(s=>s.session_id===session.id)){
+   const content=correctedSectionContent(bundle,section);if(!content.trim())continue;
+   add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||section.section_key}`,date:encounterTime,session_id:session.id,content,target:'sessions',record_id:section.id});
+  }
+  const risk=correctedRisk(bundle,session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(encounterTime)} · Κίνδυνος`,date:encounterTime,session_id:session.id,content:risk,target:'sessions',record_id:session.id});
  }
  for(const med of bundle.medications)add({id:'medication:'+med.id,kind:'structured_medication',label:'Αγωγή · '+med.medication_name,content:med,target:'medications',record_id:med.id});
  for(const event of bundle.medicationEvents)add({id:'event:'+event.id,kind:'medication_event',label:`Αλλαγή ${event.effective_on} · ${bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή'}`,date:event.created_at,session_id:event.session_id||undefined,content:event,target:'medications',record_id:event.id});
@@ -80,7 +128,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  const correctedParents=new Set([...bundle.addenda.filter(a=>a.kind==='correction').map(a=>a.session_id),...(bundle.corrections||[]).map(c=>c.session_id)]);
  const findings:Finding[]=[];
  const push=(key:string,label:Category,text:string,source_ids:string[],attention=false,origin:Finding['origin']='canonical')=>findings.push({key,label,text,source_ids,attention,origin});
- const risk=latest?bundle.risks.find(r=>r.session_id===latest.id):undefined;
+ const risk=latest?correctedRisk(bundle,latest.id):undefined;
  if(risk){const keys=Object.keys(riskNames);const positive=keys.filter(k=>risk[k as keyof typeof risk]==='positive').map(k=>riskNames[k]);const negative=keys.filter(k=>risk[k as keyof typeof risk]==='negative').map(k=>riskNames[k]);const uncertain=keys.filter(k=>['unknown','not_assessed'].includes(String(risk[k as keyof typeof risk]))).map(k=>`${riskNames[k]} ${risk[k as keyof typeof risk]==='not_assessed'?'δεν διερευνήθηκε':'παραμένει άγνωστο'}`);const parts=[positive.length?`Θετικά ευρήματα: ${positive.join(', ')}.`:'',negative.length?`Δεν καταγράφηκαν: ${negative.join(', ')}.`:'',uncertain.length?`Δεν έχουν αποσαφηνιστεί: ${uncertain.join(', ')}.`:''].filter(Boolean);push('risk','Κίνδυνος',`Εκτίμηση ${dateLabel(latest.completed_at!)}: ${parts.join(' ')} Δεν υποκαθιστά σημερινή εκτίμηση.`,['risk:'+latest.id],keys.some(k=>!['intent','plan'].includes(k)&&risk[k as keyof typeof risk]!=='negative')||(['unknown','positive'].includes(risk.suicidal_ideation)&&[risk.intent,risk.plan].some(v=>v!=='negative')));}
  else push('risk-missing','Κίνδυνος','Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.',[],true);
  if(risk?.clinical_note?.trim())push('risk-note','Κίνδυνος',`Κλινική σημείωση κινδύνου ${dateLabel(latest.completed_at!)}: «${risk.clinical_note}»`,['risk:'+latest.id],narrativeRiskRequiresReview(risk.clinical_note),'documented');
@@ -104,11 +152,11 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
    push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Δομημένη διόρθωση ${dateLabel(s.date)}: ${c.reason}. Η τρέχουσα προβολή της συνεδρίας περιλαμβάνει ${Object.keys(c.patch||{}).length} διορθωμένα πεδία/ενότητες.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
   }else push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Μεταγενέστερη ${s.label.toLocaleLowerCase('el')}: «${(s.content as {content:string}).content}». Ερμηνεύστε την αρχική συνεδρία μαζί με αυτή την προσθήκη.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
  }
- for(const old of bundle.risks.filter(r=>ids.has(r.session_id)&&r.session_id!==latest?.id&&r.attempt_history==='positive'))push('past-attempt:'+old.session_id,'Σημαντικό ιστορικό',`Δομημένη καταγραφή προηγούμενης συνεδρίας: θετικό ιστορικό απόπειρας. Η μεταγενέστερη ένδειξη «άγνωστο» ή «δεν διερευνήθηκε» δεν αναιρεί αυτή την καταγραφή${correctedParents.has(old.session_id)?' · υπάρχει διόρθωση προς συνεκτίμηση':''}.`,['risk:'+old.session_id,...corrections.filter(c=>c.session_id===old.session_id).map(c=>c.id)],true);
+ for(const session of completed.filter(s=>s.id!==latest?.id)){const old=correctedRisk(bundle,session.id);if(!old||old.attempt_history!=='positive')continue;push('past-attempt:'+old.session_id,'Σημαντικό ιστορικό',`Δομημένη καταγραφή προηγούμενης συνεδρίας: θετικό ιστορικό απόπειρας. Η μεταγενέστερη ένδειξη «άγνωστο» ή «δεν διερευνήθηκε» δεν αναιρεί αυτή την καταγραφή${correctedParents.has(old.session_id)?' · υπάρχει διόρθωση προς συνεκτίμηση':''}.`,['risk:'+old.session_id,...corrections.filter(c=>c.session_id===old.session_id).map(c=>c.id)],true);}
  // Conservative review cues, not semantic diagnoses. Missing lexical matches
  // cannot establish absence; all narrative remains available to synthesis.
  for(const s of sources.filter(s=>s.kind==='session_section'&&riskMention.test(String(s.content)))){
-  const r=bundle.risks.find(r=>r.session_id===s.session_id);
+  const r=s.session_id?correctedRisk(bundle,s.session_id):undefined;
   if(narrativeRiskRequiresReview(String(s.content))&&(!r||['negative','unknown','not_assessed'].includes(r.suicidal_ideation)))push('risk-review:'+s.id,'Χρειάζεται επιβεβαίωση','Η αφηγηματική καταγραφή αναφέρεται σε κίνδυνο ενώ η δομημένη ένδειξη είναι αρνητική, άγνωστη ή μη διερευνημένη. Ελέγξτε χρόνο, άρνηση και συμφωνία των πηγών· δεν έγινε αυτόματη συμφιλίωση.',[s.id,...(r?['risk:'+r.session_id]:[]),...corrections.filter(c=>c.session_id===s.session_id).map(c=>c.id)],true);
  }
  for(const med of bundle.medications){const mentions=trajectory.filter(s=>s.session_id===latest?.id&&!correctedParents.has(s.session_id!)&&medicationNeedsReview(String(s.content),med));if(mentions.length)push('med-review:'+med.id,'Χρειάζεται επιβεβαίωση',`Πιθανή ασυμφωνία αναφοράς ${med.medication_name} · σημερινή δομημένη κατάσταση «${medStates[med.status]||med.status}». Ελέγξτε χρόνο, δόση και συμφωνία πηγών· δεν έγινε αυτόματη μεταβολή αγωγής.`,[...mentions.map(s=>s.id),'medication:'+med.id],true);}

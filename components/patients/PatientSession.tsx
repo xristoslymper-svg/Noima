@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, Mic2, RotateCcw, ShieldCheck } from 'lucide-react';
-import Addenda from './Addenda';
-import RiskEditor,{RiskTreeRead} from './RiskTreeEditor';
+import RiskEditor from './RiskTreeEditor';
 import StructuredVisitEditor from './StructuredVisitEditor';
+import CompletedRecordEditor from './CompletedRecordEditor';
 import VisitHistory from './VisitHistory';
 import VisitNextAppointment from './VisitNextAppointment';
 import VisitScores from './VisitScores';
@@ -221,38 +221,8 @@ function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:
  return <div className="completed-session-list">{sessions.map(session=><button className="completed-session-row" key={session.id} onClick={()=>onSelect(session.id)}><CheckCircle2 size={18}/><div><strong>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</strong><span>Οριστικοποιήθηκε {fmt(session.completed_at)}</span></div><span className="open-session-label">Άνοιγμα</span></button>)}</div>;
 }
 
-function CompletedSessionView({session,bundle,onBack,reload,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
- const sections=bundle.sections.filter(item=>item.session_id===session.id);
- const risk=bundle.risks.find(item=>item.session_id===session.id);
- return <section className="session-workspace completed-session-view">
-  <div className="session-work-head">
-   <div><button className="session-back-button" onClick={onBack}><ArrowLeft size={15}/> Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Οριστικοποιημένη καταγραφή · διορθώσεις μέσω προσθήκης.</p></div>
-   <span className="draft-updated">Ολοκληρώθηκε {fmt(session.completed_at)}</span>
-  </div>
-  <Addenda bundle={bundle} sessionId={session.id} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/><div className="completed-section-stack">
-   {definitions.map(([key,title])=>{
-    const item=sections.find(section=>section.section_key===key);
-    const approved=bundle.proposals.filter(p=>p.session_id===session.id&&p.section_key===key&&p.status==='approved');
-    return <article className="completed-clinical-section" key={key}><span>{title}</span><p>{item?.content.trim()||'Δεν καταγράφηκε.'}</p>{item&&<small>Έκδοση {item.version} · ενημέρωση {fmt(item.updated_at)}</small>}{approved.length>0&&<details><summary>Προέλευση εγκεκριμένων υπαγορεύσεων</summary>{approved.map(p=><div key={p.id}><small>Έγκριση {fmt(p.approved_at)}</small><p>Μεταγραφή: {p.transcript}</p><p>Εγκεκριμένη πρόταση: {p.approved_text}</p></div>)}</details>}</article>;
-   })}
-   <article className="completed-clinical-section completed-risk">
-    <span>Εκτίμηση κινδύνου</span>
-    {risk?<div className="completed-risk-grid">
-     <RiskRead label="Αυτοκτονικός ιδεασμός" value={risk.suicidal_ideation}/>
-     {risk.tree&&<RiskTreeRead tree={risk.tree}/>}<RiskRead label="Πρόθεση" value={risk.intent}/>
-     <RiskRead label="Σχέδιο" value={risk.plan}/>
-     <RiskRead label="Αυτοτραυματισμός" value={risk.self_harm}/>
-     <RiskRead label="Ιστορικό απόπειρας" value={risk.attempt_history}/><RiskRead label="Κίνδυνος προς άλλους" value={risk.harm_to_others||'not_assessed'}/>
-     <div><strong>Προστατευτικοί παράγοντες</strong><p>{risk.protective_factors||'Δεν καταγράφηκαν.'}</p></div>
-     <div><strong>Κλινική σημείωση</strong><p>{risk.clinical_note||'Δεν καταγράφηκε.'}</p></div>
-    </div>:<p>Δεν καταγράφηκε δομημένη εκτίμηση κινδύνου.</p>}
-   </article>
-  </div>
- </section>;
-}
-
-function RiskRead({label,value}:{label:string;value:string}){
- return <div><strong>{label}</strong><p>{riskLabel(value)}</p></div>;
+function CompletedSessionView({session,bundle,onBack,reload}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
+ return <CompletedRecordEditor session={session} bundle={bundle} reload={reload} onBack={onBack}/>;
 }
 
 function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange}:{sessionId:string;definition:{key:string;title:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){

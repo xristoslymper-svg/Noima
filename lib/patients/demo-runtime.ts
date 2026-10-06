@@ -44,15 +44,17 @@ export async function listPatientRows(tester:string){
  const diagnosisSections=rows<{patient_id:string;session_id:string;document?:VisitDocument|null;updated_at:string}>(sectionData);
  const diagnosisCorrections=rows<{id:string;session_id:string;patch:Record<string,{after?:unknown}>;created_at:string}>(correctionData);
  const effectiveAssessment=(sessionId:string,document?:VisitDocument|null)=>{let value=document;for(const correction of diagnosisCorrections.filter(item=>item.session_id===sessionId)){const after=correction.patch?.assessment?.after;if(after&&typeof after==='object'&&'kind' in after&&(after as VisitDocument).kind==='assessment')value=after as VisitDocument}return value};
+ const sessionTime=(session:DemoSession)=>appointments.find(a=>a.session_id===session.id)?.scheduled_start||session.started_at;
+ const completedFor=(patientId:string)=>sessions.filter(s=>s.patient_id===patientId&&s.status==='completed').sort((a,b)=>Date.parse(sessionTime(b))-Date.parse(sessionTime(a)));
  const now=Date.now();
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
  const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({
   ...patient,
   registry_number:registryNumber.get(patient.id)||0,
-  diagnosis:(()=>{for(const session of sessions.filter(s=>s.patient_id===patient.id&&s.status==='completed')){const raw=diagnosisSections.find(section=>section.patient_id===patient.id&&section.session_id===session.id)?.document;const document=effectiveAssessment(session.id,raw);const field=document?.kind==='assessment'?document.fields.find(item=>item.key==='diagnosis'):undefined;if(field?.codes?.[0])return field.codes[0]}return null;})(),
+  diagnosis:(()=>{for(const session of completedFor(patient.id)){const raw=diagnosisSections.find(section=>section.patient_id===patient.id&&section.session_id===session.id)?.document;const document=effectiveAssessment(session.id,raw);const field=document?.kind==='assessment'?document.fields.find(item=>item.key==='diagnosis'):undefined;if(field?.codes?.[0])return field.codes[0]}return null;})(),
   draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,
-  last_session:sessions.find(s=>s.patient_id===patient.id&&s.status==='completed')||null,
+  last_session:completedFor(patient.id)[0]||null,
   next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,
  }));
 }

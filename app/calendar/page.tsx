@@ -138,7 +138,8 @@ function athensMinutes(iso: string) {
 function localAthensToIso(date: string, minute: number) {
   return clinicLocalToIso(date, String(Math.floor(minute / 60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0"));
 }
-function statusLabel(event: CalendarEvent){return event.status==="completed"?"Ολοκληρώθηκε":event.status==="cancelled"?"Ακυρώθηκε":event.session_id?"Σε εξέλιξη":"Προγραμματισμένο";}
+function isPastScheduled(event:CalendarEvent){return event.status==="scheduled"&&!event.session_id&&Date.parse(event.scheduled_end)<Date.now()}
+function statusLabel(event: CalendarEvent){return event.status==="completed"?"Ολοκληρώθηκε":event.status==="cancelled"?"Ακυρώθηκε":event.session_id?"Σε εξέλιξη":isPastScheduled(event)?"Παρελθόν":"Προγραμματισμένο";}
 
 function addMinutes(iso: string, minutes: number) {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
@@ -351,7 +352,7 @@ export default function CalendarPage() {
   useEffect(()=>{
     if(view!=="week"||focusDate!==currentDay||loading)return;
     requestAnimationFrame(()=>currentTimeRef.current?.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
-  },[view,focusDate,currentDay,loading]);
+  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -668,7 +669,7 @@ export default function CalendarPage() {
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
                               <span>{event.series_id ? "↻ " : ""}{event.patient_name}</span>
-                              <strong>{timeLabel(event.scheduled_start)} · {event.status === "scheduled" ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
+                              <strong>{timeLabel(event.scheduled_start)} · {event.status === "scheduled" && !isPastScheduled(event) ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
                             </div>
                           );
                         })}
@@ -715,7 +716,7 @@ export default function CalendarPage() {
             </div>
 
             {appointmentActionsOpen&&<div ref={appointmentActionsRef} className="calendar-appointment-actions-menu">
-              <button disabled={quickBusy||paymentBusy||selectedEvent.status==="completed"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
               {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
             </div>}
 
@@ -790,8 +791,8 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div className="calendar-move-safe">
-                <Check size={15} aria-hidden="true" />
-                Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση».
+                {Date.parse(pendingMove.startIso)<Date.now()?<Clock size={15} aria-hidden="true" />:<Check size={15} aria-hidden="true" />}
+                {Date.parse(pendingMove.startIso)<Date.now()?"Η επιλεγμένη ώρα έχει ήδη περάσει. Η αναδρομική μετακίνηση επιτρέπεται.":"Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση»."}
               </div>
             )}
 

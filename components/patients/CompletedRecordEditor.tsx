@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {X,Check} from 'lucide-react';
 import type {DemoRisk,DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import type {VisitDocument,DocumentField} from '@/lib/clinical/visit-document';
@@ -16,7 +16,7 @@ const riskOptions=[['not_assessed','Δεν διερευνήθηκε'],['unknown'
 function riskShape(r?:DemoRisk){return {suicidal_ideation:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',self_harm:r?.self_harm||'not_assessed',attempt_history:r?.attempt_history||'not_assessed',harm_to_others:r?.harm_to_others||'not_assessed',protective_factors:r?.protective_factors||'',clinical_note:r?.clinical_note||'',tree:r?.tree};}
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 
-export default function CompletedRecordEditor({session,bundle,reload,onBack}:{session:DemoSession;bundle:PatientBundle;reload:()=>Promise<unknown>;onBack:()=>void}){
+export default function CompletedRecordEditor({session,bundle,reload,onBack,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;reload:()=>Promise<unknown>;onBack:()=>void;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
  const corrections=bundle.corrections||[];
  const sections=bundle.sections.filter(section=>section.session_id===session.id);
  const find=(key:string)=>sections.find(section=>section.section_key===key);
@@ -28,10 +28,11 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack}:{se
  const baseNarrative=useMemo(()=>Object.fromEntries(narrativeKeys.map(key=>[key,effectiveText(find(key),corrections,session.id,key)])) as Record<(typeof narrativeKeys)[number],string>,[bundle,session.id]);
 
  const [editing,setEditing]=useState(false),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const correctionRequest=useRef<string|null>(null);
  const [mse,setMse]=useState<VisitDocument>(baseMse),[assessment,setAssessment]=useState<VisitDocument>(baseAssessment),[risk,setRisk]=useState(baseRisk),[narrative,setNarrative]=useState(baseNarrative);
  useEffect(()=>{setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('')},[session.id,bundle.corrections?.length]);
 
- function reset(){setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('');setEditing(false)}
+ function reset(){setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('');setEditing(false);correctionRequest.current=null}
  function changeMse(index:number,text:string){setMse(current=>({...current,fields:current.fields.map((field,i)=>i===index?{...field,text}:field)}))}
  function changeAssessment(index:number,change:Partial<DocumentField>){setAssessment(current=>({...current,fields:current.fields.map((field,i)=>i===index?{...field,...change}:field)}))}
  function makePatch(){
@@ -43,18 +44,22 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack}:{se
   return value;
  }
  const pending=Object.keys(makePatch()).length;
+ const history=correctionsFor(corrections,session.id);
+ const correctionDirty=editing&&(pending>0||Boolean(reason.trim()));
+ const correctionKey='completed-correction:'+session.id;
+ useEffect(()=>{onDirtyChange(correctionKey,correctionDirty);return()=>onDirtyChange(correctionKey,false)},[correctionKey,correctionDirty,onDirtyChange]);
+ useEffect(()=>registerFlusher(correctionKey,async()=>{if(correctionDirty)throw new Error('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.')}),[correctionKey,correctionDirty,registerFlusher]);
  async function save(){
   if(!pending||!reason.trim()||busy)return;setBusy(true);setError('');
-  try{await demoPost({action:'correct_session',session_id:session.id,request_id:crypto.randomUUID(),reason:reason.trim(),patch:makePatch()});await reload();setEditing(false);setReason('')}
+  const requestId=correctionRequest.current||(correctionRequest.current=crypto.randomUUID());
+  try{await demoPost({action:'correct_session',session_id:session.id,request_id:requestId,reason:reason.trim(),patch:makePatch(),expected_count:history.length});await reload();setEditing(false);setReason('');correctionRequest.current=null}
   catch(e){setError(e instanceof Error?e.message:'Δεν αποθηκεύτηκε η διόρθωση.')}
   finally{setBusy(false)}
  }
- const history=correctionsFor(corrections,session.id);
-
  return <section className="session-workspace completed-session-view corrected-record-view">
   <div className="session-work-head">
-   <div><button className="session-back-button" onClick={onBack}>← Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Η αρχική καταγραφή παραμένει αμετάβλητη. Οι διορθώσεις αποθηκεύονται ξεχωριστά με audit trail.</p></div>
-   <div className="completed-record-actions"><span className="draft-updated">Ολοκληρώθηκε {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" onClick={()=>setEditing(true)}>Διόρθωση καταγραφής</button>}</div>
+   <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.');return}onBack()}}>← Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Η αρχική καταγραφή παραμένει αμετάβλητη. Οι διορθώσεις αποθηκεύονται ξεχωριστά με audit trail.</p></div>
+   <div className="completed-record-actions"><span className="draft-updated">Ολοκληρώθηκε {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" onClick={()=>{correctionRequest.current=crypto.randomUUID();setEditing(true);setError('')}}>Διόρθωση καταγραφής</button>}</div>
   </div>
 
   <fieldset disabled={!editing||busy} className="visit-document completed-record-form">

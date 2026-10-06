@@ -17,7 +17,7 @@ import SectionDictation from '@/components/dictation/SectionDictation';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
 import { formatClinicDateTime } from '@/lib/clinic-time';
-import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference} from '@/lib/clinical/visit-workspace-state';
+import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference,sessionClinicalTime} from '@/lib/clinical/visit-workspace-state';
 
 const definitions=[
  ['interview','Ψυχιατρική συνέντευξη / συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
@@ -71,7 +71,7 @@ export default function PatientSession({
  const [medTarget,setMedTarget]=useState<{mode:'start'|'history'|'change'|'stop'|'side_effect';id?:string}>({mode:'start'});
  function manageMedication(mode:typeof medTarget.mode,id?:string){setMedTarget({mode,id});setMedOpen(true)}
  const [narrativeMode,setNarrativeMode]=useState<Record<string,boolean>>({});
- const completed=bundle.sessions.filter(s=>s.status==='completed');
+ const completed=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
  const requested=selectedSessionId?bundle.sessions.find(s=>s.id===selectedSessionId):undefined;
  const draft=requested?.status==='draft'?requested:(!selectedSessionId?bundle.sessions.find(s=>s.status==='draft'):undefined);
  const selected=requested?.status==='completed'?requested:undefined;

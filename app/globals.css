@@ -599,3 +599,17 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .patient-hero .patient-voice-cta small{color:#e1eee9}
 .patient-hero .patient-voice-icon{color:#fff;background:rgba(255,255,255,.1)}
 .visit-draft-notice{margin:0;padding:12px 15px;background:#edf5f0;border:1px solid #d8e7df;border-radius:12px;color:#31594c;font-size:13px;line-height:1.5}
+
+
+/* Deterministic overview widgets */
+.metric.metric-action{appearance:none;width:100%;border:0;text-align:left;font:inherit;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.metric.metric-action:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(42,61,52,.08)}
+.metric.metric-action:focus-visible{outline:2px solid #7da99a;outline-offset:3px}
+.dashboard-widget-overlay{position:fixed;inset:0;z-index:110;background:rgba(32,48,41,.18);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
+.dashboard-widget-sheet{width:min(620px,94vw);max-height:min(720px,88dvh);overflow:auto;background:#fffefa;border:1px solid #e1e8e3;border-radius:24px;box-shadow:0 28px 90px rgba(31,52,43,.18);padding:26px}
+.dashboard-widget-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}.dashboard-widget-head h2{margin:5px 0 0;color:#294238;font-size:26px;letter-spacing:-.035em}.dashboard-widget-head>button{border:0;background:transparent;color:#788981;padding:5px;cursor:pointer}
+.dashboard-widget-list{display:grid;gap:8px}.dashboard-widget-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 14px;border:1px solid #e6ebe7;border-radius:14px;background:#fcfdfb}.dashboard-widget-row>div{display:grid;gap:3px;min-width:0}.dashboard-widget-row strong{font-size:13px;color:#30473d}.dashboard-widget-row span{font-size:11px;color:#7b8982}.dashboard-widget-row>a,.dashboard-widget-row>button{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;border:1px solid #dce6e0;border-radius:10px;background:#f6f9f7;color:#3f705e;padding:8px 10px;font-size:11px;font-weight:700;text-decoration:none;cursor:pointer}.dashboard-widget-row>button:disabled{opacity:.5;cursor:wait}
+.dashboard-widget-empty{padding:26px 14px;text-align:center;color:#87948e;font-size:12px;border:1px dashed #e2e8e4;border-radius:14px}
+.todo-compose{display:flex;gap:8px;margin-bottom:14px}.todo-compose input{flex:1;min-width:0;border:1px solid #dfe7e2;border-radius:12px;background:#fbfcfb;padding:11px 12px;font:inherit;font-size:13px;color:#2c4238}.todo-compose input:focus{outline:2px solid #9abaaa;outline-offset:1px}.todo-compose button{border:0;border-radius:11px;background:#356b59;color:#fff;padding:0 15px;font-size:12px;font-weight:700;cursor:pointer}.todo-compose button:disabled{opacity:.45;cursor:default}.dashboard-widget-row .todo-done{width:35px;height:35px;padding:0;justify-content:center;border-radius:50%}
+.assessment-review-state{display:flex;justify-content:flex-end;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #edf1ed}.assessment-review-state button{border:1px solid #d8e5dc;background:#eef5f0;color:#3d6b57;border-radius:9px;padding:8px 11px;font-size:11px;font-weight:700;cursor:pointer}.assessment-review-state small{color:#5f7b6c;font-weight:650}
+@media(max-width:650px){.dashboard-widget-overlay{padding:12px;align-items:end}.dashboard-widget-sheet{width:100%;max-height:88dvh;border-radius:22px 22px 12px 12px;padding:20px}.dashboard-widget-row{align-items:flex-start}.todo-compose{flex-direction:column}.todo-compose button{padding:11px 14px}}

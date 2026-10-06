@@ -1,5 +1,5 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
-import {effectiveSection} from './corrections';
+import {effectiveSection} from './corrections.ts';
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
 export type WorkspaceHeroAction='resume'|'new_follow_up'|'none';

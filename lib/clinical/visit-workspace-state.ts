@@ -1,12 +1,21 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
 
+function documentText(document:NonNullable<PatientBundle['sections'][number]['document']>){
+ return document.fields.flatMap(field=>{
+  const body=field.text.trim();
+  const codes=(field.codes||[]).map(code=>code.code+' · '+code.label+' (WHO ICD-10 2019)').join('; ');
+  if(!body&&!codes)return [];
+  const status=field.status==='provisional'?' — προσωρινή':field.status==='under_investigation'?' — υπό διερεύνηση':field.status==='confirmed'?' — επιβεβαιωμένη':'';
+  return [field.label+status+': '+body+(codes?'\n'+codes:'')];
+ }).join('\n\n');
+}
 function correctedSection(bundle:PatientBundle,section:PatientBundle['sections'][number]){
- let document=section.document;
+ let document=section.document,content=section.content;
  for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at))){
   const change=correction.patch?.[section.section_key];
-  if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after)document=change.after as typeof document;
+  if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after){document=change.after as typeof document;if(document)content=documentText(document)}
  }
- return {...section,document};
+ return {...section,document,content};
 }
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';

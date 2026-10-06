@@ -12,8 +12,6 @@ import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import {
   FolderOpen,
-  Pencil,
-  CalendarPlus,
   RotateCcw,
   Ban,
   Activity,
@@ -46,6 +44,7 @@ type CalendarEvent = {
   readiness: "ready" | "waiting" | "new";
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
+  payment_status: "unknown" | "pending" | "paid" | "not_applicable";
   sms_reminder_enabled?:boolean;
   sms_reminder?:{status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
@@ -183,9 +182,11 @@ export default function CalendarPage() {
   const quickBusyRef=useRef(false);
   const [undoEvent,setUndoEvent]=useState<CalendarEvent|null>(null);
   const [quickError,setQuickError]=useState("");
+  const [paymentBusy,setPaymentBusy]=useState(false);
+  const [appointmentActionsOpen,setAppointmentActionsOpen]=useState(false);
   const [pendingStart,setPendingStart]=useState<CalendarEvent|null>(null);
   const [openingSession, setOpeningSession] = useState<string | null>(null);
-  const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
+  const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || paymentBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
 
@@ -240,6 +241,7 @@ export default function CalendarPage() {
     void refreshEvents();
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
+  useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -276,6 +278,23 @@ export default function CalendarPage() {
     }catch(error){setQuickError(error instanceof Error?error.message:"Η αλλαγή δεν αποθηκεύτηκε.");await refreshEvents();}
     finally{quickBusyRef.current=false;setQuickBusy(false);}
   }
+
+  async function setPaymentStatus(event:CalendarEvent,status:"paid"|"pending"){
+    if(paymentBusy)return;
+    setPaymentBusy(true);setQuickError("");
+    try{
+      const response=await fetch("/api/calendar/payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id,status})});
+      const data=(await response.json().catch(()=>({}))) as {event?:CalendarEvent;error?:string};
+      if(!response.ok||!data.event)throw new Error(data.error||"Η πληρωμή δεν ενημερώθηκε.");
+      const updated=data.event;
+      setEvents(current=>current.map(item=>item.id===updated.id?updated:item));
+      setSelectedEvent(current=>current?.id===updated.id?updated:current);
+    }catch(error){
+      setQuickError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.");
+      await refreshEvents();
+    }finally{setPaymentBusy(false)}
+  }
+
 
   const days = useMemo(() => weekKeys(focusDate), [focusDate]);
 
@@ -656,13 +675,23 @@ export default function CalendarPage() {
             <div className="calendar-name-row"><h3>{selectedEvent.patient_name}</h3>{selectedEvent.patient_id&&<SummaryPeek patientId={selectedEvent.patient_id}/>}</div>
             <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′ · {statusLabel(selectedEvent)}{selectedEvent.series_id ? " · ↻ Επαναλαμβανόμενο" : ""}</p>
 
-            {selectedEvent.patient_id && selectedEvent.status === "scheduled" && <button className="calendar-visit-primary" onClick={()=>void openAppointmentSession(selectedEvent)} disabled={quickBusy||Boolean(openingSession)}><Stethoscope size={18}/>{openingSession ? "Άνοιγμα…" : selectedEvent.session_id ? "Συνέχεια επίσκεψης" : "Έναρξη επίσκεψης"}<ChevronRight size={16}/></button>}
-            <div className="calendar-popover-actions calendar-icon-actions">
+            <div className="calendar-popover-actions calendar-icon-actions calendar-icon-actions-compact">
               {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>Φάκελος</span></Link>}
-              <button disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}><Pencil size={20}/><span>{selectedEvent.status==="scheduled"&&!selectedEvent.session_id?"Αλλαγή":"Στοιχεία"}</span></button>
-              {selectedEvent.patient_id && <button disabled={quickBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}><CalendarPlus size={20}/><span>Επόμενο</span></button>}
-              {selectedEvent.status==="completed" && selectedEvent.session_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?tab=sessions&session="+selectedEvent.session_id}><Stethoscope size={20}/><span>Επίσκεψη</span></Link>}
+              <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>Ραντεβού</span></button>
             </div>
+
+            {appointmentActionsOpen&&<div className="calendar-appointment-actions-menu">
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status==="completed"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
+              {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
+            </div>}
+
+            {selectedEvent.patient_id&&selectedEvent.status!=="cancelled"&&<div className="calendar-payment-state">
+              <div><strong>Πληρώθηκε;</strong><span>{selectedEvent.payment_status==="paid"?"Καταχωρισμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":"Δεν έχει σημειωθεί"}</span></div>
+              <div className="calendar-payment-choice">
+                <button className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}><Check size={14}/> Ναι</button>
+                <button className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Όχι</button>
+              </div>
+            </div>}
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
             {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
             {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
@@ -840,6 +869,9 @@ export default function CalendarPage() {
         .calendar-icon-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:0;border-top:0}
         .calendar-icon-actions>a,.calendar-icon-actions>button{display:flex;flex-direction:column;align-items:center;gap:9px;background:#f6f8f6;border-radius:14px;padding:14px 8px;color:#536d60;font-size:11px;font-weight:600;text-decoration:none;border:0;cursor:pointer}
         .calendar-icon-actions>button:last-child{margin-left:0;color:#536d60}.calendar-icon-actions>a:hover,.calendar-icon-actions>button:hover{background:#edf3ef}
+        .calendar-icon-actions.calendar-icon-actions-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .calendar-appointment-actions-menu{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.calendar-appointment-actions-menu button{border:1px solid #e3e9e5;background:#fff;border-radius:11px;padding:10px;color:#536d60;font-size:11px;font-weight:650;cursor:pointer}.calendar-appointment-actions-menu button:hover{background:#f4f7f5}.calendar-appointment-actions-menu button:disabled{opacity:.45;cursor:not-allowed}
+        .calendar-payment-state{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px;padding:14px 15px;border:1px solid #e4e9e6;border-radius:15px;background:#fbfcfb}.calendar-payment-state>div:first-child{display:flex;flex-direction:column;gap:3px}.calendar-payment-state strong{font-size:12px;color:#334b40}.calendar-payment-state span{font-size:10px;color:#7a8a82}.calendar-payment-choice{display:flex;gap:6px}.calendar-payment-choice button{display:inline-flex;align-items:center;gap:5px;border:1px solid #dce5e0;background:#fff;border-radius:999px;padding:7px 11px;color:#61756b;font-size:11px;font-weight:700;cursor:pointer}.calendar-payment-choice button.selected{background:#e7f1ec;border-color:#abc6b9;color:#356b59}.calendar-payment-choice button.selected.pending{background:#f8eee7;border-color:#dfc5b3;color:#8a654e}.calendar-payment-choice button:disabled{opacity:.55;cursor:wait}
         .calendar-quick-cancel{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:none;margin-top:20px;padding:8px;color:#ac6a65;font-size:12px;cursor:pointer}
         .calendar-quick-error{color:#a85350!important;margin-top:12px!important}.calendar-undo{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:90vw;padding:16px 20px;background:#fff;border:1px solid #ead9d7;border-radius:18px;box-shadow:0 12px 40px rgba(40,55,45,.15);font-size:13px;color:#725651}.calendar-undo button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#356b59;cursor:pointer;font-weight:650}
         @media(max-width:1050px){.calendar-time-grid{min-width:850px!important}.calendar-week-card{overflow-x:auto}}

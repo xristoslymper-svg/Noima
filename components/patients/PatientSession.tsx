@@ -80,6 +80,7 @@ export default function PatientSession({
  const [dirtyCount,setDirtyCount]=useState(0);
  const [flushing,setFlushing]=useState(false);
  const [flushError,setFlushError]=useState('');
+ const [refreshError,setRefreshError]=useState('');
  const [showFinalizeGuidance,setShowFinalizeGuidance]=useState(false);
  const [finishingLater,setFinishingLater]=useState(false);
  const finishing=useRef(false);
@@ -106,17 +107,26 @@ export default function PatientSession({
   return()=>window.removeEventListener('beforeunload',warn);
  },[]);
 
- const flushAll=useCallback(async()=>{
+ const flushAll=useCallback(async(requireRefresh=false)=>{
   setFlushing(true);
   setFlushError('');
+  setRefreshError('');
   try{
    const pending=[...flushers.current.values()];
    await Promise.all(pending.map(flush=>flush()));
-   return await reload();
   }catch(cause){
    const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν όλες οι αλλαγές.';
    setFlushError(message);
    throw cause;
+  }
+  try{
+   const refreshed=await reload();
+   if(!refreshed)throw new Error('refresh_unavailable');
+   return refreshed;
+  }catch(cause){
+   setRefreshError('Οι αλλαγές αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε. Δοκιμάστε ξανά ή ανανεώστε τον φάκελο.');
+   if(requireRefresh)throw cause;
+   return null;
   }finally{
    setFlushing(false);
   }
@@ -147,7 +157,7 @@ export default function PatientSession({
   if(finishing.current)return;finishing.current=true;
   try{
    if(medOpen)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');
-   const fresh=await flushAll() as PatientBundle;
+   const fresh=await flushAll(true) as PatientBundle;
    const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id));
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
    if(blocker){setShowFinalizeGuidance(true);if(onFinishLater)await onFinishLater(draft.id);return}
@@ -178,7 +188,7 @@ export default function PatientSession({
  const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
 
  const editor=(key:string)=>{const d=definitions.find(([k])=>k===key)!;return <SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:d[1]}} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
- const assessment=()=> <VisitPart anchor="assessment" number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική εκτίμηση *">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
+ const assessment=()=> <VisitPart anchor="assessment" number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική εκτίμηση *">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll(true).then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</h2><p>{fmt(draft.started_at)}</p></div>
@@ -192,7 +202,7 @@ export default function PatientSession({
    <VisitPart anchor="mse" number="02" title={draft.session_type==='follow_up'?'MSE · τι άλλαξε':'Mental Status Examination'}>
     {draft.session_type==='follow_up'&&<details className="visit-additional mse-reference"><summary>Προηγούμενο MSE · πλήρης αναφορά</summary>{mseReference?<><small>{fmt(mseReference.session.completed_at||mseReference.session.started_at)} · ιστορική καταγραφή</small><p style={{whiteSpace:'pre-wrap'}}>{mseReference.section.content}</p>{mseReference.addenda.map(a=><div key={a.id}><strong>{a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · {fmt(a.created_at)}</strong><p>{a.reason}</p><p style={{whiteSpace:'pre-wrap'}}>{a.content}</p></div>)}</>:<p>{contextReady?'Δεν υπάρχει προηγούμενο καταγεγραμμένο MSE.':'Φόρτωση προηγούμενου MSE…'}</p>}<p className="visit-hint">Καταγράψτε μόνο τα σημερινά σχετικά ευρήματα. Η προηγούμενη καταγραφή παραμένει ιστορική.</p></details>}
     {narrativeMode.mse?editor('mse'):<StructuredVisitEditor key={draft.id+':mse'} sessionId={draft.id} kind="mse" existing={sections.find(s=>s.section_key==='mse')} followup={draft.session_type==='follow_up'} baseline={draft.session_type==='follow_up'?mseReference?.section:null} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}
-    <details className="visit-additional"><summary>Εναλλακτική καταγραφή MSE</summary><p className="visit-hint">Χρησιμοποιήστε την μόνο όταν χρειάζεστε ενιαίο αφηγηματικό κείμενο ή έλεγχο παλαιότερης υπαγόρευσης.</p><button type="button" className="visit-text-button" onClick={()=>void flushAll().then(()=>setNarrativeMode(v=>({...v,mse:!v.mse}))).catch(()=>{})}>{narrativeMode.mse?'Επιστροφή στο δομημένο MSE':'Άνοιγμα ελεύθερου κειμένου MSE'}</button></details>
+    <details className="visit-additional"><summary>Εναλλακτική καταγραφή MSE</summary><p className="visit-hint">Χρησιμοποιήστε την μόνο όταν χρειάζεστε ενιαίο αφηγηματικό κείμενο ή έλεγχο παλαιότερης υπαγόρευσης.</p><button type="button" className="visit-text-button" onClick={()=>void flushAll(true).then(()=>setNarrativeMode(v=>({...v,mse:!v.mse}))).catch(()=>{})}>{narrativeMode.mse?'Επιστροφή στο δομημένο MSE':'Άνοιγμα ελεύθερου κειμένου MSE'}</button></details>
    </VisitPart>
    <VisitPart anchor="risk" number="03" title="Εκτίμηση κινδύνου"><RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></VisitPart>
    {draft.session_type==='initial_assessment'&&<VisitPart anchor="history" number="04" title="Ιστορικό">{contextReady?<VisitHistory bundle={bundle} sessionId={draft.id} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση ιστορικού… Μπορείτε να συνεχίσετε την καταγραφή.</p>}</VisitPart>}
@@ -211,6 +221,7 @@ export default function PatientSession({
   </div>
   
   {flushError&&<div className="save-state error" role="alert"><strong>Υπάρχουν μη αποθηκευμένες αλλαγές.</strong> {flushError} <span>Διορθώστε το πρόβλημα ή δοκιμάστε ξανά πριν οριστικοποιήσετε.</span></div>}
+  {refreshError&&<div className="save-state" role="status">{refreshError}</div>}
   {finalizeError&&<div className="save-state error" role="alert">{finalizeError}</div>}
 
   {completed.length>0&&<div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ</span><CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/></div>}

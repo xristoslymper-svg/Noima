@@ -41,6 +41,7 @@ async function handlePOST(request:Request){
   }catch(error){
     const message=error instanceof Error?error.message:'';
     if(message.includes('task_not_found'))return Response.json({error:'Η εργασία δεν βρέθηκε.'},{status:404});
+    if(message.includes('task_managed_by_record'))return Response.json({error:'Η εκκρεμότητα κλείνει αυτόματα όταν ολοκληρωθεί η καταγραφή.'},{status:409});
     return Response.json({error:'Η εργασία δεν αποθηκεύτηκε.'},{status:502});
   }
 }

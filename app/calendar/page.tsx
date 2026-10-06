@@ -148,7 +148,8 @@ function dateTimeLabel(iso: string) {
     timeZone: TIMEZONE,
     weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
@@ -177,7 +178,7 @@ export default function CalendarPage() {
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; duration?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [quickBusy,setQuickBusy]=useState(false);
   const quickBusyRef=useRef(false);
@@ -191,6 +192,8 @@ export default function CalendarPage() {
   const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || paymentBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
+  const currentTimeRef=useRef<HTMLDivElement|null>(null);
+  const [nowMs,setNowMs]=useState(()=>Date.now());
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -243,6 +246,7 @@ export default function CalendarPage() {
     void refreshEvents();
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
+  useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),60_000);return()=>window.clearInterval(timer)},[]);
   useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
   useEffect(()=>{
     if(!appointmentActionsOpen)return;
@@ -316,9 +320,15 @@ export default function CalendarPage() {
   const waiting = dayEvents.find(event => event.readiness === "waiting");
   const nextEvent = dayEvents.find(event => event.status === "scheduled" && new Date(event.scheduled_end).getTime() >= Date.now());
   const draggingEvent = draggingEventId ? events.find(event => event.id === draggingEventId) ?? null : null;
+  const currentDay=dateKey(new Date(nowMs));
+  const currentMinute=athensMinutes(new Date(nowMs).toISOString());
   const weekWindow = useMemo(() => {
-    return calendarWindow(visibleEvents,days.map(day=>day.key));
-  }, [days, visibleEvents]);
+    const base=calendarWindow(visibleEvents,days.map(day=>day.key));
+    if(!days.some(day=>day.key===currentDay))return base;
+    const aroundStart=Math.max(0,Math.floor((currentMinute-90)/60)*60);
+    const aroundEnd=Math.min(1440,Math.ceil((currentMinute+90)/60)*60);
+    return {start:Math.min(base.start,aroundStart),end:Math.max(base.end,aroundEnd)};
+  }, [days, visibleEvents,currentDay,currentMinute]);
   const weekHourHeight = 68;
   const weekTotalHeight = ((weekWindow.end - weekWindow.start) / 60) * weekHourHeight;
   const weekHours = Array.from(
@@ -337,6 +347,10 @@ export default function CalendarPage() {
       scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
     });
   }, [view, days, focusDate]);
+  useEffect(()=>{
+    if(view!=="week"||focusDate!==currentDay||loading)return;
+    requestAnimationFrame(()=>currentTimeRef.current?.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+  },[view,focusDate,currentDay,loading]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();

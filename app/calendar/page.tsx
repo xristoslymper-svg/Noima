@@ -975,6 +975,7 @@ function AppointmentEditor({
   const [quickLastName,setQuickLastName]=useState("");
   const [quickPhone,setQuickPhone]=useState("");
   const [quickPatientSaving,setQuickPatientSaving]=useState(false);
+  const quickPatientSavingRef=useRef(false);
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
@@ -999,8 +1000,8 @@ function AppointmentEditor({
   async function createQuickPatient(){
     const firstName=quickFirstName.trim();
     if(!firstName){setError("Συμπληρώστε τουλάχιστον το όνομα.");return}
-    if(quickPatientSaving)return;
-    setQuickPatientSaving(true);setError("");
+    if(quickPatientSavingRef.current)return;
+    quickPatientSavingRef.current=true;setQuickPatientSaving(true);setError("");
     try{
       const response=await fetch("/api/patients/demo/runtime",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
         action:"create_patient",tester:getDemoTesterId(),first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),
@@ -1013,7 +1014,7 @@ function AppointmentEditor({
       setPatientSearch("");
       setQuickPatientOpen(false);
     }catch(cause){setError(cause instanceof Error?cause.message:"Δεν δημιουργήθηκε ο ασθενής.")}
-    finally{setQuickPatientSaving(false)}
+    finally{quickPatientSavingRef.current=false;setQuickPatientSaving(false)}
   }
   const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);

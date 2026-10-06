@@ -66,6 +66,7 @@ type PatientOption = {
   id: string;
   first_name: string;
   last_name: string;
+  last_session?: {id:string;status:string}|null;
 };
 
 const TIMEZONE = "Europe/Athens";
@@ -985,7 +986,7 @@ function AppointmentEditor({
   const [typeManuallyChosen,setTypeManuallyChosen]=useState(false);
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
   const selectedPatient=patients.find(p=>p.id===patientId);
-  const selectedPatientIsNew=Boolean(selectedPatient&&!selectedPatient.last_visit);
+  const selectedPatientIsNew=Boolean(selectedPatient&&!selectedPatient.last_session);
   useEffect(()=>{
     if(mode!=="create"||!selectedPatient||typeManuallyChosen)return;
     setType(selectedPatientIsNew?"initial_assessment":"follow_up");

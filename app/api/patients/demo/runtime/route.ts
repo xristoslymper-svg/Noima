@@ -19,10 +19,10 @@ function failure(error:unknown){
  if(message.includes('stale_correction'))return Response.json({error:'Η καταγραφή διορθώθηκε σε άλλη καρτέλα. Επαναφορτώστε πριν αποθηκεύσετε τη δική σας διόρθωση.',code:'stale_correction'},{status:409});
  if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
- if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή επίσκεψη για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
- if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή επίσκεψη διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
+ if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή πρόχειρη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
+ if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή πρόχειρη καταγραφή διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
  if(message.includes('appointment_unavailable'))return Response.json({error:'Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.',code:'appointment_unavailable'},{status:409});
- if(message.includes('session_unavailable'))return Response.json({error:'Η συγκεκριμένη επίσκεψη δεν είναι πλέον διαθέσιμη.',code:'session_unavailable'},{status:409});
+ if(message.includes('session_unavailable'))return Response.json({error:'Η συγκεκριμένη καταγραφή δεν είναι πλέον διαθέσιμη.',code:'session_unavailable'},{status:409});
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
 

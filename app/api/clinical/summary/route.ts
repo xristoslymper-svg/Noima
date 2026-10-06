@@ -3,6 +3,7 @@ import {patientBundle,request,rpc} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {buildSummaryContext,minimumBriefingItems,canonicalSummaryFindings,summaryContextHash,validateNarrative,assertCriticalCoverage,SUMMARY_POLICY_VERSION,type Finding,type Evidence} from '@/lib/clinical/summary-context';
 export const runtime='nodejs';
+export const preferredRegion='fra1';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
 const model=process.env.OPENAI_CLINICAL_MODEL||'gpt-6-luna';

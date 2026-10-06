@@ -982,8 +982,14 @@ function AppointmentEditor({
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(initialDuration?String(initialDuration):event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
+  const [typeManuallyChosen,setTypeManuallyChosen]=useState(false);
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
   const selectedPatient=patients.find(p=>p.id===patientId);
+  const selectedPatientIsNew=Boolean(selectedPatient&&!selectedPatient.last_visit);
+  useEffect(()=>{
+    if(mode!=="create"||!selectedPatient||typeManuallyChosen)return;
+    setType(selectedPatientIsNew?"initial_assessment":"follow_up");
+  },[mode,selectedPatient?.id,selectedPatientIsNew,typeManuallyChosen]);
   const normalizedPatientSearch=patientSearch.trim().toLocaleLowerCase("el-GR");
   const matchingPatients=normalizedPatientSearch
     ? patients.filter(patient=>((patient.first_name+" "+patient.last_name).toLocaleLowerCase("el-GR").includes(normalizedPatientSearch)))
@@ -1141,7 +1147,7 @@ function AppointmentEditor({
         <label>Ημερομηνία<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
         <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
-        {mode === "create" && <label>Τύπος<select value={type} onChange={change => setType(change.target.value)}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
+        {mode === "create" && <label>Τύπος<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
         {mode === "create" && <label>Επανάληψη<select value={recurrence} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
         {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </fieldset>

@@ -149,8 +149,8 @@ export default function PatientSession({
    if(medOpen)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');
    const fresh=await flushAll() as PatientBundle;
    const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id));
-   if(blocker){setShowFinalizeGuidance(true);return}
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
+   if(blocker){setShowFinalizeGuidance(true);if(onFinishLater)await onFinishLater(draft.id);return}
    await onFinalize(draft.id);
   }catch{
    // The concrete save/finalize error is already rendered in the workspace.

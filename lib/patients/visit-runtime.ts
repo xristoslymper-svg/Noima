@@ -1,11 +1,11 @@
-import {request,bootstrap,type PatientBundle,type DemoPatient} from './demo-runtime';
+import {request,type PatientBundle,type DemoPatient} from './demo-runtime';
 import {isClinicalId} from '../clinical/identity';
 const empty=(patient:DemoPatient):PatientBundle=>({patient,sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],assessments:[],appointments:[]});
 export async function visitBundle(tester:string,patientRef:string,sessionId?:string):Promise<PatientBundle>{
+ if(!isClinicalId(patientRef))throw new Error('patient_not_found');
  const tid=encodeURIComponent(tester),id=encodeURIComponent(patientRef);
- const path=`demo_patients?select=*&tester_id=eq.${tid}&${isClinicalId(patientRef)?'id':'first_name'}=eq.${id}&limit=1`;
- let patients=await request(path) as DemoPatient[];
- if(!patients.length&&!isClinicalId(patientRef)){await bootstrap(tester);patients=await request(path) as DemoPatient[]}
+ const path=`demo_patients?select=*&tester_id=eq.${tid}&id=eq.${id}&limit=1`;
+ const patients=await request(path) as DemoPatient[];
  const patient=patients[0];if(!patient)throw new Error('patient_not_found');
  const filter=`tester_id=eq.${tid}&patient_id=eq.${patient.id}`;
  const b=empty(patient);

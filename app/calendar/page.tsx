@@ -1021,7 +1021,7 @@ function AppointmentEditor({
   const [occurrences, setOccurrences] = useState("6");
   const [scope,setScope] = useState("one");
   const [confirmCancel,setConfirmCancel] = useState(false);
-  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;return localAthensToIso(date,hours*60+minutes)},[date,time]);
+  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;try{return localAthensToIso(date,hours*60+minutes)}catch{return null}},[date,time]);
   const pastSelection=Boolean(selectedStartIso&&Date.parse(selectedStartIso)<Date.now());
   const busyRef=useRef(false);
   const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);

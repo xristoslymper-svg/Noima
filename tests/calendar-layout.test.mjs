@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {calendarWindow,calendarSegment,calendarLanes} from '../lib/calendar/layout.ts';
+import {calendarWindow,calendarSegment,calendarLanes,cancelledHistoryPlacement} from '../lib/calendar/layout.ts';
 import {clinicLocalToIso} from '../lib/clinic-time.ts';
 const event=(id,start,end)=>({id,scheduled_start:start,scheduled_end:end});
 
@@ -28,4 +28,24 @@ test('clinic time round trips across DST and refuses impossible/ambiguous wall t
  assert.throws(()=>clinicLocalToIso('2026-03-29','03:30'));
  assert.throws(()=>clinicLocalToIso('2026-10-25','03:30'));
  assert.throws(()=>clinicLocalToIso('2026-02-30','09:00'));
+});
+
+
+test('cancelled history uses the 25/75 split only for the exact replacement slot',()=>{
+ const start='2026-10-05T09:00Z',end='2026-10-05T09:50Z';
+ const cancelled={...event('cancelled',start,end),status:'cancelled'};
+ const active={...event('active',start,end),status:'scheduled'};
+ assert.deepEqual(cancelledHistoryPlacement(active,[cancelled,active]),{paired:true,leftPercent:25,widthPercent:75});
+ assert.deepEqual(cancelledHistoryPlacement(cancelled,[cancelled,active]),{paired:true,leftPercent:0,widthPercent:25});
+ const partial={...event('partial','2026-10-05T09:20Z','2026-10-05T10:10Z'),status:'scheduled'};
+ assert.equal(cancelledHistoryPlacement(partial,[cancelled,partial]),null);
+ assert.equal(cancelledHistoryPlacement(cancelled,[cancelled,partial]),null);
+});
+
+test('multiple cancelled histories remain individually clickable within the history quarter',()=>{
+ const start='2026-10-05T09:00Z',end='2026-10-05T09:50Z';
+ const c1={...event('a',start,end),status:'cancelled'},c2={...event('b',start,end),status:'cancelled'},active={...event('z',start,end),status:'scheduled'};
+ assert.deepEqual(cancelledHistoryPlacement(c1,[c1,c2,active]),{paired:true,leftPercent:0,widthPercent:12.5});
+ assert.deepEqual(cancelledHistoryPlacement(c2,[c1,c2,active]),{paired:true,leftPercent:12.5,widthPercent:12.5});
+ assert.deepEqual(cancelledHistoryPlacement(active,[c1,c2,active]),{paired:true,leftPercent:25,widthPercent:75});
 });

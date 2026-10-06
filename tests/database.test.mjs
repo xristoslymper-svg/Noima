@@ -595,6 +595,7 @@ test('finish-later creates one session-linked task and finalization closes only 
  assert.equal(firstTask.id,retryTask.id);
  assert.equal(firstTask.source_session_id,draft.id);
  assert.equal(firstTask.status,'open');
+ await assert.rejects(sql("select demo_task_set_status($1,$2,'completed')",[t,firstTask.id]),/task_managed_by_record/);
  assert.equal((await sql("select count(*)::int n from demo_tasks where tester_id=$1 and source_session_id=$2 and status='open'",[t,draft.id]))[0].n,1);
  const [manual]=await sql("select * from demo_task_create($1,'Ολοκλήρωση καταγραφής · άσχετη εργασία',$2,null)",[t,p]);
  for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,draft.id,k]);

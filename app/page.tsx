@@ -238,7 +238,7 @@ export default function Page() {
           {widgetOpen==="payments"&&<div className="dashboard-widget-list">
             {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>
               <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
-              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><Check size={15}/> Πληρώθηκε</button>
+              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>Πληρώθηκε;</span><Check size={15}/></button>
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμείς πληρωμές.</div>}
           </div>}
 

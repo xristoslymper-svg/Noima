@@ -606,6 +606,7 @@ export default function CalendarPage() {
                           prepareMove(draggingEvent, day.key, minute);
                         }}
                       >
+                        {day.key===currentDay&&currentMinute>=weekWindow.start&&currentMinute<=weekWindow.end&&<div ref={currentTimeRef} className="calendar-now-line" style={{top:((currentMinute-weekWindow.start)/60)*weekHourHeight}}><span>{timeLabel(new Date(nowMs).toISOString())}</span></div>}
                         {previewMinute !== null && draggingEvent && (
                           <div
                             className="week-drop-preview"
@@ -625,6 +626,15 @@ export default function CalendarPage() {
                           const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
                           const height = Math.max(38, (duration / 60) * weekHourHeight);
                           const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
+                          const overlaps=(other:CalendarEvent)=>other.id!==event.id&&Date.parse(other.scheduled_start)<Date.parse(event.scheduled_end)&&Date.parse(other.scheduled_end)>Date.parse(event.scheduled_start);
+                          const pairedWithCancelled=event.status!=="cancelled"&&items.some(other=>other.status==="cancelled"&&overlaps(other));
+                          const pairedWithActive=event.status==="cancelled"&&items.some(other=>other.status!=="cancelled"&&overlaps(other));
+                          const lane=lanes.get(event.id);
+                          const position=pairedWithCancelled
+                            ?{left:"calc(25% + 3px)",width:"calc(75% - 8px)"}
+                            :pairedWithActive
+                              ?{left:"5px",width:"calc(25% - 8px)"}
+                              :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
 
                           if (outsideRange) return null;
 
@@ -634,6 +644,7 @@ export default function CalendarPage() {
                                 "week-event draggable" +
                                 (draggingEventId === event.id ? " dragging" : "") +
                                 (event.readiness === "waiting" ? " waiting" : "") +
+                                ((pairedWithCancelled||pairedWithActive) ? " paired-cancelled-history" : "") +
                                 (event.appointment_type === "initial_assessment" ? " initial" : " follow-up") + " status-" + event.status
                               }
                               key={event.id}
@@ -642,7 +653,7 @@ export default function CalendarPage() {
                               aria-label={event.patient_name + " · " + timeLabel(event.scheduled_start) + " · " + statusLabel(event)}
                               onKeyDown={key=>{if(key.key==="Enter"||key.key===" "){key.preventDefault();setQuickError("");setSelectedEvent(event)}}}
                               title={event.patient_name + " · " + appointmentType(event.appointment_type)}
-                              style={{ top, height, left: `calc(${(lanes.get(event.id)?.lane ?? 0)*100/(lanes.get(event.id)?.total ?? 1)}% + 5px)`, right: "auto", width: `calc(${100/(lanes.get(event.id)?.total ?? 1)}% - 10px)` }}
+                              style={{ top, height, left:position.left, right:"auto", width:position.width }}
                               onDragStart={dragEvent => {
                                 setDraggingEventId(event.id);
                                 setMoveError("");
@@ -869,7 +880,7 @@ export default function CalendarPage() {
         .calendar-popover-actions .calendar-popover-primary{display:inline-flex;align-items:center;gap:6px;background:#356b59;color:#fff;border-radius:9px;padding:9px 11px}
         .calendar-popover-actions>button:last-child{margin-left:auto;color:#7b8882}
 
-        .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#faf2f0!important;border-left-color:#c0a49b!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
+        .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#fae9e8!important;border-left-color:#c7908c!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event.status-cancelled.paired-cancelled-history{padding:7px 5px!important}.week-event.status-cancelled.paired-cancelled-history span{font-size:9px!important}.week-event.status-cancelled.paired-cancelled-history strong{font-size:8px!important}.calendar-now-line{position:absolute;left:0;right:0;z-index:6;height:1px;background:#b97263;pointer-events:none}.calendar-now-line:before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:#b97263}.calendar-now-line span{position:absolute;left:5px;top:-16px;padding:2px 5px;border-radius:6px;background:#fff7f4;color:#9b5f52;font-size:8px;font-weight:800;box-shadow:0 1px 4px rgba(90,55,45,.08)}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
 

@@ -85,7 +85,7 @@ export default function Page() {
   const remainingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_end).getTime()>nowMs);
   const pendingPayments=schedule.filter(event=>event.status!=="cancelled"&&event.payment_status==="pending");
   const psychometricsForReview=loadedBundles.flatMap(bundle=>bundle.assessments
-    .filter(assessment=>assessment.status==="completed"&&!assessment.reviewed_at)
+    .filter(assessment=>assessment.status==="completed"&&(!assessment.reviewed_at||(assessment.item9_review&&!assessment.item9_reviewed_at)))
     .map(assessment=>({assessment,patient:bundle.patient})));
   const openTasks=tasks.filter(task=>task.status==="open");
 

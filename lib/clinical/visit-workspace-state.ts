@@ -11,7 +11,7 @@ function documentText(document:NonNullable<PatientBundle['sections'][number]['do
 }
 function correctedSection(bundle:PatientBundle,section:PatientBundle['sections'][number]){
  let document=section.document,content=section.content;
- for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at))){
+ for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id))){
   const change=correction.patch?.[section.section_key];
   if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after){document=change.after as typeof document;if(document)content=documentText(document)}
  }

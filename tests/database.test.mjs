@@ -643,6 +643,20 @@ test('finish-later creates one session-linked task and finalization closes only 
 });
 
 
+test('creating a patient creates only the patient entity and same-name patients stay UUID-isolated',async()=>{
+ const t='61400000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p1]=await sql("select * from demo_patient_create_v3($1,'Μαρία','Ίδια',30,'','','','','','','')",[t]);
+ const [p2]=await sql("select * from demo_patient_create_v3($1,'Μαρία','Ίδια',31,'','','','','','','')",[t]);
+ assert.notEqual(p1.id,p2.id);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where tester_id=$1 and patient_id in ($2,$3)',[t,p1.id,p2.id]))[0].n,0);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p1.id]);
+ assert.equal(draft.patient_id,p1.id);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where patient_id=$1',[p2.id]))[0].n,0);
+ await sql("select demo_patient_update_v2($1,$2,'Μαρία','Ενημερωμένη',30,'','','','','','','',null)",[t,p1.id]);
+ assert.equal((await sql('select id from demo_patients where id=$1',[p1.id]))[0].id,p1.id);
+ assert.equal((await sql('select patient_id from demo_sessions where id=$1',[draft.id]))[0].patient_id,p1.id);
+});
+
 test('direct patient-folder starts resume only compatible drafts',async()=>{
  const t='61500000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Direct Draft')).id id",[t]);

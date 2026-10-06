@@ -643,6 +643,28 @@ test('finish-later creates one session-linked task and finalization closes only 
 });
 
 
+test('direct patient-folder starts resume only compatible drafts',async()=>{
+ const t='61500000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Direct Draft')).id id",[t]);
+ const [first]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p]);
+ const [retry]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p]);
+ assert.equal(retry.id,first.id);
+ await assert.rejects(sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]),/open_draft_conflict/);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where tester_id=$1 and patient_id=$2 and status=\'draft\'',[t,p]))[0].n,1);
+});
+
+test('patient demographic updates keep calendar and pending record To-do names aligned',async()=>{
+ const t='61600000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Old Name')).id id",[t]);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const [task]=await sql('select * from demo_task_for_session($1,$2)',[t,draft.id]);
+ const [{event}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-20 10:00 Europe/Athens','2099-12-20 10:50 Europe/Athens','follow_up') event",[t,p]);
+ const [patient]=await sql("select * from demo_patient_update_v2($1,$2,'TEST Renamed','Patient',null,'','','','','','','',null)",[t,p]);
+ assert.equal(patient.id,p);
+ assert.equal((await sql('select patient_name from demo_calendar_events where id=$1',[event.id]))[0].patient_name,'TEST Renamed Patient');
+ assert.equal((await sql('select title from demo_tasks where id=$1',[task.id]))[0].title,'Ολοκλήρωση καταγραφής · TEST Renamed Patient');
+});
+
 test('structured corrections are append-only and belong to completed sessions', async()=>{
  const t='62000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Corrected Record')).id id",[t]);

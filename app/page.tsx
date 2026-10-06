@@ -72,7 +72,11 @@ export default function Page() {
     const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));
     if(cancelled)return;
     if(loaded.some(item=>item===null))throw new Error('overview_incomplete');
-    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setTasks((taskData.tasks||[]) as TodoTask[]);setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);setOverviewState('ready');
+    const todayKey=overviewDateKey(new Date());
+    const todayPatientIds=events.filter(event=>overviewDateKey(new Date(event.scheduled_start))===todayKey&&event.status!=="cancelled"&&event.patient_id).map(event=>event.patient_id as string);
+    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setTasks((taskData.tasks||[]) as TodoTask[]);
+    setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:todayPatientIds[0]||null);
+    setOverviewState('ready');
     void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
@@ -153,12 +157,20 @@ export default function Page() {
           {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
             <Metric icon={<CalendarDays />} label="Ραντεβού σήμερα" value={overviewState==='ready'?String(remainingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':remainingToday.length?"Απομένουν σήμερα":"Ολοκληρώθηκε το σημερινό πρόγραμμα"} tone="sage" />
-            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
+            <TodoMetric
+              tasks={overviewState==='ready'?openTasks:[]}
+              value={overviewState==='ready'?String(openTasks.length):'—'}
+              loading={overviewState==='loading'}
+              error={overviewState==='error'}
+              busy={widgetBusy}
+              onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
+              onComplete={completeTask}
+            />
             <Metric icon={<TestTube2 />} label="Ψυχομετρικά" value={overviewState==='ready'?String(psychometricsForReview.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Νέα για έλεγχο'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
-            <Metric icon={<ListTodo />} label="To do" value={overviewState==='ready'?String(openTasks.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Ανοιχτές εργασίες'} tone="rose" onClick={()=>{setWidgetError("");setWidgetOpen("todo")}} />
+            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
-          <section className="main-grid">
+          <section className={todaySchedule.length&&selectedBundle?"main-grid":"main-grid single"}>
             <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
@@ -176,10 +188,10 @@ export default function Page() {
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
-            <div className="card ai-brief" key={selectedPatientId||"none"}>
-              <div className="card-head"><span className="status-dot">{selectedBundle?selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name:'Χωρίς επιλογή'}</span></div>
-              {overviewState==='loading'?<p>Φόρτωση φακέλων…</p>:overviewState==='error'?<p>Οι φάκελοι δεν φορτώθηκαν. Δοκιμάστε ξανά από την ειδοποίηση επάνω.</p>:selectedBundle?<ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>:<p>Επιλέξτε ασθενή για να εμφανιστούν οι καταγραφές του φακέλου.</p>}
-            </div>
+            {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
+              <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
+              <ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
+            </div>}
           </section>
 
         </div>
@@ -250,6 +262,21 @@ export default function Page() {
       </div>}
     </main>
   );
+}
+
+function TodoMetric({tasks,value,loading,error,busy,onOpen,onComplete}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
+  const first=tasks[0];
+  return <div className="metric rose todo-metric">
+    <button className="todo-metric-open" type="button" onClick={onOpen} aria-label="Άνοιγμα To do"><ListTodo size={22}/></button>
+    <span>To do</span>
+    <strong>{value}</strong>
+    {loading?<small>Φόρτωση…</small>:error?<small>Δεν φορτώθηκε</small>:first?<div className="todo-metric-preview">
+      <button type="button" className="todo-metric-check" disabled={busy} onClick={()=>void onComplete(first)} aria-label={"Ολοκλήρωση "+first.title}><Check size={14}/></button>
+      <button type="button" className="todo-metric-title" onClick={onOpen}>{first.title}</button>
+      {tasks.length>1&&<small>+{tasks.length-1} ακόμη</small>}
+    </div>:<small>Δεν υπάρχουν ανοιχτές εργασίες</small>}
+    {!loading&&!error&&<button type="button" className="todo-metric-add" onClick={onOpen}>+ Νέα εργασία</button>}
+  </div>;
 }
 
 function Metric({ icon, label, value, note, tone, onClick }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string; onClick?:()=>void }) {

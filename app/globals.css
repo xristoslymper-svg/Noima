@@ -613,3 +613,21 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .todo-compose{display:flex;gap:8px;margin-bottom:14px}.todo-compose input{flex:1;min-width:0;border:1px solid #dfe7e2;border-radius:12px;background:#fbfcfb;padding:11px 12px;font:inherit;font-size:13px;color:#2c4238}.todo-compose input:focus{outline:2px solid #9abaaa;outline-offset:1px}.todo-compose button{border:0;border-radius:11px;background:#356b59;color:#fff;padding:0 15px;font-size:12px;font-weight:700;cursor:pointer}.todo-compose button:disabled{opacity:.45;cursor:default}.dashboard-widget-row .todo-done{width:35px;height:35px;padding:0;justify-content:center;border-radius:50%}
 .assessment-review-state{display:flex;justify-content:flex-end;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #edf1ed}.assessment-review-state button{border:1px solid #d8e5dc;background:#eef5f0;color:#3d6b57;border-radius:9px;padding:8px 11px;font-size:11px;font-weight:700;cursor:pointer}.assessment-review-state small{color:#5f7b6c;font-weight:650}
 @media(max-width:650px){.dashboard-widget-overlay{padding:12px;align-items:end}.dashboard-widget-sheet{width:100%;max-height:88dvh;border-radius:22px 22px 12px 12px;padding:20px}.dashboard-widget-row{align-items:flex-start}.todo-compose{flex-direction:column}.todo-compose button{padding:11px 14px}}
+
+
+/* Overview context + compact To do interactions */
+.main-grid.single{grid-template-columns:1fr}
+.todo-metric{min-height:145px}
+.todo-metric-open{position:absolute;right:13px;top:13px;width:38px;height:38px;border:0;border-radius:11px;background:transparent;color:#4f5c58;display:grid;place-items:center;cursor:pointer;opacity:.78}
+.todo-metric-open:hover{background:rgba(255,255,255,.42);opacity:1}
+.todo-metric-preview{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:7px;margin-top:5px;min-width:0}
+.todo-metric-check{width:24px;height:24px;border:1px solid #d8c9ce;border-radius:50%;background:rgba(255,255,255,.7);color:#6d7a74;display:grid;place-items:center;cursor:pointer}
+.todo-metric-check:hover{background:#fff;color:#316b58;border-color:#aec8bd}
+.todo-metric-check:disabled{opacity:.5;cursor:wait}
+.todo-metric-title{min-width:0;border:0;background:transparent;padding:0;text-align:left;color:#53606b;font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.todo-metric-title:hover{color:#2f6f63}
+.todo-metric-preview small{font-size:10px;white-space:nowrap;color:#8b7d82}
+.todo-metric-add{align-self:flex-start;margin-top:auto;padding:5px 0 0;border:0;background:transparent;color:#7b6870;font-size:10px;font-weight:750;cursor:pointer}
+.todo-metric-add:hover{color:#4c6c60}
+.todo-metric :is(button):focus-visible{outline:2px solid #91b1a4;outline-offset:2px}
+@media(max-width:760px){.main-grid.single{grid-template-columns:1fr}.todo-metric-preview{grid-template-columns:26px minmax(0,1fr)}.todo-metric-preview small{grid-column:2}}

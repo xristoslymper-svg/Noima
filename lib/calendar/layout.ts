@@ -36,7 +36,8 @@ export function calendarLanes(events:TimedEvent[],day:string){
 
 type CalendarStatusEvent=TimedEvent&{status:string};
 export function cancelledHistoryPlacement(event:CalendarStatusEvent,events:CalendarStatusEvent[]){
- const sameSlot=events.filter(other=>other.scheduled_start===event.scheduled_start&&other.scheduled_end===event.scheduled_end);
+ const start=Date.parse(event.scheduled_start),end=Date.parse(event.scheduled_end);
+ const sameSlot=events.filter(other=>Date.parse(other.scheduled_start)===start&&Date.parse(other.scheduled_end)===end);
  const active=sameSlot.filter(other=>other.status!=='cancelled');
  const cancelled=sameSlot.filter(other=>other.status==='cancelled').sort((a,b)=>a.id.localeCompare(b.id));
  if(event.status!=='cancelled'&&cancelled.length){

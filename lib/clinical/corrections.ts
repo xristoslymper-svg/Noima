@@ -3,7 +3,7 @@ import type {DemoRisk,DemoSection} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
 export function correctionsFor(corrections:StructuredCorrection[]|undefined,sessionId:string){
- return (corrections||[]).filter(item=>item.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+ return (corrections||[]).filter(item=>item.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id));
 }
 function latestAfter(corrections:StructuredCorrection[]|undefined,sessionId:string,key:string){
  let value:unknown=undefined;
@@ -32,6 +32,10 @@ export function effectiveSection(section:DemoSection,corrections:StructuredCorre
 }
 export function effectiveRisk(risk:DemoRisk|undefined,corrections:StructuredCorrection[]|undefined,sessionId:string):DemoRisk|undefined{
  const after=latestAfter(corrections,sessionId,'risk');
- if(!after||typeof after!=='object')return risk;
- return {...(risk||{session_id:sessionId,patient_id:'',suicidal_ideation:'not_assessed',intent:'not_assessed',plan:'not_assessed',self_harm:'not_assessed',attempt_history:'not_assessed',protective_factors:'',clinical_note:'',version:0,updated_at:''}),...(after as Partial<DemoRisk>)};
+ let value=after&&typeof after==='object'?{...(risk||{session_id:sessionId,patient_id:'',suicidal_ideation:'not_assessed',intent:'not_assessed',plan:'not_assessed',self_harm:'not_assessed',attempt_history:'not_assessed',protective_factors:'',clinical_note:'',version:0,updated_at:''}),...(after as Partial<DemoRisk>)}:risk;
+ if(value?.tree){
+  const answers={...value.tree.answers,wish:value.suicidal_ideation,intent:value.intent,plan:value.plan,others:value.harm_to_others||'not_assessed'};
+  value={...value,tree:{...value.tree,answers}};
+ }
+ return value;
 }

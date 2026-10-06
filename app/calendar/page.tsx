@@ -248,6 +248,7 @@ export default function CalendarPage() {
     void refreshEvents();
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
+  useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')void refreshPatients()};window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh)},[refreshPatients]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),60_000);return()=>window.clearInterval(timer)},[]);
   useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
   useEffect(()=>{
@@ -975,6 +976,7 @@ function AppointmentEditor({
   const [quickLastName,setQuickLastName]=useState("");
   const [quickPhone,setQuickPhone]=useState("");
   const [quickPatientSaving,setQuickPatientSaving]=useState(false);
+  const quickPatientSavingRef=useRef(false);
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
@@ -999,8 +1001,8 @@ function AppointmentEditor({
   async function createQuickPatient(){
     const firstName=quickFirstName.trim();
     if(!firstName){setError("Συμπληρώστε τουλάχιστον το όνομα.");return}
-    if(quickPatientSaving)return;
-    setQuickPatientSaving(true);setError("");
+    if(quickPatientSavingRef.current)return;
+    quickPatientSavingRef.current=true;setQuickPatientSaving(true);setError("");
     try{
       const response=await fetch("/api/patients/demo/runtime",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
         action:"create_patient",tester:getDemoTesterId(),first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),
@@ -1013,7 +1015,7 @@ function AppointmentEditor({
       setPatientSearch("");
       setQuickPatientOpen(false);
     }catch(cause){setError(cause instanceof Error?cause.message:"Δεν δημιουργήθηκε ο ασθενής.")}
-    finally{setQuickPatientSaving(false)}
+    finally{quickPatientSavingRef.current=false;setQuickPatientSaving(false)}
   }
   const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);
@@ -1156,7 +1158,7 @@ function AppointmentEditor({
         {event?.status === "cancelled" && <button disabled={saving} onClick={()=>void mutate("restore")}>Επαναφορά ραντεβού</button>}
         <span/>
         <button onClick={onClose} disabled={saving}>Κλείσιμο</button>
-        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια συνεδρίας" : "Έναρξη συνεδρίας"}</button>}
+        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια καταγραφής" : "Νέα καταγραφή"}</button>}
         {(!event || (event.status === "scheduled" && !event.session_id)) && <button className="calendar-move-confirm" onClick={() => void mutate(mode === "create" ? "create" : "move")} disabled={saving}>{saving ? "Αποθήκευση…" : mode === "create" ? "Δημιουργία" : "Αποθήκευση αλλαγών"}</button>}
       </footer>
     </section>

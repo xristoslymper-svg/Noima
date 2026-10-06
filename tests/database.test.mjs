@@ -566,6 +566,22 @@ test('same-day dose correction preserves the original event, requires a reason a
  await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',20,'mg','daily',current_date,'Retry',2,$3,false)",[t,m.id,event.id]),/stale_medication/);
 });
 
+test('patient folders receive only their own medication correction revisions',async()=>{
+ const t='80000000-0000-4000-8000-000000000014';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p1}]=await sql("select (demo_patient_create_v2($1,'TEST Revision A')).id id",[t]);
+ const [{id:p2}]=await sql("select (demo_patient_create_v2($1,'TEST Revision B')).id id",[t]);
+ const [m1]=await sql("select * from demo_medication_start($1,$2,null,'Med A',5,'mg','daily',current_date,'baseline')",[t,p1]);
+ const [m2]=await sql("select * from demo_medication_start($1,$2,null,'Med B',10,'mg','daily',current_date,'baseline')",[t,p2]);
+ const [e1]=await sql("select id from demo_medication_events where medication_id=$1 and event_type='started'",[m1.id]);
+ const [e2]=await sql("select id from demo_medication_events where medication_id=$1 and event_type='started'",[m2.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'started',6,'mg','daily',current_date,'Correct A',2,$3,false)",[t,m1.id,e1.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'started',11,'mg','daily',current_date,'Correct B',2,$3,false)",[t,m2.id,e2.id]);
+ const r1=await sql('select * from demo_medication_revisions_for_patient($1,$2)',[t,p1]);
+ const r2=await sql('select * from demo_medication_revisions_for_patient($1,$2)',[t,p2]);
+ assert.equal(r1.length,1);assert.equal(r1[0].event_id,e1.id);assert.equal(r1[0].reason,'Correct A');
+ assert.equal(r2.length,1);assert.equal(r2[0].event_id,e2.id);assert.equal(r2[0].reason,'Correct B');
+});
+
 test('SMS simulation queues atomically, reschedules, cancels, revalidates phone and processes only once',async()=>{
  const tester='71000000-0000-4000-8000-000000000001';await sql('select public.demo_tester_bootstrap($1)',[tester]);
  const patient=(await sql('select id from public.demo_patients where tester_id=$1 limit 1',[tester]))[0];
@@ -643,6 +659,58 @@ test('finish-later creates one session-linked task and finalization closes only 
 });
 
 
+test('creating a patient creates only the patient entity and same-name patients stay UUID-isolated',async()=>{
+ const t='61400000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p1]=await sql("select * from demo_patient_create_v3($1,'Μαρία','Ίδια',30,'','','','','','','')",[t]);
+ const [p2]=await sql("select * from demo_patient_create_v3($1,'Μαρία','Ίδια',31,'','','','','','','')",[t]);
+ assert.notEqual(p1.id,p2.id);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where tester_id=$1 and patient_id in ($2,$3)',[t,p1.id,p2.id]))[0].n,0);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p1.id]);
+ assert.equal(draft.patient_id,p1.id);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where patient_id=$1',[p2.id]))[0].n,0);
+ await sql("select demo_patient_update_v2($1,$2,'Μαρία','Ενημερωμένη',30,'','','','','','','',null)",[t,p1.id]);
+ assert.equal((await sql('select id from demo_patients where id=$1',[p1.id]))[0].id,p1.id);
+ assert.equal((await sql('select patient_id from demo_sessions where id=$1',[draft.id]))[0].patient_id,p1.id);
+});
+
+test('patient details and longitudinal history reject stale-tab overwrites and allow explicit retry',async()=>{
+ const t='80000000-0000-4000-8000-000000000008';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p,updated_at:revision}]=await sql("select (demo_patient_create_v3($1,'TEST','Concurrency',null,'','','','','','','')).*",[t]);
+ const [first]=await sql("select * from demo_patient_update_v2($1,$2,'TEST','First',null,'','','','','','','',$3)",[t,p,revision]);
+ await assert.rejects(sql("select * from demo_patient_update_v2($1,$2,'TEST','Stale',null,'','','','','','','',$3)",[t,p,revision]),/stale_patient/);
+ assert.equal((await sql('select last_name from demo_patients where id=$1',[p]))[0].last_name,'First');
+ const [retry]=await sql("select * from demo_patient_update_v2($1,$2,'TEST','Retry',null,'','','','','','','',$3)",[t,p,first.updated_at]);
+ assert.equal(retry.last_name,'Retry');
+
+ const [h1]=await sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'first'}),0]);
+ await assert.rejects(sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'stale'}),0]),/stale_history/);
+ assert.equal((await sql('select psychiatric_history from demo_patient_history where patient_id=$1',[p]))[0].psychiatric_history,'first');
+ const [h2]=await sql("select * from demo_history_save($1,$2,$3::jsonb,$4)",[t,p,JSON.stringify({psychiatric_history:'retry'}),h1.version]);
+ assert.equal(h2.psychiatric_history,'retry');assert.equal(h2.version,h1.version+1);
+});
+
+test('direct patient-folder starts resume only compatible drafts',async()=>{
+ const t='61500000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Direct Draft')).id id",[t]);
+ const [first]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p]);
+ const [retry]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p]);
+ assert.equal(retry.id,first.id);
+ await assert.rejects(sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]),/open_draft_conflict/);
+ assert.equal((await sql('select count(*)::int n from demo_sessions where tester_id=$1 and patient_id=$2 and status=\'draft\'',[t,p]))[0].n,1);
+});
+
+test('patient demographic updates keep calendar and pending record To-do names aligned',async()=>{
+ const t='61600000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Old Name')).id id",[t]);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const [task]=await sql('select * from demo_task_for_session($1,$2)',[t,draft.id]);
+ const [{event}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-20 10:00 Europe/Athens','2099-12-20 10:50 Europe/Athens','follow_up') event",[t,p]);
+ const [patient]=await sql("select * from demo_patient_update_v2($1,$2,'TEST Renamed','Patient',null,'','','','','','','',null)",[t,p]);
+ assert.equal(patient.id,p);
+ assert.equal((await sql('select patient_name from demo_calendar_events where id=$1',[event.id]))[0].patient_name,'TEST Renamed Patient');
+ assert.equal((await sql('select title from demo_tasks where id=$1',[task.id]))[0].title,'Ολοκλήρωση καταγραφής · TEST Renamed Patient');
+});
+
 test('structured corrections are append-only and belong to completed sessions', async()=>{
  const t='62000000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Corrected Record')).id id",[t]);
@@ -660,3 +728,23 @@ test('structured corrections are append-only and belong to completed sessions', 
  await assert.rejects(sql("update demo_session_corrections set reason='changed' where id=$1",[correction.id]),/immutable_record/);
  await assert.rejects(sql('select demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,'62000000-0000-4000-8000-000000000012','',JSON.stringify(patch)]),/correction_reason_required/);
 });
+
+test('structured correction retries are idempotent and stale tabs cannot append over newer corrections',async()=>{
+ const t='62100000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Correction Concurrency')).id id",[t]);
+ const [session]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,session.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,session.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[session.id]);
+ await sql('select demo_session_finalize($1,$2,$3)',[t,session.id,version]);
+ const request='62100000-0000-4000-8000-000000000011';
+ const patch={plan:{before:'Documented',after:'Updated plan'}};
+ const [first]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,request,'Plan correction',JSON.stringify(patch),0]);
+ const [retry]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,request,'Plan correction',JSON.stringify(patch),0]);
+ assert.equal(retry.id,first.id,'same request id must survive a lost response/retry');
+ await assert.rejects(sql('select demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,'62100000-0000-4000-8000-000000000012','Stale tab',JSON.stringify({review:{before:'Documented',after:'Changed'}}),0]),/stale_correction/);
+ const [second]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,'62100000-0000-4000-8000-000000000013','Fresh correction',JSON.stringify({review:{before:'Documented',after:'Changed'}}),1]);
+ assert.notEqual(second.id,first.id);
+ assert.equal((await sql('select count(*)::int n from demo_session_corrections where session_id=$1',[session.id]))[0].n,2);
+});
+

@@ -16,12 +16,13 @@ function failure(error:unknown){
  if(message.includes('invalid_medication_history'))return Response.json({error:'Ελέγξτε τις ημερομηνίες έναρξης και διακοπής της προηγούμενης αγωγής.'},{status:422});
  if(message.includes('invalid_document')||message.includes('invalid_correction_patch'))return Response.json({error:'Η δομή της καταγραφής δεν είναι έγκυρη.'},{status:422});
  if(message.includes('correction_reason_required'))return Response.json({error:'Χρειάζεται σύντομη αιτία για τη διόρθωση.'},{status:422});
+ if(message.includes('stale_correction'))return Response.json({error:'Η καταγραφή διορθώθηκε σε άλλη καρτέλα. Επαναφορτώστε πριν αποθηκεύσετε τη δική σας διόρθωση.',code:'stale_correction'},{status:409});
  if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
- if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή επίσκεψη για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
- if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή επίσκεψη διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
+ if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή πρόχειρη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
+ if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή πρόχειρη καταγραφή διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
  if(message.includes('appointment_unavailable'))return Response.json({error:'Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.',code:'appointment_unavailable'},{status:409});
- if(message.includes('session_unavailable'))return Response.json({error:'Η συγκεκριμένη επίσκεψη δεν είναι πλέον διαθέσιμη.',code:'session_unavailable'},{status:409});
+ if(message.includes('session_unavailable'))return Response.json({error:'Η συγκεκριμένη καταγραφή δεν είναι πλέον διαθέσιμη.',code:'session_unavailable'},{status:409});
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
 
@@ -44,7 +45,7 @@ async function handlePOST(request:Request){
    case 'save_document': return Response.json({section:first(await rpc('demo_session_save_document',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_document:body.document,p_expected_version:body.expected_version??null}))});
    case 'approve_proposal': {const section=first<{patient_id:string}>(await rpc('demo_proposal_approve',{p_tester:tester,p_id:body.proposal_id,p_text:String(body.text||''),p_mode:body.mode,p_expected_version:body.expected_version??null}));queueSummary(request,section.patient_id);return Response.json({section})}
    case 'addendum': {const addendum=first<{patient_id:string}>(await rpc('demo_addendum_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_kind:body.kind,p_reason:String(body.reason||''),p_content:String(body.content||'')}));queueSummary(request,addendum.patient_id);return Response.json({addendum})}
-   case 'correct_session': {const correction=first<{patient_id:string}>(await rpc('demo_session_correction_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_reason:String(body.reason||''),p_patch:body.patch||{}}));queueSummary(request,correction.patient_id);return Response.json({correction})}
+   case 'correct_session': {const expectedCount=Number(body.expected_count);if(!Number.isInteger(expectedCount)||expectedCount<0)return Response.json({error:'Η έκδοση της καταγραφής δεν είναι έγκυρη.'},{status:400});const correction=first<{patient_id:string}>(await rpc('demo_session_correction_create_v2',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_reason:String(body.reason||''),p_patch:body.patch||{},p_expected_count:expectedCount}));queueSummary(request,correction.patient_id);return Response.json({correction})}
    case 'create_patient':{
     const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα βασικά στοιχεία.'},{status:400});

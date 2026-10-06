@@ -1,15 +1,16 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight, UserRound } from 'lucide-react';
 import { getDemoTesterId } from '@/lib/demo-tester';
 
 export default function NewPatient(){
- const router=useRouter(); const [firstName,setFirstName]=useState(''); const [lastName,setLastName]=useState(''); const [age,setAge]=useState(''); const [phone,setPhone]=useState(''); const [landline,setLandline]=useState(''); const [contactPhone,setContactPhone]=useState(''); const [amka,setAmka]=useState(''); const [address,setAddress]=useState(''); const [email,setEmail]=useState(''); const [complaint,setComplaint]=useState(''); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
+ const router=useRouter(); const savingRef=useRef(false); const [firstName,setFirstName]=useState(''); const [lastName,setLastName]=useState(''); const [age,setAge]=useState(''); const [phone,setPhone]=useState(''); const [landline,setLandline]=useState(''); const [contactPhone,setContactPhone]=useState(''); const [amka,setAmka]=useState(''); const [address,setAddress]=useState(''); const [email,setEmail]=useState(''); const [complaint,setComplaint]=useState(''); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
  async function submit(){
-  if(!firstName.trim()){setError('Συμπληρώστε τουλάχιστον το όνομα.');return} setSaving(true);setError('');
-  try{const response=await fetch('/api/patients/demo/runtime',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_patient',tester:getDemoTesterId(),first_name:firstName,last_name:lastName,age,phone,landline,contact_phone:contactPhone,amka,address,email,chief_complaint:complaint})});const data=await response.json();if(!response.ok)throw new Error(data.error);router.push(`/patients/demo/${data.patient.id}?new=1`)}catch(cause){setError(cause instanceof Error?cause.message:'Δεν δημιουργήθηκε η καρτέλα.')}finally{setSaving(false)}
+  if(savingRef.current)return;
+  if(!firstName.trim()){setError('Συμπληρώστε τουλάχιστον το όνομα.');return} savingRef.current=true;setSaving(true);setError('');
+  try{const response=await fetch('/api/patients/demo/runtime',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_patient',tester:getDemoTesterId(),first_name:firstName,last_name:lastName,age,phone,landline,contact_phone:contactPhone,amka,address,email,chief_complaint:complaint})});const data=await response.json();if(!response.ok)throw new Error(data.error);router.push(`/patients/demo/${data.patient.id}?new=1`)}catch(cause){setError(cause instanceof Error?cause.message:'Δεν δημιουργήθηκε η καρτέλα.')}finally{savingRef.current=false;setSaving(false)}
  }
  return <main className="intake-page"><div className="intake-top"><Link href="/patients" className="back"><ArrowLeft size={17}/> Ασθενείς</Link><span>Νέος δοκιμαστικός ασθενής</span></div><section className="intake-wrap compact-intake">
   <div className="intake-heading"><div><span className="new-patient-chip">FICTIONAL TEST DATA</span><h1>Δημιουργία φακέλου</h1><p>Μόνο τα βασικά. Η κλινική αξιολόγηση γίνεται μέσα στον ίδιο φάκελο.</p></div></div>

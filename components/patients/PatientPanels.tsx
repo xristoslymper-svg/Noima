@@ -21,16 +21,30 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const [patientSaving,setPatientSaving]=useState(false);
  const [patientState,setPatientState]=useState('');
  const patientDirty=useRef(false);
+ const patientFlight=useRef<Promise<void>|null>(null);
 
  useEffect(()=>{if(!patientDirty.current)setPatientValues(patientInitial())},[bundle.patient.updated_at]);
  async function save(){await draft.flush()}
  async function savePatient(){
-  setPatientSaving(true);setPatientState('');
-  try{
-   const age=patientValues.age.trim()===''?null:Number(patientValues.age);
-   await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
-   patientDirty.current=false;setPatientState('Αποθηκεύτηκε');await reload();setPatientOpen(false);
-  }catch(cause){setPatientState(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή');throw cause}finally{setPatientSaving(false)}
+  if(patientFlight.current)return patientFlight.current;
+  const task=(async()=>{
+   setPatientSaving(true);setPatientState('');
+   let committed=false;
+   try{
+    const age=patientValues.age.trim()===''?null:Number(patientValues.age);
+    await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
+    committed=true;patientDirty.current=false;setPatientState('Αποθηκεύτηκε');
+    const refreshed=await reload();
+    if(!refreshed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
+    setPatientOpen(false);
+   }catch(cause){
+    if(committed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
+    const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή';setPatientState(message);
+    if(/άλλαξε σε άλλη καρτέλα|Επαναφορτώστε|stale/i.test(message)){try{await reload()}catch{/* keep the user's local fields; retry remains explicit */}}
+    throw cause;
+   }finally{setPatientSaving(false)}
+  })();
+  patientFlight.current=task;try{await task}finally{patientFlight.current=null}
  }
  const flushRef=useRef<()=>Promise<void>>(async()=>{});
  flushRef.current=async()=>{await draft.flush();if(patientDirty.current)await savePatient()};
@@ -89,6 +103,8 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
  const [severity,setSeverity]=useState<'mild'|'moderate'|'severe'>('moderate');
  const [impact,setImpact]=useState('');
  const [saving,setSaving]=useState(false);
+ const [touched,setTouched]=useState(false);
+ const savingRef=useRef(false);
  const [error,setError]=useState('');
  const [correctSameDay,setCorrectSameDay]=useState(false);
  const sameDayEvent=(mode==='change')?bundle.medicationEvents.find(e=>e.medication_id===medId&&e.effective_on===effective&&!bundle.medicationRevisions.some(r=>r.event_id===e.id)):undefined;
@@ -97,12 +113,14 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
  useEffect(()=>{if(mode==='change'&&selected){setDose(String(selected.dose));setUnit(selected.unit);setFrequency(selected.frequency)}},[selected,mode]);
 
  async function save(){
+  if(savingRef.current)return;
   if((mode==='start'||mode==='history')&&(!name.trim()||!dose||!frequency.trim())){setError('Συμπληρώστε φάρμακο, δόση και συχνότητα.');return}
   if(sameDayEvent&&(!correctSameDay||!reason.trim())){setError('Επιβεβαιώστε τη διόρθωση της ίδιας ημέρας και καταγράψτε την αιτία.');return}
   if(mode==='change'&&(!selected||!dose||!frequency.trim())){setError('Επιλέξτε φάρμακο και συμπληρώστε νέα δόση και συχνότητα.');return}
   if((mode==='stop'||mode==='side_effect')&&!selected){setError('Επιλέξτε φάρμακο.');return}
   if(mode==='side_effect'&&!effect.trim()){setError('Καταγράψτε την παρενέργεια.');return}
-  setSaving(true);setError('');
+  savingRef.current=true;setSaving(true);setError('');
+  let committed=false;
   try{
    const draft=bundle.sessions.find(x=>sessionId?x.id===sessionId&&x.status==='draft':x.status==='draft');
    if(sessionId&&!draft)throw new Error('Το συγκεκριμένο πρόχειρο δεν είναι διαθέσιμο.');
@@ -111,13 +129,16 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
    if(mode==='change')await demoPost({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,dose:Number(dose),unit,frequency,effective_on:effective,reason});
    if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,effective_on:effective,reason});
    if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:draft?.id||null,effect,severity,impact,noted_on:effective,note:reason});
-   await onSaved();onClose();
-  }catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{setSaving(false)}
+   committed=true;
+   try{await onSaved()}catch{/* mutation is committed; the folder can refresh independently */}
+   setTouched(false);onClose();
+  }catch(cause){if(!committed)setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{savingRef.current=false;setSaving(false)}
  }
 
- const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
- return <div className="entry-modal-backdrop" onClick={()=>{if(!saving)onClose()}}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()}>
-  <button className="entry-close" onClick={()=>{if(!saving)onClose()}} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
+ function safeClose(){if(saving)return;if(touched&&!window.confirm('Υπάρχουν μη αποθηκευμένες αλλαγές. Κλείσιμο χωρίς αποθήκευση;'))return;onClose()}
+  const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
+ return <div className="entry-modal-backdrop" onClick={safeClose}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()} onChangeCapture={()=>setTouched(true)}>
+  <button className="entry-close" onClick={safeClose} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
   <div className="mode-switch medication-modes">
    <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
    <button className={mode==='start'||mode==='history'?'active':''} onClick={()=>{setMode('start');setName('');setDose('');setFrequency('')}}>Προσθήκη φαρμάκου</button>
@@ -145,6 +166,6 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
   }</p>{(mode==='change'||mode==='stop')&&effective>athensToday&&<small>Η αλλαγή είναι μελλοντική και δεν θα μεταβάλει την ενεργή αγωγή πριν από αυτή την ημερομηνία.</small>}</div>
   {sameDayEvent&&<div className="current-dose"><p>Υπάρχει ήδη καταγραφή αγωγής στις {effective}. Η διόρθωση κρατά την αρχική καταγραφή στο ιστορικό· δεν καταγράφει δεύτερη αλλαγή μέσα στην ίδια ημέρα.</p><label><input type="checkbox" checked={correctSameDay} onChange={e=>setCorrectSameDay(e.target.checked)}/> Διόρθωση καταγραφής ίδιας ημέρας</label><small>Συμπληρώστε την αιτία διόρθωσης.</small></div>}
   {error&&<div className="save-state error" role="alert">{error}</div>}
-  <footer className="entry-footer"><button onClick={()=>{if(!saving)onClose()}}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
+  <footer className="entry-footer"><button onClick={safeClose}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
  </section></div>
 }

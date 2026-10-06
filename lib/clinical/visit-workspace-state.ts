@@ -1,12 +1,21 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
 
+function documentText(document:NonNullable<PatientBundle['sections'][number]['document']>){
+ return document.fields.flatMap(field=>{
+  const body=field.text.trim();
+  const codes=(field.codes||[]).map(code=>code.code+' · '+code.label+' (WHO ICD-10 2019)').join('; ');
+  if(!body&&!codes)return [];
+  const status=field.status==='provisional'?' — προσωρινή':field.status==='under_investigation'?' — υπό διερεύνηση':field.status==='confirmed'?' — επιβεβαιωμένη':'';
+  return [field.label+status+': '+body+(codes?'\n'+codes:'')];
+ }).join('\n\n');
+}
 function correctedSection(bundle:PatientBundle,section:PatientBundle['sections'][number]){
- let document=section.document;
- for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at))){
+ let document=section.document,content=section.content;
+ for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id))){
   const change=correction.patch?.[section.section_key];
-  if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after)document=change.after as typeof document;
+  if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after){document=change.after as typeof document;if(document)content=documentText(document)}
  }
- return {...section,document};
+ return {...section,document,content};
 }
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
@@ -49,17 +58,23 @@ export function activeVisitPart(parts:{key:string;top:number}[],readingLine:numb
 }
 const requiredSections=[['interview','Ψυχιατρική συνέντευξη'],['mse','MSE'],['assessment','Κλινική αξιολόγηση'],['plan','Θεραπευτικό πλάνο'],['review','Επανεκτίμηση']] as const;
 export function finalizationBlocker(sections:{section_key:string;content:string}[],risk?:DemoRisk){
- if(!risk||risk.suicidal_ideation==='not_assessed')return {anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η επίσκεψη.'};
+ if(!risk||risk.suicidal_ideation==='not_assessed')return {anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'};
  if(risk.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))return {anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'};
  const missing=requiredSections.find(([key])=>!sections.some(s=>s.section_key===key&&s.content.trim()));
  return missing?{anchor:missing[0]==='review'?'plan':missing[0],message:'Χρειάζεται καταγραφή: '+missing[1]+'.'}:null;
 }
+export function sessionClinicalTime(bundle:Pick<PatientBundle,'appointments'>,session:{id:string;started_at:string}){
+ const appointment=bundle.appointments?.find(item=>item.session_id===session.id);
+ return appointment?.scheduled_start||session.started_at;
+}
 export function previousMseReference(bundle:PatientBundle|null,sessionId:string,startedAt:string){
  if(!bundle)return null;
- const prior=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(s.completed_at||s.started_at)<=Date.parse(startedAt)).sort((a,b)=>Date.parse(b.completed_at||b.started_at)-Date.parse(a.completed_at||a.started_at));
- for(const session of prior){
-  const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
-  if(raw){const section=correctedSection(bundle,raw);return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)}};
- }
- return null;
+ const current=bundle.sessions.find(s=>s.id===sessionId);
+ const currentTime=Date.parse(current?sessionClinicalTime(bundle,current):startedAt);
+ const prior=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(sessionClinicalTime(bundle,s))<currentTime).sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
+ const session=prior[0];if(!session)return null;
+ const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
+ if(!raw)return null;
+ const section=correctedSection(bundle,raw);
+ return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)};
 }

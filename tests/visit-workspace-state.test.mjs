@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch} from '../lib/clinical/visit-workspace-state.ts';
+import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,sessionClinicalTime,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch} from '../lib/clinical/visit-workspace-state.ts';
 import {initialDocument} from '../lib/clinical/visit-document.ts';
 
 test('completed follow-up history keeps established patients out of initial entry; drafts do not',()=>{
@@ -30,7 +30,7 @@ test('risk represents uncertainty separately; completion matches canonical requi
  assert.equal(finalizationBlocker(sections.map(s=>({...s,content:s.section_key==='mse'?' ':s.content})),{suicidal_ideation:'negative'}).anchor,'mse');
 });
 test('previous MSE includes corrections and never becomes today’s document',()=>{
- const fixture={sessions:[{id:'old',status:'completed',completed_at:'2026-10-01',started_at:'2026-10-01'},{id:'today',status:'draft',started_at:'2026-10-04'},{id:'future',status:'completed',completed_at:'2026-10-05'}],sections:[{id:'mse-old',session_id:'old',section_key:'mse',content:'Prior mood observation'},{session_id:'future',section_key:'mse',content:'Future'}],addenda:[{id:'correction',session_id:'old',kind:'correction',content:'Corrected prior observation'},{id:'other',session_id:'future'}]};
+ const fixture={sessions:[{id:'old',status:'completed',completed_at:'2026-10-01',started_at:'2026-10-01'},{id:'today',status:'draft',started_at:'2026-10-04'},{id:'future',status:'completed',completed_at:'2026-10-05',started_at:'2026-10-05'}],sections:[{id:'mse-old',session_id:'old',section_key:'mse',content:'Prior mood observation'},{session_id:'future',section_key:'mse',content:'Future'}],addenda:[{id:'correction',session_id:'old',kind:'correction',content:'Corrected prior observation'},{id:'other',session_id:'future'}],corrections:[],appointments:[]};
  const original=JSON.stringify(fixture);const reference=previousMseReference(fixture,'today','2026-10-04');
  assert.equal(reference.section.content,'Prior mood observation');assert.deepEqual(reference.addenda.map(a=>a.id),['correction']);
  assert.ok(initialDocument('mse').fields.every(f=>f.text===''));assert.equal(JSON.stringify(fixture),original);
@@ -71,4 +71,31 @@ test('non-linear workspace paths keep draft recovery reachable and URL state coh
  assert.equal(search,'?tab=sessions&session=draft-1');
  search=workspaceTransitionSearch('?appointment=appt-1&tab=sessions&session=draft-1','summary',null,{clearAppointment:true});
  assert.equal(search,'');
+});
+
+
+test('previous MSE follows encounter time, not late documentation completion time',()=>{
+ const corrected={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Υποκειμενικό συναίσθημα: Αγχώδες'}]};
+ const bundle={
+  sessions:[
+   {id:'older',status:'completed',started_at:'2026-10-01T10:00:00Z',completed_at:'2026-10-06T10:00:00Z'},
+   {id:'current',status:'draft',started_at:'2026-10-05T12:00:00Z',completed_at:null},
+   {id:'future-clinical',status:'completed',started_at:'2026-10-02T10:00:00Z',completed_at:'2026-10-03T10:00:00Z'},
+  ],
+  appointments:[
+   {id:'a1',session_id:'older',scheduled_start:'2026-10-01T09:00:00Z'},
+   {id:'a2',session_id:'current',scheduled_start:'2026-10-05T09:00:00Z'},
+   {id:'a3',session_id:'future-clinical',scheduled_start:'2026-10-07T09:00:00Z'},
+  ],
+  sections:[
+   {id:'m1',session_id:'older',section_key:'mse',content:'Old MSE',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Υποκειμενικό συναίσθημα: Ευθυμικό'}]}},
+   {id:'m2',session_id:'future-clinical',section_key:'mse',content:'Future clinical MSE',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Future'}]}},
+  ],
+  addenda:[],
+  corrections:[{id:'c1',session_id:'older',created_at:'2026-10-06T11:00:00Z',patch:{mse:{before:null,after:corrected}}}],
+ };
+ assert.equal(sessionClinicalTime(bundle,bundle.sessions[0]),'2026-10-01T09:00:00Z');
+ const reference=previousMseReference(bundle,'current',bundle.sessions[1].started_at);
+ assert.equal(reference.session.id,'older');
+ assert.equal(reference.section.document.fields[0].text,'Υποκειμενικό συναίσθημα: Αγχώδες');
 });

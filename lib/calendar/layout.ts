@@ -32,3 +32,20 @@ export function calendarLanes(events:TimedEvent[],day:string){
  }
  finish();return positions;
 }
+
+
+type CalendarStatusEvent=TimedEvent&{status:string};
+export function cancelledHistoryPlacement(event:CalendarStatusEvent,events:CalendarStatusEvent[]){
+ const sameSlot=events.filter(other=>other.scheduled_start===event.scheduled_start&&other.scheduled_end===event.scheduled_end);
+ const active=sameSlot.filter(other=>other.status!=='cancelled');
+ const cancelled=sameSlot.filter(other=>other.status==='cancelled').sort((a,b)=>a.id.localeCompare(b.id));
+ if(event.status!=='cancelled'&&cancelled.length){
+  return {paired:true,leftPercent:25,widthPercent:75};
+ }
+ if(event.status==='cancelled'&&active.length){
+  const index=Math.max(0,cancelled.findIndex(other=>other.id===event.id));
+  const width=25/Math.max(1,cancelled.length);
+  return {paired:true,leftPercent:index*width,widthPercent:width};
+ }
+ return null;
+}

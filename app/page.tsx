@@ -264,19 +264,11 @@ export default function Page() {
   );
 }
 
-function TodoMetric({tasks,value,loading,error,busy,onOpen,onComplete}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
-  const first=tasks[0];
-  return <div className="metric rose todo-metric">
-    <button className="todo-metric-open" type="button" onClick={onOpen} aria-label="Άνοιγμα To do"><ListTodo size={22}/></button>
-    <span>To do</span>
-    <strong>{value}</strong>
-    {loading?<small>Φόρτωση…</small>:error?<small>Δεν φορτώθηκε</small>:first?<div className="todo-metric-preview">
-      {first.source_session_id&&first.patient_id?<Link className="todo-metric-check" href={"/patients/demo/"+first.patient_id+"?tab=sessions&session="+first.source_session_id} aria-label={"Συνέχεια "+first.title}><ChevronRight size={14}/></Link>:<button type="button" className="todo-metric-check" disabled={busy} onClick={()=>void onComplete(first)} aria-label={"Ολοκλήρωση "+first.title}><Check size={14}/></button>}
-      <button type="button" className="todo-metric-title" onClick={onOpen}>{first.title}</button>
-      {tasks.length>1&&<small>+{tasks.length-1} ακόμη</small>}
-    </div>:<small>Δεν υπάρχουν ανοιχτές εργασίες</small>}
-    {!loading&&!error&&<button type="button" className="todo-metric-add" onClick={onOpen}>+ Νέα εργασία</button>}
-  </div>;
+function TodoMetric({tasks,value,loading,error,onOpen}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
+  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':tasks.length?(tasks.length===1?'1 ανοιχτή εργασία':tasks.length+' ανοιχτές εργασίες'):'Δεν υπάρχουν ανοιχτές εργασίες';
+  return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα To do">
+    <div className="metric-icon"><ListTodo size={22}/></div><span>To do</span><strong>{value}</strong><small>{note}</small>
+  </button>;
 }
 
 function Metric({ icon, label, value, note, tone, onClick }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string; onClick?:()=>void }) {

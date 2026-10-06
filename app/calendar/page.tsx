@@ -148,7 +148,8 @@ function dateTimeLabel(iso: string) {
     timeZone: TIMEZONE,
     weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
@@ -177,7 +178,7 @@ export default function CalendarPage() {
   const [moveSaving, setMoveSaving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
+  const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; duration?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [quickBusy,setQuickBusy]=useState(false);
   const quickBusyRef=useRef(false);
@@ -191,6 +192,8 @@ export default function CalendarPage() {
   const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || paymentBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
+  const currentTimeRef=useRef<HTMLDivElement|null>(null);
+  const [nowMs,setNowMs]=useState(()=>Date.now());
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -243,6 +246,7 @@ export default function CalendarPage() {
     void refreshEvents();
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
+  useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),60_000);return()=>window.clearInterval(timer)},[]);
   useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
   useEffect(()=>{
     if(!appointmentActionsOpen)return;
@@ -316,9 +320,15 @@ export default function CalendarPage() {
   const waiting = dayEvents.find(event => event.readiness === "waiting");
   const nextEvent = dayEvents.find(event => event.status === "scheduled" && new Date(event.scheduled_end).getTime() >= Date.now());
   const draggingEvent = draggingEventId ? events.find(event => event.id === draggingEventId) ?? null : null;
+  const currentDay=dateKey(new Date(nowMs));
+  const currentMinute=athensMinutes(new Date(nowMs).toISOString());
   const weekWindow = useMemo(() => {
-    return calendarWindow(visibleEvents,days.map(day=>day.key));
-  }, [days, visibleEvents]);
+    const base=calendarWindow(visibleEvents,days.map(day=>day.key));
+    if(!days.some(day=>day.key===currentDay))return base;
+    const aroundStart=Math.max(0,Math.floor((currentMinute-90)/60)*60);
+    const aroundEnd=Math.min(1440,Math.ceil((currentMinute+90)/60)*60);
+    return {start:Math.min(base.start,aroundStart),end:Math.max(base.end,aroundEnd)};
+  }, [days, visibleEvents,currentDay,currentMinute]);
   const weekHourHeight = 68;
   const weekTotalHeight = ((weekWindow.end - weekWindow.start) / 60) * weekHourHeight;
   const weekHours = Array.from(
@@ -337,6 +347,10 @@ export default function CalendarPage() {
       scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
     });
   }, [view, days, focusDate]);
+  useEffect(()=>{
+    if(view!=="week"||focusDate!==currentDay||loading)return;
+    requestAnimationFrame(()=>currentTimeRef.current?.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+  },[view,focusDate,currentDay,loading]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -569,7 +583,9 @@ export default function CalendarPage() {
                         key={day.key}
                         style={{ height: weekTotalHeight }}
                         onClick={click => {
-                          if (click.target !== click.currentTarget) return;
+                          if (draggingEventId) return;
+                          const target=click.target as HTMLElement;
+                          if(target.closest('.week-event')||target.closest('.week-drop-preview'))return;
                           const minute = minuteFromDrop(click.clientY, click.currentTarget);
                           setFocusDate(day.key);
                           setAppointmentEditor({ mode: "create", date: day.key, minute });
@@ -590,6 +606,7 @@ export default function CalendarPage() {
                           prepareMove(draggingEvent, day.key, minute);
                         }}
                       >
+                        {day.key===currentDay&&currentMinute>=weekWindow.start&&currentMinute<=weekWindow.end&&<div ref={currentTimeRef} className="calendar-now-line" style={{top:((currentMinute-weekWindow.start)/60)*weekHourHeight}}><span>{timeLabel(new Date(nowMs).toISOString())}</span></div>}
                         {previewMinute !== null && draggingEvent && (
                           <div
                             className="week-drop-preview"
@@ -609,6 +626,15 @@ export default function CalendarPage() {
                           const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
                           const height = Math.max(38, (duration / 60) * weekHourHeight);
                           const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
+                          const overlaps=(other:CalendarEvent)=>other.id!==event.id&&Date.parse(other.scheduled_start)<Date.parse(event.scheduled_end)&&Date.parse(other.scheduled_end)>Date.parse(event.scheduled_start);
+                          const pairedWithCancelled=event.status!=="cancelled"&&items.some(other=>other.status==="cancelled"&&overlaps(other));
+                          const pairedWithActive=event.status==="cancelled"&&items.some(other=>other.status!=="cancelled"&&overlaps(other));
+                          const lane=lanes.get(event.id);
+                          const position=pairedWithCancelled
+                            ?{left:"calc(25% + 3px)",width:"calc(75% - 8px)"}
+                            :pairedWithActive
+                              ?{left:"5px",width:"calc(25% - 8px)"}
+                              :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
 
                           if (outsideRange) return null;
 
@@ -618,6 +644,7 @@ export default function CalendarPage() {
                                 "week-event draggable" +
                                 (draggingEventId === event.id ? " dragging" : "") +
                                 (event.readiness === "waiting" ? " waiting" : "") +
+                                ((pairedWithCancelled||pairedWithActive) ? " paired-cancelled-history" : "") +
                                 (event.appointment_type === "initial_assessment" ? " initial" : " follow-up") + " status-" + event.status
                               }
                               key={event.id}
@@ -626,7 +653,7 @@ export default function CalendarPage() {
                               aria-label={event.patient_name + " · " + timeLabel(event.scheduled_start) + " · " + statusLabel(event)}
                               onKeyDown={key=>{if(key.key==="Enter"||key.key===" "){key.preventDefault();setQuickError("");setSelectedEvent(event)}}}
                               title={event.patient_name + " · " + appointmentType(event.appointment_type)}
-                              style={{ top, height, left: `calc(${(lanes.get(event.id)?.lane ?? 0)*100/(lanes.get(event.id)?.total ?? 1)}% + 5px)`, right: "auto", width: `calc(${100/(lanes.get(event.id)?.total ?? 1)}% - 10px)` }}
+                              style={{ top, height, left:position.left, right:"auto", width:position.width }}
                               onDragStart={dragEvent => {
                                 setDraggingEventId(event.id);
                                 setMoveError("");
@@ -705,7 +732,7 @@ export default function CalendarPage() {
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
             {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
             {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
-            {selectedEvent.status==="cancelled" && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button>}
+            {selectedEvent.status==="cancelled" && <div className="calendar-cancelled-actions"><button className="calendar-rebook-slot" disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"create",date:dateKey(new Date(selectedEvent.scheduled_start)),minute:athensMinutes(selectedEvent.scheduled_start),duration:eventDurationMinutes(selectedEvent)});setSelectedEvent(null)}}><CalendarDays size={14}/> Νέο ραντεβού στην ίδια ώρα</button><button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button></div>}
           </section>
         </div>
       )}
@@ -717,6 +744,7 @@ export default function CalendarPage() {
           patients={patients}
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
+          initialDuration={appointmentEditor.duration}
           nextFor={appointmentEditor.nextFor}
           initialPatientId={appointmentEditor.patientId}
           openingSession={openingSession === appointmentEditor.event?.id}
@@ -853,11 +881,12 @@ export default function CalendarPage() {
         .calendar-popover-actions .calendar-popover-primary{display:inline-flex;align-items:center;gap:6px;background:#356b59;color:#fff;border-radius:9px;padding:9px 11px}
         .calendar-popover-actions>button:last-child{margin-left:auto;color:#7b8882}
 
-        .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#faf2f0!important;border-left-color:#c0a49b!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
+        .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#fae9e8!important;border-left-color:#c7908c!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event.status-cancelled.paired-cancelled-history{padding:7px 5px!important}.week-event.status-cancelled.paired-cancelled-history span{font-size:9px!important}.week-event.status-cancelled.paired-cancelled-history strong{font-size:8px!important}.calendar-now-line{position:absolute;left:0;right:0;z-index:6;height:1px;background:#b97263;pointer-events:none}.calendar-now-line:before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:#b97263}.calendar-now-line span{position:absolute;left:5px;top:-16px;padding:2px 5px;border-radius:6px;background:#fff7f4;color:#9b5f52;font-size:8px;font-weight:800;box-shadow:0 1px 4px rgba(90,55,45,.08)}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
 
-        .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
+        .appointment-datetime-context{display:flex;align-items:center;gap:10px;margin:4px 0 14px;padding:11px 12px;border-radius:12px;background:#f7f9f7;color:#53685f}.appointment-datetime-context>div{display:flex;flex-direction:column;gap:2px}.appointment-datetime-context span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8b9992;font-weight:800}.appointment-datetime-context strong{font-size:12px;color:#33483f}.appointment-past-warning{display:flex;align-items:flex-start;gap:9px;margin:-4px 0 14px;padding:10px 12px;border-radius:11px;background:#fbf3e7;border:1px solid #f0dfc5;color:#806841}.appointment-past-warning div{display:flex;flex-direction:column;gap:2px}.appointment-past-warning strong{font-size:11px}.appointment-past-warning span{font-size:10px;color:#927b58}.calendar-cancelled-actions{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}.calendar-rebook-slot{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:9px;background:#edf4f0;color:#356b59;padding:8px 10px;font-size:10px;font-weight:750;cursor:pointer}
+                .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
         /* Compact calendar with quiet time guides and prominent appointment cards. */
         .calendar-page-content{max-width:1180px;padding:32px 30px 56px}
         .calendar-control-bar{border:1px solid #e6ebe7;border-radius:16px;background:#fff;padding:12px;gap:8px;box-shadow:0 4px 18px rgba(35,55,45,.025)}
@@ -913,6 +942,7 @@ function AppointmentEditor({
   patients,
   focusDate,
   initialMinute,
+  initialDuration,
   nextFor,
   initialPatientId,
   openingSession,
@@ -926,6 +956,7 @@ function AppointmentEditor({
   patients: PatientOption[];
   focusDate: string;
   initialMinute?: number;
+  initialDuration?: number;
   nextFor?: CalendarEvent;
   initialPatientId?: string;
   openingSession: boolean;
@@ -949,7 +980,7 @@ function AppointmentEditor({
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
-  const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
+  const [duration, setDuration] = useState(initialDuration?String(initialDuration):event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
   const selectedPatient=patients.find(p=>p.id===patientId);
@@ -993,6 +1024,8 @@ function AppointmentEditor({
   const [occurrences, setOccurrences] = useState("6");
   const [scope,setScope] = useState("one");
   const [confirmCancel,setConfirmCancel] = useState(false);
+  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;return localAthensToIso(date,hours*60+minutes)},[date,time]);
+  const pastSelection=Boolean(selectedStartIso&&Date.parse(selectedStartIso)<Date.now());
   const busyRef=useRef(false);
   const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);
   useEffect(()=>{
@@ -1064,6 +1097,8 @@ function AppointmentEditor({
       <h3>{mode === "create" ? "Νέο ραντεβού" : event?.patient_name}</h3>
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
+      {selectedStartIso&&<div className="appointment-datetime-context"><CalendarDays size={16}/><div><span>Ημερομηνία & ώρα</span><strong>{dateTimeLabel(selectedStartIso)}</strong></div></div>}
+      {pastSelection&&<div className="appointment-past-warning" role="status"><Clock size={15}/><div><strong>Η επιλεγμένη ώρα έχει ήδη περάσει.</strong><span>Μπορείτε να καταχωρίσετε το ραντεβού αναδρομικά.</span></div></div>}
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
         {mode === "create" && <div ref={patientPickerRef} className="appointment-patient-field">
           <span className="appointment-field-label">Ασθενής</span>

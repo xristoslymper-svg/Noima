@@ -2,6 +2,7 @@ import { withPilot } from '@/lib/pilot/route';
 import { fetchDemoCalendarEvents } from "@/lib/calendar/demo-supabase";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "fra1";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function handleGET(request: Request) {

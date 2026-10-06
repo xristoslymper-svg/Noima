@@ -2,6 +2,7 @@ import { withPilot } from '@/lib/pilot/route';
 import { rpc } from '@/lib/patients/demo-runtime';
 
 export const dynamic='force-dynamic';
+export const preferredRegion='fra1';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const rows=<T,>(value:unknown):T[]=>Array.isArray(value)?value as T[]:value?[value as T]:[];
@@ -41,6 +42,7 @@ async function handlePOST(request:Request){
   }catch(error){
     const message=error instanceof Error?error.message:'';
     if(message.includes('task_not_found'))return Response.json({error:'Η εργασία δεν βρέθηκε.'},{status:404});
+    if(message.includes('task_managed_by_record'))return Response.json({error:'Η εκκρεμότητα κλείνει αυτόματα όταν ολοκληρωθεί η καταγραφή.'},{status:409});
     return Response.json({error:'Η εργασία δεν αποθηκεύτηκε.'},{status:502});
   }
 }

@@ -3,6 +3,7 @@ import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 export const dynamic='force-dynamic';
+export const preferredRegion='fra1';
 const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
@@ -13,7 +14,8 @@ function failure(error:unknown){
  if(message.includes('risk_followup_required'))return Response.json({error:'Με θετικό αυτοκτονικό ιδεασμό χρειάζεται να αξιολογηθούν Πρόθεση, Σχέδιο, Αυτοτραυματισμός και Ιστορικό απόπειρας πριν την ολοκλήρωση.',code:'risk_followup_required'},{status:422});
  if(message.includes('risk_required'))return Response.json({error:'Χρειάζεται εκτίμηση αυτοκτονικού ιδεασμού πριν την ολοκλήρωση.',code:'risk_required'},{status:422});
  if(message.includes('invalid_medication_history'))return Response.json({error:'Ελέγξτε τις ημερομηνίες έναρξης και διακοπής της προηγούμενης αγωγής.'},{status:422});
- if(message.includes('invalid_document'))return Response.json({error:'Η δομή της καταγραφής δεν είναι έγκυρη.'},{status:422});
+ if(message.includes('invalid_document')||message.includes('invalid_correction_patch'))return Response.json({error:'Η δομή της καταγραφής δεν είναι έγκυρη.'},{status:422});
+ if(message.includes('correction_reason_required'))return Response.json({error:'Χρειάζεται σύντομη αιτία για τη διόρθωση.'},{status:422});
  if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
  if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή επίσκεψη για αυτόν τον ασθενή. Συνεχίστε ή κλείστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
@@ -42,6 +44,7 @@ async function handlePOST(request:Request){
    case 'save_document': return Response.json({section:first(await rpc('demo_session_save_document',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_document:body.document,p_expected_version:body.expected_version??null}))});
    case 'approve_proposal': {const section=first<{patient_id:string}>(await rpc('demo_proposal_approve',{p_tester:tester,p_id:body.proposal_id,p_text:String(body.text||''),p_mode:body.mode,p_expected_version:body.expected_version??null}));queueSummary(request,section.patient_id);return Response.json({section})}
    case 'addendum': {const addendum=first<{patient_id:string}>(await rpc('demo_addendum_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_kind:body.kind,p_reason:String(body.reason||''),p_content:String(body.content||'')}));queueSummary(request,addendum.patient_id);return Response.json({addendum})}
+   case 'correct_session': {const correction=first<{patient_id:string}>(await rpc('demo_session_correction_create',{p_tester:tester,p_session:body.session_id,p_request:body.request_id,p_reason:String(body.reason||''),p_patch:body.patch||{}}));queueSummary(request,correction.patient_id);return Response.json({correction})}
    case 'create_patient':{
     const firstName=String(body.first_name||'').trim(); const age=body.age===''||body.age==null?null:Number(body.age);
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα βασικά στοιχεία.'},{status:400});
@@ -64,10 +67,8 @@ async function handlePOST(request:Request){
    case 'medication_side_effect_resolve': {const side_effect=first<{patient_id:string}>(await rpc('demo_medication_side_effect_resolve',{p_tester:tester,p_id:body.side_effect_id,p_resolved_on:body.resolved_on}));queueSummary(request,side_effect.patient_id);return Response.json({side_effect})}
    case 'medication_side_effect': {const side_effect=first<{patient_id:string}>(await rpc('demo_medication_side_effect_add',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_effect:String(body.effect||'').trim(),p_severity:body.severity||'moderate',p_impact:String(body.impact||'').trim(),p_noted_on:body.noted_on,p_note:String(body.note||'').trim()}));queueSummary(request,side_effect.patient_id);return Response.json({side_effect})}
    case 'finish_session_later': {
-    const session=first<{id:string;patient_id:string;session_type:string}>(await rpc('demo_session_owned',{p_tester:tester,p_session:body.session_id}));
-    const patient=await patientBundle(tester,session.patient_id);const name=[patient.patient.first_name,patient.patient.last_name].filter(Boolean).join(' ');
-    await rpc('demo_task_for_session',{p_tester:tester,p_patient:session.patient_id,p_session:session.id,p_title:'Ολοκλήρωση καταγραφής · '+name});
-    return Response.json({ok:true});
+    const task=first(await rpc('demo_task_for_session',{p_tester:tester,p_session:body.session_id}));
+    return Response.json({ok:true,task});
    }
    case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});

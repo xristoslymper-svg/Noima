@@ -12,8 +12,7 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
  const [retry,setRetry]=useState(0);
  const [regenerate,setRegenerate]=useState(0);
  const inputKey=summaryContextKey(inputBundle,clinicDay());
- const [snapshot,setSnapshot]=useState<{inputKey:string;bundle:PatientBundle}|null>(null);
- const bundle=snapshot?.inputKey===inputKey?snapshot.bundle:inputBundle;
+ const bundle=inputBundle;
  const [day,setDay]=useState(clinicDay());
  const [result,setResult]=useState<{key:string;data:ResponseData}|null>(null);
  const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
@@ -25,11 +24,7 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
   let active=true;const controller=new AbortController();setState('loading');setEvidence(null);
   void (async()=>{
    const tester=getDemoTesterId();
-   const recordResponse=await fetch('/api/patients/demo/runtime?tester='+encodeURIComponent(tester)+'&patient='+encodeURIComponent(inputBundle.patient.id),{cache:'no-store',signal:controller.signal});
-   const recordData=await recordResponse.json();if(!recordResponse.ok||!recordData.bundle)throw new Error('record_unavailable');
-   const fresh=recordData.bundle as PatientBundle;const freshKey=summaryContextKey(fresh,day);
-   if(active)setSnapshot({inputKey,bundle:fresh});
-   const hash=await summaryContextHash(fresh,day);
+   const fresh=inputBundle;const freshKey=summaryContextKey(fresh,day);const hash=await summaryContextHash(fresh,day);
    const r=regenerate>0
     ?await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})})
     :await fetch('/api/clinical/summary?patient_id='+encodeURIComponent(fresh.patient.id),{cache:'no-store',signal:controller.signal});

@@ -1,6 +1,6 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export const SUMMARY_POLICY_VERSION=12;
+export const SUMMARY_POLICY_VERSION=13;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -69,14 +69,15 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  for(const assessment of bundle.assessments)add({id:'assessment:'+assessment.id,kind:'psychometric',label:`${assessment.instrument} · ${dateLabel(assessment.completed_at||assessment.created_at)}`,date:assessment.completed_at||assessment.created_at,session_id:assessment.session_id||undefined,content:{...assessment,review_required:assessment.item9_review,review_completed:Boolean(assessment.item9_reviewed_at)},target:'psychometrics',record_id:assessment.id});
  if(bundle.history)add({id:'history:'+bundle.patient.id,kind:'history',label:'Ιστορικό',content:bundle.history,target:'history',record_id:bundle.patient.id});
  for(const a of bundle.addenda.filter(a=>ids.has(a.session_id)))add({id:'addendum:'+a.id,kind:'addendum',label:`${a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · ${dateLabel(a.created_at)}`,date:a.created_at,session_id:a.session_id,content:a,target:'sessions',record_id:a.id});
+ for(const correction of (bundle.corrections||[]).filter(c=>ids.has(c.session_id)))add({id:'structured_correction:'+correction.id,kind:'structured_correction',label:`Δομημένη διόρθωση · ${dateLabel(correction.created_at)}`,date:correction.created_at,session_id:correction.session_id,content:correction,target:'sessions',record_id:correction.id});
  for(const a of bundle.appointments)add({id:'appointment:'+a.id,kind:'appointment',label:'Ραντεβού · '+a.scheduled_start,content:a,target:'calendar',record_id:a.id});
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
- const corrections=sources.filter(s=>s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction');
+ const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
  const durable=sources.filter(s=>s.kind==='history'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
  const recentIds=new Set(completed.slice(0,4).map(s=>s.id));
  const trajectory=sources.filter(s=>s.kind==='session_section'&&recentIds.has(s.session_id!));
- const canonical=sources.filter(s=>!['session_section','addendum'].includes(s.kind));
- const correctedParents=new Set(bundle.addenda.filter(a=>a.kind==='correction').map(a=>a.session_id));
+ const canonical=sources.filter(s=>!['session_section','addendum','structured_correction'].includes(s.kind));
+ const correctedParents=new Set([...bundle.addenda.filter(a=>a.kind==='correction').map(a=>a.session_id),...(bundle.corrections||[]).map(c=>c.session_id)]);
  const findings:Finding[]=[];
  const push=(key:string,label:Category,text:string,source_ids:string[],attention=false,origin:Finding['origin']='canonical')=>findings.push({key,label,text,source_ids,attention,origin});
  const risk=latest?bundle.risks.find(r=>r.session_id===latest.id):undefined;
@@ -97,7 +98,12 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  // parent's original statements are never repeated as a current conclusion.
  const durableNarrative=durable.filter(s=>s.kind==='session_section');
  for(const s of durableNarrative){const parentCorrections=corrections.filter(a=>a.session_id===s.session_id);push('durable:'+s.id,'Σημαντικό ιστορικό',correctedParents.has(s.session_id!)?'Παλαιότερη κλινική καταγραφή με μεταγενέστερη διόρθωση — ελέγξτε μαζί τις πηγές.':`Ιστορική καταγραφή ${dateLabel(s.date)} (δεν αποτελεί σημερινή αξιολόγηση): «${String(s.content)}»`,[s.id,...parentCorrections.map(a=>a.id)],safetyMention.test(String(s.content)),'documented');}
- for(const s of corrections)push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Μεταγενέστερη ${s.label.toLocaleLowerCase('el')}: «${(s.content as {content:string}).content}». Ερμηνεύστε την αρχική συνεδρία μαζί με αυτή την προσθήκη.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
+ for(const s of corrections){
+  if(s.kind==='structured_correction'){
+   const c=s.content as {reason:string;patch:Record<string,{before:unknown;after:unknown}>};
+   push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Δομημένη διόρθωση ${dateLabel(s.date)}: ${c.reason}. Η τρέχουσα προβολή της συνεδρίας περιλαμβάνει ${Object.keys(c.patch||{}).length} διορθωμένα πεδία/ενότητες.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
+  }else push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Μεταγενέστερη ${s.label.toLocaleLowerCase('el')}: «${(s.content as {content:string}).content}». Ερμηνεύστε την αρχική συνεδρία μαζί με αυτή την προσθήκη.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
+ }
  for(const old of bundle.risks.filter(r=>ids.has(r.session_id)&&r.session_id!==latest?.id&&r.attempt_history==='positive'))push('past-attempt:'+old.session_id,'Σημαντικό ιστορικό',`Δομημένη καταγραφή προηγούμενης συνεδρίας: θετικό ιστορικό απόπειρας. Η μεταγενέστερη ένδειξη «άγνωστο» ή «δεν διερευνήθηκε» δεν αναιρεί αυτή την καταγραφή${correctedParents.has(old.session_id)?' · υπάρχει διόρθωση προς συνεκτίμηση':''}.`,['risk:'+old.session_id,...corrections.filter(c=>c.session_id===old.session_id).map(c=>c.id)],true);
  // Conservative review cues, not semantic diagnoses. Missing lexical matches
  // cannot establish absence; all narrative remains available to synthesis.

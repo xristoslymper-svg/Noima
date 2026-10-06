@@ -653,3 +653,12 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .mse-item.mse-changed{box-shadow:inset 3px 0 0 #e7c77e}
 .finalize-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .finalize-bar .finalize-later{background:transparent;color:#50645d;border:1px solid #dce5df;box-shadow:none}
+
+
+.mse-compare-summary{display:flex;align-items:center;gap:8px;min-width:0;margin-top:8px;font-size:11px;color:#63736c}
+.mse-compare-summary span{display:flex;align-items:center;gap:6px;min-width:0}
+.mse-compare-summary i{font-style:normal;text-transform:uppercase;letter-spacing:.06em;font-size:9px;font-weight:800;color:#93a19b}
+.mse-before,.mse-now{max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mse-before{opacity:.72}.mse-now{color:#72551d;font-weight:650}
+.mse-same{padding:3px 7px;border-radius:999px;background:#eef4f0;color:#597268;font-weight:750;white-space:nowrap}
+.mse-item>summary>.mse-guide{margin-top:4px}

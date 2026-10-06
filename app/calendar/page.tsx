@@ -184,6 +184,7 @@ export default function CalendarPage() {
   const [quickError,setQuickError]=useState("");
   const [paymentBusy,setPaymentBusy]=useState(false);
   const [appointmentActionsOpen,setAppointmentActionsOpen]=useState(false);
+  const appointmentActionsRef=useRef<HTMLDivElement|null>(null);
   const [pendingStart,setPendingStart]=useState<CalendarEvent|null>(null);
   const [openingSession, setOpeningSession] = useState<string | null>(null);
   const dialogRef = useCalendarDialog(() => {setSelectedEvent(null);setPendingMove(null)}, quickBusy || paymentBusy || moveSaving || Boolean(openingSession), Boolean(selectedEvent || pendingMove));
@@ -242,6 +243,14 @@ export default function CalendarPage() {
     void refreshPatients();
   }, [refreshEvents, refreshPatients]);
   useEffect(()=>{setAppointmentActionsOpen(false)},[selectedEvent?.id]);
+  useEffect(()=>{
+    if(!appointmentActionsOpen)return;
+    const dismiss=(event:PointerEvent)=>{if(appointmentActionsRef.current&&!appointmentActionsRef.current.contains(event.target as Node))setAppointmentActionsOpen(false)};
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape")setAppointmentActionsOpen(false)};
+    document.addEventListener("pointerdown",dismiss);
+    document.addEventListener("keydown",escape);
+    return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",escape)};
+  },[appointmentActionsOpen]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -680,7 +689,7 @@ export default function CalendarPage() {
               <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>Ραντεβού</span></button>
             </div>
 
-            {appointmentActionsOpen&&<div className="calendar-appointment-actions-menu">
+            {appointmentActionsOpen&&<div ref={appointmentActionsRef} className="calendar-appointment-actions-menu">
               <button disabled={quickBusy||paymentBusy||selectedEvent.status==="completed"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
               {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
             </div>}
@@ -928,6 +937,7 @@ function AppointmentEditor({
   const [patientId, setPatientId] = useState(initialPatient);
   const [patientSearch,setPatientSearch]=useState("");
   const [patientPickerOpen,setPatientPickerOpen]=useState(false);
+  const patientPickerRef=useRef<HTMLLabelElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
@@ -948,6 +958,14 @@ function AppointmentEditor({
   const [confirmCancel,setConfirmCancel] = useState(false);
   const busyRef=useRef(false);
   const editorRef=useCalendarDialog(onClose,saving);
+  useEffect(()=>{
+    if(!patientPickerOpen)return;
+    const dismiss=(event:PointerEvent)=>{if(patientPickerRef.current&&!patientPickerRef.current.contains(event.target as Node))setPatientPickerOpen(false)};
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape")setPatientPickerOpen(false)};
+    document.addEventListener("pointerdown",dismiss);
+    document.addEventListener("keydown",escape);
+    return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",escape)};
+  },[patientPickerOpen]);
 
   async function mutate(action: "create" | "move" | "cancel" | "restore") {
     if (busyRef.current) return;
@@ -1010,7 +1028,7 @@ function AppointmentEditor({
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
-        {mode === "create" && <label className="appointment-patient-field">Ασθενής
+        {mode === "create" && <label ref={patientPickerRef} className="appointment-patient-field">Ασθενής
           <div className="appointment-patient-search">
             <Search size={16}/>
             <input

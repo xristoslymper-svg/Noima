@@ -1,5 +1,13 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
-import {effectiveSection} from './corrections.ts';
+
+function correctedSection(bundle:PatientBundle,section:PatientBundle['sections'][number]){
+ let document=section.document;
+ for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at))){
+  const change=correction.patch?.[section.section_key];
+  if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after)document=change.after as typeof document;
+ }
+ return {...section,document};
+}
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
 export type WorkspaceHeroAction='resume'|'new_follow_up'|'none';
@@ -51,7 +59,7 @@ export function previousMseReference(bundle:PatientBundle|null,sessionId:string,
  const prior=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(s.completed_at||s.started_at)<=Date.parse(startedAt)).sort((a,b)=>Date.parse(b.completed_at||b.started_at)-Date.parse(a.completed_at||a.started_at));
  for(const session of prior){
   const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
-  if(raw){const section=effectiveSection(raw,bundle.corrections);return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)}};
+  if(raw){const section=correctedSection(bundle,raw);return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)}};
  }
  return null;
 }

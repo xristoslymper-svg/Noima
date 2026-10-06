@@ -16,10 +16,12 @@ import {
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
+  CreditCard,
   FolderOpen,
   Home,
   Mic2,
   Menu,
+  ListTodo,
   Search,
   Settings,
   ShieldCheck,
@@ -28,7 +30,8 @@ import {
   TestTube2,
   Users,
 } from "lucide-react";
-type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string};
+type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
+type TodoTask = {id:string;tester_id:string;patient_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -47,33 +50,75 @@ export default function Page() {
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
+  const [tasks,setTasks]=useState<TodoTask[]>([]);
+  const [widgetOpen,setWidgetOpen]=useState<"payments"|"psychometrics"|"todo"|null>(null);
+  const [taskTitle,setTaskTitle]=useState("");
+  const [widgetBusy,setWidgetBusy]=useState(false);
+  const [widgetError,setWidgetError]=useState("");
+  const [nowMs,setNowMs]=useState(()=>Date.now());
   const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
   const [overviewRetry,setOverviewRetry]=useState(0);
   useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();setOverviewState('loading');void (async()=>{
-    const [calendarResponse,patientsResponse]=await Promise.all([
+    const [calendarResponse,patientsResponse,tasksResponse]=await Promise.all([
       fetch("/api/calendar/events?tester="+encodeURIComponent(tester),{cache:"no-store"}),
       fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester),{cache:"no-store"}),
+      fetch("/api/tasks?tester="+encodeURIComponent(tester),{cache:"no-store"}),
     ]);
-    const calendarData=await calendarResponse.json();const patientData=await patientsResponse.json();
-    if(!calendarResponse.ok||!patientsResponse.ok)throw new Error('overview_unavailable');
+    const calendarData=await calendarResponse.json();const patientData=await patientsResponse.json();const taskData=await tasksResponse.json();
+    if(!calendarResponse.ok||!patientsResponse.ok||!tasksResponse.ok)throw new Error('overview_unavailable');
     if(cancelled)return;
     const events=(calendarData.events||[]) as OverviewEvent[];
     const ids=(patientData.patients||[]).map((p:{id:string})=>p.id) as string[];
     const loaded=await Promise.all(ids.map(async id=>{try{const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(id),{cache:"no-store"});const d=await r.json();return r.ok?[id,d.bundle as PatientBundle] as const:null}catch{return null}}));
     if(cancelled)return;
     if(loaded.some(item=>item===null))throw new Error('overview_incomplete');
-    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);setOverviewState('ready');
+    setSchedule(events);setBundles(Object.fromEntries(loaded as [string,PatientBundle][]));setTasks((taskData.tasks||[]) as TodoTask[]);setSelectedPatientId(current=>current||events.find(e=>e.patient_id)?.patient_id||ids[0]||null);setOverviewState('ready');
     void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
+  useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
 
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
 
   const loadedBundles=Object.values(bundles);
-  const pendingProposals=loadedBundles.reduce((n,b)=>n+b.proposals.filter(p=>p.status==="proposal").length,0);
-  const pendingPsychometrics=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>(a.status==="assigned"||a.status==="opened")&&new Date(a.expires_at)>new Date()).length,0);
-  const item9Reviews=loadedBundles.reduce((n,b)=>n+b.assessments.filter(a=>a.status==="completed"&&a.item9_review&&!a.item9_reviewed_at).length,0);
+  const remainingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_end).getTime()>nowMs);
+  const pendingPayments=schedule.filter(event=>event.status!=="cancelled"&&event.payment_status==="pending");
+  const psychometricsForReview=loadedBundles.flatMap(bundle=>bundle.assessments
+    .filter(assessment=>assessment.status==="completed"&&!assessment.reviewed_at)
+    .map(assessment=>({assessment,patient:bundle.patient})));
+  const openTasks=tasks.filter(task=>task.status==="open");
+
+  async function markPaymentPaid(event:OverviewEvent){
+    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    try{
+      const response=await fetch("/api/calendar/payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id,status:"paid"})});
+      const data=await response.json();
+      if(!response.ok||!data.event)throw new Error(data.error||"payment");
+      setSchedule(current=>current.map(item=>item.id===event.id?{...item,...data.event}:item));
+    }catch(error){setWidgetError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.")}
+    finally{setWidgetBusy(false)}
+  }
+
+  async function addTask(){
+    const title=taskTitle.trim();if(!title||widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    try{
+      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"create",title})});
+      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
+      setTasks(current=>[data.task as TodoTask,...current]);setTaskTitle("");
+    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν αποθηκεύτηκε.")}
+    finally{setWidgetBusy(false)}
+  }
+
+  async function completeTask(task:TodoTask){
+    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    try{
+      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"set_status",id:task.id,status:"completed"})});
+      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
+      setTasks(current=>current.map(item=>item.id===task.id?data.task as TodoTask:item));
+    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν ενημερώθηκε.")}
+    finally{setWidgetBusy(false)}
+  }
 
   return (
     <main className="app-shell">
@@ -107,10 +152,10 @@ export default function Page() {
 
           {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Συνεδρίες σήμερα" value={overviewState==='ready'?String(todaySchedule.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':todaySchedule.length?"Από το κοινό ημερολόγιο":"Χωρίς ραντεβού σήμερα"} tone="sage" />
-            <Metric icon={<ClipboardCheck />} label="Σημειώσεις για έγκριση" value={overviewState==='ready'?String(pendingProposals):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Πραγματικές εκκρεμείς προτάσεις'} tone="blue" />
-            <Metric icon={<TestTube2 />} label="Εκκρεμή ψυχομετρικά" value={overviewState==='ready'?String(pendingPsychometrics):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Assigned ή opened'} tone="gold" />
-            <Metric icon={<ShieldCheck />} label="PHQ-9 item 9 για έλεγχο" value={overviewState==='ready'?String(item9Reviews):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Από ολοκληρωμένα τεστ'} tone="rose" />
+            <Metric icon={<CalendarDays />} label="Ραντεβού σήμερα" value={overviewState==='ready'?String(remainingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':remainingToday.length?"Απομένουν σήμερα":"Ολοκληρώθηκε το σημερινό πρόγραμμα"} tone="sage" />
+            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
+            <Metric icon={<TestTube2 />} label="Ψυχομετρικά" value={overviewState==='ready'?String(psychometricsForReview.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Νέα για έλεγχο'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
+            <Metric icon={<ListTodo />} label="To do" value={overviewState==='ready'?String(openTasks.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Ανοιχτές εργασίες'} tone="rose" onClick={()=>{setWidgetError("");setWidgetOpen("todo")}} />
           </section>
 
           <section className="main-grid">
@@ -169,11 +214,46 @@ export default function Page() {
           </div>
         </section>
       </div>}
+
+      {widgetOpen&&<div className="dashboard-widget-overlay" onClick={()=>setWidgetOpen(null)}>
+        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"To do"} onClick={e=>e.stopPropagation()}>
+          <header className="dashboard-widget-head">
+            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"To do"}</h2></div>
+            <button onClick={()=>setWidgetOpen(null)} aria-label="Κλείσιμο"><X size={18}/></button>
+          </header>
+          {widgetError&&<div className="save-state error" role="alert">{widgetError}</div>}
+
+          {widgetOpen==="payments"&&<div className="dashboard-widget-list">
+            {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>
+              <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
+              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><Check size={15}/> Πληρώθηκε</button>
+            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμείς πληρωμές.</div>}
+          </div>}
+
+          {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
+            {psychometricsForReview.length?psychometricsForReview.map(({assessment,patient})=><div className="dashboard-widget-row" key={assessment.id}>
+              <div><strong>{patient.first_name} {patient.last_name} · {assessment.instrument}</strong><span>{assessment.completed_at?new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(assessment.completed_at)):"Συμπληρώθηκε"}{assessment.score!==null?" · score "+assessment.score:""}</span></div>
+              <Link href={"/patients/demo/"+patient.id+"?tab=psychometrics"}>Έλεγχος <ChevronRight size={15}/></Link>
+            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν νέα ψυχομετρικά για έλεγχο.</div>}
+          </div>}
+
+          {widgetOpen==="todo"&&<>
+            <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>Προσθήκη</button></div>
+            <div className="dashboard-widget-list">
+              {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
+                <div><strong>{task.title}</strong>{task.due_at&&<span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at))}</span>}</div>
+                <button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>
+              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν ανοιχτές εργασίες.</div>}
+            </div>
+          </>}
+        </section>
+      </div>}
     </main>
   );
 }
 
-function Metric({ icon, label, value, note, tone }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string }) {
-  return <div className={`metric ${tone}`}><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>;
+function Metric({ icon, label, value, note, tone, onClick }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string; onClick?:()=>void }) {
+  const content=<><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></>;
+  return onClick?<button type="button" className={`metric ${tone} metric-action`} onClick={onClick}>{content}</button>:<div className={`metric ${tone}`}>{content}</div>;
 }
 

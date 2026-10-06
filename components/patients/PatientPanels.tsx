@@ -29,11 +29,20 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
   if(patientFlight.current)return patientFlight.current;
   const task=(async()=>{
    setPatientSaving(true);setPatientState('');
+   let committed=false;
    try{
     const age=patientValues.age.trim()===''?null:Number(patientValues.age);
     await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
-    patientDirty.current=false;setPatientState('Αποθηκεύτηκε');await reload();setPatientOpen(false);
-   }catch(cause){const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή';setPatientState(message);if(/άλλαξε σε άλλη καρτέλα|Επαναφορτώστε|stale/i.test(message)){try{await reload()}catch{/* keep the user's local fields; retry remains explicit */}}throw cause}finally{setPatientSaving(false)}
+    committed=true;patientDirty.current=false;setPatientState('Αποθηκεύτηκε');
+    const refreshed=await reload();
+    if(!refreshed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
+    setPatientOpen(false);
+   }catch(cause){
+    if(committed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
+    const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή';setPatientState(message);
+    if(/άλλαξε σε άλλη καρτέλα|Επαναφορτώστε|stale/i.test(message)){try{await reload()}catch{/* keep the user's local fields; retry remains explicit */}}
+    throw cause;
+   }finally{setPatientSaving(false)}
   })();
   patientFlight.current=task;try{await task}finally{patientFlight.current=null}
  }

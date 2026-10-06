@@ -85,3 +85,42 @@ test('explicit unresolved severe narrative effects remain mandatory; routine mon
  const b=fixture();visit(b,1,'Αναφέρει σοβαρή ανεπιθύμητη ενέργεια με σύγχυση.');assert.ok(buildSummaryContext(b).findings.find(f=>f.key==='narrative-effect:section:s1').attention);
  for(const text of ['Αρνείται σοβαρές παρενέργειες.','Η σοβαρή ανεπιθύμητη ενέργεια υποχώρησε.','Παρακολούθηση ανεπιθύμητων ενεργειών.']){b.sections[0].content=text;assert.equal(buildSummaryContext(b).findings.find(f=>f.key==='narrative-effect:section:s1').attention,false);}
 });
+
+
+test('clinical overview uses encounter chronology and effective structured risk corrections',()=>{
+ const b=fixture();b.corrections=[];
+ b.sessions.push(
+  {id:'older',status:'completed',started_at:'2026-10-06T12:00:00Z',completed_at:'2026-10-06T20:00:00Z'},
+  {id:'newer',status:'completed',started_at:'2026-10-06T13:00:00Z',completed_at:'2026-10-06T14:00:00Z'},
+ );
+ b.appointments.push(
+  {id:'a-old',session_id:'older',scheduled_start:'2026-10-05T09:00:00Z',scheduled_end:'2026-10-05T09:50:00Z',status:'completed'},
+  {id:'a-new',session_id:'newer',scheduled_start:'2026-10-06T09:00:00Z',scheduled_end:'2026-10-06T09:50:00Z',status:'completed'},
+ );
+ b.sections.push(
+  {id:'old-text',session_id:'older',section_key:'interview',content:'Older clinical picture.'},
+  {id:'new-text',session_id:'newer',section_key:'interview',content:'Newer clinical picture.'},
+ );
+ b.risks.push(
+  {session_id:'older',suicidal_ideation:'negative',intent:'negative',plan:'negative',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative',clinical_note:''},
+  {session_id:'newer',suicidal_ideation:'negative',intent:'negative',plan:'negative',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative',clinical_note:'',tree:{version:1,answers:{wish:'negative',intent:'negative',plan:'negative',others:'negative'},notes:{}}},
+ );
+ b.corrections.push({id:'risk-correction',session_id:'newer',created_at:'2026-10-06T15:00:00Z',reason:'Corrected risk',patch:{risk:{before:{suicidal_ideation:'negative'},after:{suicidal_ideation:'positive',intent:'unknown',plan:'unknown',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative',protective_factors:'',clinical_note:'Corrected note',tree:{version:1,answers:{wish:'negative',intent:'negative',plan:'negative',others:'negative'},notes:{}}}}}});
+ const c=buildSummaryContext(b,'2026-10-06');
+ assert.equal(c.sources.find(s=>s.id==='section:new-text').date,'2026-10-06T09:00:00Z');
+ assert.match(c.findings.find(x=>x.key==='risk').text,/Θετικά ευρήματα: Ιδεασμός/);
+ assert.match(c.findings.find(x=>x.key==='risk').text,/Πρόθεση παραμένει άγνωστο/);
+ assert.ok(c.findings.some(x=>x.key==='risk-note'&&x.text.includes('Corrected note')));
+ const riskSource=c.sources.find(s=>s.id==='risk:newer').content;
+ assert.equal(riskSource.tree.answers.wish,'positive');
+ assert.equal(riskSource.tree.answers.intent,'unknown');
+});
+
+test('structured section correction becomes effective evidence without mutating the original section',()=>{
+ const b=fixture();b.corrections=[];visit(b,1,'Original interview.');
+ b.corrections.push({id:'c',session_id:1,created_at:'2026-10-02T10:00:00Z',reason:'Correction',patch:{interview:{before:'Original interview.',after:'Corrected interview.'}}});
+ const original=JSON.stringify(b.sections[0]);
+ const c=buildSummaryContext(b);
+ assert.equal(c.sources.find(s=>s.id==='section:s1').content,'Corrected interview.');
+ assert.equal(JSON.stringify(b.sections[0]),original);
+});

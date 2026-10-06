@@ -163,7 +163,7 @@ test('calendar edits reject stale workspaces, scope future changes, and cancella
 
 test('historical appointments stay valid, cancelled slots are reusable, and active overlaps remain blocked',async()=>{
  const t='80000000-0000-4000-8000-000000000005';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
- const start=new Date(Date.now()-6*60*60*1000).toISOString(),end=new Date(Date.now()-5*60*60*1000).toISOString();
+ const start=new Date(Date.now()-30*24*60*60*1000).toISOString(),end=new Date(Date.now()-30*24*60*60*1000+60*60*1000).toISOString();
  const [{event:historical}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'other') event",[t,p.id,start,end]);
  assert.equal(historical.status,'scheduled');assert.equal(historical.appointment_type,'other');
  const [{event:cancelled}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) event",[t,historical.id,historical.updated_at]);

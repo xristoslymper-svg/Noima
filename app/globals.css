@@ -643,3 +643,13 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .mse-options button.was-previous{position:relative;border-style:dashed}
 .mse-options button.was-previous small{margin-left:6px;font-size:9px;font-weight:700;opacity:.58}
 .mse-options button.was-previous[aria-pressed="true"] small{opacity:.72}
+
+
+/* Compact follow-up MSE cards: prevent previews from colliding with state indicators. */
+.mse-item>summary{overflow:hidden}
+.mse-item>summary .mse-guide,.mse-item>summary .mse-preview{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mse-item>summary .mse-delta-label{display:inline-flex;margin-top:7px;padding:0;background:transparent!important;font-size:10px;font-weight:750}
+.mse-item>summary .mse-delta-label.same{color:#789087}.mse-item>summary .mse-delta-label.changed{color:#9a6c1c}
+.mse-item.mse-changed{box-shadow:inset 3px 0 0 #e7c77e}
+.finalize-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.finalize-bar .finalize-later{background:transparent;color:#50645d;border:1px solid #dce5df;box-shadow:none}

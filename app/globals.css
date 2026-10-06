@@ -684,3 +684,21 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .mse-delta-axis em{font-style:normal;color:#9a7a3a}
 .mse-compare-summary>small{font-size:10px;color:#92733b;white-space:nowrap}
 .mse-note-change{font-size:10px;font-weight:750;color:#92733b}
+
+
+/* Completed records keep the same clinical form and use append-only structured corrections. */
+.corrected-record-view .session-work-head{align-items:flex-start}
+.completed-record-actions{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.completed-record-actions>button{border:1px solid #bfd3ca;background:#edf5f1;color:#2f6758;border-radius:11px;padding:9px 13px;font-size:12px;font-weight:750;cursor:pointer}
+.completed-record-form{margin-top:18px}
+.completed-record-form:disabled{opacity:1}
+.completed-record-form:disabled textarea,.completed-record-form:disabled select,.completed-record-form:disabled button{opacity:1;color:#405149;-webkit-text-fill-color:#405149}
+.completed-record-form:disabled textarea,.completed-record-form:disabled select{background:#fbfcfa;border-color:#e5ebe7;cursor:default}
+.completed-record-form:disabled .mse-options button[aria-pressed="true"]{background:#edf4f0;border-color:#bfd5ca;color:#315f52}
+.completed-correction-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.completed-correction-grid label,.correction-save-bar>label{display:grid;gap:6px;color:#65736d;font-size:11px;font-weight:700}
+.completed-correction-grid textarea,.completed-correction-grid select,.correction-save-bar input{width:100%;border:1px solid #dfe7e2;border-radius:11px;background:#fff;padding:10px 11px;font:inherit;color:#2c4038}
+.correction-save-bar{position:sticky;bottom:14px;z-index:8;margin-top:18px;padding:14px;border:1px solid #dce6df;border-radius:16px;background:rgba(255,254,250,.96);box-shadow:0 14px 38px rgba(38,56,48,.12);backdrop-filter:blur(8px);display:grid;gap:10px}
+.correction-save-bar>div{display:flex;justify-content:flex-end;gap:9px}.correction-save-bar button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;background:#326b59;color:white;padding:9px 13px;font-weight:750;cursor:pointer}.correction-save-bar button.finalize-later{background:white;color:#53645d;border:1px solid #dce5df}.correction-save-bar button:disabled{opacity:.45;cursor:default}
+.correction-audit{margin-top:18px;border-top:1px solid #e6ebe7;padding-top:14px;color:#63736c}.correction-audit summary{cursor:pointer;font-size:12px;font-weight:750}.correction-audit article{display:grid;grid-template-columns:150px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid #eef1ee;font-size:11px}.correction-audit article span{color:#405249}.correction-audit article small{color:#8a9691}
+@media(max-width:760px){.completed-correction-grid{grid-template-columns:1fr}.completed-record-actions{align-items:flex-start}.correction-audit article{grid-template-columns:1fr}.correction-save-bar{bottom:8px}}

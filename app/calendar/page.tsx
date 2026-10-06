@@ -732,7 +732,7 @@ export default function CalendarPage() {
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
             {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
             {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
-            {selectedEvent.status==="cancelled" && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button>}
+            {selectedEvent.status==="cancelled" && <div className="calendar-cancelled-actions"><button className="calendar-rebook-slot" disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"create",date:dateKey(new Date(selectedEvent.scheduled_start)),minute:athensMinutes(selectedEvent.scheduled_start),duration:eventDurationMinutes(selectedEvent)});setSelectedEvent(null)}}><CalendarDays size={14}/> Νέο ραντεβού στην ίδια ώρα</button><button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button></div>}
           </section>
         </div>
       )}
@@ -744,6 +744,7 @@ export default function CalendarPage() {
           patients={patients}
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
+          initialDuration={appointmentEditor.duration}
           nextFor={appointmentEditor.nextFor}
           initialPatientId={appointmentEditor.patientId}
           openingSession={openingSession === appointmentEditor.event?.id}
@@ -884,7 +885,8 @@ export default function CalendarPage() {
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
         @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
 
-        .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
+        .appointment-datetime-context{display:flex;align-items:center;gap:10px;margin:4px 0 14px;padding:11px 12px;border-radius:12px;background:#f7f9f7;color:#53685f}.appointment-datetime-context>div{display:flex;flex-direction:column;gap:2px}.appointment-datetime-context span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8b9992;font-weight:800}.appointment-datetime-context strong{font-size:12px;color:#33483f}.appointment-past-warning{display:flex;align-items:flex-start;gap:9px;margin:-4px 0 14px;padding:10px 12px;border-radius:11px;background:#fbf3e7;border:1px solid #f0dfc5;color:#806841}.appointment-past-warning div{display:flex;flex-direction:column;gap:2px}.appointment-past-warning strong{font-size:11px}.appointment-past-warning span{font-size:10px;color:#927b58}.calendar-cancelled-actions{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}.calendar-rebook-slot{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:9px;background:#edf4f0;color:#356b59;padding:8px 10px;font-size:10px;font-weight:750;cursor:pointer}
+                .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
         /* Compact calendar with quiet time guides and prominent appointment cards. */
         .calendar-page-content{max-width:1180px;padding:32px 30px 56px}
         .calendar-control-bar{border:1px solid #e6ebe7;border-radius:16px;background:#fff;padding:12px;gap:8px;box-shadow:0 4px 18px rgba(35,55,45,.025)}
@@ -940,6 +942,7 @@ function AppointmentEditor({
   patients,
   focusDate,
   initialMinute,
+  initialDuration,
   nextFor,
   initialPatientId,
   openingSession,
@@ -953,6 +956,7 @@ function AppointmentEditor({
   patients: PatientOption[];
   focusDate: string;
   initialMinute?: number;
+  initialDuration?: number;
   nextFor?: CalendarEvent;
   initialPatientId?: string;
   openingSession: boolean;
@@ -976,7 +980,7 @@ function AppointmentEditor({
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
-  const [duration, setDuration] = useState(event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
+  const [duration, setDuration] = useState(initialDuration?String(initialDuration):event || nextFor ? String(eventDurationMinutes((event || nextFor)!)) : "50");
   const [type, setType] = useState(event?.appointment_type || "follow_up");
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
   const selectedPatient=patients.find(p=>p.id===patientId);
@@ -1020,6 +1024,8 @@ function AppointmentEditor({
   const [occurrences, setOccurrences] = useState("6");
   const [scope,setScope] = useState("one");
   const [confirmCancel,setConfirmCancel] = useState(false);
+  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;return localAthensToIso(date,hours*60+minutes)},[date,time]);
+  const pastSelection=Boolean(selectedStartIso&&Date.parse(selectedStartIso)<Date.now());
   const busyRef=useRef(false);
   const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);
   useEffect(()=>{
@@ -1091,6 +1097,8 @@ function AppointmentEditor({
       <h3>{mode === "create" ? "Νέο ραντεβού" : event?.patient_name}</h3>
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
+      {selectedStartIso&&<div className="appointment-datetime-context"><CalendarDays size={16}/><div><span>Ημερομηνία & ώρα</span><strong>{dateTimeLabel(selectedStartIso)}</strong></div></div>}
+      {pastSelection&&<div className="appointment-past-warning" role="status"><Clock size={15}/><div><strong>Η επιλεγμένη ώρα έχει ήδη περάσει.</strong><span>Μπορείτε να καταχωρίσετε το ραντεβού αναδρομικά.</span></div></div>}
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
         {mode === "create" && <div ref={patientPickerRef} className="appointment-patient-field">
           <span className="appointment-field-label">Ασθενής</span>

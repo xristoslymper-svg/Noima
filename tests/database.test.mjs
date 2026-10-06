@@ -583,3 +583,26 @@ test('Dokimos seed repair restores timeline without changing the projector or ca
  assert.equal((await state('2026-09-23')).status,'planned');assert.equal((await state('2026-09-24')).dose,5);assert.equal((await state('2026-10-01')).dose,10);assert.equal((await state('2026-10-05')).status,'active');
  assert.equal((await sql('select count(*)::int n from demo_medication_events where medication_id=$1',[m]))[0].n,2);assert.equal((await sql('select plan_version from demo_medications where id=$1',[m]))[0].plan_version,2);
 });
+
+
+test('finish-later creates one session-linked task and finalization closes only that task', async()=>{
+ const t='61000000-0000-4000-8000-000000000010';
+ await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Pending Record')).id id",[t]);
+ const [draft]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const [firstTask]=await sql('select * from demo_task_for_session($1,$2)',[t,draft.id]);
+ const [retryTask]=await sql('select * from demo_task_for_session($1,$2)',[t,draft.id]);
+ assert.equal(firstTask.id,retryTask.id);
+ assert.equal(firstTask.source_session_id,draft.id);
+ assert.equal(firstTask.status,'open');
+ assert.equal((await sql("select count(*)::int n from demo_tasks where tester_id=$1 and source_session_id=$2 and status='open'",[t,draft.id]))[0].n,1);
+ const [manual]=await sql("select * from demo_task_create($1,'Ολοκλήρωση καταγραφής · άσχετη εργασία',$2,null)",[t,p]);
+ for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,draft.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,draft.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[draft.id]);
+ const [done]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,draft.id,version]);
+ assert.equal(done.status,'completed');
+ assert.equal((await sql('select status from demo_tasks where id=$1',[firstTask.id]))[0].status,'completed');
+ assert.equal((await sql('select status from demo_tasks where id=$1',[manual.id]))[0].status,'open');
+ await assert.rejects(sql('select demo_task_for_session($1,$2)',[t,draft.id]),/session_unavailable/);
+});

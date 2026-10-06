@@ -31,7 +31,7 @@ import {
   Users,
 } from "lucide-react";
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
-type TodoTask = {id:string;tester_id:string;patient_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
+type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -254,7 +254,7 @@ export default function Page() {
             <div className="dashboard-widget-list">
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
                 <div><strong>{task.title}</strong>{task.due_at&&<span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at))}</span>}</div>
-                <button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>
+                {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=sessions&session="+task.source_session_id} aria-label={"Συνέχεια "+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>}
               </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν ανοιχτές εργασίες.</div>}
             </div>
           </>}
@@ -271,7 +271,7 @@ function TodoMetric({tasks,value,loading,error,busy,onOpen,onComplete}:{tasks:To
     <span>To do</span>
     <strong>{value}</strong>
     {loading?<small>Φόρτωση…</small>:error?<small>Δεν φορτώθηκε</small>:first?<div className="todo-metric-preview">
-      <button type="button" className="todo-metric-check" disabled={busy} onClick={()=>void onComplete(first)} aria-label={"Ολοκλήρωση "+first.title}><Check size={14}/></button>
+      {first.source_session_id&&first.patient_id?<Link className="todo-metric-check" href={"/patients/demo/"+first.patient_id+"?tab=sessions&session="+first.source_session_id} aria-label={"Συνέχεια "+first.title}><ChevronRight size={14}/></Link>:<button type="button" className="todo-metric-check" disabled={busy} onClick={()=>void onComplete(first)} aria-label={"Ολοκλήρωση "+first.title}><Check size={14}/></button>}
       <button type="button" className="todo-metric-title" onClick={onOpen}>{first.title}</button>
       {tasks.length>1&&<small>+{tasks.length-1} ακόμη</small>}
     </div>:<small>Δεν υπάρχουν ανοιχτές εργασίες</small>}

@@ -3,7 +3,7 @@ import type {DemoRisk,DemoSection} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
 export function correctionsFor(corrections:StructuredCorrection[]|undefined,sessionId:string){
- return (corrections||[]).filter(item=>item.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+ return (corrections||[]).filter(item=>item.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id));
 }
 function latestAfter(corrections:StructuredCorrection[]|undefined,sessionId:string,key:string){
  let value:unknown=undefined;

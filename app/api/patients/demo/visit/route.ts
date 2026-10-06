@@ -2,6 +2,7 @@ import { withPilot } from '@/lib/pilot/route';
 import {visitBundle} from '@/lib/patients/visit-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 export const dynamic='force-dynamic';
+export const preferredRegion='fra1';
 async function handleGET(req:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Ο δοκιμαστικός χώρος δεν δέχεται πραγματικά δεδομένα.'},{status:403});
  const p=new URL(req.url).searchParams,tester=p.get('tester'),patient=p.get('patient'),session=p.get('session');

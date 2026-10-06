@@ -1,4 +1,5 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
+import {effectiveSection} from './corrections';
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
 export type WorkspaceHeroAction='resume'|'new_follow_up'|'none';
@@ -18,7 +19,7 @@ export function workspaceTransitionSearch(search:string,tab:WorkspaceTab,session
 export function mergeVisitContext(visit:PatientBundle,context:PatientBundle|null):PatientBundle{
  if(!context)return visit;
  const merge=<T>(old:T[],fresh:T[],key:(row:T)=>string)=>[...old.filter(row=>!fresh.some(item=>key(item)===key(row))),...fresh];
- return {...context,sessions:merge(context.sessions,visit.sessions,s=>s.id),sections:merge(context.sections,visit.sections,s=>s.id),risks:merge(context.risks,visit.risks,r=>r.session_id),proposals:merge(context.proposals,visit.proposals,p=>p.id),addenda:merge(context.addenda,visit.addenda,a=>a.id)};
+ return {...context,sessions:merge(context.sessions,visit.sessions,s=>s.id),sections:merge(context.sections,visit.sections,s=>s.id),risks:merge(context.risks,visit.risks,r=>r.session_id),proposals:merge(context.proposals,visit.proposals,p=>p.id),addenda:merge(context.addenda,visit.addenda,a=>a.id),corrections:merge(context.corrections,visit.corrections,c=>c.id)};
 }
 const tabs:WorkspaceTab[]=['summary','sessions','history','medications','psychometrics'];
 export function workspaceLocation(search:string){
@@ -49,8 +50,8 @@ export function previousMseReference(bundle:PatientBundle|null,sessionId:string,
  if(!bundle)return null;
  const prior=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(s.completed_at||s.started_at)<=Date.parse(startedAt)).sort((a,b)=>Date.parse(b.completed_at||b.started_at)-Date.parse(a.completed_at||a.started_at));
  for(const session of prior){
-  const section=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&s.content.trim());
-  if(section)return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)};
+  const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
+  if(raw){const section=effectiveSection(raw,bundle.corrections);return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)}};
  }
  return null;
 }

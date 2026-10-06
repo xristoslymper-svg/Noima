@@ -566,6 +566,22 @@ test('same-day dose correction preserves the original event, requires a reason a
  await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'started',20,'mg','daily',current_date,'Retry',2,$3,false)",[t,m.id,event.id]),/stale_medication/);
 });
 
+test('patient folders receive only their own medication correction revisions',async()=>{
+ const t='80000000-0000-4000-8000-000000000014';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p1}]=await sql("select (demo_patient_create_v2($1,'TEST Revision A')).id id",[t]);
+ const [{id:p2}]=await sql("select (demo_patient_create_v2($1,'TEST Revision B')).id id",[t]);
+ const [m1]=await sql("select * from demo_medication_start($1,$2,null,'Med A',5,'mg','daily',current_date,'baseline')",[t,p1]);
+ const [m2]=await sql("select * from demo_medication_start($1,$2,null,'Med B',10,'mg','daily',current_date,'baseline')",[t,p2]);
+ const [e1]=await sql("select id from demo_medication_events where medication_id=$1 and event_type='started'",[m1.id]);
+ const [e2]=await sql("select id from demo_medication_events where medication_id=$1 and event_type='started'",[m2.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'started',6,'mg','daily',current_date,'Correct A',2,$3,false)",[t,m1.id,e1.id]);
+ await sql("select demo_medication_event_write($1,$2,null,'started',11,'mg','daily',current_date,'Correct B',2,$3,false)",[t,m2.id,e2.id]);
+ const r1=await sql('select * from demo_medication_revisions_for_patient($1,$2)',[t,p1]);
+ const r2=await sql('select * from demo_medication_revisions_for_patient($1,$2)',[t,p2]);
+ assert.equal(r1.length,1);assert.equal(r1[0].event_id,e1.id);assert.equal(r1[0].reason,'Correct A');
+ assert.equal(r2.length,1);assert.equal(r2[0].event_id,e2.id);assert.equal(r2[0].reason,'Correct B');
+});
+
 test('SMS simulation queues atomically, reschedules, cancels, revalidates phone and processes only once',async()=>{
  const tester='71000000-0000-4000-8000-000000000001';await sql('select public.demo_tester_bootstrap($1)',[tester]);
  const patient=(await sql('select id from public.demo_patients where tester_id=$1 limit 1',[tester]))[0];

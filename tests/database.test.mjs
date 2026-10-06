@@ -682,3 +682,23 @@ test('structured corrections are append-only and belong to completed sessions', 
  await assert.rejects(sql("update demo_session_corrections set reason='changed' where id=$1",[correction.id]),/immutable_record/);
  await assert.rejects(sql('select demo_session_correction_create($1,$2,$3,$4,$5)',[t,session.id,'62000000-0000-4000-8000-000000000012','',JSON.stringify(patch)]),/correction_reason_required/);
 });
+
+test('structured correction retries are idempotent and stale tabs cannot append over newer corrections',async()=>{
+ const t='62100000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Correction Concurrency')).id id",[t]);
+ const [session]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ for(const k of ['interview','mse','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Documented','manual',null)",[t,session.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,session.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[session.id]);
+ await sql('select demo_session_finalize($1,$2,$3)',[t,session.id,version]);
+ const request='62100000-0000-4000-8000-000000000011';
+ const patch={plan:{before:'Documented',after:'Updated plan'}};
+ const [first]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,request,'Plan correction',JSON.stringify(patch),0]);
+ const [retry]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,request,'Plan correction',JSON.stringify(patch),0]);
+ assert.equal(retry.id,first.id,'same request id must survive a lost response/retry');
+ await assert.rejects(sql('select demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,'62100000-0000-4000-8000-000000000012','Stale tab',JSON.stringify({review:{before:'Documented',after:'Changed'}}),0]),/stale_correction/);
+ const [second]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,'62100000-0000-4000-8000-000000000013','Fresh correction',JSON.stringify({review:{before:'Documented',after:'Changed'}}),1]);
+ assert.notEqual(second.id,first.id);
+ assert.equal((await sql('select count(*)::int n from demo_session_corrections where session_id=$1',[session.id]))[0].n,2);
+});
+

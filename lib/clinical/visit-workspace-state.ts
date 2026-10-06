@@ -63,9 +63,9 @@ export function previousMseReference(bundle:PatientBundle|null,sessionId:string,
  const current=bundle.sessions.find(s=>s.id===sessionId);
  const currentTime=Date.parse(current?sessionClinicalTime(bundle,current):startedAt);
  const prior=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(sessionClinicalTime(bundle,s))<currentTime).sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
- for(const session of prior){
-  const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
-  if(raw){const section=correctedSection(bundle,raw);return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)}};
- }
- return null;
+ const session=prior[0];if(!session)return null;
+ const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse'&&(s.content.trim()||s.document));
+ if(!raw)return null;
+ const section=correctedSection(bundle,raw);
+ return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)};
 }

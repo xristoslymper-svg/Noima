@@ -4,7 +4,7 @@ import PilotProfile from '@/components/PilotProfile';
 import Link from "next/link";
 import AppointmentStartConfirmation from "@/components/calendar/AppointmentStartConfirmation";
 import SummaryPeek from "@/components/patients/SummaryPeek";
-import {calendarSegment as segment, calendarWindow, calendarLanes} from "@/lib/calendar/layout";
+import {calendarSegment as segment, calendarWindow, calendarLanes, cancelledHistoryPlacement} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -93,6 +93,7 @@ function timeLabel(iso: string) {
 function appointmentType(value: string) {
   if (value === "initial_assessment") return "Πρώτη αξιολόγηση";
   if (value === "follow_up") return "Follow-up";
+  if (value === "other") return "Άλλο";
   return value;
 }
 
@@ -137,7 +138,8 @@ function athensMinutes(iso: string) {
 function localAthensToIso(date: string, minute: number) {
   return clinicLocalToIso(date, String(Math.floor(minute / 60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0"));
 }
-function statusLabel(event: CalendarEvent){return event.status==="completed"?"Ολοκληρώθηκε":event.status==="cancelled"?"Ακυρώθηκε":event.session_id?"Σε εξέλιξη":"Προγραμματισμένο";}
+function isPastScheduled(event:CalendarEvent){return event.status==="scheduled"&&!event.session_id&&Date.parse(event.scheduled_end)<Date.now()}
+function statusLabel(event: CalendarEvent){return event.status==="completed"?"Ολοκληρώθηκε":event.status==="cancelled"?"Ακυρώθηκε":event.session_id?"Σε εξέλιξη":isPastScheduled(event)?"Παρελθόν":"Προγραμματισμένο";}
 
 function addMinutes(iso: string, minutes: number) {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
@@ -287,7 +289,7 @@ export default function CalendarPage() {
       const response=await fetch("/api/calendar/command/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action,event_id:event.id,expected_updated_at:event.updated_at,scope:"one"})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Η αλλαγή δεν αποθηκεύτηκε.");
-      setStatusFilter("all");setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
+      setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
       await refreshEvents();
     }catch(error){setQuickError(error instanceof Error?error.message:"Η αλλαγή δεν αποθηκεύτηκε.");await refreshEvents();}
     finally{quickBusyRef.current=false;setQuickBusy(false);}
@@ -350,7 +352,7 @@ export default function CalendarPage() {
   useEffect(()=>{
     if(view!=="week"||focusDate!==currentDay||loading)return;
     requestAnimationFrame(()=>currentTimeRef.current?.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
-  },[view,focusDate,currentDay,loading]);
+  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -626,15 +628,11 @@ export default function CalendarPage() {
                           const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
                           const height = Math.max(38, (duration / 60) * weekHourHeight);
                           const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
-                          const overlaps=(other:CalendarEvent)=>other.id!==event.id&&Date.parse(other.scheduled_start)<Date.parse(event.scheduled_end)&&Date.parse(other.scheduled_end)>Date.parse(event.scheduled_start);
-                          const pairedWithCancelled=event.status!=="cancelled"&&items.some(other=>other.status==="cancelled"&&overlaps(other));
-                          const pairedWithActive=event.status==="cancelled"&&items.some(other=>other.status!=="cancelled"&&overlaps(other));
+                          const historyPlacement=cancelledHistoryPlacement(event,items);
                           const lane=lanes.get(event.id);
-                          const position=pairedWithCancelled
-                            ?{left:"calc(25% + 3px)",width:"calc(75% - 8px)"}
-                            :pairedWithActive
-                              ?{left:"5px",width:"calc(25% - 8px)"}
-                              :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
+                          const position=historyPlacement
+                            ?{left:`calc(${historyPlacement.leftPercent}% + 5px)`,width:`calc(${historyPlacement.widthPercent}% - 8px)`}
+                            :{left:`calc(${(lane?.lane??0)*100/(lane?.total??1)}% + 5px)`,width:`calc(${100/(lane?.total??1)}% - 10px)`};
 
                           if (outsideRange) return null;
 
@@ -644,7 +642,7 @@ export default function CalendarPage() {
                                 "week-event draggable" +
                                 (draggingEventId === event.id ? " dragging" : "") +
                                 (event.readiness === "waiting" ? " waiting" : "") +
-                                ((pairedWithCancelled||pairedWithActive) ? " paired-cancelled-history" : "") +
+                                (historyPlacement?.paired ? " paired-cancelled-history" : "") +
                                 (event.appointment_type === "initial_assessment" ? " initial" : " follow-up") + " status-" + event.status
                               }
                               key={event.id}
@@ -671,7 +669,7 @@ export default function CalendarPage() {
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
                               <span>{event.series_id ? "↻ " : ""}{event.patient_name}</span>
-                              <strong>{timeLabel(event.scheduled_start)} · {event.status === "scheduled" ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
+                              <strong>{timeLabel(event.scheduled_start)} · {event.status === "scheduled" && !isPastScheduled(event) ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
                             </div>
                           );
                         })}
@@ -718,7 +716,7 @@ export default function CalendarPage() {
             </div>
 
             {appointmentActionsOpen&&<div ref={appointmentActionsRef} className="calendar-appointment-actions-menu">
-              <button disabled={quickBusy||paymentBusy||selectedEvent.status==="completed"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
               {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
             </div>}
 
@@ -793,8 +791,8 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div className="calendar-move-safe">
-                <Check size={15} aria-hidden="true" />
-                Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση».
+                {Date.parse(pendingMove.startIso)<Date.now()?<Clock size={15} aria-hidden="true" />:<Check size={15} aria-hidden="true" />}
+                {Date.parse(pendingMove.startIso)<Date.now()?"Η επιλεγμένη ώρα έχει ήδη περάσει. Η αναδρομική μετακίνηση επιτρέπεται.":"Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση»."}
               </div>
             )}
 
@@ -1024,7 +1022,7 @@ function AppointmentEditor({
   const [occurrences, setOccurrences] = useState("6");
   const [scope,setScope] = useState("one");
   const [confirmCancel,setConfirmCancel] = useState(false);
-  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;return localAthensToIso(date,hours*60+minutes)},[date,time]);
+  const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;try{return localAthensToIso(date,hours*60+minutes)}catch{return null}},[date,time]);
   const pastSelection=Boolean(selectedStartIso&&Date.parse(selectedStartIso)<Date.now());
   const busyRef=useRef(false);
   const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);

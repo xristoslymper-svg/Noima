@@ -161,6 +161,40 @@ test('calendar edits reject stale workspaces, scope future changes, and cancella
  assert.equal((await sql('select status from demo_calendar_events where id=$1',[cancelAgain.id]))[0].status,'cancelled');
 });
 
+test('historical appointments stay valid, cancelled slots are reusable, and active overlaps remain blocked',async()=>{
+ const t='80000000-0000-4000-8000-000000000005';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const start=new Date(Date.now()-30*24*60*60*1000).toISOString(),end=new Date(Date.now()-30*24*60*60*1000+60*60*1000).toISOString();
+ const [{event:historical}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'other') event",[t,p.id,start,end]);
+ assert.equal(historical.status,'scheduled');assert.equal(historical.appointment_type,'other');
+ const [{event:cancelled}]=await sql("select demo_calendar_edit($1,'cancel',$2,$3) event",[t,historical.id,historical.updated_at]);
+ const [{event:replacement}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'follow_up') event",[t,p.id,start,end]);
+ assert.equal(cancelled.status,'cancelled');assert.equal(replacement.status,'scheduled');
+ await assert.rejects(sql("select demo_calendar_edit($1,'restore',$2,$3)",[t,cancelled.id,cancelled.updated_at]),/calendar_conflict/);
+ const adjacentStart=end,adjacentEnd=new Date(Date.parse(end)+30*60*1000).toISOString();
+ const [{event:adjacent}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'other') event",[t,p.id,adjacentStart,adjacentEnd]);
+ assert.equal(adjacent.status,'scheduled');
+ await assert.rejects(sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'follow_up')",[t,p.id,new Date(Date.parse(start)+15*60*1000).toISOString(),new Date(Date.parse(end)+15*60*1000).toISOString()]),/calendar_conflict/);
+});
+
+test('historical recurring appointments keep Athens wall time through DST',async()=>{
+ const t='80000000-0000-4000-8000-000000000006';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2026-09-20 09:00 Europe/Athens','2026-09-20 09:50 Europe/Athens','follow_up',1,8) series",[t,p.id]);
+ const times=await sql("select to_char(scheduled_start at time zone 'Europe/Athens','HH24:MI') time from demo_calendar_events where series_id=$1 order by scheduled_start",[series.series_id]);
+ assert.equal(times.length,8);assert.ok(times.every(row=>row.time==='09:00'));
+});
+
+test('restoring a cancelled series fails atomically when one slot has been rebooked',async()=>{
+ const t='80000000-0000-4000-8000-000000000007';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);
+ const [{series}]=await sql("select demo_calendar_create_recurring($1,$2,'2099-08-01 10:00 Europe/Athens','2099-08-01 10:50 Europe/Athens','follow_up',1,3) series",[t,p.id]);
+ let [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await sql("select demo_calendar_edit($1,'cancel',$2,$3,null,null,'series',$4)",[t,series.events[0].id,series.events[0].updated_at,revision]);
+ const [first]=await sql('select updated_at from demo_calendar_events where id=$1',[series.events[0].id]);
+ [{revision}]=await sql('select max(updated_at)::text revision from demo_calendar_events where series_id=$1',[series.series_id]);
+ await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3,$4,'other')",[t,p.id,series.events[1].scheduled_start,series.events[1].scheduled_end]);
+ await assert.rejects(sql("select demo_calendar_edit($1,'restore',$2,$3,null,null,'series',$4)",[t,series.events[0].id,first.updated_at,revision]),/calendar_conflict/);
+ assert.equal((await sql("select count(*)::int n from demo_calendar_events where series_id=$1 and status='cancelled'",[series.series_id]))[0].n,3);
+});
+
 test('non-linear calendar starts never steal an already-linked draft and can attach an unlinked draft',async()=>{
  const t='80000000-0000-4000-8000-000000000004';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p1}]=await sql("select (demo_patient_create_v2($1,'TEST Flow A')).id id",[t]);

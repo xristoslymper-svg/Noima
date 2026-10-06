@@ -21,16 +21,21 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const [patientSaving,setPatientSaving]=useState(false);
  const [patientState,setPatientState]=useState('');
  const patientDirty=useRef(false);
+ const patientFlight=useRef<Promise<void>|null>(null);
 
  useEffect(()=>{if(!patientDirty.current)setPatientValues(patientInitial())},[bundle.patient.updated_at]);
  async function save(){await draft.flush()}
  async function savePatient(){
-  setPatientSaving(true);setPatientState('');
-  try{
-   const age=patientValues.age.trim()===''?null:Number(patientValues.age);
-   await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
-   patientDirty.current=false;setPatientState('Αποθηκεύτηκε');await reload();setPatientOpen(false);
-  }catch(cause){setPatientState(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή');throw cause}finally{setPatientSaving(false)}
+  if(patientFlight.current)return patientFlight.current;
+  const task=(async()=>{
+   setPatientSaving(true);setPatientState('');
+   try{
+    const age=patientValues.age.trim()===''?null:Number(patientValues.age);
+    await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
+    patientDirty.current=false;setPatientState('Αποθηκεύτηκε');await reload();setPatientOpen(false);
+   }catch(cause){setPatientState(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή');throw cause}finally{setPatientSaving(false)}
+  })();
+  patientFlight.current=task;try{await task}finally{patientFlight.current=null}
  }
  const flushRef=useRef<()=>Promise<void>>(async()=>{});
  flushRef.current=async()=>{await draft.flush();if(patientDirty.current)await savePatient()};

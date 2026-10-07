@@ -81,7 +81,7 @@ export default function Page() {
 
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
 
-  const remainingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_end).getTime()>nowMs);
+  const upcomingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_start).getTime()>nowMs);
   const pendingPayments=schedule.filter(event=>event.status!=="cancelled"&&event.payment_status==="pending");
   const openTasks=tasks.filter(task=>task.status==="open");
 
@@ -148,7 +148,7 @@ export default function Page() {
 
           {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Ραντεβού σήμερα" value={overviewState==='ready'?String(remainingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':remainingToday.length?"Απομένουν σήμερα":"Ολοκληρώθηκε το σημερινό πρόγραμμα"} tone="sage" />
+            <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':upcomingToday.length?"Προγραμματισμένα για αργότερα":"Δεν υπάρχουν άλλα προγραμματισμένα ραντεβού σήμερα"} tone="sage" />
             <TodoMetric
               tasks={overviewState==='ready'?openTasks:[]}
               value={overviewState==='ready'?String(openTasks.length):'—'}
@@ -171,7 +171,7 @@ export default function Page() {
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Follow-up"}</span></div>
+                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
 
@@ -197,11 +197,11 @@ export default function Page() {
             <button className="calendar-close" onClick={()=>setCalendarOpen(false)} aria-label="Κλείσιμο"><X size={20}/></button>
           </div>
 
-          <div className="calendar-runtime-link"><CalendarDays size={15}/><span>Η προβολή χρησιμοποιεί το κοινό calendar state.</span><Link href="/calendar" onClick={()=>setCalendarOpen(false)}>Πλήρες ημερολόγιο</Link></div>
+          <div className="calendar-runtime-link"><CalendarDays size={15}/><span>Η προβολή χρησιμοποιεί το ίδιο ημερολόγιο με την πλήρη προβολή.</span><Link href="/calendar" onClick={()=>setCalendarOpen(false)}>Πλήρες ημερολόγιο</Link></div>
 
           <div className="calendar-body">
             <div className="calendar-agenda">
-              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} συνεδρίες · persistent demo</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><Link href="/calendar" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
+              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} ραντεβού</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><Link href="/calendar?new=1" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
               {todaySchedule.length?todaySchedule.map(event=><div className="agenda-event" key={event.id}>
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
@@ -221,9 +221,9 @@ export default function Page() {
       </div>}
 
       {widgetOpen&&<div className="dashboard-widget-overlay" onClick={()=>setWidgetOpen(null)}>
-        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"To do"} onClick={e=>e.stopPropagation()}>
+        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"Εκκρεμότητες"} onClick={e=>e.stopPropagation()}>
           <header className="dashboard-widget-head">
-            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"To do"}</h2></div>
+            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Ψυχομετρικά":"Εκκρεμότητες"}</h2></div>
             <button onClick={()=>setWidgetOpen(null)} aria-label="Κλείσιμο"><X size={18}/></button>
           </header>
           {widgetError&&<div className="save-state error" role="alert">{widgetError}</div>}
@@ -231,13 +231,13 @@ export default function Page() {
           {widgetOpen==="payments"&&<div className="dashboard-widget-list">
             {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>
               <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
-              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>Πληρώθηκε;</span><Check size={15}/></button>
+              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>Σήμανση ως πληρωμένο</span><Check size={15}/></button>
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμείς πληρωμές.</div>}
           </div>}
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
             {psychometricsForReview.length?psychometricsForReview.map(assessment=><div className="dashboard-widget-row" key={assessment.id}>
-              <div><strong>{assessment.patient_name} · {assessment.instrument}</strong><span>{assessment.completed_at?new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(assessment.completed_at)):"Συμπληρώθηκε"}{assessment.score!==null?" · score "+assessment.score:""}</span></div>
+              <div><strong>{assessment.patient_name} · {assessment.instrument}</strong><span>{assessment.completed_at?new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(assessment.completed_at)):"Συμπληρώθηκε"}{assessment.score!==null?" · βαθμολογία "+assessment.score:""}</span></div>
               <Link href={"/patients/demo/"+assessment.patient_id+"?tab=psychometrics"}>Έλεγχος <ChevronRight size={15}/></Link>
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν νέα ψυχομετρικά για έλεγχο.</div>}
           </div>}
@@ -246,9 +246,9 @@ export default function Page() {
             <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>Προσθήκη</button></div>
             <div className="dashboard-widget-list">
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
-                <div><strong>{task.title}</strong>{task.due_at&&<span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at))}</span>}</div>
+                <div><strong>{task.title}</strong><span>{task.source_session_id?"Πρόχειρη καταγραφή":"Εργασία"}{task.due_at?" · "+new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
                 {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=sessions&session="+task.source_session_id} aria-label={"Συνέχεια "+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>}
-              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν ανοιχτές εργασίες.</div>}
+              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμότητες.</div>}
             </div>
           </>}
         </section>
@@ -258,9 +258,9 @@ export default function Page() {
 }
 
 function TodoMetric({tasks,value,loading,error,onOpen}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
-  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':tasks.length?(tasks.length===1?'1 ανοιχτή εργασία':tasks.length+' ανοιχτές εργασίες'):'Δεν υπάρχουν ανοιχτές εργασίες';
-  return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα To do">
-    <div className="metric-icon"><ListTodo size={22}/></div><span>To do</span><strong>{value}</strong><small>{note}</small>
+  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':tasks.length?(tasks.length===1?'1 εκκρεμότητα':tasks.length+' εκκρεμότητες'):'Δεν υπάρχουν ανοιχτές εργασίες';
+  return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα εκκρεμοτήτων">
+    <div className="metric-icon"><ListTodo size={22}/></div><span>Εκκρεμότητες</span><strong>{value}</strong><small>{note}</small>
   </button>;
 }
 

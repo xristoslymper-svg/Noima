@@ -93,7 +93,7 @@ function timeLabel(iso: string) {
 
 function appointmentType(value: string) {
   if (value === "initial_assessment") return "Πρώτη αξιολόγηση";
-  if (value === "follow_up") return "Follow-up";
+  if (value === "follow_up") return "Επανεξέταση";
   if (value === "other") return "Άλλο";
   return value;
 }
@@ -264,6 +264,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
+    if (url.searchParams.get("new") === "1") {
+      setAppointmentEditor({ mode: "create", date: focusDate });
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.pathname + url.search);
+      return;
+    }
     const patient = url.searchParams.get("patient");
     if (patient && patients.some(item => item.id === patient)) {
       setAppointmentEditor({ mode: "create", date: focusDate, patientId: patient });
@@ -736,10 +742,10 @@ export default function CalendarPage() {
             </div>}
 
             {selectedEvent.patient_id&&selectedEvent.status!=="cancelled"&&<div className="calendar-payment-state">
-              <div><strong>Πληρώθηκε;</strong><span>{selectedEvent.payment_status==="paid"?"Καταχωρισμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":"Δεν έχει σημειωθεί"}</span></div>
+              <div><strong>Κατάσταση πληρωμής</strong><span>{selectedEvent.payment_status==="paid"?"Πληρωμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":"Δεν έχει σημειωθεί"}</span></div>
               <div className="calendar-payment-choice">
-                <button className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}><Check size={14}/> Ναι</button>
-                <button className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Όχι</button>
+                <button className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}><Check size={14}/> Πληρωμένο</button>
+                <button className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Εκκρεμεί</button>
               </div>
             </div>}
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
@@ -1166,7 +1172,7 @@ function AppointmentEditor({
         <label>Ημερομηνία<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
         <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
-        {mode === "create" && <label>Τύπος<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">Follow-up</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
+        {mode === "create" && <label>Τύπος<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">Επανεξέταση</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
         {mode === "create" && <label>Επανάληψη<select value={recurrence} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
         {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </fieldset>

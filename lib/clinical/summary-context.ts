@@ -1,10 +1,10 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=16;
+export const SUMMARY_POLICY_VERSION=17;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
-export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
+export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
 export const summaryThemes=['general','medication','course','risk','psychometrics','plan','context'] as const;
 export type SummaryTheme=typeof summaryThemes[number];
 export type Finding={key:string;label:Category;text:string;source_ids:string[];attention:boolean;origin:'canonical'|'documented'|'synthesis';group_label?:string;theme?:SummaryTheme};
@@ -116,9 +116,10 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
   const encounterTime=clinicalSessionTime(bundle,session);
   for(const section of bundle.sections.filter(s=>s.session_id===session.id)){
    const content=correctedSectionContent(bundle,section);if(!content.trim())continue;
-   add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||section.section_key}`,date:encounterTime,session_id:session.id,content,target:'sessions',record_id:section.id});
+   const required_correction_ids=structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},section.section_key)).map(c=>'structured_correction:'+c.id);
+   add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||section.section_key}`,date:encounterTime,session_id:session.id,section_key:section.section_key,required_correction_ids,content,target:'sessions',record_id:section.id});
   }
-  const risk=correctedRisk(bundle,session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(encounterTime)} · Κίνδυνος`,date:encounterTime,session_id:session.id,content:risk,target:'sessions',record_id:session.id});
+  const risk=correctedRisk(bundle,session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(encounterTime)} · Κίνδυνος`,date:encounterTime,session_id:session.id,required_correction_ids:structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},'risk')).map(c=>'structured_correction:'+c.id),content:risk,target:'sessions',record_id:session.id});
  }
  for(const med of bundle.medications)add({id:'medication:'+med.id,kind:'structured_medication',label:'Αγωγή · '+med.medication_name,content:med,target:'medications',record_id:med.id});
  for(const event of bundle.medicationEvents)add({id:'event:'+event.id,kind:'medication_event',label:`Αλλαγή ${event.effective_on} · ${bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή'}`,date:event.created_at,session_id:event.session_id||undefined,content:event,target:'medications',record_id:event.id});
@@ -139,7 +140,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  const findings:Finding[]=[];
  const push=(key:string,label:Category,text:string,source_ids:string[],attention=false,origin:Finding['origin']='canonical')=>findings.push({key,label,text,source_ids,attention,origin});
  const risk=latest?correctedRisk(bundle,latest.id):undefined;
- if(risk){const keys=Object.keys(riskNames);const positive=keys.filter(k=>risk[k as keyof typeof risk]==='positive').map(k=>riskNames[k]);const negative=keys.filter(k=>risk[k as keyof typeof risk]==='negative').map(k=>riskNames[k]);const uncertain=keys.filter(k=>['unknown','not_assessed'].includes(String(risk[k as keyof typeof risk]))).map(k=>`${riskNames[k]} ${risk[k as keyof typeof risk]==='not_assessed'?'δεν διερευνήθηκε':'παραμένει άγνωστο'}`);const parts=[positive.length?`Θετικά ευρήματα: ${positive.join(', ')}.`:'',negative.length?`Δεν καταγράφηκαν: ${negative.join(', ')}.`:'',uncertain.length?`Δεν έχουν αποσαφηνιστεί: ${uncertain.join(', ')}.`:''].filter(Boolean);push('risk','Κίνδυνος',`Εκτίμηση ${dateLabel(clinicalSessionTime(bundle,latest))}: ${parts.join(' ')} Δεν υποκαθιστά σημερινή εκτίμηση.`,['risk:'+latest.id],keys.some(k=>!['intent','plan'].includes(k)&&risk[k as keyof typeof risk]!=='negative')||(['unknown','positive'].includes(risk.suicidal_ideation)&&[risk.intent,risk.plan].some(v=>v!=='negative')));}
+ if(risk){const keys=Object.keys(riskNames);const positive=keys.filter(k=>risk[k as keyof typeof risk]==='positive').map(k=>riskNames[k]);const negative=keys.filter(k=>risk[k as keyof typeof risk]==='negative').map(k=>riskNames[k]);const uncertain=keys.filter(k=>['unknown','not_assessed'].includes(String(risk[k as keyof typeof risk]))).map(k=>`${riskNames[k]} ${risk[k as keyof typeof risk]==='not_assessed'?'δεν διερευνήθηκε':'παραμένει άγνωστο'}`);const ideation=risk.tree?.answers.ideation;const description=ideation==='passive'?'παθητικές σκέψεις':ideation==='active'?'ενεργές σκέψεις':ideation==='both'?'παθητικές και ενεργές σκέψεις':'';const parts=[positive.length?`Θετικά ευρήματα: ${positive.join(', ')}${risk.suicidal_ideation==='positive'?` (${description||'μορφή μη προσδιορισμένη'}) · Πρόθεση: ${states[risk.intent]||'δεν διερευνήθηκε'} · Σχέδιο: ${states[risk.plan]||'δεν διερευνήθηκε'}`:''}.`:'',uncertain.length?`Δεν έχουν αποσαφηνιστεί: ${uncertain.join(', ')}.`:'',negative.length?`Δεν καταγράφηκαν: ${negative.join(', ')}.`:''].filter(Boolean);push('risk','Κίνδυνος',`Εκτίμηση ${dateLabel(clinicalSessionTime(bundle,latest))}: ${parts.join(' ')} Δεν υποκαθιστά σημερινή εκτίμηση.`,['risk:'+latest.id],keys.some(k=>!['intent','plan'].includes(k)&&risk[k as keyof typeof risk]!=='negative')||(['unknown','positive'].includes(risk.suicidal_ideation)&&[risk.intent,risk.plan].some(v=>v!=='negative')));}
  else push('risk-missing','Κίνδυνος','Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.',[],true);
  if(risk?.clinical_note?.trim())push('risk-note','Κίνδυνος',`Κλινική σημείωση κινδύνου ${dateLabel(clinicalSessionTime(bundle,latest))}: «${risk.clinical_note}»`,['risk:'+latest.id],narrativeRiskRequiresReview(risk.clinical_note),'documented');
  if(bundle.clinical_day&&bundle.clinical_day!==day)push('medication-refresh','Αγωγή','Η ημερομηνία άλλαξε. Απαιτείται ανανέωση της αγωγής πριν εμφανιστεί η σημερινή κατάσταση.',[],true);
@@ -159,7 +160,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  for(const s of corrections){
   if(s.kind==='structured_correction'){
    const c=s.content as {reason:string;patch:Record<string,{before:unknown;after:unknown}>};
-   push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Δομημένη διόρθωση ${dateLabel(s.date)}: ${c.reason}. Η τρέχουσα προβολή της συνεδρίας περιλαμβάνει ${Object.keys(c.patch||{}).length} διορθωμένα πεδία/ενότητες.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
+   push('correction:'+s.id,'Σημαντικό ιστορικό',`Δομημένη διόρθωση ${dateLabel(s.date)}: ${c.reason}. Η τρέχουσα προβολή της συνεδρίας περιλαμβάνει ${Object.keys(c.patch||{}).length} διορθωμένα πεδία/ενότητες.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],false,'documented');
   }else push('correction:'+s.id,'Χρειάζεται επιβεβαίωση',`Μεταγενέστερη ${s.label.toLocaleLowerCase('el')}: «${(s.content as {content:string}).content}». Ερμηνεύστε την αρχική συνεδρία μαζί με αυτή την προσθήκη.`,[s.id,...sources.filter(x=>x.kind==='session_section'&&x.session_id===s.session_id).map(x=>x.id)],true,'documented');
  }
  for(const session of completed.filter(s=>s.id!==latest?.id)){const old=correctedRisk(bundle,session.id);if(!old||old.attempt_history!=='positive')continue;push('past-attempt:'+old.session_id,'Σημαντικό ιστορικό',`Δομημένη καταγραφή προηγούμενης συνεδρίας: θετικό ιστορικό απόπειρας. Η μεταγενέστερη ένδειξη «άγνωστο» ή «δεν διερευνήθηκε» δεν αναιρεί αυτή την καταγραφή${correctedParents.has(old.session_id)?' · υπάρχει διόρθωση προς συνεκτίμηση':''}.`,['risk:'+old.session_id,...corrections.filter(c=>c.session_id===old.session_id).map(c=>c.id)],true);}
@@ -236,11 +237,13 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
   if(item.source_ids.some(id=>typeof id!=='string')||new Set(item.source_ids).size!==item.source_ids.length)throw new Error('unsupported_source');
   const sources=item.source_ids.map(id=>context.sources.find(s=>s.id===id));
   if(sources.some(s=>!s))throw new Error('unsupported_source');
-  const correctedSessions=new Set(context.layers.corrections.map(c=>c.session_id));
   for(const source of sources){
-   if(source?.session_id&&['session_section','structured_risk'].includes(source.kind)&&correctedSessions.has(source.session_id)){
-    const relevant=context.layers.corrections.filter(c=>c.session_id===source.session_id);
-    if(relevant.some(c=>!item.source_ids.includes(c.id)))throw new Error('corrected_parent');
+   if(source?.session_id&&['session_section','structured_risk'].includes(source.kind)){
+    // Narrative corrections need interpretation across the encounter. Structured
+    // patches affect only their named section, already applied to its content.
+    const narrative=context.layers.corrections.filter(c=>c.kind==='addendum'&&c.session_id===source.session_id);
+    const required=[...narrative.map(c=>c.id),...(source.required_correction_ids||[])];
+    if(required.some(id=>!item.source_ids.includes(id)))throw new Error('corrected_parent');
    }
    if(source?.kind==='medication_event'){
     const revisions=context.sources.filter(s=>s.kind==='medication_revision'&&s.record_id===source.record_id);

@@ -93,3 +93,24 @@ test('GET rejects outdated cache and returns the same fresh card contract as POS
  assert.deepEqual((await(await get()).json()).card,generated.card);
  b.sections[0].content='Changed plan';assert.equal((await get()).status,404);assert.equal(calls,2);
 });
+
+test('writer schema restricts citations to supplied IDs and one structural retry is still independently verified',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].content='Sleep is better.';let calls=0;
+ const handler=route(b,async(u,o)=>{
+  const payload=JSON.parse(o.body);calls++;
+  if(calls<3){
+   assert.ok(payload.text.format.schema.properties.findings.items.properties.source_ids.items.enum.includes('section:n'));
+   if(calls===2)assert.match(payload.instructions,/unsupported_source/);
+   return response({findings:[{text:'Sleep is better.',source_ids:[calls===1?'invented':'section:n']}]});
+  }
+  return response({checks:[{key:'briefing:0',supported:true,issue:'none'}]});
+ });
+ assert.equal((await(await handler.POST(request())).json()).mode,'synthesis');assert.equal(calls,3);
+});
+
+test('unrelated MSE correction does not invalidate supported interview synthesis',async()=>{
+ const b=fixture();b.addenda=[];b.sections[0].section_key='interview';b.sections[0].content='Reports better sleep.';
+ b.corrections=[{id:'c',session_id:'s',reason:'MSE only',created_at:'2026-10-04',patch:{mse:{after:'Corrected observation.'}}}];
+ let calls=0;const handler=route(b,async()=>response(++calls===1?{findings:[{text:'Reports better sleep.',source_ids:['section:n']}]}:{checks:[{key:'briefing:0',supported:true,issue:'none'}]}));
+ const d=await(await handler.POST(request())).json();assert.equal(d.mode,'synthesis');assert.ok(!d.card.alerts.some(f=>f.key.startsWith('correction:')));assert.equal(d.card.corrections.length,1);
+});

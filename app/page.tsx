@@ -49,6 +49,8 @@ export default function Page() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useState(false);
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
+  const [bundleFailure,setBundleFailure]=useState<string|null>(null);
+  const [bundleRetry,setBundleRetry]=useState(0);
   const [schedule,setSchedule]=useState<OverviewEvent[]>([]);
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
   const [tasks,setTasks]=useState<TodoTask[]>([]);
@@ -72,7 +74,7 @@ export default function Page() {
     setOverviewState('ready');
     void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
-  useEffect(()=>{if(!selectedPatientId)return;let cancelled=false;const controller=new AbortController();const load=async()=>{try{const tester=getDemoTesterId();const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(selectedPatientId),{cache:"no-store",signal:controller.signal});const d=await r.json();if(r.ok&&d.bundle&&!cancelled)setBundles(current=>({...current,[selectedPatientId]:d.bundle as PatientBundle}))}catch{}};void load();const refresh=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('focus',refresh);return()=>{cancelled=true;controller.abort();window.removeEventListener('focus',refresh)}},[selectedPatientId]);
+  useEffect(()=>{if(!selectedPatientId)return;setBundleFailure(null);let cancelled=false;const controller=new AbortController();const load=async()=>{try{const tester=getDemoTesterId();const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(selectedPatientId),{cache:"no-store",signal:controller.signal});const d=await r.json();if(!r.ok||!d.bundle)throw new Error('bundle_unavailable');if(!cancelled){setBundles(current=>({...current,[selectedPatientId]:d.bundle as PatientBundle}));setBundleFailure(null)}}catch{if(!cancelled&&!controller.signal.aborted)setBundleFailure(selectedPatientId)}};void load();const refresh=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('focus',refresh);return()=>{cancelled=true;controller.abort();window.removeEventListener('focus',refresh)}},[selectedPatientId,bundleRetry]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
@@ -160,11 +162,11 @@ export default function Page() {
             <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
-          <section className={todaySchedule.length&&selectedBundle?"main-grid":"main-grid single"}>
+          <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
             <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
-                const selectable=Boolean(event.patient_id&&bundles[event.patient_id]);
+                const selectable=Boolean(event.patient_id);
                 return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
@@ -182,6 +184,7 @@ export default function Page() {
               <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
               <ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
             </div>}
+            {todaySchedule.length>0&&selectedPatientId&&!selectedBundle&&<div className="card ai-brief" role="status">{bundleFailure===selectedPatientId?<><p>Η κλινική εικόνα δεν φορτώθηκε.</p><button onClick={()=>setBundleRetry(n=>n+1)}>Δοκιμή ξανά</button></>:<p>Φόρτωση κλινικής εικόνας…</p>}</div>}
           </section>
 
         </div>

@@ -4,6 +4,28 @@ import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryC
 import {isClinicalId} from '../lib/clinical/identity.ts';
 const fixture=()=>({patient:{id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',chief_complaint:'Incomplete',note:''},sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],assessments:[],appointments:[]});
 const visit=(b,id,text)=>{b.sessions.push({id,status:'completed',completed_at:`2026-10-0${id}T09:00:00Z`,started_at:`2026-10-0${id}T08:00:00Z`});b.sections.push({id:'s'+id,session_id:id,section_key:'interview',content:text});};
+
+test('structured correction is required only for its patched source, narrative correction remains encounter-wide',()=>{
+ const b=fixture();visit(b,1,'Ο ασθενής αναφέρει καλύτερο ύπνο.');
+ b.sections.push({id:'m',session_id:1,section_key:'mse',content:'Αγχώδες.'});
+ b.corrections=[{id:'c',session_id:1,created_at:'2026-10-05',reason:'MSE correction',patch:{mse:{after:'Ευθυμικό.'}}}];
+ const c=buildSummaryContext(b);
+ assert.doesNotThrow(()=>validateNarrative({findings:[{text:'Ο ασθενής αναφέρει καλύτερο ύπνο.',source_ids:['section:s1']}]},c));
+ assert.throws(()=>validateNarrative({findings:[{text:'Καταγράφηκε ευθυμικό συναίσθημα.',source_ids:['section:m']}]},c),/corrected_parent/);
+ assert.doesNotThrow(()=>validateNarrative({findings:[{text:'Καταγράφηκε ευθυμικό συναίσθημα.',source_ids:['section:m','structured_correction:c']}]},c));
+ b.addenda.push({id:'a',session_id:1,kind:'correction',content:'Διόρθωση συνέντευξης.',created_at:'2026-10-06'});
+ assert.throws(()=>validateNarrative({findings:[{text:'Ο ασθενής αναφέρει καλύτερο ύπνο.',source_ids:['section:s1']}]},buildSummaryContext(b)),/corrected_parent/);
+});
+
+test('risk preview states passive ideation and explicit intent/plan, uncertainty precedes reassuring negatives',()=>{
+ const b=fixture();visit(b,1,'Καταγραφή εκτίμησης.');
+ b.risks=[{session_id:1,suicidal_ideation:'positive',intent:'negative',plan:'negative',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative',tree:{version:1,answers:{wish:'positive',ideation:'passive'},notes:{}}}];
+ const risk=buildSummaryContext(b).findings.find(f=>f.key==='risk');
+ assert.match(risk.text,/παθητικές σκέψεις.*Πρόθεση: αρνητικό.*Σχέδιο: αρνητικό/);assert.match(risk.text,/Δεν υποκαθιστά σημερινή/);
+ b.risks[0].suicidal_ideation='negative';b.risks[0].attempt_history='unknown';
+ const text=buildSummaryContext(b).findings.find(f=>f.key==='risk').text;
+ assert.ok(text.indexOf('Δεν έχουν αποσαφηνιστεί')<text.indexOf('Δεν καταγράφηκαν'));
+});
 test('durable safety facts and old corrections survive six visits without canonical promotion',()=>{
  const b=fixture();visit(b,1,'Προηγούμενη απόπειρα. Αλλεργία στη Lamotrigine.');b.risks.push({session_id:1,attempt_history:'positive'});for(let i=2;i<=6;i++)visit(b,i,'Σταθερή εικόνα.');b.addenda.push({id:'a',session_id:1,kind:'correction',content:'Αλλεργία στην Carbamazepine, όχι Lamotrigine.',created_at:'2026-10-02'});
  const before=JSON.stringify(b);const c=buildSummaryContext(b,'2026-10-03');assert.equal(JSON.stringify(b),before);assert.ok(c.layers.durable.some(s=>s.id==='section:s1'));assert.ok(c.layers.corrections.some(s=>s.id==='addendum:a'));assert.ok(c.findings.some(f=>f.text.includes('Carbamazepine')));assert.ok(c.findings.some(f=>f.key==='past-attempt:1'));assert.ok(!c.findings.some(f=>f.text.includes('Αλλεργία στη Lamotrigine')));

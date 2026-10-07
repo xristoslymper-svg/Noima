@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildClinicalCard} from '../lib/clinical/clinical-card.ts';
+import {buildClinicalCard,clinicalCardPreview} from '../lib/clinical/clinical-card.ts';
 import {buildSummaryContext} from '../lib/clinical/summary-context.ts';
 const fixture=()=>({patient:{id:'p'},sessions:[{id:'s',status:'completed',started_at:'2026-10-07'},{id:'d',status:'draft',started_at:'2026-10-08'}],sections:[{id:'a',session_id:'s',section_key:'assessment',content:'Diagnosis',document:{kind:'assessment',fields:[{key:'diagnosis',label:'Diagnosis',text:'',status:'provisional',codes:[{code:'F41.1',label:'Fictional anxiety'}]}]}},{id:'m',session_id:'s',section_key:'mse',content:'Recorded',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Αγχώδες',review:'changed'},{key:'speech',label:'Speech',text:'Κενό',review:'not_assessed'}]}},{id:'i',session_id:'s',section_key:'interview',content:'Ο ασθενής αναφέρει καλύτερο ύπνο.'},{id:'draft',session_id:'d',section_key:'interview',content:'SECRET DRAFT'}],risks:[],history:null,medications:[{id:'active',medication_name:'Sertraline',status:'active',dose:50,unit:'mg',frequency:'πρωί'},{id:'future',medication_name:'Future',status:'planned',dose:100}],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],corrections:[],assessments:[],appointments:[]});
 test('one card uses completed structured diagnoses, current medication and actual MSE only',()=>{
@@ -33,4 +33,24 @@ test('MSE change labels reflect corrected previous observations, never missing d
  const b=fixture();b.sessions.push({id:'old',status:'completed',started_at:'2026-09-01'});b.sections.push({id:'oldm',session_id:'old',section_key:'mse',content:'Previous',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Ευθυμικό'}]}});
  const card=buildClinicalCard(b,buildSummaryContext(b));assert.deepEqual(card.changeLabels,['Συναίσθημα']);assert.equal(card.changes.length,1);
  b.sections[0].document.fields=[];b.sections.find(s=>s.id==='oldm').document.fields[0].text='';assert.deepEqual(buildClinicalCard(b,buildSummaryContext(b)).changeLabels,[]);
+});
+
+test('compact card keeps the primary diagnosis and course plus complete next step visible',()=>{
+ const b=fixture();b.sections[0].document.fields.unshift({key:'differential_1',text:'Πανικός',status:'under_investigation'});
+ b.sections.unshift({id:'plan',session_id:'s',section_key:'plan',content:'Επικοινωνία σε μία εβδομάδα.'},{id:'review',session_id:'s',section_key:'review',content:'Επανεξέταση σε δύο εβδομάδες.'});
+ b.sections.find(s=>s.id==='i').content='Ο ασθενής αναφέρει καλύτερο ύπνο. '+ 'Μία πλήρης μακρά καταγραφή '.repeat(20)+'.';
+ const card=buildClinicalCard(b,buildSummaryContext(b));
+ assert.match(card.diagnoses[0].text,/F41.1/);assert.match(card.diagnoses[1].text,/Διαφορική/);
+ const visible=clinicalCardPreview(card.notes,30).preview;
+ assert.match(visible[0].text,/καλύτερο ύπνο/);
+ assert.ok(visible.some(i=>i.text.includes('μία εβδομάδα')&&i.text.includes('δύο εβδομάδες')));
+ assert.equal(clinicalCardPreview([{text:'Long '.repeat(40),source_ids:['x']}],18).preview.length,1);
+});
+
+test('synthesis cannot silently omit the recorded review or leave resolved corrections as warnings',()=>{
+ const b=fixture();b.sections.push({id:'review',session_id:'s',section_key:'review',content:'Επανεξέταση σε δύο εβδομάδες.'});
+ b.corrections=[{id:'fix',session_id:'s',created_at:'2026-10-08',reason:'MSE corrected',patch:{mse:{after:{kind:'mse',fields:[{key:'mood',text:'Ευθυμικό'}]}}}}];
+ const card=buildClinicalCard(b,buildSummaryContext(b),[{origin:'synthesis',theme:'course',text:'Ο ασθενής αναφέρει καλύτερο ύπνο.',source_ids:['section:i']}],true);
+ assert.ok(card.notes.some(i=>i.text.includes('δύο εβδομάδες')));
+ assert.equal(card.corrections.length,1);assert.ok(!card.alerts.some(f=>f.key.startsWith('correction:')));
 });

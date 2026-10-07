@@ -54,3 +54,12 @@ The fictional Dokimos A medication snapshot lacked any timeline events. The exis
 The historical source-kind mismatch reproduces unsupported_source; a historical failed provider payload was unavailable. Current main already generated seven bullets before this pass, with an excessive deterministic warning appendage. Do not represent the old invocation's exact failure as proven.
 
 Verification: 91 tests pass; production build, lint/type checks pass. A live provider check on the actual fictional chart returned seven supported bullets. A separate adversarial provider check rejected invented bipolar diagnosis, reversed anger-event negation and false medication discontinuation despite valid source IDs. Opt-in helper: `node --experimental-strip-types tests/support/verify-dokimos-summary.mjs`; it expects an exported fixture at ../dokimos-summary-fixed.json and a local ignored provider key. It never writes clinical data. Remove local credentials after use.
+# Clinical card refinement — policy 17
+
+The compact and full cards use the same completed-record context. Primary diagnosis precedes differentials; whole sentences retain source links, with a course item and the complete documented plan/review kept visible. The next step uses the doctor's record even when a synthesis omits it. Long entries may exceed the preview word target rather than being cut or clinically reinterpreted.
+
+Effective source evidence includes `section_key` and exact `required_correction_ids`. A structured patch requires its citation only for the patched section/risk; narrative corrections remain encounter-wide. Resolved structured corrections are available in the full card audit disclosure, while genuine unresolved conflicts retain attention status. Policy 17 invalidates earlier verified caches.
+
+Writer citations are constrained to supplied source IDs. Only structural citation failures receive one bounded retry (30 seconds per writer attempt); every successful candidate still passes independent grounding verification (45 seconds). Semantic verifier failures return fresh record-derived content without retry. No clinical text or identifiers are logged.
+
+The overview permits selecting an identified patient before its bundle loads, with an explicit loading/error/retry state. This removes the dependency cycle that previously disabled every patient other than the initial selection.

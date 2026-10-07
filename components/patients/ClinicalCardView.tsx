@@ -6,6 +6,7 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 
 // Whole sentences only: long records stay available behind an explicit disclosure.
 export default function ClinicalCardView({card,patientId,compact=false}:{card:ClinicalCard;patientId:string;compact?:boolean}){
+ const comparison=clinicalCardPreview(card.changeSummary,compact?35:60);
  function sourceLinks(items:CardItem[]){const ids=[...new Set(items.flatMap(i=>i.source_ids))];return ids.length>0&&<details className="clinical-card-sources"><summary>Πηγές</summary>{ids.map(id=>{const s=card.sources.find(s=>s.id===id);return s?<Link key={id} href={'/patients/demo/'+patientId+'?tab='+s.target+(s.session_id?'&session='+s.session_id:'')}>{s.label}</Link>:null})}</details>}
  function block(title:string,items:CardItem[],empty:string,budget:number){
   const {preview,rest}=clinicalCardPreview(items,budget);
@@ -19,7 +20,8 @@ export default function ClinicalCardView({card,patientId,compact=false}:{card:Cl
    {block('Τρέχουσα αγωγή',card.medications,'Δεν υπάρχει καταχωρισμένη ενεργή αγωγή.',compact?18:30)}
   </div>
   {block('Ψυχική κατάσταση',card.mse,'Δεν υπάρχει καταγεγραμμένο MSE στην τελευταία ολοκληρωμένη επίσκεψη.',compact?18:45)}
-  {card.changeLabels.length>0&&<p className="clinical-card-change">Καταγεγραμμένες αλλαγές: {card.changeLabels.join(', ')}.</p>}
+  {comparison.preview.map((item,i)=><p className="clinical-card-change" key={i}>{item.text}</p>)}
+  {comparison.rest.length>0&&<details className="clinical-card-details"><summary>Περισσότερες αλλαγές · {comparison.rest.length}</summary>{comparison.rest.map((item,i)=><p key={i}>{item.text}</p>)}</details>}
   {!compact&&card.changes.length>0&&<details className="clinical-card-details"><summary>Αλλαγές από την προηγούμενη επίσκεψη</summary>{card.changes.map((i,n)=><p key={n}>{i.text}</p>)}{sourceLinks(card.changes)}</details>}
   {block('Πορεία & επόμενο βήμα',card.notes,'Δεν υπάρχει διαθέσιμη καταγραφή πορείας ή πλάνου.',card.synthesized?90:compact?30:65)}
   {!card.synthesized&&card.notes.length>0&&<small className="clinical-card-date">Καταγραφές γιατρού · η σύντομη σύνθεση δεν είναι διαθέσιμη.</small>}

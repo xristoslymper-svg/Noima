@@ -1,9 +1,10 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 import type {SummaryContext,Finding,Evidence} from './summary-context';
+import {mseFieldSentence,mseChangeSentences} from './mse-language.ts';
 
 export type CardItem={text:string;source_ids:string[];role?:'course'|'plan'};
-export type ClinicalCard={date:string|null;diagnoses:CardItem[];medications:CardItem[];mse:CardItem[];changes:CardItem[];changeLabels:string[];notes:CardItem[];alerts:Finding[];corrections:Finding[];sources:Evidence[];synthesized:boolean};
+export type ClinicalCard={date:string|null;diagnoses:CardItem[];medications:CardItem[];mse:CardItem[];changes:CardItem[];changeLabels:string[];changeSummary:CardItem[];notes:CardItem[];alerts:Finding[];corrections:Finding[];sources:Evidence[];synthesized:boolean};
 // Never cut a clinical sentence. Keep the primary fact visible even when long.
 export function clinicalCardPreview(items:CardItem[],limit:number){
  const preview:CardItem[]=[],rest:CardItem[]=[];let words=0;
@@ -41,16 +42,19 @@ export function buildClinicalCard(bundle:PatientBundle,context:SummaryContext,fi
  })||[];
  const medications=bundle.clinical_day&&bundle.clinical_day!==context.day?[]:bundle.medications.filter(m=>m.status==='active').map(m=>({text:[m.medication_name,m.dose+' '+m.unit,m.frequency].filter(Boolean).join(' · '),source_ids:['medication:'+m.id]}));
  const mseOrder=['mood','affect','thought_content','thought_process','perception','speech','appearance','cognition','insight','judgment','impulse_control','reliability','legacy'];
- const mseItems=mse?.doc?mse.doc.fields.filter(f=>f.text.trim()&&f.review!=='not_assessed').sort((a,b)=>Number(b.review==='changed')-Number(a.review==='changed')||mseOrder.indexOf(a.key)-mseOrder.indexOf(b.key)).map(f=>({text:(labels[f.key]||f.label)+': '+(f.key==='mood'?f.text.replace(/^Υποκειμενικό συναίσθημα:\s*/u,''):f.text),source_ids:mse.source_ids})):mse?.content?[{text:mse.content,source_ids:mse.source_ids}]:[];
+ const mseSentences=mse?.doc?mse.doc.fields.filter(f=>f.text.trim()&&f.review!=='not_assessed').sort((a,b)=>mseOrder.indexOf(a.key)-mseOrder.indexOf(b.key)).map(f=>({key:f.key,text:mseFieldSentence(f),source_ids:mse.source_ids})):[];
+ const core=mseSentences.filter(i=>['mood','affect','speech'].includes(i.key));
+ const mseItems:CardItem[]=mse?.doc?[...(core.length?[{text:core.map(i=>i.text).join(' '),source_ids:mse!.source_ids}]:[]),...mseSentences.filter(i=>!['mood','affect','speech'].includes(i.key))]:mse?.content?[{text:mse.content,source_ids:mse.source_ids}]:[];
  const previous=[...bundle.sessions].filter(s=>s.status==='completed'&&s.id!==latest?.id).sort((a,b)=>Date.parse(time(b.id))-Date.parse(time(a.id)))[0];
  const before=previous?section('mse',previous.id):null;
  const changeLabels=mse?.doc?.fields.filter(f=>f.key!=='legacy'&&f.review!=='not_assessed'&&f.text.trim()&&before?.doc?.fields.some(old=>old.key===f.key&&old.text.trim()&&old.text!==f.text)).map(f=>labels[f.key]||f.label)||[];
  const changes=context.findings.filter(f=>f.key.startsWith('mse-change:')).map(f=>({text:f.text,source_ids:f.source_ids}));
+ const changeSummary=mse?.doc&&before?.doc?mseChangeSentences(mse.doc,before.doc,labels).map(text=>({text,source_ids:[...new Set([...mse.source_ids,...before.source_ids])]})):[];
  const noteSources=context.sources.filter(s=>s.kind==='session_section'&&s.session_id===latest?.id&&!narrativeCorrections.has(s.session_id)&&['interview','plan','review'].includes(s.section_key||''));
  const recorded=noteSources.flatMap(s=>Array.from(new Intl.Segmenter('el',{granularity:'sentence'}).segment(String(s.content)),sentence=>({text:sentence.segment.trim(),source_ids:[s.id,...(s.required_correction_ids||[])],role:s.section_key==='interview'?'course' as const:'plan' as const}))).filter(i=>i.text);
  const plan=recorded.filter(i=>i.role==='plan');
  // The next step is the doctor's complete record, not an optional model detail.
  const nextStep:CardItem[]=plan.length?[{text:plan.map(i=>i.text).join(' '),source_ids:[...new Set(plan.flatMap(i=>i.source_ids))],role:'plan'}]:[];
  const notes:CardItem[]=[...(synthesized?findings.filter(f=>f.origin==='synthesis'&&(f.theme!=='plan'||!plan.length)).map(f=>({text:f.text,source_ids:f.source_ids,role:'course' as const})):recorded.filter(i=>i.role==='course')),...nextStep];
- return {date:latest?time(latest.id):null,diagnoses,medications,mse:mseItems,changes,changeLabels,notes,alerts:context.findings.filter(f=>f.attention),corrections:context.findings.filter(f=>f.key.startsWith('correction:')&&!f.attention),sources:context.sources,synthesized};
+ return {date:latest?time(latest.id):null,diagnoses,medications,mse:mseItems,changes,changeLabels,changeSummary,notes,alerts:context.findings.filter(f=>f.attention),corrections:context.findings.filter(f=>f.key.startsWith('correction:')&&!f.attention),sources:context.sources,synthesized};
 }

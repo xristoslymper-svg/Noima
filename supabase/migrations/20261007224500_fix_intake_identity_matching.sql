@@ -6,7 +6,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=''
-as $
+as $intake_fix$
 <<intake_identity_match>>
 declare a private.demo_intakes; p public.demo_patients; e public.demo_calendar_events; before_event jsonb;
  first_name text; last_name text; phone text; email text; amka text; address text; contact_phone text;
@@ -88,5 +88,5 @@ begin
    identity=p_identity,history_answers=p_history,psychometric_answers=p_psych,conflict=null
  where id=a.id;
  return jsonb_build_object('status','submitted');
-end $$;
+end $intake_fix$;
 revoke all on function private.intake_finalize(uuid,jsonb,jsonb,jsonb) from public,anon,authenticated;

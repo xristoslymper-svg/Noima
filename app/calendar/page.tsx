@@ -4,6 +4,7 @@ import PilotProfile from '@/components/PilotProfile';
 import Link from "next/link";
 import AppointmentStartConfirmation from "@/components/calendar/AppointmentStartConfirmation";
 import SummaryPeek from "@/components/patients/SummaryPeek";
+import IntakeLauncher from "@/components/intake/IntakeLauncher";
 import {calendarSegment as segment, calendarWindow, calendarLanes, cancelledHistoryPlacement} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
@@ -46,6 +47,8 @@ type CalendarEvent = {
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
   payment_status: "unknown" | "pending" | "paid" | "not_applicable";
+  provisional_phone?: string;
+  provisional_email?: string;
   sms_reminder_enabled?:boolean;
   sms_reminder?:{status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
@@ -183,6 +186,7 @@ export default function CalendarPage() {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [appointmentEditor, setAppointmentEditor] = useState<{ mode: "create" | "edit"; event?: CalendarEvent; date?: string; minute?: number; duration?: number; nextFor?: CalendarEvent; patientId?: string } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [intakeEvent,setIntakeEvent]=useState<CalendarEvent|null>(null);
   const [quickBusy,setQuickBusy]=useState(false);
   const quickBusyRef=useRef(false);
   const [undoEvent,setUndoEvent]=useState<CalendarEvent|null>(null);
@@ -733,6 +737,7 @@ export default function CalendarPage() {
 
             <div className="calendar-popover-actions calendar-icon-actions calendar-icon-actions-compact">
               {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>Φάκελος</span></Link>}
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"} onClick={()=>{setIntakeEvent(selectedEvent);setSelectedEvent(null)}}><Activity size={20}/><span>Συμπλήρωση</span></button>
               <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>Ραντεβού</span></button>
             </div>
 
@@ -756,7 +761,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {appointmentEditor && (
+      {intakeEvent&&<IntakeLauncher appointmentId={intakeEvent.id} patientId={intakeEvent.patient_id||undefined} patientEmail={intakeEvent.provisional_email||""} defaultTools={intakeEvent.patient_id?["PHQ-9"]:["history"]} onClose={()=>setIntakeEvent(null)} onDone={()=>void refreshEvents()}/>}\n\n      {appointmentEditor && (
         <AppointmentEditor
           mode={appointmentEditor.mode}
           event={appointmentEditor.event}
@@ -1000,6 +1005,8 @@ function AppointmentEditor({
   const [quickFirstName,setQuickFirstName]=useState("");
   const [quickLastName,setQuickLastName]=useState("");
   const [quickPhone,setQuickPhone]=useState("");
+  const [quickEmail,setQuickEmail]=useState("");
+  const [provisional,setProvisional]=useState<{first_name:string;last_name:string;phone:string;email:string}|null>(null);
   const [quickPatientSaving,setQuickPatientSaving]=useState(false);
   const quickPatientSavingRef=useRef(false);
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
@@ -1019,7 +1026,7 @@ function AppointmentEditor({
   const matchingPatients=normalizedPatientSearch
     ? patients.filter(patient=>((patient.first_name+" "+patient.last_name).toLocaleLowerCase("el-GR").includes(normalizedPatientSearch)))
     : patients.slice(0,8);
-  const patientMobile=selectedPatient?.phone||"";
+  const patientMobile=selectedPatient?.phone||provisional?.phone||"";
   function openQuickPatient(){
     const parts=patientSearch.trim().split(/\s+/).filter(Boolean);
     setQuickFirstName(parts[0]||"");
@@ -1029,24 +1036,12 @@ function AppointmentEditor({
     setPatientPickerOpen(false);
     setError("");
   }
-  async function createQuickPatient(){
+  function chooseProvisionalPatient(){
     const firstName=quickFirstName.trim();
     if(!firstName){setError("Συμπληρώστε τουλάχιστον το όνομα.");return}
-    if(quickPatientSavingRef.current)return;
-    quickPatientSavingRef.current=true;setQuickPatientSaving(true);setError("");
-    try{
-      const response=await fetch("/api/patients/demo/runtime",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        action:"create_patient",tester:getDemoTesterId(),first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),
-        age:null,landline:"",contact_phone:"",amka:"",address:"",email:"",chief_complaint:""
-      })});
-      const data=(await response.json().catch(()=>({}))) as {patient?:PatientOption;error?:string};
-      if(!response.ok||!data.patient)throw new Error(data.error||"Δεν δημιουργήθηκε ο ασθενής.");
-      onPatientCreated(data.patient);
-      setPatientId(data.patient.id);
-      setPatientSearch("");
-      setQuickPatientOpen(false);
-    }catch(cause){setError(cause instanceof Error?cause.message:"Δεν δημιουργήθηκε ο ασθενής.")}
-    finally{quickPatientSavingRef.current=false;setQuickPatientSaving(false)}
+    const value={first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),email:quickEmail.trim()};
+    setProvisional(value);setPatientId("");setPatientSearch((value.first_name+" "+value.last_name).trim());
+    setQuickPatientOpen(false);setPatientPickerOpen(false);setType("initial_assessment");setTypeManuallyChosen(true);setRecurrence("none");setSmsReminder(false);setError("");
   }
   const hasMobile=/^(69[0-9]{8}|\+3069[0-9]{8}|003069[0-9]{8}|\+[1-9][0-9]{7,14})$/.test(patientMobile.replace(/[\s()-]/g,""));
   const [saving, setSaving] = useState(false);
@@ -1071,8 +1066,8 @@ function AppointmentEditor({
   async function mutate(action: "create" | "move" | "cancel" | "restore") {
     if (busyRef.current) return;
     const patient = patients.find(item => item.id === patientId);
-    if (action === "create" && !patient) {
-      setError("Επιλέξτε ασθενή.");
+    if (action === "create" && !patient && !provisional) {
+      setError("Επιλέξτε υπάρχοντα ασθενή ή καταχωρίστε νέο ραντεβού χωρίς φάκελο.");
       return;
     }
     const [hours, minutes] = time.split(":").map(Number);
@@ -1099,8 +1094,11 @@ function AppointmentEditor({
           expected_updated_at: event?.updated_at,
           expected_series_updated_at: event?.series_updated_at,
           scope,
-          patient_id: action === "create" ? patientId : event?.patient_id || null,
-          patient_name: action === "create" ? (patient?.first_name + " " + patient?.last_name).trim() : event?.patient_name || null,
+          patient_id: action === "create" ? patientId || null : event?.patient_id || null,
+          patient_name: action === "create" ? patient ? (patient.first_name + " " + patient.last_name).trim() : provisional ? (provisional.first_name+" "+provisional.last_name).trim() : null : event?.patient_name || null,
+          create_new_patient: action === "create" && !patient && Boolean(provisional),
+          provisional_phone: action === "create" ? provisional?.phone || null : null,
+          provisional_email: action === "create" ? provisional?.email || null : null,
           start_iso: startIso,
           end_iso: endIso,
           appointment_type: action === "create" ? type : event?.appointment_type || type,
@@ -1141,9 +1139,9 @@ function AppointmentEditor({
               placeholder={selectedPatient?(selectedPatient.first_name+" "+selectedPatient.last_name):"Αναζήτηση ασθενή…"}
               autoComplete="off"
               onFocus={()=>{if(!quickPatientOpen)setPatientPickerOpen(true)}}
-              onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);setQuickPatientOpen(false);if(patientId)setPatientId("")}}
+              onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);setQuickPatientOpen(false);setProvisional(null);if(patientId)setPatientId("")}}
             />
-            {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setPatientPickerOpen(true)}}><X size={14}/></button>}
+            {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setProvisional(null);setPatientPickerOpen(true)}}><X size={14}/></button>}
           </div>
           {patientPickerOpen&&<div className="appointment-patient-results">
             {matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
@@ -1161,11 +1159,11 @@ function AppointmentEditor({
             <div className="appointment-quick-patient-grid">
               <label>Όνομα *<input autoFocus value={quickFirstName} onChange={e=>setQuickFirstName(e.target.value)}/></label>
               <label>Επώνυμο<input value={quickLastName} onChange={e=>setQuickLastName(e.target.value)}/></label>
-              <label>Κινητό<input value={quickPhone} onChange={e=>setQuickPhone(e.target.value)} placeholder="Προαιρετικό"/></label>
+              <label>Κινητό<input value={quickPhone} onChange={e=>setQuickPhone(e.target.value)} placeholder="Προαιρετικό"/></label><label>Email<input type="email" value={quickEmail} onChange={e=>setQuickEmail(e.target.value)} placeholder="Προαιρετικό"/></label>
             </div>
             <div className="appointment-quick-patient-footer">
               <Link href="/patients/new" target="_blank" rel="noreferrer">Δημιουργία πλήρους φακέλου ↗</Link>
-              <button type="button" disabled={quickPatientSaving||!quickFirstName.trim()} onClick={()=>void createQuickPatient()}>{quickPatientSaving?"Δημιουργία…":"Δημιουργία & επιλογή"}</button>
+              <button type="button" disabled={!quickFirstName.trim()} onClick={chooseProvisionalPatient}>Χρήση για το ραντεβού</button>
             </div>
           </div>}
         </div>}
@@ -1173,7 +1171,7 @@ function AppointmentEditor({
         <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
         <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
         {mode === "create" && <label>Τύπος<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">Επανεξέταση</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
-        {mode === "create" && <label>Επανάληψη<select value={recurrence} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
+        {mode === "create" && <label>Επανάληψη<select value={recurrence} disabled={Boolean(provisional)} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
         {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </fieldset>
       <div className="calendar-sms-setting"><label><input type="checkbox" checked={smsReminder} disabled={saving||event?.status==="completed"||event?.status==="cancelled"||Boolean(event?.session_id)} onChange={e=>setSmsReminder(e.target.checked)}/> Υπενθύμιση SMS · 24 ώρες πριν</label><small>{hasMobile ? "Κινητό …"+patientMobile.replace(/\D/g,"").slice(-4)+" · Προσομοίωση αποστολής" : "Χρειάζεται έγκυρο κινητό στον φάκελο ασθενή."}</small><small>Σε ραντεβού εντός 24 ωρών, προγραμματίζεται στον επόμενο έλεγχο. Δεν αποστέλλεται πραγματικό SMS.</small>{event?.sms_reminder&&<small>{event.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":event.sms_reminder.status==="queued"?"Προγραμματισμένη: "+dateTimeLabel(event.sms_reminder.due_at):event.sms_reminder.status==="missing_phone"?"Δεν υπάρχει έγκυρο κινητό":event.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Η υπενθύμιση ακυρώθηκε"}</small>}</div>
@@ -1181,7 +1179,7 @@ function AppointmentEditor({
       {mode === "create" && recurrence !== "none" && date && <p className="calendar-recurrence-preview">{occurrences} ραντεβού · κάθε {recurrence} εβδομάδα/ες · {time}, ώρα Αθήνας. Η ώρα παραμένει σταθερή στις αλλαγές θερινής ώρας.</p>}
       {confirmCancel && <div className="calendar-dialog-confirm" role="alert">Να ακυρωθεί {scope === "one" ? "αυτό το ραντεβού" : "το επιλεγμένο σύνολο της σειράς"};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>Επιβεβαίωση ακύρωσης</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>Επιστροφή</button></div>}
 
-      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}
+      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name} · ο φάκελος θα δημιουργηθεί από το intake.</span></div>}
       {error && <div className="calendar-move-error"><span>{error}</span></div>}
 
       <footer className="appointment-editor-footer">

@@ -17,7 +17,7 @@ export default function MseDomain({field,previousField,referenceLabel,olderRefer
     {changed&&previousField&&<button type="button" className="mse-skip" onClick={()=>onChange(previousField.text)}>Επαναφορά προηγούμενων</button>}
     {onSkip&&review!=='not_assessed'&&<button type="button" className="mse-skip" onClick={onSkip}>Δεν αξιολογήθηκε</button>}
    </div>}
-   {hint&&<details className="mse-guide-help"><summary>Οδηγός ενότητας</summary><p>{hint}</p>{field.key==='thought_content'&&<p>SI / HI: τεκμηρίωση στην ενότητα Risk.</p>}</details>}
+   {hint&&<details className="mse-guide-help"><summary>Οδηγός ενότητας</summary><p>{hint}</p>{field.key==='thought_content'&&<p>SI / HI: τεκμηρίωση στην ενότητα Κίνδυνος.</p>}</details>}
   </div>
  </details>;
 }

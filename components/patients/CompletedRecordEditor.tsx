@@ -76,7 +76,7 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack,regi
  }
  return <section className="session-workspace completed-session-view corrected-record-view">
   <div className="session-work-head">
-   <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.');return}onBack()}}>← Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Η αρχική καταγραφή παραμένει αμετάβλητη. Οι διορθώσεις αποθηκεύονται ξεχωριστά με audit trail.</p></div>
+   <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.');return}onBack()}}>← Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'ΕΠΑΝΕΞΕΤΑΣΗ'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</h2><p>Η αρχική καταγραφή παραμένει αμετάβλητη. Οι διορθώσεις αποθηκεύονται ξεχωριστά με ιστορικό αλλαγών.</p></div>
    <div className="completed-record-actions"><span className="draft-updated">Ολοκληρώθηκε {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" disabled={!ready} onClick={beginEditing}>{ready?'Διόρθωση καταγραφής':'Φόρτωση καταγραφής…'}</button>}</div>
   </div>
 

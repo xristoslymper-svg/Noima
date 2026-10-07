@@ -779,7 +779,6 @@ export default function CalendarPage() {
             if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
           }}
           onOpenSession={openAppointmentSession}
-          onPatientCreated={patient=>setPatients(current=>current.some(item=>item.id===patient.id)?current:[patient,...current])}
         />
       )}
 
@@ -978,7 +977,6 @@ function AppointmentEditor({
   onClose,
   onSaved,
   onOpenSession,
-  onPatientCreated,
 }: {
   mode: "create" | "edit";
   event?: CalendarEvent;
@@ -992,7 +990,6 @@ function AppointmentEditor({
   onClose: () => void;
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
-  onPatientCreated: (patient: PatientOption) => void;
 }) {
   const initialPatient = event?.patient_id || nextFor?.patient_id || initialPatientId || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
@@ -1007,8 +1004,6 @@ function AppointmentEditor({
   const [quickPhone,setQuickPhone]=useState("");
   const [quickEmail,setQuickEmail]=useState("");
   const [provisional,setProvisional]=useState<{first_name:string;last_name:string;phone:string;email:string}|null>(null);
-  const [quickPatientSaving,setQuickPatientSaving]=useState(false);
-  const quickPatientSavingRef=useRef(false);
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
@@ -1053,7 +1048,7 @@ function AppointmentEditor({
   const selectedStartIso=useMemo(()=>{if(!date||!/^[0-2]\d:[0-5]\d$/.test(time))return null;const [hours,minutes]=time.split(":").map(Number);if(hours>23)return null;try{return localAthensToIso(date,hours*60+minutes)}catch{return null}},[date,time]);
   const pastSelection=Boolean(selectedStartIso&&Date.parse(selectedStartIso)<Date.now());
   const busyRef=useRef(false);
-  const editorRef=useCalendarDialog(onClose,saving||quickPatientSaving);
+  const editorRef=useCalendarDialog(onClose,saving);
   useEffect(()=>{
     if(!patientPickerOpen)return;
     const dismiss=(event:PointerEvent)=>{if(patientPickerRef.current&&!patientPickerRef.current.contains(event.target as Node))setPatientPickerOpen(false)};

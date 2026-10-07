@@ -134,6 +134,34 @@ test('self registration needs a verified email, creates an empty private workspa
  assert.deepEqual((await asUser(uid,()=>sql("select pilot_join('Self Tester') identity")))[0],{identity:null});
 });
 
+test('three self-registered doctors retain isolated empty spaces, stable identity and no administrative privileges',async()=>{
+ const doctors=['10000000-0000-4000-8000-000000000091','10000000-0000-4000-8000-000000000092','10000000-0000-4000-8000-000000000093'];
+ const spaces=[],patients=[];
+ for(const [index,doctor] of doctors.entries()){
+  await sql('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[doctor,`fictional-doctor-${index}@example.invalid`]);
+  const [{identity}]=await asUser(doctor,()=>sql('select pilot_join($1) identity',[`Fictional Doctor ${index}`]));
+  spaces.push(identity.workspace_id);assert.equal(identity.can_invite,false);
+  assert.deepEqual(await asUser(doctor,()=>sql('select id from demo_patients')),[]);
+  const [{identity:again}]=await asUser(doctor,()=>sql('select pilot_join($1) identity',['Changed label']));
+  assert.equal(again.workspace_id,identity.workspace_id);assert.equal(again.full_name,identity.full_name);
+  const [patient]=await asUser(doctor,()=>sql("select (demo_patient_create_v2($1,$2,'Fictional fixture')).id id",[identity.workspace_id,`TEST Doctor ${index} Patient`]));
+  patients.push(patient.id);
+ }
+ assert.equal(new Set(spaces).size,3);
+ for(const [index,doctor] of doctors.entries()){
+  const visible=await asUser(doctor,()=>sql('select id from demo_patients'));
+  assert.deepEqual(visible.map(row=>row.id),[patients[index]]);
+  for(const [other,space] of spaces.entries())if(other!==index){
+   await rejected(doctor,'select demo_assessment_list($1,$2)',[space,patients[other]],/pilot_not_authorized/);
+   await rejected(doctor,"select demo_history_save($1,$2,'{}'::jsonb,null)",[space,patients[other]],/pilot_not_authorized/);
+  }
+  await rejected(doctor,'select pilot_invite_create(null)',[],/owner_required/);
+ }
+ await sql('update private.pilot_members set active=false where user_id=$1',[doctors[0]]);
+ assert.deepEqual(await asUser(doctors[0],()=>sql('select id from demo_patients')),[]);
+ await rejected(doctors[0],'select demo_assessment_list($1,$2)',[spaces[0],patients[0]],/pilot_not_authorized/);
+});
+
 test('recurring appointments retain Athens wall time across DST, are canonical and reject a conflicting series atomically',async()=>{
  const t='80000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
  const [patient]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);

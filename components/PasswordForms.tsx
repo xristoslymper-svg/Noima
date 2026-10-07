@@ -1,5 +1,6 @@
 'use client';
 import {useState,type FormEvent} from 'react';
+import {notifyAccountChange} from '@/lib/pilot/browser-session';
 
 async function post(body:Record<string,unknown>){
  const response=await fetch('/api/auth/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -27,7 +28,7 @@ export function PasswordChangeForm({recovery=false}:{recovery?:boolean}){
   setBusy(true);
   try{
    await post(recovery?{action:'reset',password}:{action:'change',current_password:current,password});
-   if(recovery){window.location.assign('/login?password=updated');return}
+   if(recovery){notifyAccountChange();window.location.replace('/login?password=updated');return}
    setCurrent('');setPassword('');setConfirm('');setMessage('Ο κωδικός άλλαξε.');
   }catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε.')}finally{setBusy(false)}
  }

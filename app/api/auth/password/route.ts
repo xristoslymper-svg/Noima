@@ -1,5 +1,6 @@
 import {cookies} from 'next/headers';
 import {pilotClient} from '@/lib/pilot/server';
+import {authEmailEnabled} from '@/lib/pilot/auth-email';
 
 export const dynamic='force-dynamic';
 
@@ -25,9 +26,11 @@ export async function POST(request:Request){
  const client=await pilotClient();
 
  if(action==='request_reset'){
+  if(!authEmailEnabled)return reply({error:'Η αποστολή συνδέσμων επαναφοράς δεν είναι διαθέσιμη ακόμη. Αν χρησιμοποιείτε Google, επιλέξτε «Συνέχεια με Google».'},503);
   const email=String(b.email||'').trim().toLowerCase();
   if(!validEmail(email))return reply({error:'Συμπληρώστε έγκυρο email.'},400);
-  await client.auth.resetPasswordForEmail(email,{redirectTo:new URL('/auth/callback',request.url).href});
+  const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:new URL('/auth/callback',request.url).href});
+  if(error)return error.status===429?reply({error:'Έχουν γίνει πολλές προσπάθειες. Περιμένετε λίγο και δοκιμάστε ξανά.'},429):reply({error:'Η αποστολή δεν ολοκληρώθηκε. Δοκιμάστε ξανά αργότερα.'},503);
   return reply({ok:true});
  }
 

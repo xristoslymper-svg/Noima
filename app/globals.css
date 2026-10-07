@@ -704,3 +704,11 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 @media(max-width:760px){.completed-correction-grid{grid-template-columns:1fr}.completed-record-actions{align-items:flex-start}.correction-audit article{grid-template-columns:1fr}.correction-save-bar{bottom:8px}}
 
 .mse-compare-head p{margin:5px 0 0;font-size:11px;line-height:1.5}.mse-compare-head strong{white-space:nowrap}.mse-pending{font-size:10px;color:#8a6b36}.mse-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #e5ece5}.mse-review-actions button{border:1px solid #cbded3;background:#edf6ef;border-radius:8px;padding:8px 10px;color:#315f52;font-size:11px;font-weight:600;cursor:pointer}.mse-review-actions .mse-skip{background:transparent;border-color:transparent;color:#758278}.mse-review-actions button:focus-visible{outline:2px solid #315f52;outline-offset:2px}@media(max-width:720px){.mse-compare-head{align-items:flex-start;flex-direction:column}.mse-review-actions button{min-height:40px}}
+
+.pilot-card .account-email{font-weight:650;color:#315f52;overflow-wrap:anywhere}
+.account-details summary{cursor:pointer;color:#42685a;font-weight:650;padding:6px 0}
+.account-details[open]{display:grid;gap:16px}
+.account-details[open]>summary{margin-bottom:14px}
+.login-method-hint{text-align:center;color:#728277}
+.profile>div:last-child{min-width:0}.profile span{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:520px){.pilot-page{padding:24px 14px}.pilot-card{padding:26px 22px}.pilot-card h1{font-size:27px}}

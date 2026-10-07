@@ -111,6 +111,7 @@ async function handlePOST(req:Request){
    }
    reason=/^(provider_unavailable|record_exceeds_synthesis_limit|provider_failed_\d+|empty_output|incomplete_output|grounding_not_verified|invalid_output|invalid_count|invalid_finding|invalid_category|invalid_presentation|unsafe_text|unsupported_source|corrected_parent|trajectory_requires_two_visits|obsolete_current_source|critical_coverage_failed|summary_cache_failed)$/.test(safe)?safe:'synthesis_not_verified';
   }
+  if(reason)console.error('clinical_summary_synthesis_unavailable',{reason});
   const findings=canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
   return Response.json({card:buildClinicalCard(bundle,context),findings,sources:context.sources,context_hash,as_of:context.day,generated_at:new Date().toISOString(),mode,reason,model:null},{headers:{'Cache-Control':'no-store'}});
  }catch(e){const missing=e instanceof Error&&e.message.includes('patient_not_found');return Response.json({error:missing?'Ο φάκελος δεν βρέθηκε.':'Δεν φορτώθηκαν τα κλινικά δεδομένα. Δεν εμφανίζεται παλαιότερη σύνοψη.'},{status:missing?404:503});}

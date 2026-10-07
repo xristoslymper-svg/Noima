@@ -11,6 +11,6 @@ export const riskTreeQuestions:Record<string,{title:string;hint?:string;choices:
  selfacted:{title:'Υπήρξε πράξη αυτοτραυματισμού;',choices:riskTreeChoices},
  others:{title:'Υπάρχουν σκέψεις ή συμπεριφορές βλάβης προς άλλους;',choices:riskTreeChoices}
 };
-export function riskTreePath(a:Record<string,string>){const p=['wish'];if(a.wish==='positive'){p.push('acted');if(a.acted==='positive')p.push('injury');if(a.acted==='negative'){p.push('ideation');if(['active','both'].includes(a.ideation))p.push('intent','plan')}}if(a.wish==='negative'){p.push('selfthoughts');if(a.selfthoughts==='positive')p.push('selfacted')}return p;}
+export function riskTreePath(a:Record<string,string>){const p=['wish'];if(a.wish==='positive'){p.push('acted');if(a.acted==='positive')p.push('injury');if(a.acted==='negative')p.push('ideation');p.push('intent','plan')}if(a.wish==='negative'){p.push('selfthoughts');if(a.selfthoughts==='positive')p.push('selfacted')}return p;}
 export function riskTreeHidden(tree:RiskTree){const visible=[...riskTreePath(tree.answers),'others'];return Object.keys(riskTreeQuestions).filter(id=>!visible.includes(id)&&(tree.answers[id]&&tree.answers[id]!=='not_assessed'||tree.notes[id]?.trim()));}
 export function riskTreeLabel(id:string,value:string){return riskTreeQuestions[id]?.choices.find(([v])=>v===value)?.[1]||value;}

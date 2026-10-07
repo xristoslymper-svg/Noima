@@ -6,11 +6,11 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=''
-as $$
+as $
+<<intake_identity_match>>
 declare a private.demo_intakes; p public.demo_patients; e public.demo_calendar_events; before_event jsonb;
  first_name text; last_name text; phone text; email text; amka text; address text; contact_phone text;
  age integer; candidate public.demo_patients; conflict_data jsonb;
-<<intake_identity_match>>
 begin
  select * into a from private.demo_intakes where id=p_intake for update;
  if not found or a.status='revoked' then raise exception 'intake_unavailable'; end if;

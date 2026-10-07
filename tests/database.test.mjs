@@ -267,7 +267,7 @@ test('visit questionnaire assignment is scoped, idempotent and cannot move betwe
 
 test('visit documents reload as one canonical section, reject stale writes and remain immutable after finalization', async()=>{
  const t='90000000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);const [p]=await sql('select id from demo_patients where tester_id=$1 limit 1',[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
- const doc={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Denies low mood; uncertain reliability.'}]};
+ const doc={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Denies low mood; uncertain reliability.',review:'unchanged'},{key:'speech',label:'Speech',text:'',review:'not_assessed'}]};
  const [saved]=await sql("select * from demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]);
  const [loaded]=await sql("select * from demo_session_sections where id=$1",[saved.id]);assert.deepEqual(loaded.document,doc);assert.equal(loaded.content,'Mood: Denies low mood; uncertain reliability.');
  await assert.rejects(sql("select demo_session_save_document($1,$2,'mse',$3,null)",[t,s.id,JSON.stringify(doc)]),/stale_section/);

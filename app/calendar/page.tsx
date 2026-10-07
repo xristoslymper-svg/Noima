@@ -196,6 +196,7 @@ export default function CalendarPage() {
   const visibleEvents = useMemo(() => events.filter(event => statusFilter === "all" || (statusFilter === "current" ? event.status !== "cancelled" : event.status === statusFilter)), [events,statusFilter]);
   const weekScrollerRef = useRef<HTMLElement | null>(null);
   const currentTimeRef=useRef<HTMLDivElement|null>(null);
+  const centeredTodayRef=useRef<string|null>(null);
   const [nowMs,setNowMs]=useState(()=>Date.now());
 
   const refreshEvents = useCallback(async () => {
@@ -352,8 +353,20 @@ export default function CalendarPage() {
     });
   }, [view, days, focusDate]);
   useEffect(()=>{
-    if(view!=="week"||focusDate!==currentDay||loading)return;
-    requestAnimationFrame(()=>currentTimeRef.current?.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+    if(view!=="week"||focusDate!==currentDay){centeredTodayRef.current=null;return}
+    if(loading||centeredTodayRef.current===currentDay)return;
+    const frame=requestAnimationFrame(()=>{
+      const scroller=weekScrollerRef.current;
+      const marker=currentTimeRef.current;
+      if(!scroller||!marker)return;
+      centeredTodayRef.current=currentDay;
+      const header=scroller.querySelector<HTMLElement>(".time-grid-head");
+      const headerHeight=header?.offsetHeight||0;
+      const markerTop=marker.getBoundingClientRect().top-scroller.getBoundingClientRect().top-scroller.clientTop+scroller.scrollTop;
+      const visibleHours=Math.max(0,scroller.clientHeight-headerHeight);
+      scroller.scrollTo({top:Math.max(0,markerTop-headerHeight-visibleHours*.4),behavior:"instant"});
+    });
+    return()=>cancelAnimationFrame(frame);
   },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
@@ -917,6 +930,11 @@ export default function CalendarPage() {
         .calendar-quick-error{color:#a85350!important;margin-top:12px!important}.calendar-undo{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:90vw;padding:16px 20px;background:#fff;border:1px solid #ead9d7;border-radius:18px;box-shadow:0 12px 40px rgba(40,55,45,.15);font-size:13px;color:#725651}.calendar-undo button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#356b59;cursor:pointer;font-weight:650}
         @media(max-width:1050px){.calendar-time-grid{min-width:850px!important}.calendar-week-card{overflow-x:auto}}
         @media(max-width:650px){.calendar-page-heading{align-items:flex-start}.calendar-page-actions{width:100%;justify-content:space-between}.calendar-control-bar{flex-wrap:wrap}.calendar-page-heading h1{font-size:30px}.clinical-agenda-row{grid-template-columns:58px 2px minmax(0,1fr)!important;padding:8px 0!important}.agenda-actions{grid-column:3;justify-content:flex-start!important;padding-bottom:6px}}
+        /* Keep automatic and manual time scrolling inside the calendar. */
+        .calendar-week-card.interactive-week{position:relative;height:clamp(280px,calc(100dvh - 320px),720px);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+        .interactive-week .week-day-head.time-grid-head{position:sticky;top:0;z-index:6}
+        .interactive-week .week-time-corner{top:0;z-index:7}
+        @media(max-width:650px){.calendar-week-card.interactive-week{height:55dvh;min-height:240px}}
       `}</style>
 
       {voice && (

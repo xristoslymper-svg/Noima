@@ -29,11 +29,19 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack,regi
 
  const [editing,setEditing]=useState(false),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const correctionRequest=useRef<string|null>(null);
- const [mse,setMse]=useState<VisitDocument>(baseMse),[assessment,setAssessment]=useState<VisitDocument>(baseAssessment),[risk,setRisk]=useState(baseRisk),[narrative,setNarrative]=useState(baseNarrative);
- useEffect(()=>{setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('')},[session.id,bundle.corrections?.length]);
+ const [editedMse,setMse]=useState<VisitDocument>(baseMse),[editedAssessment,setAssessment]=useState<VisitDocument>(baseAssessment),[editedRisk,setRisk]=useState(baseRisk),[editedNarrative,setNarrative]=useState(baseNarrative);
+ const baseline=useRef({mse:baseMse,assessment:baseAssessment,risk:baseRisk,narrative:baseNarrative,count:0});
+ // Viewing always follows canonical data. Editing starts from one frozen version.
+ const mse=editing?editedMse:baseMse,assessment=editing?editedAssessment:baseAssessment,risk=editing?editedRisk:baseRisk,narrative=editing?editedNarrative:baseNarrative;
+ const ready=['interview','mse','assessment','plan','review'].every(key=>Boolean(find(key)))&&Boolean(bundle.risks.find(item=>item.session_id===session.id));
+ function beginEditing(){
+  if(!ready)return;
+  baseline.current={mse:baseMse,assessment:baseAssessment,risk:baseRisk,narrative:baseNarrative,count:correctionsFor(corrections,session.id).length};
+  setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('');correctionRequest.current=crypto.randomUUID();setEditing(true);
+ }
 
  function reset(){setMse(baseMse);setAssessment(baseAssessment);setRisk(baseRisk);setNarrative(baseNarrative);setReason('');setError('');setEditing(false);correctionRequest.current=null}
- function changeMse(index:number,text:string){setMse(current=>({...current,fields:current.fields.map((field,i)=>i===index?{...field,text}:field)}))}
+ function changeMse(index:number,text:string){setMse(current=>({...current,fields:current.fields.map((field,i)=>i===index?{...field,text,review:text.trim()?'changed':'not_assessed'}:field)}))}
  function changeAssessment(index:number,change:Partial<DocumentField>){setAssessment(current=>({...current,fields:current.fields.map((field,i)=>i===index?{...field,...change}:field)}))}
  function changeRisk(key:'suicidal_ideation'|'intent'|'plan'|'self_harm'|'attempt_history'|'harm_to_others',value:string){
   setRisk(current=>{
@@ -43,10 +51,12 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack,regi
  }
  function makePatch(){
   const value:Record<string,{before:unknown;after:unknown}>={};
-  for(const key of narrativeKeys)if(!same(baseNarrative[key],narrative[key]))value[key]={before:baseNarrative[key],after:narrative[key]};
-  if(!same(baseMse,mse))value.mse={before:baseMse,after:mse};
-  if(!same(baseAssessment,assessment))value.assessment={before:baseAssessment,after:assessment};
-  if(!same(baseRisk,risk))value.risk={before:baseRisk,after:risk};
+  if(!editing)return value;
+  const base=baseline.current;
+  for(const key of narrativeKeys)if(!same(base.narrative[key],narrative[key]))value[key]={before:base.narrative[key],after:narrative[key]};
+  if(!same(base.mse,mse))value.mse={before:base.mse,after:mse};
+  if(!same(base.assessment,assessment))value.assessment={before:base.assessment,after:assessment};
+  if(!same(base.risk,risk))value.risk={before:base.risk,after:risk};
   return value;
  }
  const pending=Object.keys(makePatch()).length;
@@ -56,16 +66,18 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack,regi
  useEffect(()=>{onDirtyChange(correctionKey,correctionDirty);return()=>onDirtyChange(correctionKey,false)},[correctionKey,correctionDirty,onDirtyChange]);
  useEffect(()=>registerFlusher(correctionKey,async()=>{if(correctionDirty)throw new Error('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.')}),[correctionKey,correctionDirty,registerFlusher]);
  async function save(){
-  if(!pending||!reason.trim()||busy)return;setBusy(true);setError('');
+  if(!pending||!reason.trim()||busy)return;
+  if(history.length!==baseline.current.count){setError('Η καταγραφή διορθώθηκε όσο την επεξεργαζόσασταν. Ακυρώστε τη διόρθωση και ανοίξτε την ενημερωμένη έκδοση.');return}
+  setBusy(true);setError('');
   const requestId=correctionRequest.current||(correctionRequest.current=crypto.randomUUID());
-  try{await demoPost({action:'correct_session',session_id:session.id,request_id:requestId,reason:reason.trim(),patch:makePatch(),expected_count:history.length});await reload();setEditing(false);setReason('');correctionRequest.current=null}
+  try{await demoPost({action:'correct_session',session_id:session.id,request_id:requestId,reason:reason.trim(),patch:makePatch(),expected_count:baseline.current.count});await reload();setEditing(false);setReason('');correctionRequest.current=null}
   catch(e){setError(e instanceof Error?e.message:'Δεν αποθηκεύτηκε η διόρθωση.')}
   finally{setBusy(false)}
  }
  return <section className="session-workspace completed-session-view corrected-record-view">
   <div className="session-work-head">
    <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError('Αποθηκεύστε ή ακυρώστε τη διόρθωση πριν φύγετε από την καταγραφή.');return}onBack()}}>← Συνεδρίες</button><span className="visit-label completed"><span>ΟΡΙΣΤΙΚΟΠΟΙΗΜΕΝΟ</span><i/> {session.session_type==='initial_assessment'?'ΑΡΧΙΚΗ ΑΞΙΟΛΟΓΗΣΗ':'FOLLOW-UP'}</span><h2>{session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επαναληπτική συνεδρία'}</h2><p>Η αρχική καταγραφή παραμένει αμετάβλητη. Οι διορθώσεις αποθηκεύονται ξεχωριστά με audit trail.</p></div>
-   <div className="completed-record-actions"><span className="draft-updated">Ολοκληρώθηκε {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" onClick={()=>{correctionRequest.current=crypto.randomUUID();setEditing(true);setError('')}}>Διόρθωση καταγραφής</button>}</div>
+   <div className="completed-record-actions"><span className="draft-updated">Ολοκληρώθηκε {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" disabled={!ready} onClick={beginEditing}>{ready?'Διόρθωση καταγραφής':'Φόρτωση καταγραφής…'}</button>}</div>
   </div>
 
   <fieldset disabled={!editing||busy} className="visit-document completed-record-form">

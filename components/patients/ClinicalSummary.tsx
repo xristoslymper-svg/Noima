@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import {useCalendarDialog} from '@/components/calendar/useCalendarDialog';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {requestClinicalSummary} from '@/lib/clinical/summary-request';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {buildSummaryContext,canonicalSummaryFindings,summaryContextHash,summaryContextKey,clinicDay,type Finding,type Evidence,categories} from '@/lib/clinical/summary-context';
@@ -11,6 +12,7 @@ type ResponseData={findings:Finding[];sources:Evidence[];context_hash:string;gen
 export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychometrics,onMedications,onHistory,compact=false}:{compact?:boolean;bundle:PatientBundle;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void}){
  const [retry,setRetry]=useState(0);
  const [regenerate,setRegenerate]=useState(0);
+ const handledRegeneration=useRef(0);
  const inputKey=summaryContextKey(inputBundle,clinicDay());
  const bundle=inputBundle;
  const [day,setDay]=useState(clinicDay());
@@ -25,31 +27,24 @@ export default function ClinicalSummary({bundle:inputBundle,onSessions,onPsychom
   void (async()=>{
    const tester=getDemoTesterId();
    const fresh=inputBundle;const freshKey=summaryContextKey(fresh,day);const hash=await summaryContextHash(fresh,day);
-   const r=regenerate>0
-    ?await fetch('/api/clinical/summary',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})})
-    :await fetch('/api/clinical/summary?patient_id='+encodeURIComponent(fresh.patient.id),{cache:'no-store',signal:controller.signal});
-   const data=await r.json();
-   if(!r.ok){if(r.status===404&&!regenerate){if(active){setResult(null);setState('ready')}void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});return}throw new Error('summary_unavailable')}
-   if(active){setResult({key:freshKey,data:{...data,stale:data.context_hash!==hash}});setState('ready');if(regenerate)setRegenerate(0)}
-   if(!regenerate&&data.context_hash!==hash)void fetch('/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester,patient_id:fresh.patient.id,context_hash:hash})}).catch(()=>{});
+   const force=regenerate>handledRegeneration.current;handledRegeneration.current=regenerate;
+   const data=await requestClinicalSummary<ResponseData>({patientId:fresh.patient.id,tester,hash,force,signal:controller.signal});
+   if(active){setResult({key:freshKey,data:{...data,stale:data.context_hash!==hash}});setState('ready')}
   })().catch(()=>{if(active){setResult(null);setState('unavailable')}});
   return()=>{active=false;controller.abort()};
  // key is the complete canonical record including date and policy version.
  },[inputKey,retry,day,regenerate]);
  const current=result?.key===key?result.data:null;
  const canonical=canonicalSummaryFindings(context);
- const currentCritical=canonical.filter(f=>f.attention);
- const findings=current?.stale
-  ?(currentCritical.length?canonical:current.findings.filter(f=>f.origin==='synthesis'))
-  :(current?.findings||canonical);
- const sources=current?.stale&&currentCritical.length?context.sources:(current?.sources||context.sources);
+ const findings=current?.stale?canonical:(current?.findings||canonical);
+ const sources=current?.stale?context.sources:(current?.sources||context.sources);
  const next=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>Date.now()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0];
  function navigate(source:Evidence){setEvidence(null);if(source.target==='sessions')onSessions(source.session_id);else if(source.target==='medications')onMedications();else if(source.target==='psychometrics')onPsychometrics();else if(source.target==='history')onHistory();else window.location.href='/calendar';}
  const order=[...categories].sort((a,b)=>{const priority:Record<string,number>={'Χρειάζεται επιβεβαίωση':0,'Κίνδυνος':1,'Παρενέργειες':2,'Τρέχουσα εικόνα':3,'Πορεία':4,'Αγωγή':5,'Ψυχομετρικά':6,'Πλάνο':7,'Σημαντικό ιστορικό':8};return priority[a]-priority[b]});
  const sourceHref=(source:Evidence)=>source.target==='calendar'?'/calendar':'/patients/demo/'+bundle.patient.id+'?tab='+source.target+(source.session_id?'&session='+source.session_id:'');
  const statusText=current
-  ?`${current.stale?'Ενημερώνεται · ':''}${formatClinicDateTime(current.generated_at)}`
-  :state==='loading'?'Φόρτωση…':state==='ready'?'Προετοιμάζεται στο παρασκήνιο':'Προσωρινά μη διαθέσιμη';
+  ?`${current.stale?'Χρειάζεται ανανέωση · ':''}${formatClinicDateTime(current.generated_at)}`
+  :state==='loading'?'Φόρτωση…':state==='ready'?'Καταγραφές φακέλου':'Προσωρινά μη διαθέσιμη';
  const sourceList=(finding:Finding)=>finding.source_ids.length>0&&<details className="summary-evidence"><summary>Προέλευση · {finding.source_ids.length} {finding.source_ids.length===1?'καταγραφή':'καταγραφές'}</summary><ul>{finding.source_ids.map(id=>{const source=sources.find(s=>s.id===id);return source?<li key={id}>{compact?<Link href={sourceHref(source)}>{source.label}</Link>:<button onClick={()=>setEvidence(source)}>{source.label}</button>}</li>:null})}</ul></details>;
  const themeSymbol:Record<string,string>={general:'◉',medication:'✚',course:'↗',risk:'⚑',psychometrics:'◌',plan:'→',context:'◎'};
  const fallbackTheme=(finding:Finding)=>finding.attention||finding.label==='Κίνδυνος'||finding.label==='Χρειάζεται επιβεβαίωση'?'risk':finding.label==='Αγωγή'||finding.label==='Παρενέργειες'?'medication':finding.label==='Πορεία'?'course':finding.label==='Ψυχομετρικά'?'psychometrics':finding.label==='Πλάνο'?'plan':finding.label==='Σημαντικό ιστορικό'?'context':'general';

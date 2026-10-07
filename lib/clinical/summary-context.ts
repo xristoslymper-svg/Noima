@@ -1,6 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
+import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=14;
+export const SUMMARY_POLICY_VERSION=15;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -97,6 +98,15 @@ function correctedSectionContent(bundle:PatientBundle,section:PatientBundle['sec
  }
  return value;
 }
+function effectiveMseDocument(bundle:PatientBundle,section:PatientBundle['sections'][number]):VisitDocument|null{
+ let document=section.document;
+ for(const correction of structuredCorrections(bundle,section.session_id)){
+  const after=correction.patch?.mse?.after;
+  if(typeof after==='string')document=null;
+  else if(after&&typeof after==='object'&&'kind' in after)document=after as VisitDocument;
+ }
+ return document?.kind==='mse'?document:null;
+}
 
 export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  const completed=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(clinicalSessionTime(bundle,b))-Date.parse(clinicalSessionTime(bundle,a)));
@@ -166,6 +176,24 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
   if(effectMention.test(text))push('narrative-effect:'+s.id,'Παρενέργειες',parentCorrections.length?'Αφηγηματική αναφορά παρενέργειας σε διορθωμένη συνεδρία — χρειάζεται συνεκτίμηση των πηγών.':`Αναφορά στη συνεδρία ${dateLabel(s.date)} · δεν μεταβάλλει τη δομημένη καταγραφή: «${text}»`,[s.id,...parentCorrections.map(c=>c.id)],narrativeEffectNeedsReview(text),'documented');
   if(/\d\s*(mg|μg|mcg|ml|χιλιοστόγραμμ)/iu.test(text)&&!bundle.medications.some(m=>text.toLowerCase().includes(m.medication_name.toLowerCase())))push('unstructured-med:'+s.id,'Χρειάζεται επιβεβαίωση','Υπάρχει αφηγηματική αναφορά δόσης χωρίς αντίστοιχη δομημένη αγωγή. Ελέγξτε αν αφορά τρέχουσα ή ιστορική θεραπεία.',[s.id,...parentCorrections.map(c=>c.id)],true,'documented');
  }
+ // Compare the two actual encounters, applying corrections to both snapshots.
+ // A blank/unassessed domain is missing evidence, never a resolved symptom.
+ const previous=completed[1];
+ const currentMse=bundle.sections.find(s=>s.session_id===latest?.id&&s.section_key==='mse');
+ const previousMse=bundle.sections.find(s=>s.session_id===previous?.id&&s.section_key==='mse');
+ if(currentMse&&previousMse&&!corrections.some(c=>c.kind==='addendum'&&[currentMse.session_id,previousMse.session_id].includes(c.session_id!))){
+  const before=effectiveMseDocument(bundle,previousMse),after=effectiveMseDocument(bundle,currentMse);
+  if(before&&after){
+   const changes=after.fields.flatMap(field=>{
+    const old=before.fields.find(f=>f.key===field.key);
+    return field.key!=='legacy'&&old?.text.trim()&&field.text.trim()&&field.review!=='not_assessed'&&field.text!==old.text?[`${field.label}: «${old.text}» → «${field.text}»`]:[];
+   });
+   const detail=changes.join(' · ');
+   const comparison=detail.length<=300?detail:'Μεταβλήθηκαν οι καταγραφές για '+after.fields.filter(field=>changes.some(change=>change.startsWith(field.label+':'))).map(field=>field.label).join(', ')+'. Οι πλήρεις καταγραφές εμφανίζονται στις δύο πηγές.';
+   if(changes.length)push('mse-change:'+currentMse.id,'Πορεία',`Καταγεγραμμένες μεταβολές MSE (${dateLabel(clinicalSessionTime(bundle,previous))} → ${dateLabel(clinicalSessionTime(bundle,latest))}): ${comparison}`,
+    ['section:'+previousMse.id,'section:'+currentMse.id,...corrections.filter(c=>[currentMse.session_id,previousMse.session_id].includes(c.session_id!)).map(c=>c.id)],false,'documented');
+  }
+ }
  return {day,patient_id:bundle.patient.id,sources,layers:{durable,canonical,trajectory,corrections,archive:sources.filter(s=>s.kind==='session_section')},findings};
 }
 
@@ -179,14 +207,17 @@ export function minimumBriefingItems(context:SummaryContext){
 export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
  const sections=context.sources.filter(s=>s.kind==='session_section');
  const latest=[...sections].sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''))[0]?.session_id;
- const corrected=new Set(context.layers.corrections.map(c=>c.session_id));
+ // Structured patches have already been applied to each source. Only narrative
+ // corrections still require interpretation before repeating the parent text.
+ const corrected=new Set(context.layers.corrections.filter(c=>c.kind==='addendum').map(c=>c.session_id));
  const selected=sections.filter(s=>s.session_id===latest&&!corrected.has(s.session_id));
  const additions:Finding[]=[];
  for(const source of selected){
   const suffix=source.label.split(' · ').pop();
   const category:Category|undefined=['Assessment','Interview','MSE','Λειτουργικότητα'].includes(suffix||'')?'Τρέχουσα εικόνα':['Πλάνο','Επανεκτίμηση'].includes(suffix||'')?'Πλάνο':undefined;
   if(!category)continue;
-  additions.push({key:'record:'+source.id,label:category,text:source.label+' — καταγεγραμμένο: '+String(source.content),source_ids:[source.id],attention:false,origin:'documented'});
+  const corrections=context.layers.corrections.filter(c=>c.kind==='structured_correction'&&c.session_id===source.session_id);
+  additions.push({key:'record:'+source.id,label:category,text:source.label+(corrections.length?' — με τις καταγεγραμμένες διορθώσεις: ':' — καταγεγραμμένο: ')+String(source.content),source_ids:[source.id,...corrections.map(c=>c.id)],attention:false,origin:'documented'});
  }
  return [...context.findings,...additions];
 }

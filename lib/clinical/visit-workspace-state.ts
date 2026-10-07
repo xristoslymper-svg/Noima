@@ -1,4 +1,5 @@
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
+import type {VisitDocument} from './visit-document';
 
 function documentText(document:NonNullable<PatientBundle['sections'][number]['document']>){
  return document.fields.flatMap(field=>{
@@ -13,9 +14,36 @@ function correctedSection(bundle:PatientBundle,section:PatientBundle['sections']
  let document=section.document,content=section.content;
  for(const correction of (bundle.corrections||[]).filter(item=>item.session_id===section.session_id).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id))){
   const change=correction.patch?.[section.section_key];
+  if(typeof change?.after==='string'){document=null;content=change.after}
   if(change&&change.after&&typeof change.after==='object'&&'kind' in change.after){document=change.after as typeof document;if(document)content=documentText(document)}
  }
  return {...section,document,content};
+}
+
+type MseTimelineField={key:string;label:string;state:'first'|'same'|'changed'|'not_assessed'|'missing';before:string;text:string};
+export function mseTimeline(bundle:PatientBundle,sessionId:string,startedAt:string){
+ const current=bundle.sessions.find(s=>s.id===sessionId);
+ const time=Date.parse(current?sessionClinicalTime(bundle,current):startedAt);
+ const sessions=bundle.sessions.filter(s=>s.id!==sessionId&&s.status==='completed'&&Date.parse(sessionClinicalTime(bundle,s))<time).sort((a,b)=>Date.parse(sessionClinicalTime(bundle,a))-Date.parse(sessionClinicalTime(bundle,b))||a.id.localeCompare(b.id));
+ const references:Record<string,{field:VisitDocument['fields'][number];sessionId:string;date:string;older:boolean}>={};
+ const visits=sessions.map((session,index)=>{
+  const raw=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse');
+  const section=raw?correctedSection(bundle,raw):null;
+  const date=sessionClinicalTime(bundle,session);
+  const corrections=(bundle.corrections||[]).filter(c=>c.session_id===session.id);
+  const addenda=bundle.addenda.filter(a=>a.session_id===session.id);
+  const keys=new Set([...Object.keys(references),...(section?.document?.fields.map(f=>f.key)||[])]);
+  const fields=[...keys].filter(key=>key!=='legacy').flatMap<MseTimelineField>(key=>{
+   const field=section?.document?.fields.find(f=>f.key===key);
+   const previous=references[key];
+   if(!field?.text.trim()||field.review==='not_assessed')return previous||field?.review==='not_assessed'?[{key,label:field?.label||previous.field.label,state:field?.review==='not_assessed'?'not_assessed' as const:'missing' as const,before:previous?.field.text||'',text:''}]:[];
+   const state=!previous?'first' as const:previous.field.text===field.text?'same' as const:'changed' as const;
+   references[key]={field,sessionId:session.id,date,older:index!==sessions.length-1};
+   return [{key,label:field.label,state,before:previous?.field.text||'',text:field.text}];
+  });
+  return {sessionId:session.id,date,fields,narrative:section&&!section.document?section.content:section?.document?.fields.find(f=>f.key==='legacy')?.text||'',corrections,addenda};
+ });
+ return {visits,references};
 }
 
 export type WorkspaceTab='summary'|'sessions'|'history'|'medications'|'psychometrics';
@@ -57,9 +85,14 @@ export function activeVisitPart(parts:{key:string;top:number}[],readingLine:numb
  return parts.filter(p=>p.top<=readingLine+1).at(-1)?.key||parts[0]?.key||'interview';
 }
 const requiredSections=[['interview','Ψυχιατρική συνέντευξη'],['mse','MSE'],['assessment','Κλινική αξιολόγηση'],['plan','Θεραπευτικό πλάνο'],['review','Επανεκτίμηση']] as const;
-export function finalizationBlocker(sections:{section_key:string;content:string}[],risk?:DemoRisk){
+export function finalizationBlocker(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null){
  if(!risk||risk.suicidal_ideation==='not_assessed')return {anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'};
  if(risk.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))return {anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'};
+ const currentMse=sections.find(s=>s.section_key==='mse');
+ if(previousMse&&currentMse?.document){
+  const pending=previousMse.fields.filter(old=>old.key!=='legacy'&&old.text.trim()&&!currentMse.document?.fields.some(f=>f.key===old.key&&(f.review||f.text.trim())));
+  if(pending.length)return {anchor:'mse',message:`Υπάρχουν ${pending.length} ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα. Διατηρήστε, αλλάξτε ή σημειώστε «Δεν αξιολογήθηκε σήμερα».`};
+ }
  const missing=requiredSections.find(([key])=>!sections.some(s=>s.section_key===key&&s.content.trim()));
  return missing?{anchor:missing[0]==='review'?'plan':missing[0],message:'Χρειάζεται καταγραφή: '+missing[1]+'.'}:null;
 }

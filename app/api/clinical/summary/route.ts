@@ -33,7 +33,7 @@ async function generate(context:ReturnType<typeof buildSummaryContext>){
  if(!r.ok){console.error('clinical_summary_provider_failed',{status:r.status,model});throw new Error(`provider_failed_${r.status}`);}
  const narrative=validateNarrative(responseText(await r.json()),context);
  await verifyGrounding(narrative,context);
- const critical=context.findings.filter(f=>f.attention);const findings=[...critical,...narrative];assertCriticalCoverage(findings,context);
+ const critical=context.findings.filter(f=>f.attention||f.key.startsWith('mse-change:'));const findings=[...critical,...narrative];assertCriticalCoverage(findings,context);
  return {findings,generated_at:new Date().toISOString()};
 }
 

@@ -124,3 +124,27 @@ test('structured section correction becomes effective evidence without mutating 
  assert.equal(c.sources.find(s=>s.id==='section:s1').content,'Corrected interview.');
  assert.equal(JSON.stringify(b.sections[0]),original);
 });
+
+test('fallback retains effective MSE and unchanged plan after a structured correction',()=>{
+ const b=fixture();visit(b,1,'Earlier picture.');visit(b,2,'Latest picture.');
+ b.sections.push({id:'mse2',session_id:2,section_key:'mse',content:'Original mood.'},{id:'plan2',session_id:2,section_key:'plan',content:'Continue the agreed plan.'});
+ b.corrections=[{id:'c2',session_id:2,created_at:'2026-10-03',reason:'Clarified mood',patch:{mse:{before:'Original mood.',after:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Corrected mood.'}]}}}}];
+ const original=JSON.stringify(b.sections);
+ const findings=canonicalSummaryFindings(buildSummaryContext(b));
+ assert.match(findings.find(f=>f.key==='record:section:mse2').text,/Corrected mood/);
+ assert.match(findings.find(f=>f.key==='record:section:plan2').text,/Continue the agreed plan/);
+ assert.ok(findings.find(f=>f.key==='record:section:mse2').source_ids.includes('structured_correction:c2'));
+ assert.ok(findings.some(f=>f.key==='record:section:s2'));
+ assert.ok(!findings.some(f=>f.key==='record:section:s1'));
+ assert.equal(JSON.stringify(b.sections),original);
+});
+
+test('MSE trajectory compares encounter dates and both corrected snapshots; missing domains are not improvement',()=>{
+ const b=fixture();visit(b,1,'Initial.');visit(b,2,'Follow-up.');
+ b.sections.push({id:'m1',session_id:1,section_key:'mse',content:'Mood: anxious',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Anxious'},{key:'speech',label:'Speech',text:'Slow'}]}},{id:'m2',session_id:2,section_key:'mse',content:'Mood: euthymic',document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Euthymic',review:'changed'},{key:'speech',label:'Speech',text:'',review:'not_assessed'}]}});
+ b.corrections=[{id:'c1',session_id:1,created_at:'2026-10-05',reason:'Corrected observation',patch:{mse:{after:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Depressed'},{key:'speech',label:'Speech',text:'Slow'}]}}}}];
+ const before=JSON.stringify(b);const finding=buildSummaryContext(b).findings.find(f=>f.key==='mse-change:m2');
+ assert.ok(finding.text.includes('Depressed'));assert.ok(finding.text.includes('Euthymic'));assert.ok(!finding.text.includes('Anxious'));assert.ok(!finding.text.includes('Speech'));
+ assert.deepEqual(finding.source_ids,['section:m1','section:m2','structured_correction:c1']);assert.equal(JSON.stringify(b),before);
+ b.sessions[1].status='draft';assert.ok(!buildSummaryContext(b).findings.some(f=>f.key==='mse-change:m2'));
+});

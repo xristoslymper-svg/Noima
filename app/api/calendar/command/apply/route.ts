@@ -1,7 +1,7 @@
 import { withPilot } from '@/lib/pilot/route';
 import {
   applyDemoCalendarMutation,
-  createDemoPatientAppointment,
+  createDemoProvisionalAppointment,
   createDemoRecurringAppointments,
   type DemoCalendarMutation,
 } from "@/lib/calendar/demo-supabase";
@@ -20,6 +20,8 @@ type ApplyBody = {
   end_iso?: unknown;
   appointment_type?: unknown;
   create_new_patient?: unknown;
+  provisional_phone?: unknown;
+  provisional_email?: unknown;
   recurrence_interval_weeks?: unknown;
   recurrence_occurrences?: unknown;
   expected_updated_at?: unknown;
@@ -159,14 +161,16 @@ async function handlePOST(request: Request) {
       }
       const parts = patientName.split(/\s+/).filter(Boolean);
       try {
-        const created = await createDemoPatientAppointment(tester, {
+        const event = await createDemoProvisionalAppointment(tester, {
           first_name: parts[0],
           last_name: parts.slice(1).join(" "),
+          phone: textOrNull(body.provisional_phone) || "",
+          email: textOrNull(body.provisional_email) || "",
           scheduled_start: startIso,
           scheduled_end: endIso,
           appointment_type: appointmentType === "other" ? "other" : "initial_assessment",
         });
-        return Response.json({ event: created.event, patient_created: true, patient_id: created.patient.id });
+        return Response.json({ event, patient_created: false, provisional: true, patient_id: null });
       } catch (error) {
         return errorResponse(error);
       }

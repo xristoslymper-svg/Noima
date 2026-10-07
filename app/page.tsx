@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import type { PatientBundle } from "@/lib/patients/demo-runtime";
 import ClinicalSummary from "@/components/patients/ClinicalSummary";
+import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
 
 import {
   Activity,
@@ -33,6 +34,7 @@ import {
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
 type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
 type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null};
+type OverviewIntake={id:string;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"submitted"|"conflict";submitted_at:string|null;created_at:string};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -55,6 +57,8 @@ export default function Page() {
   const [bundles,setBundles]=useState<Record<string,PatientBundle>>({});
   const [tasks,setTasks]=useState<TodoTask[]>([]);
   const [psychometricsForReview,setPsychometricsForReview]=useState<OverviewPsychometric[]>([]);
+  const [intakesForReview,setIntakesForReview]=useState<OverviewIntake[]>([]);
+  const [conflictIntake,setConflictIntake]=useState<string|null>(null);
   const [widgetOpen,setWidgetOpen]=useState<"payments"|"psychometrics"|"todo"|null>(null);
   const [taskTitle,setTaskTitle]=useState("");
   const [widgetBusy,setWidgetBusy]=useState(false);
@@ -69,7 +73,7 @@ export default function Page() {
     const events=(data.events||[]) as OverviewEvent[];
     const todayKey=overviewDateKey(new Date());
     const todayPatientIds=events.filter(event=>overviewDateKey(new Date(event.scheduled_start))===todayKey&&event.status!=="cancelled"&&event.patient_id).map(event=>event.patient_id as string);
-    setSchedule(events);setTasks((data.tasks||[]) as TodoTask[]);setPsychometricsForReview((data.psychometrics||[]) as OverviewPsychometric[]);
+    setSchedule(events);setTasks((data.tasks||[]) as TodoTask[]);setPsychometricsForReview((data.psychometrics||[]) as OverviewPsychometric[]);setIntakesForReview((data.intakes||[]) as OverviewIntake[]);
     setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:todayPatientIds[0]||null);
     setOverviewState('ready');
     void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});
@@ -151,7 +155,8 @@ export default function Page() {
             <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':upcomingToday.length?"Προγραμματισμένα για αργότερα":"Δεν υπάρχουν άλλα προγραμματισμένα ραντεβού σήμερα"} tone="sage" />
             <TodoMetric
               tasks={overviewState==='ready'?openTasks:[]}
-              value={overviewState==='ready'?String(openTasks.length):'—'}
+              intakeCount={overviewState==='ready'?intakesForReview.length:0}
+              value={overviewState==='ready'?String(openTasks.length+intakesForReview.length):'—'}
               loading={overviewState==='loading'}
               error={overviewState==='error'}
               busy={widgetBusy}
@@ -245,20 +250,26 @@ export default function Page() {
           {widgetOpen==="todo"&&<>
             <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>Προσθήκη</button></div>
             <div className="dashboard-widget-list">
+              {intakesForReview.map(intake=><div className="dashboard-widget-row todo-row" key={intake.id}>
+                <div><strong>{intake.patient_name||'Νέα συμπλήρωση'}</strong><span>{intake.status==='conflict'?'Χρειάζεται έλεγχο ταυτότητας':'Νέο ιστορικό από '+(intake.channel==='tablet'?'tablet':intake.channel==='email'?'email':'έντυπο')}</span></div>
+                {intake.status==='conflict'?<button className="todo-done" onClick={()=>setConflictIntake(intake.id)} aria-label="Έλεγχος ταυτότητας"><ChevronRight size={16}/></button>:intake.patient_id?<Link className="todo-done" href={"/patients/demo/"+intake.patient_id+"?tab=history"} aria-label="Έλεγχος ιστορικού"><ChevronRight size={16}/></Link>:null}
+              </div>)}
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
                 <div><strong>{task.title}</strong><span>{task.source_session_id?"Πρόχειρη καταγραφή":"Εργασία"}{task.due_at?" · "+new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
                 {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=sessions&session="+task.source_session_id} aria-label={"Συνέχεια "+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>}
-              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμότητες.</div>}
+              </div>):intakesForReview.length===0?<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμότητες.</div>:null}
             </div>
           </>}
         </section>
       </div>}
+      {conflictIntake&&<IntakeConflictResolver intakeId={conflictIntake} onClose={()=>setConflictIntake(null)} onDone={()=>{setConflictIntake(null);setOverviewRetry(x=>x+1)}}/>}
     </main>
   );
 }
 
-function TodoMetric({tasks,value,loading,error,onOpen}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
-  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':tasks.length?(tasks.length===1?'1 εκκρεμότητα':tasks.length+' εκκρεμότητες'):'Δεν υπάρχουν ανοιχτές εργασίες';
+function TodoMetric({tasks,intakeCount,value,loading,error,onOpen}:{tasks:TodoTask[];intakeCount:number;value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
+  const total=tasks.length+intakeCount;
+  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':total?(total===1?'1 εκκρεμότητα':total+' εκκρεμότητες'):'Δεν υπάρχουν ανοιχτές εργασίες';
   return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα εκκρεμοτήτων">
     <div className="metric-icon"><ListTodo size={22}/></div><span>Εκκρεμότητες</span><strong>{value}</strong><small>{note}</small>
   </button>;

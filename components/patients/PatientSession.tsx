@@ -201,7 +201,7 @@ export default function PatientSession({
  return <section className="session-workspace runtime-session">
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Follow-up'}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Όλες οι αλλαγές αποθηκεύτηκαν'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση πρόχειρου…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Το πρόχειρο αποθηκεύτηκε'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
   <nav className="visit-scroll-nav" aria-label="Πλοήγηση επίσκεψης">{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=>{const isRequired=requiredVisitStep(key),complete=isRequired&&requiredStepState(key);return <button type="button" key={key} aria-current={activePart===key?'step':undefined} className={[activePart===key?'active':'',isRequired?'required':'',complete?'complete':''].filter(Boolean).join(' ')} onClick={()=>goToPart(key)}><i/>{complete&&<Check size={12} aria-hidden="true"/>}<span>{label}{isRequired&&!complete&&<sup aria-label="Υποχρεωτικό">*</sup>}</span></button>})}</nav>
@@ -224,9 +224,9 @@ export default function PatientSession({
   </fieldset>
   {medOpen&&<MedicationModal bundle={bundle} sessionId={draft.id} initialMode={medTarget.mode} initialMedicationId={medTarget.id} onClose={()=>setMedOpen(false)} onSaved={reloadContext}/>}
 
-  <p className="visit-hint">Οι κλινικές σημειώσεις αποθηκεύονται ως πρόχειρο. Εντάσσονται στη σύνοψη όταν ολοκληρώσεις την καταγραφή.</p>
+  <p className="visit-hint">Οι κλινικές σημειώσεις αποθηκεύονται ως πρόχειρο όσο εργάζεστε. Η οριστικοποίηση κλείνει την καταγραφή και εντάσσει τις σημειώσεις στη σύνοψη του φακέλου.</p>
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater||medOpen}><Check size={16}/>{flushing?'Αποθήκευση…':finalizing?'Ολοκλήρωση…':'Ολοκλήρωση & αποθήκευση καταγραφής'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater||medOpen} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση…':'Ολοκλήρωση αργότερα'}</button>}
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater||medOpen}><Check size={16}/>{flushing?'Αποθήκευση πρόχειρου…':finalizing?'Οριστικοποίηση…':'Οριστικοποίηση καταγραφής'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater||medOpen} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
   
@@ -258,7 +258,7 @@ function SectionEditor({sessionId,definition,existing,proposals,onSaved,register
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}
  return <div className="clinical-section"><div className="clinical-section-head"><div><h3>{definition.title}{required.has(definition.key)&&' *'}</h3></div><button className="section-mic" onClick={()=>setDictating(true)}><Mic2 size={15}/> Υπαγόρευση</button></div>
  <textarea disabled={reviewOpen} className="section-editor" rows={4} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})} placeholder=""/>
- <div role="status">{draft.saving?'Αποθηκεύεται…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt:existing?'Αποθηκευμένο':'Δεν έχει καταγραφεί')}</div>
+ <div role="status">{draft.saving?'Αποθήκευση στο πρόχειρο…':draft.error|| (draft.savedAt?'Αποθηκεύτηκε στο πρόχειρο '+draft.savedAt:existing?'Αποθηκευμένο στο πρόχειρο':'Δεν έχει καταγραφεί')}</div>
  {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void compare()}>Σύγκριση με αποθηκευμένο</button></>}
  {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><p>{conflict?.content||'Κενή ενότητα'}</p><p>Το δικό σας κείμενο παραμένει στον επεξεργαστή. Επεξεργαστείτε το πριν επιλέξετε αντικατάσταση.</p><button onClick={()=>{draft.acceptServer(conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με το δικό μου</button><button onClick={()=>{draft.resolve([conflict?.content,draft.value].filter(Boolean).join('\n\n'),conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Συνένωση των δύο</button></div>}
  {dictating&&<SectionDictation title={definition.title} onClose={()=>setDictating(false)} onInsert={text=>{setDictating(false);setTranscript(text);setRecoverable(text);try{sessionStorage.setItem(sessionId+':transcript:'+definition.key,text)}catch{};setReview(undefined);setReviewOpen(true)}}/>}

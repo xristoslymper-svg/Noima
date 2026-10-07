@@ -161,7 +161,7 @@ export default function PatientSession({
    const fresh=await flushAll(true) as PatientBundle;
    const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id));
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
-   if(blocker){setShowFinalizeGuidance(true);if(onFinishLater)await onFinishLater(draft.id,blocker.message);return}
+   if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
    await onFinalize(draft.id);
   }catch{
    // The concrete save/finalize error is already rendered in the workspace.

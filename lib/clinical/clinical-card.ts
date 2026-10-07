@@ -41,7 +41,7 @@ export function buildClinicalCard(bundle:PatientBundle,context:SummaryContext,fi
  })||[];
  const medications=bundle.clinical_day&&bundle.clinical_day!==context.day?[]:bundle.medications.filter(m=>m.status==='active').map(m=>({text:[m.medication_name,m.dose+' '+m.unit,m.frequency].filter(Boolean).join(' · '),source_ids:['medication:'+m.id]}));
  const mseOrder=['mood','affect','thought_content','thought_process','perception','speech','appearance','cognition','insight','judgment','impulse_control','reliability','legacy'];
- const mseItems=mse?.doc?mse.doc.fields.filter(f=>f.text.trim()&&f.review!=='not_assessed').sort((a,b)=>Number(b.review==='changed')-Number(a.review==='changed')||mseOrder.indexOf(a.key)-mseOrder.indexOf(b.key)).map(f=>({text:(labels[f.key]||f.label)+': '+f.text,source_ids:mse.source_ids})):mse?.content?[{text:mse.content,source_ids:mse.source_ids}]:[];
+ const mseItems=mse?.doc?mse.doc.fields.filter(f=>f.text.trim()&&f.review!=='not_assessed').sort((a,b)=>Number(b.review==='changed')-Number(a.review==='changed')||mseOrder.indexOf(a.key)-mseOrder.indexOf(b.key)).map(f=>({text:(labels[f.key]||f.label)+': '+(f.key==='mood'?f.text.replace(/^Υποκειμενικό συναίσθημα:\s*/u,''):f.text),source_ids:mse.source_ids})):mse?.content?[{text:mse.content,source_ids:mse.source_ids}]:[];
  const previous=[...bundle.sessions].filter(s=>s.status==='completed'&&s.id!==latest?.id).sort((a,b)=>Date.parse(time(b.id))-Date.parse(time(a.id)))[0];
  const before=previous?section('mse',previous.id):null;
  const changeLabels=mse?.doc?.fields.filter(f=>f.key!=='legacy'&&f.review!=='not_assessed'&&f.text.trim()&&before?.doc?.fields.some(old=>old.key===f.key&&old.text.trim()&&old.text!==f.text)).map(f=>labels[f.key]||f.label)||[];

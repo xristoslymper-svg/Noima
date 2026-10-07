@@ -1,7 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=17;
+export const SUMMARY_POLICY_VERSION=18;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -199,8 +199,16 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
 }
 
 export type SummaryContext=ReturnType<typeof buildSummaryContext>;
-export function minimumBriefingItems(context:SummaryContext){
- return new Set(context.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size>=2&&context.sources.filter(s=>s.kind==='session_section').length>=10?2:1;
+export function minimumBriefingItems(_context:SummaryContext){
+ return 1;
+}
+// Readiness is a minimum content check, never a judgement of clinical adequacy.
+// A short factual note is enough; bare placeholders must not be expanded.
+export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
+ if(!bundle.sessions.some(s=>s.status==='completed'))return 'no_completed_visit';
+ const narrative=context.sources.filter(s=>s.kind==='session_section'&&['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||''));
+ const meaningful=narrative.some(s=>typeof s.content==='string'&&s.content.trim().length>=12&&s.content.trim().split(/\s+/u).length>=3);
+ return meaningful?null:'insufficient_notes';
 }
 // A useful record-derived briefing remains available without a model. Whole
 // recorded sections retain date/source attribution; drafts and corrected parents

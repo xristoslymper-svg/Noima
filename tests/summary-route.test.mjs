@@ -114,3 +114,13 @@ test('unrelated MSE correction does not invalidate supported interview synthesis
  let calls=0;const handler=route(b,async()=>response(++calls===1?{findings:[{text:'Reports better sleep.',source_ids:['section:n']}]}:{checks:[{key:'briefing:0',supported:true,issue:'none'}]}));
  const d=await(await handler.POST(request())).json();assert.equal(d.mode,'synthesis');assert.ok(!d.card.alerts.some(f=>f.key.startsWith('correction:')));assert.equal(d.card.corrections.length,1);
 });
+
+
+test('draft-only and placeholder notes never call the provider or claim generation',async()=>{
+ for(const [status,content,reason] of [['draft','Detailed notes that must remain excluded.','no_completed_visit'],['completed','OK','insufficient_notes']]){
+  const b=fixture();b.sessions[0].status=status;b.sections[0].content=content;b.addenda=[];const db={};let calls=0;
+  const d=await(await route(b,async()=>{calls++;throw Error('unexpected provider')},{OPENAI_API_KEY:'local-fixture'},db).POST(request())).json();
+  assert.equal(d.mode,'canonical');assert.equal(d.reason,reason);assert.equal(calls,0);assert.equal(db.calls,undefined);
+  if(status==='draft')assert.ok(!d.sources.some(s=>s.kind==='session_section'));
+ }
+});

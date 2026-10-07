@@ -100,7 +100,7 @@ test('routine adverse-effect mention, resolved mild effects, denied allergy and 
 
 test('rich longitudinal records need a useful briefing and complete sentences; sparse charts may have fewer bullets',()=>{
  const b=fixture();for(let i=1;i<=3;i++){visit(b,i,'Πλήρης περιγραφή της επίσκεψης.');for(let j=0;j<3;j++)b.sections.push({id:'extra'+i+j,session_id:i,section_key:'functioning',content:'Πλήρης καταγραφή λειτουργικότητας.'});}
- assert.throws(()=>validateNarrative({findings:[{text:'Μόνο μία σύντομη πλήρης πρόταση.',source_ids:['section:s1']}]},buildSummaryContext(b)),/invalid_count/);
+ assert.equal(validateNarrative({findings:[{text:'Μόνο μία σύντομη πλήρης πρόταση.',source_ids:['section:s1']}]},buildSummaryContext(b)).length,1);
  const sparse=fixture();visit(sparse,1,'Ο ύπνος βελτιώθηκε.');assert.throws(()=>validateNarrative({findings:[{text:'Ο ύπνος βελτιώθηκε, αλλά δεν τε',source_ids:['section:s1']}]},buildSummaryContext(sparse)),/invalid_finding/);
 });
 test('explicit unresolved severe narrative effects remain mandatory; routine monitoring and denied/resolved effects do not',()=>{

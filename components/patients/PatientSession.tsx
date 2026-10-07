@@ -186,6 +186,12 @@ export default function PatientSession({
  const risk=bundle.risks.find(x=>x.session_id===draft.id);
  const sections=bundle.sections.filter(x=>x.session_id===draft.id);
  const blocker=finalizationBlocker(sections,risk);
+ const requiredStepState=(key:string)=>{
+  if(key==='risk')return Boolean(risk&&risk.suicidal_ideation!=='not_assessed'&&(risk.suicidal_ideation!=='positive'||![risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed')));
+  if(key==='plan')return ['plan','review'].every(requiredKey=>sections.some(s=>s.section_key===requiredKey&&s.content.trim()));
+  return required.has(key)&&sections.some(s=>s.section_key===key&&s.content.trim());
+ };
+ const requiredVisitStep=(key:string)=>required.has(key)||key==='risk';
  const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
 
  const editor=(key:string)=>{const d=definitions.find(([k])=>k===key)!;return <SectionEditor key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:d[1]}} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
@@ -196,7 +202,7 @@ export default function PatientSession({
    <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Όλες οι αλλαγές αποθηκεύτηκαν'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
-  <nav className="visit-scroll-nav" aria-label="Πλοήγηση επίσκεψης">{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=><button type="button" key={key} aria-current={activePart===key?'step':undefined} className={activePart===key?'active':''} onClick={()=>goToPart(key)}><i/><span>{label}</span></button>)}</nav>
+  <nav className="visit-scroll-nav" aria-label="Πλοήγηση επίσκεψης">{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=>{const isRequired=requiredVisitStep(key),complete=isRequired&&requiredStepState(key);return <button type="button" key={key} aria-current={activePart===key?'step':undefined} className={[activePart===key?'active':'',isRequired?'required':'',complete?'complete':''].filter(Boolean).join(' ')} onClick={()=>goToPart(key)}><i/>{complete&&<Check size={12} aria-hidden="true"/>}<span>{label}{isRequired&&!complete&&<sup aria-label="Υποχρεωτικό">*</sup>}</span></button>})}</nav>
   <fieldset ref={documentRef} disabled={flushing||finalizing||finishingLater||medOpen} className="visit-document">
    <VisitPart anchor="interview" number="01" title={draft.session_type==='follow_up'?'Συμπτώματα / πορεία':'Λόγος προσέλευσης & παρούσα εικόνα'}>{editor('interview')}</VisitPart>
    {draft.session_type==='follow_up'&&<VisitPart anchor="adherence" number="02" title="Παρενέργειες & λήψη αγωγής">{contextReady?<MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση αγωγής…</p>}<details className="visit-review-notes"><summary>Συνολική καταγραφή παρενεργειών{sections.find(s=>s.section_key==='effects')?.content.trim()?' · υπάρχει καταγραφή':''}</summary>{editor('effects')}</details>{editor('adherence')}</VisitPart>}

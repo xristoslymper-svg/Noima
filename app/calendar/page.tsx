@@ -478,7 +478,7 @@ export default function CalendarPage() {
           <Link href="/" className="nav-item"><Home size={19} /><span>Επισκόπηση</span></Link>
           <Link href="/calendar" className="nav-item active"><CalendarDays size={19} /><span>Ημερολόγιο</span></Link>
           <Link href="/patients" className="nav-item"><Users size={19} /><span>Ασθενείς</span></Link>
-          <Link href="/psychometrics" className="nav-item"><Activity size={19} /><span>Ψυχομετρικά τεστ</span></Link>
+          <Link href="/psychometrics" className="nav-item"><Activity size={19} /><span>Βιβλιοθήκη</span></Link>
         </nav>
       </aside>
 

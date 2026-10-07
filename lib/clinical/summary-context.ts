@@ -1,7 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=15;
+export const SUMMARY_POLICY_VERSION=16;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -199,7 +199,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
 
 export type SummaryContext=ReturnType<typeof buildSummaryContext>;
 export function minimumBriefingItems(context:SummaryContext){
- return new Set(context.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size>=2&&context.sources.filter(s=>s.kind==='session_section').length>=10?5:1;
+ return new Set(context.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size>=2&&context.sources.filter(s=>s.kind==='session_section').length>=10?2:1;
 }
 // A useful record-derived briefing remains available without a model. Whole
 // recorded sections retain date/source attribution; drafts and corrected parents

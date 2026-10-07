@@ -6,6 +6,6 @@ export async function requestClinicalSummary<T>({patientId,tester,hash,force=fal
  if(!force&&response.status===404)response=await generate();
  let data=await response.json();
  if(!response.ok)throw new Error('summary_unavailable');
- if(!force&&data.context_hash!==hash){response=await generate();data=await response.json();if(!response.ok)throw new Error('summary_unavailable')}
+ if(!force&&hash&&data.context_hash!==hash){response=await generate();data=await response.json();if(!response.ok)throw new Error('summary_unavailable')}
  return data as T;
 }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {buildClinicalCard} from '../lib/clinical/clinical-card.ts';
 import * as context from '../lib/clinical/summary-context.ts';
 import {isClinicalId} from '../lib/clinical/identity.ts';
 const code=ts.transpileModule(await readFile('app/api/clinical/summary/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -21,7 +22,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
   }
   throw new Error('unexpected_rpc:'+name);
  };
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:id.includes('clinical-card')?{buildClinicalCard}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 const withPresentation=data=>data&&Array.isArray(data.findings)?{...data,findings:data.findings.map(f=>({...f,group_label:f.group_label||'Γενική εικόνα',theme:f.theme||'general'}))}:data;
@@ -82,4 +83,13 @@ test('incomplete or empty output cannot be cached as successful synthesis',async
  for(const payload of [{status:'incomplete',output:[{content:[{type:'output_text',text:JSON.stringify({findings:[]})}]}]},{output:[{content:[{type:'output_text',text:JSON.stringify({findings:[]})}]}]}]){
  const d=await(await route(fixture(),async()=>Response.json(payload)).POST(request())).json();assert.equal(d.mode,'canonical');assert.ok(['incomplete_output','invalid_count'].includes(d.reason));
  }
+});
+
+
+test('GET rejects outdated cache and returns the same fresh card contract as POST',async()=>{
+ const b=fixture();b.addenda=[];let calls=0;const db={};const handler=route(b,async()=>response(++calls%2?{findings:[{text:'Sleep is better.',source_ids:['section:n']}]}:{checks:[{key:'briefing:0',supported:true,issue:'none'}]}),{OPENAI_API_KEY:'local-fixture'},db);
+ const generated=await(await handler.POST(request())).json();assert.ok(generated.card);assert.equal(generated.card.synthesized,true);
+ const get=()=>handler.GET(new Request('http://localhost/api/clinical/summary?tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1'));
+ assert.deepEqual((await(await get()).json()).card,generated.card);
+ b.sections[0].content='Changed plan';assert.equal((await get()).status,404);assert.equal(calls,2);
 });

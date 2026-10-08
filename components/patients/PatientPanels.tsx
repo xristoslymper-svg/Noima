@@ -85,7 +85,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  </section>
 }
 
-export function MedicationsPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>}){
+export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;currentOnly?:boolean}){
  const flushers=useRef(new Map<string,()=>Promise<void>>()),dirty=useRef(new Set<string>());
  const registerFlusher=useCallback((key:string,flush:()=>Promise<void>)=>{flushers.current.set(key,flush);return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)}},[]);
  const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value)dirty.current.add(key);else dirty.current.delete(key)},[]);
@@ -93,9 +93,10 @@ export function MedicationsPanel({bundle,reload,beforeNavigate}:{bundle:PatientB
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty.current.size)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[]);
  return <section className="panel-stack medication-record">
   <div className="panel-heading medication-record-head">
-   <div><span className="kicker">ΑΓΩΓΗ</span><h2>Αγωγή</h2></div>
+   <div><span className="kicker">ΑΓΩΓΗ</span><h2>{currentOnly?'Τρέχουσα αγωγή':'Αγωγή'}</h2></div>
   </div>
-  <MedicationTable bundle={bundle} reload={reload} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
+  <MedicationTable bundle={currentOnly?{...bundle,medications:bundle.medications.filter(m=>m.status==='active'||m.status==='planned')}:bundle} reload={reload} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
+  {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}
   <details className="medication-history-details">
    <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
    <MedicationTimeline bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>

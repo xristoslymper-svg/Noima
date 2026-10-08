@@ -10,11 +10,11 @@ test('completed follow-up history keeps established patients out of initial entr
  assert.equal(hasCompletedClinicalHistory({sessions:[{status:'completed',session_type:'initial_assessment'}]}),true);
 });
 test('history destinations distinguish draft, completed, and non-session tabs',()=>{
- const draft=workspaceLocation('?tab=sessions&session=draft');assert.deepEqual(draft,{tab:'sessions',sessionId:'draft'});
- assert.deepEqual(workspaceLocation('?tab=sessions&session=completed'),{tab:'sessions',sessionId:'completed'});
+ const draft=workspaceLocation('?tab=sessions&session=draft');assert.deepEqual(draft,{tab:'timeline',sessionId:'draft'});
+ assert.deepEqual(workspaceLocation('?tab=sessions&session=completed'),{tab:'timeline',sessionId:'completed'});
  assert.deepEqual(workspaceLocation('?tab=history&session=draft'),{tab:'history',sessionId:null});
  assert.deepEqual(workspaceLocation(''),{tab:'summary',sessionId:null});
- assert.deepEqual(workspaceLocation('?session=legacy-draft'),{tab:'sessions',sessionId:'legacy-draft'});
+ assert.deepEqual(workspaceLocation('?session=legacy-draft'),{tab:'timeline',sessionId:'legacy-draft'});
  assert.deepEqual(workspaceLocation('?tab=invalid&session=draft'),{tab:'summary',sessionId:null});
 });
 test('risk represents uncertainty separately; completion matches canonical required fields',()=>{
@@ -57,18 +57,18 @@ test('non-linear workspace paths keep draft recovery reachable and URL state coh
  assert.equal(search,'?appointment=appt-1&tab=history');
  assert.deepEqual(workspaceLocation(search),{tab:'history',sessionId:null});
  search=workspaceTransitionSearch(search,'sessions','draft-1');
- assert.equal(search,'?appointment=appt-1&tab=sessions&session=draft-1');
- assert.deepEqual(workspaceLocation(search),{tab:'sessions',sessionId:'draft-1'});
+ assert.equal(search,'?appointment=appt-1&tab=timeline&session=draft-1');
+ assert.deepEqual(workspaceLocation(search),{tab:'timeline',sessionId:'draft-1'});
  search=workspaceTransitionSearch(search,'medications');
- assert.equal(search,'?appointment=appt-1&tab=medications');
- assert.deepEqual(workspaceLocation(search),{tab:'medications',sessionId:null});
+ assert.equal(search,'?appointment=appt-1&tab=treatment');
+ assert.deepEqual(workspaceLocation(search),{tab:'treatment',sessionId:null});
  search=workspaceTransitionSearch(search,'sessions','draft-1');
- assert.deepEqual(workspaceLocation(search),{tab:'sessions',sessionId:'draft-1'});
+ assert.deepEqual(workspaceLocation(search),{tab:'timeline',sessionId:'draft-1'});
  search=workspaceTransitionSearch(search,'summary');
  assert.equal(search,'?appointment=appt-1');
  assert.deepEqual(workspaceLocation(search),{tab:'summary',sessionId:null});
  search=workspaceTransitionSearch('?appointment=appt-1&tab=history','sessions','draft-1',{clearAppointment:true});
- assert.equal(search,'?tab=sessions&session=draft-1');
+ assert.equal(search,'?tab=timeline&session=draft-1');
  search=workspaceTransitionSearch('?appointment=appt-1&tab=sessions&session=draft-1','summary',null,{clearAppointment:true});
  assert.equal(search,'');
 });
@@ -116,4 +116,10 @@ test('previous MSE never skips the immediately previous completed visit',()=>{
  assert.equal(previousMseReference(bundle,'current','2026-10-05T09:00:00Z'),null);
  bundle.sections.push({id:'previous-mse',session_id:'previous',section_key:'mse',content:'Immediate MSE'});
  assert.equal(previousMseReference(bundle,'current','2026-10-05T09:00:00Z').section.id,'previous-mse');
+});
+
+test('legacy medication and measurement links retain contextual destination',()=>{
+ assert.deepEqual(workspaceLocation('?tab=medications'),{tab:'treatment',sessionId:null});
+ assert.deepEqual(workspaceLocation('?tab=psychometrics'),{tab:'treatment',sessionId:null});
+ assert.equal(workspaceTransitionSearch('?appointment=a','psychometrics'),'?appointment=a&tab=treatment&section=measurements');
 });

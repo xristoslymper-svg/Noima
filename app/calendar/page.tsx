@@ -762,7 +762,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {intakeEvent&&<IntakeLauncher appointmentId={intakeEvent.id} patientId={intakeEvent.patient_id||undefined} patientEmail={intakeEvent.provisional_email||""} defaultTools={intakeEvent.patient_id?["PHQ-9"]:["history"]} onClose={()=>setIntakeEvent(null)} onDone={()=>void refreshEvents()}/>}\n\n      {appointmentEditor && (
+      {intakeEvent&&<IntakeLauncher appointmentId={intakeEvent.id} patientId={intakeEvent.patient_id||undefined} patientEmail={intakeEvent.provisional_email||""} subjectLabel={intakeEvent.patient_name} defaultTools={intakeEvent.patient_id?["PHQ-9"]:["history"]} onClose={()=>setIntakeEvent(null)} onDone={()=>void refreshEvents()}/>}\n\n      {appointmentEditor && (
         <AppointmentEditor
           mode={appointmentEditor.mode}
           event={appointmentEditor.event}

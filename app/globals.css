@@ -984,3 +984,46 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
  .profile-copy{display:none!important}
  .pilot-badge{height:20px;padding:0 6px}
 }
+
+/* Unified clinical-tool assignment flow */
+.assignment-launcher{width:min(620px,94vw)}
+.assignment-intro{margin:-7px 36px 20px 0;color:#7b8781;font-size:11px;line-height:1.55;max-width:510px}
+.assignment-step{padding:16px 0;border-top:1px solid #edf0ee}
+.assignment-step:first-of-type{border-top:0;padding-top:4px}
+.assignment-step-title{display:flex;align-items:flex-start;gap:10px;margin-bottom:11px}
+.assignment-step-title>span{width:24px;height:24px;border-radius:50%;background:#eef3f0;color:#416858;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none}
+.assignment-step-title>div{display:flex;flex-direction:column;gap:2px}
+.assignment-step-title strong{font-size:12px;color:#32483e}
+.assignment-step-title small{font-size:9.5px;color:#8c9791;line-height:1.4}
+.assignment-tool-summary{display:flex;flex-wrap:wrap;gap:7px;padding-left:34px}
+.assignment-tool-summary span{display:inline-flex;align-items:center;min-height:32px;padding:7px 11px;border:1px solid #dfe6e2;background:#f8faf8;border-radius:9px;color:#425b50;font-size:11px;font-weight:750}
+.assignment-tool-picker{margin:0 0 0 34px!important;background:#f8faf8!important;border:1px solid #edf0ee;border-radius:11px!important;padding:11px 12px!important}
+.assignment-tool-picker label{min-height:30px}
+.assignment-subject-select{margin:0 0 0 34px!important}
+.assignment-subject-select select{width:100%}
+.assignment-subject-summary,.assignment-subject-confirm{margin-left:34px;display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #dde5e1;background:#f8faf9;border-radius:11px;color:#52665d}
+.assignment-subject-summary>svg:first-child,.assignment-subject-confirm>svg:first-child{color:#587a6b;flex:none}
+.assignment-subject-summary>svg:last-child{margin-left:auto;color:#5d876f;flex:none}
+.assignment-subject-summary>div,.assignment-subject-confirm>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.assignment-subject-summary strong,.assignment-subject-confirm strong{font-size:11px;color:#30473d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assignment-subject-summary span,.assignment-subject-confirm span{font-size:9.5px;color:#849088;line-height:1.4}
+.assignment-subject-confirm{margin-top:8px;border-style:dashed;background:#fff}
+.assignment-step .intake-channel-picker{margin:0 0 0 34px}
+.assignment-step .intake-channel-detail,.assignment-email{margin:10px 0 0 34px!important}
+.assignment-email{display:flex!important;flex-direction:column;gap:6px;font-size:10px;font-weight:750;color:#65766e}
+.assignment-email input{width:100%}
+.assignment-step .intake-channel-picker button{min-height:44px;border-radius:10px;padding:10px 8px}
+.assignment-step .intake-channel-picker button.selected{box-shadow:inset 0 0 0 1px rgba(61,105,86,.04)}
+.scan-destination{width:min(760px,100%);margin:0 auto 13px;border:1px solid #dce6e1;background:#f7faf8;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.scan-destination>span{font-size:8px;font-weight:800;letter-spacing:.08em;color:#829087}
+.scan-destination>strong{font-size:13px;color:#30483d}
+.scan-destination>small{font-size:9.5px;line-height:1.45;color:#7b8981}
+@media(max-width:700px){
+ .assignment-intro{margin-right:26px}
+ .assignment-tool-summary,.assignment-tool-picker,.assignment-subject-select,.assignment-subject-summary,.assignment-subject-confirm,.assignment-step .intake-channel-picker,.assignment-step .intake-channel-detail,.assignment-email{margin-left:0!important}
+ .assignment-step .intake-channel-picker{grid-template-columns:repeat(3,1fr)}
+ .assignment-step .intake-channel-picker button{font-size:10px;gap:4px;padding:9px 5px}
+}
+@media(max-width:460px){
+ .assignment-step .intake-channel-picker{grid-template-columns:1fr}
+}

@@ -13,11 +13,11 @@ function estimate(tools:string[]){const [min,max]=tools.reduce(([lo,hi],tool)=>[
 function message(link:string,doctorName:string,tools:string[]){
  const duration=estimate(tools);
  const doctor=doctorName||'Το ιατρείο σας';
- const subject='Συμπλήρωση πριν την επίσκεψή σας';
+ const subject='Συμπλήρωση φόρμας';
  const body=[
   'Καλησπέρα σας,',
   '',
-  doctor+' σας έχει ζητήσει να συμπληρώσετε μια σύντομη φόρμα πριν την επίσκεψή σας.',
+  doctor+' σας έχει ζητήσει να συμπληρώσετε μια σύντομη φόρμα.',
   'Εκτιμώμενος χρόνος: '+duration+'.',
   '',
   'Ανοίξτε τον προσωπικό σύνδεσμο:',
@@ -29,7 +29,7 @@ function message(link:string,doctorName:string,tools:string[]){
   'Noima'
  ].join('\n');
  const safeDoctor=escapeHtml(doctor),safeLink=escapeHtml(link),safeDuration=escapeHtml(duration);
- const html=`<!doctype html><html><body style="margin:0;padding:0;background:#f4f6f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#2f4138"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f3;padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e1e7e3;border-radius:18px;overflow:hidden"><tr><td style="padding:24px 28px 10px"><div style="font-family:Georgia,serif;font-size:27px;color:#315344">Ψ</div></td></tr><tr><td style="padding:4px 28px 30px"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#829087;margin-bottom:9px">NOIMA</div><h1 style="font-family:Georgia,serif;font-size:27px;line-height:1.18;font-weight:500;margin:0 0 12px;color:#293c33">Μια σύντομη συμπλήρωση πριν την επίσκεψή σας</h1><p style="font-size:14px;line-height:1.65;margin:0 0 8px;color:#5f6f67">${safeDoctor} σας έχει ζητήσει να συμπληρώσετε μια σύντομη φόρμα.</p><p style="font-size:13px;line-height:1.55;margin:0 0 22px;color:#7c8882">Εκτιμώμενος χρόνος: <strong style="color:#4d6258">${safeDuration}</strong></p><a href="${safeLink}" style="display:inline-block;background:#477663;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 18px;border-radius:10px">Συμπλήρωση φόρμας</a><div style="border-top:1px solid #edf0ee;margin:26px 0 16px"></div><p style="font-size:11px;line-height:1.6;margin:0;color:#87928c">Δεν χρειάζεται λογαριασμός. Ο σύνδεσμος είναι προσωπικός και λήγει σε 14 ημέρες. Μετά την υποβολή, οι απαντήσεις αποστέλλονται με ασφάλεια στο ιατρείο.</p></td></tr></table><p style="font-size:10px;color:#9aa49f;margin:13px 0 0">Noima · ασφαλής συμπλήρωση από ασθενή</p></td></tr></table></body></html>`;
+ const html=`<!doctype html><html><body style="margin:0;padding:0;background:#f4f6f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#2f4138"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f3;padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e1e7e3;border-radius:18px;overflow:hidden"><tr><td style="padding:24px 28px 10px"><div style="font-family:Georgia,serif;font-size:27px;color:#315344">Ψ</div></td></tr><tr><td style="padding:4px 28px 30px"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#829087;margin-bottom:9px">NOIMA</div><h1 style="font-family:Georgia,serif;font-size:27px;line-height:1.18;font-weight:500;margin:0 0 12px;color:#293c33">Μια σύντομη συμπλήρωση</h1><p style="font-size:14px;line-height:1.65;margin:0 0 8px;color:#5f6f67">${safeDoctor} σας έχει ζητήσει να συμπληρώσετε μια σύντομη φόρμα.</p><p style="font-size:13px;line-height:1.55;margin:0 0 22px;color:#7c8882">Εκτιμώμενος χρόνος: <strong style="color:#4d6258">${safeDuration}</strong></p><a href="${safeLink}" style="display:inline-block;background:#477663;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 18px;border-radius:10px">Συμπλήρωση φόρμας</a><div style="border-top:1px solid #edf0ee;margin:26px 0 16px"></div><p style="font-size:11px;line-height:1.6;margin:0;color:#87928c">Δεν χρειάζεται λογαριασμός. Ο σύνδεσμος είναι προσωπικός και λήγει σε 14 ημέρες. Μετά την υποβολή, οι απαντήσεις αποστέλλονται με ασφάλεια στο ιατρείο.</p></td></tr></table><p style="font-size:10px;color:#9aa49f;margin:13px 0 0">Noima · ασφαλής συμπλήρωση από ασθενή</p></td></tr></table></body></html>`;
  return {subject,body,html};
 }
 

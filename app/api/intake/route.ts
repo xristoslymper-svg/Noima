@@ -22,9 +22,16 @@ async function handlePOST(request:Request){
    const selected=tools(b.tools);if(!selected)return Response.json({error:'Επιλέξτε έγκυρα εργαλεία.'},{status:400});
    const appointment=String(b.appointment_id||''),patient=String(b.patient_id||''),channel=String(b.channel||'');
    if(appointment&&!isClinicalId(appointment)||patient&&!isClinicalId(patient)||!['tablet','email','print'].includes(channel))return Response.json({error:'Μη έγκυρη ανάθεση.'},{status:400});
+   const rawIdentity=b.provisional_identity;
+   const provisional=!appointment&&!patient&&rawIdentity&&typeof rawIdentity==='object'&&!Array.isArray(rawIdentity)
+    ?{first_name:String(rawIdentity.first_name||'').trim().slice(0,120),last_name:String(rawIdentity.last_name||'').trim().slice(0,120),email:String(rawIdentity.email||'').trim().toLowerCase().slice(0,254)}
+    :null;
+   if(!appointment&&!patient&&!provisional?.first_name)return Response.json({error:'Συμπληρώστε το όνομα του νέου ασθενή.'},{status:400});
    const device=String(b.device_id||'');if(channel==='tablet'&&!isClinicalId(device))return Response.json({error:'Επιλέξτε συνδεδεμένο tablet.'},{status:400});
    const id=randomUUID(),secret=token();
-   const intake=await rpc('demo_intake_assign',{p_tester:tester,p_id:id,p_token:secret,p_appointment:appointment||null,p_patient:patient||null,p_tools:selected,p_channel:channel,p_device:device||null});
+   const intake=provisional
+    ?await rpc('demo_intake_assign_unattached',{p_tester:tester,p_id:id,p_token:secret,p_identity:provisional,p_tools:selected,p_channel:channel,p_device:device||null})
+    :await rpc('demo_intake_assign',{p_tester:tester,p_id:id,p_token:secret,p_appointment:appointment||null,p_patient:patient||null,p_tools:selected,p_channel:channel,p_device:device||null});
    const origin=process.env.NOIMA_APP_ORIGIN||new URL(request.url).origin;
    return Response.json({intake,intakeToken:secret,intakeLink:new URL('/intake',origin).href+'#'+secret,printLink:new URL('/intake?print=1',origin).href+'#'+secret});
   }

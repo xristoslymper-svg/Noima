@@ -39,7 +39,9 @@ export default function IntakeLauncher({
  const [deviceId,setDeviceId]=useState('');
  const [patients,setPatients]=useState<Patient[]>([]);
  const [events,setEvents]=useState<Event[]>([]);
+ const [subjectMode,setSubjectMode]=useState<'appointment'|'patient'|'new'>('appointment');
  const [subject,setSubject]=useState(patientId?'patient:'+patientId:appointmentId?'appointment:'+appointmentId:'');
+ const [newPatient,setNewPatient]=useState({first_name:'',last_name:''});
  const [email,setEmail]=useState(patientEmail);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
@@ -77,16 +79,20 @@ export default function IntakeLauncher({
    label:subjectLabel||'Επιλεγμένος ασθενής',
    hint:appointmentId&&!patientId?'Νέος ασθενής · ο φάκελος θα δημιουργηθεί μετά την υποβολή.':appointmentId?'Συνδεδεμένο με το συγκεκριμένο ραντεβού.':'Θα καταχωριστεί στον υπάρχοντα φάκελο.'
   };
-  if(subject.startsWith('patient:')){
+  if(subjectMode==='patient'&&subject.startsWith('patient:')){
    const p=patients.find(x=>x.id===subject.slice(8));
    return {patient_id:subject.slice(8),appointment_id:null,email:p?.email||'',label:p?[p.first_name,p.last_name].filter(Boolean).join(' '):'Επιλεγμένος ασθενής',hint:'Θα καταχωριστεί στον υπάρχοντα φάκελο.'};
   }
-  if(subject.startsWith('appointment:')){
+  if(subjectMode==='appointment'&&subject.startsWith('appointment:')){
    const e=events.find(x=>x.id===subject.slice(12));
    return {patient_id:e?.patient_id||null,appointment_id:subject.slice(12),email:e?.provisional_email||'',label:e?.patient_name||'Επιλεγμένο ραντεβού',hint:e?.patient_id?'Συνδεδεμένο με το συγκεκριμένο ραντεβού.':'Νέος ασθενής · ο φάκελος θα δημιουργηθεί μετά την υποβολή.'};
   }
+  if(subjectMode==='new'){
+   const label=[newPatient.first_name,newPatient.last_name].map(x=>x.trim()).filter(Boolean).join(' ')||'Νέος ασθενής';
+   return {patient_id:null,appointment_id:null,email:'',label,hint:'Δεν δημιουργείται φάκελος τώρα. Θα δημιουργηθεί αυτόματα μόνο αφού ολοκληρωθεί η υποβολή.'};
+  }
   return {patient_id:null,appointment_id:null,email:'',label:'',hint:''};
- },[fixed,subject,patients,events,patientId,appointmentId,patientEmail,subjectLabel]);
+ },[fixed,subjectMode,subject,newPatient,patients,events,patientId,appointmentId,patientEmail,subjectLabel]);
 
  useEffect(()=>{if(!email&&selected.email)setEmail(selected.email)},[selected.email,email]);
 
@@ -97,13 +103,16 @@ export default function IntakeLauncher({
 
  async function send(){
   if(!tools.length){setError('Επιλέξτε τουλάχιστον ένα εργαλείο.');return}
-  if(!selected.patient_id&&!selected.appointment_id){setError('Επιλέξτε ασθενή ή ραντεβού.');return}
+  const isNew=!fixed&&subjectMode==='new';
+  if(isNew&&!newPatient.first_name.trim()){setError('Συμπληρώστε το όνομα του νέου ασθενή.');return}
+  if(!isNew&&!selected.patient_id&&!selected.appointment_id){setError('Επιλέξτε ασθενή ή ραντεβού.');return}
   if(channel==='tablet'&&!deviceId){setError('Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.');return}
   if(channel==='email'&&!email.trim()){setError('Συμπληρώστε email παραλήπτη.');return}
   setBusy(true);setError('');
   const printWindow=channel==='print'?window.open('about:blank','_blank'):null;
   try{
-   const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'assign',tester:getDemoTesterId(),patient_id:selected.patient_id,appointment_id:selected.appointment_id,tools,channel,device_id:channel==='tablet'?deviceId:null})});
+   const provisional_identity=isNew?{first_name:newPatient.first_name.trim(),last_name:newPatient.last_name.trim(),email:email.trim()}:null;
+   const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'assign',tester:getDemoTesterId(),patient_id:selected.patient_id,appointment_id:selected.appointment_id,provisional_identity,tools,channel,device_id:channel==='tablet'?deviceId:null})});
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||'Δεν δημιουργήθηκε η ανάθεση.');
    if(channel==='print'){
@@ -124,7 +133,7 @@ export default function IntakeLauncher({
      }
      throw new Error(md.error||'Το email δεν στάλθηκε.');
     }
-    setDone('Στάλθηκε προσωπικό link στον/στην '+selected.label+'. Οι απαντήσεις θα επιστρέψουν αυτόματα στον φάκελο.');
+    setDone('Στάλθηκε προσωπικό link στον/στην '+selected.label+'. '+(!selected.patient_id?'Ο φάκελος θα δημιουργηθεί αυτόματα με την υποβολή.':'Οι απαντήσεις θα επιστρέψουν αυτόματα στον φάκελο.'));
     onDone?.();
     return;
    }
@@ -141,7 +150,7 @@ export default function IntakeLauncher({
    <button className="intake-launcher-close" onClick={onClose} disabled={busy} aria-label="Κλείσιμο"><X size={18}/></button>
    <span className="kicker">ΑΝΑΘΕΣΗ ΕΡΓΑΛΕΙΟΥ</span>
    <h2 id="assignment-title">Συμπλήρωση από ασθενή</h2>
-   <p className="assignment-intro">Το εργαλείο συνδέεται πρώτα με τον ασθενή ή το ραντεβού. Ο τρόπος συμπλήρωσης αλλάζει μόνο τον τρόπο παράδοσης.</p>
+   <p className="assignment-intro">Επίλεξε σε ποιον προορίζεται το εργαλείο. Αν δεν υπάρχει ακόμη φάκελος ή ραντεβού, μπορείς να ξεκινήσεις ως νέος ασθενής.</p>
 
    <div className="assignment-step">
     <div className="assignment-step-title"><span>1</span><div><strong>Εργαλείο</strong><small>{lockTools?'Έχει ήδη επιλεγεί από τη Βιβλιοθήκη.':'Επιλέξτε τι θα συμπληρώσει ο ασθενής.'}</small></div></div>
@@ -155,15 +164,30 @@ export default function IntakeLauncher({
    </div>
 
    <div className="assignment-step">
-    <div className="assignment-step-title"><span>2</span><div><strong>Ασθενής / ραντεβού</strong><small>{fixed?'Η σύνδεση είναι ήδη καθορισμένη.':'Επιλέξτε μία φορά πού θα καταχωριστεί το αποτέλεσμα.'}</small></div></div>
+    <div className="assignment-step-title"><span>2</span><div><strong>Σε ποιον</strong><small>{fixed?'Η σύνδεση είναι ήδη καθορισμένη.':'Υπάρχων φάκελος, ραντεβού ή νέος ασθενής.'}</small></div></div>
     {!fixed
-      ?<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
-        <option value="">Επιλέξτε…</option>
-        <optgroup label="Προγραμματισμένα ραντεβού">{events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':' · χωρίς φάκελο'}</option>)}</optgroup>
-        <optgroup label="Ασθενείς">{patients.map(p=><option key={p.id} value={'patient:'+p.id}>{p.first_name} {p.last_name}</option>)}</optgroup>
-       </select></label>
+      ?<>
+        <div className="assignment-subject-modes">
+         <button type="button" className={subjectMode==='appointment'?'selected':''} onClick={()=>{setSubjectMode('appointment');setSubject('');setEmail('')}}>Ραντεβού</button>
+         <button type="button" className={subjectMode==='patient'?'selected':''} onClick={()=>{setSubjectMode('patient');setSubject('');setEmail('')}}>Υπάρχων ασθενής</button>
+         <button type="button" className={subjectMode==='new'?'selected':''} onClick={()=>{setSubjectMode('new');setSubject('');setEmail('')}}>Νέος ασθενής</button>
+        </div>
+        {subjectMode==='appointment'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
+         <option value="">Επιλέξτε ραντεβού…</option>
+         {events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':' · χωρίς φάκελο'}</option>)}
+        </select></label>}
+        {subjectMode==='patient'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
+         <option value="">Επιλέξτε ασθενή…</option>
+         {patients.map(p=><option key={p.id} value={'patient:'+p.id}>{p.first_name} {p.last_name}</option>)}
+        </select></label>}
+        {subjectMode==='new'&&<div className="assignment-new-patient">
+         <label>Όνομα<input value={newPatient.first_name} onChange={e=>setNewPatient(v=>({...v,first_name:e.target.value}))} placeholder="Όνομα"/></label>
+         <label>Επώνυμο <span>προαιρετικό</span><input value={newPatient.last_name} onChange={e=>setNewPatient(v=>({...v,last_name:e.target.value}))} placeholder="Επώνυμο"/></label>
+         <p>Ο φάκελος δεν δημιουργείται ακόμη. Ο ασθενής θα επιβεβαιώσει τα στοιχεία του και ο φάκελος θα δημιουργηθεί μόνο μετά την υποβολή.</p>
+        </div>}
+       </>
       :<div className="assignment-subject-summary"><UserRound size={17}/><div><strong>{selected.label}</strong><span>{selected.hint}</span></div><Check size={16}/></div>}
-    {!fixed&&subject&&<div className="assignment-subject-confirm"><UserRound size={16}/><div><strong>{selected.label}</strong><span>{selected.hint}</span></div></div>}
+    {!fixed&&((subjectMode==='new'&&newPatient.first_name.trim())||subject)&&<div className="assignment-subject-confirm"><UserRound size={16}/><div><strong>{selected.label}</strong><span>{selected.hint}</span></div></div>}
    </div>
 
    <div className="assignment-step">
@@ -175,7 +199,7 @@ export default function IntakeLauncher({
     </div>
     {channel==='tablet'&&<div className="intake-channel-detail">{devices.length?<label>Συσκευή<select value={deviceId} onChange={e=>setDeviceId(e.target.value)}>{devices.map(d=><option key={d.id} value={d.id}>{d.label}</option>)}</select></label>:<p>Δεν έχει συνδεθεί tablet. <Link href="/tablet" target="_blank">Άνοιγμα λειτουργίας Tablet ↗</Link></p>}</div>}
     {channel==='email'&&<div className="assignment-email-wrap"><label className="assignment-email">Email παραλήπτη<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="patient@example.com"/></label><p>Ο ασθενής θα λάβει προσωπικό link. Δεν χρειάζεται λογαριασμό· συμπληρώνει online και η υποβολή επιστρέφει αυτόματα σε αυτή την ανάθεση.</p></div>}
-    {channel==='print'&&<div className="intake-channel-detail"><p>Το έντυπο θα φέρει μοναδικό κωδικό αυτής της ανάθεσης. Όταν εισαχθεί ξανά στο Noima, το αποτέλεσμα θα επιστρέψει στον ίδιο ασθενή ή ραντεβού.</p></div>}
+    {channel==='print'&&<div className="intake-channel-detail"><p>Το έντυπο θα φέρει μοναδικό κωδικό αυτής της ανάθεσης. Όταν εισαχθεί ξανά στο Noima, το αποτέλεσμα θα επιστρέψει στην ίδια ανάθεση και, αν δεν υπάρχει φάκελος, θα δημιουργηθεί μετά την καταχώριση.</p></div>}
    </div>
 
    {done&&<div className="intake-launcher-success"><Check size={16}/>{done}</div>}

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {useOverlayDismiss} from '@/components/useOverlayDismiss';
 import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
@@ -48,13 +49,8 @@ export default function IntakeLauncher({
  const [done,setDone]=useState('');
  const fixed=Boolean(patientId||appointmentId);
 
- useEffect(()=>{
-  const previousOverflow=document.body.style.overflow;
-  document.body.style.overflow='hidden';
-  const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!busy)onClose()};
-  document.addEventListener('keydown',onKeyDown);
-  return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',onKeyDown)};
- },[busy,onClose]);
+ useOverlayDismiss(onClose,{busy});
+ const inFlight=useRef(false);
 
  useEffect(()=>{
   let live=true;
@@ -110,13 +106,14 @@ export default function IntakeLauncher({
  }
 
  async function send(){
+  if(inFlight.current)return;
   if(!tools.length){setError('Επιλέξτε τουλάχιστον ένα εργαλείο.');return}
   const isNew=!fixed&&subjectMode==='new';
   if(isNew&&!newPatient.first_name.trim()){setError('Συμπληρώστε το όνομα του νέου ασθενή.');return}
   if(!isNew&&!selected.patient_id&&!selected.appointment_id){setError('Επιλέξτε ασθενή ή ραντεβού.');return}
   if(channel==='tablet'&&!deviceId){setError('Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.');return}
   if(channel==='email'&&!email.trim()){setError('Συμπληρώστε email παραλήπτη.');return}
-  setBusy(true);setError('');
+  inFlight.current=true;setBusy(true);setError('');
   const printWindow=channel==='print'?window.open('about:blank','_blank'):null;
   try{
    const provisional_identity=isNew?{first_name:newPatient.first_name.trim(),last_name:newPatient.last_name.trim(),email:email.trim()}:null;
@@ -150,7 +147,7 @@ export default function IntakeLauncher({
   }catch(e){
    printWindow?.close();
    setError(e instanceof Error?e.message:'Η ανάθεση δεν ολοκληρώθηκε.');
-  }finally{setBusy(false)}
+  }finally{inFlight.current=false;setBusy(false)}
  }
 
  return <div className="intake-launcher-backdrop" onClick={()=>!busy&&onClose()}>

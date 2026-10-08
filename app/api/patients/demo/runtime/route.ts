@@ -8,6 +8,7 @@ const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
+ if(message.includes('amka_conflict'))return Response.json({error:'Ο ίδιος ΑΜΚΑ υπάρχει ήδη σε άλλον φάκελο. Ελέγξτε την ταυτότητα του ασθενή.',code:'amka_conflict'},{status:409});
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return Response.json({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return Response.json({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});
  if(message.includes('missing_sections'))return Response.json({error:'Συμπληρώστε Ψυχιατρική συνέντευξη, MSE, Κλινική εκτίμηση, Πλάνο και Επανεκτίμηση πριν την ολοκλήρωση.',code:'missing_sections'},{status:422});

@@ -110,8 +110,12 @@ async function handleGET(req:Request){
  try{
  const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const hash=await summaryContextHash(bundle,context.day);
  const cached=await readCached(tester,patient);
- if(!cached)return Response.json({error:'Η σύνοψη προετοιμάζεται.',code:'summary_pending'},{status:404});
- if(cached.context_hash!==hash||cached.policy_version!==SUMMARY_POLICY_VERSION)return Response.json({code:'summary_pending'},{status:404});
+ if(!cached||cached.context_hash!==hash||cached.policy_version!==SUMMARY_POLICY_VERSION){
+  // Navigation reads canonical facts immediately. Existing mutation/backfill
+  // jobs prepare synthesis; only an explicit refresh may wait for generation.
+  const findings=canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
+  return Response.json({card:buildClinicalCard(bundle,context),findings,sources:context.sources,context_hash:hash,as_of:context.day,mode:'canonical',reason:summaryReadiness(bundle,context)||'summary_pending',model:null},{headers:{'Cache-Control':'no-store'}});
+ }
  return Response.json({...cached,card:buildClinicalCard(bundle,context,cached.findings,true),mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Δεν φορτώθηκαν τα κλινικά δεδομένα.'},{status:503})}
 }

@@ -1152,3 +1152,178 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
  .medication-table-editor{margin-left:-4px;margin-right:-4px}
  .medication-search-menu{width:280px}
 }
+
+/* Patient record IA preview — summary / trajectory / treatment / history */
+.patient-record-v2{max-width:1180px!important;padding-bottom:72px}
+.patient-record-header{position:sticky;top:72px;z-index:24;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:24px 0 18px;background:linear-gradient(180deg,#f8f5ef 76%,rgba(248,245,239,.94) 88%,rgba(248,245,239,0));backdrop-filter:blur(10px)}
+.patient-record-identity{min-width:0}
+.patient-record-identity h1{margin:5px 0 5px;font-size:31px;line-height:1.08;letter-spacing:-.035em;color:#293e35;font-weight:680}
+.patient-record-identity h1 em{font-style:normal;font-size:.55em;font-weight:520;color:#819087;letter-spacing:-.01em}
+.patient-record-header-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:10px;color:#85928b}
+.patient-next-appointment{display:inline-flex;align-items:center;gap:5px;color:#5e7469}
+.patient-record-header-actions{display:flex;align-items:center;gap:8px;flex:none}
+.patient-record-primary{min-height:48px;border:1px solid #cbd9d2;background:#2f725f;color:#fff;border-radius:13px;padding:8px 14px;display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;box-shadow:0 9px 22px rgba(42,91,72,.12)}
+.patient-record-primary>span{display:flex;flex-direction:column;gap:2px}
+.patient-record-primary strong{font-size:11px;line-height:1.2}
+.patient-record-primary small{font-size:8.5px;line-height:1.2;color:rgba(255,255,255,.72);font-weight:550}
+.patient-record-primary:disabled{opacity:.5;cursor:not-allowed}
+.patient-record-more{position:relative}
+.patient-record-more-trigger{width:40px;height:40px;border-radius:11px;border:1px solid #dce4df;background:#fff;color:#66776f;display:grid;place-items:center;cursor:pointer}
+.patient-record-more-menu{position:absolute;right:0;top:46px;z-index:80;width:196px;padding:5px;background:#fff;border:1px solid #dce4df;border-radius:11px;box-shadow:0 14px 36px rgba(35,55,45,.14)}
+.patient-record-more-menu button{width:100%;border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:8px;color:#45594f;font-size:10px;cursor:pointer}
+.patient-record-more-menu button:hover{background:#f2f6f3;color:#2f5e4c}
+
+.patient-record-tabs{position:sticky;top:157px;z-index:22;display:flex;gap:28px;border-bottom:1px solid #dfe6e2;background:rgba(248,245,239,.97);backdrop-filter:blur(9px);margin:0 0 26px;padding:0 2px}
+.patient-record-tabs button{position:relative;border:0;background:transparent;padding:12px 1px 13px;color:#75827b;font-size:11px;font-weight:720;cursor:pointer}
+.patient-record-tabs button:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;border-radius:999px}
+.patient-record-tabs button.active{color:#2e5748}
+.patient-record-tabs button.active:after{background:#4f7e6a}
+.patient-record-content{min-height:480px}
+.patient-record-loading{font-size:11px;color:#7e8b84;padding:22px 0}
+
+.patient-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:13px}
+.patient-section-heading h2{margin:4px 0 0;font-size:21px;letter-spacing:-.025em;color:#2d4339}
+.patient-text-link{border:0;background:transparent;padding:4px 0;color:#557566;font-size:9.5px;font-weight:720;cursor:pointer}
+.patient-quiet-empty{margin:0;color:#87938d;font-size:10px;line-height:1.55}
+
+.patient-summary-v2{display:flex;flex-direction:column;gap:28px}
+.summary-change-strip,.summary-now,.summary-dont-miss,.summary-synthesis{padding:0 2px}
+.summary-change-strip{padding-bottom:22px;border-bottom:1px solid #e4e9e6}
+.summary-change-list{display:flex;flex-direction:column;gap:6px}
+.summary-change-list>div,.summary-dont-miss-list>div{display:flex;align-items:flex-start;gap:8px;min-height:31px;padding:7px 9px;border-radius:9px;background:rgba(255,255,255,.54);color:#53665d;font-size:10px;line-height:1.5}
+.summary-change-list svg,.summary-dont-miss-list svg{flex:none;margin-top:1px;color:#62806f}
+.summary-change-list>div.warn,.summary-dont-miss-list>div.warn{background:#fbf5f2;color:#765c55}
+.summary-change-list>div.warn svg,.summary-dont-miss-list>div.warn svg{color:#9e6c5f}
+.summary-now-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.summary-now-item{min-height:88px;border:1px solid #e1e7e3;background:rgba(255,255,255,.68);border-radius:13px;padding:13px;display:flex;align-items:flex-start;gap:10px;text-align:left;color:#40544b}
+button.summary-now-item{cursor:pointer}
+button.summary-now-item:hover{border-color:#cad9d1;background:#fff}
+.summary-now-item>svg{flex:none;color:#668477;margin-top:2px}
+.summary-now-item>span{min-width:0;display:flex;flex-direction:column;gap:4px}
+.summary-now-item small{font-size:8px;font-weight:800;letter-spacing:.075em;color:#8b9690}
+.summary-now-item strong{font-size:11px;line-height:1.45;color:#344b40;font-weight:680}
+.summary-now-item em{font-style:normal;font-size:8.5px;color:#8a9690}
+.summary-now-item.risk{border-color:#ead7d2;background:#fcf8f5}
+.summary-now-item.risk>svg{color:#9a685c}
+.summary-dont-miss{padding-top:2px}
+.summary-dont-miss-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.summary-synthesis{padding-top:22px;border-top:1px solid #e4e9e6}
+.summary-synthesis .clinical-summary-head{display:none}
+.summary-synthesis .clinical-summary{padding:0!important}
+.summary-synthesis .clinical-card-footer{opacity:.8}
+
+.patient-timeline-v2{padding:0 2px}
+.timeline-heading{align-items:center}
+.timeline-filters{display:flex;gap:4px;flex-wrap:wrap}
+.timeline-filters button{border:1px solid #dfe6e2;background:rgba(255,255,255,.7);color:#6f7e77;border-radius:999px;padding:5px 9px;font-size:8.5px;font-weight:720;cursor:pointer}
+.timeline-filters button.active{background:#e9f2ed;border-color:#c7d9cf;color:#356654}
+.timeline-draft{width:100%;margin:4px 0 20px;border:1px solid #cfe0d7;background:#edf5f0;border-radius:12px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;color:#3d5b4e;cursor:pointer}
+.timeline-draft>span{display:grid;grid-template-columns:auto 1fr;column-gap:7px;row-gap:2px;align-items:center;text-align:left}
+.timeline-draft>span svg{grid-row:1/3}
+.timeline-draft strong{font-size:10.5px}
+.timeline-draft small{font-size:8.5px;color:#7c8c84}
+.timeline-draft b{display:flex;align-items:center;gap:3px;font-size:9px;white-space:nowrap}
+.timeline-month{margin-top:24px}
+.timeline-month>h3{margin:0 0 9px;text-transform:capitalize;font-size:9px;letter-spacing:.08em;color:#8a9690;font-weight:800}
+.timeline-events{display:flex;flex-direction:column}
+.timeline-event{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:flex-start;padding:8px 0 16px}
+.timeline-event:not(:last-child):before{content:"";position:absolute;left:14px;top:31px;bottom:-2px;width:1px;background:#dfe6e2}
+.timeline-marker{position:relative;z-index:1;width:29px;height:29px;border:1px solid #dbe4df;background:#f8faf8;border-radius:50%;display:grid;place-items:center;color:#617c70}
+.timeline-event.warning .timeline-marker{background:#fbf4f1;border-color:#ead6cf;color:#9b6a5d}
+.timeline-event-body{display:flex;flex-direction:column;gap:3px;padding-top:1px;min-width:0}
+.timeline-event-body time{font-size:8px;color:#95a09a}
+.timeline-event-body>strong{font-size:11px;color:#334b40;display:flex;align-items:center;gap:5px}
+.timeline-event-body>span{font-size:9.5px;color:#738179;line-height:1.45}
+.timeline-event-body details{margin-top:4px}
+.timeline-event-body summary{font-size:8.5px;color:#587565;cursor:pointer}
+.timeline-event-body details p{margin:5px 0 0;font-size:9px;line-height:1.5;color:#66776f}
+.timeline-open{align-self:center;border:0;background:transparent;color:#557566;font-size:9px;font-weight:720;display:flex;align-items:center;gap:2px;cursor:pointer;padding:6px}
+
+.patient-record-detail-backdrop{position:fixed;inset:0;z-index:120;background:rgba(30,40,35,.26);display:flex;justify-content:flex-end;backdrop-filter:blur(2px)}
+.patient-record-detail{position:relative;width:min(780px,94vw);height:100vh;background:#f8f5ef;border-left:1px solid #dce4df;box-shadow:-20px 0 50px rgba(35,52,43,.16);overflow:auto;padding:26px 24px 60px}
+.patient-record-detail-close{position:sticky;top:0;margin-left:auto;z-index:5;width:34px;height:34px;border:1px solid #dce4df;background:#fff;border-radius:50%;display:grid;place-items:center;color:#617168;font-size:19px;cursor:pointer}
+
+.patient-treatment-v2{display:flex;flex-direction:column;gap:24px}
+.treatment-intro{padding:0 2px 2px}
+.patient-treatment-v2>.medication-record{background:transparent!important;border:0!important;padding:0!important}
+.patient-treatment-v2>.medication-record>.panel-heading{padding-left:2px;padding-right:2px}
+.treatment-context-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding-top:22px;border-top:1px solid #e4e9e6}
+.treatment-context-block{border:1px solid #e0e7e3;background:rgba(255,255,255,.63);border-radius:13px;padding:14px}
+.treatment-block-title{margin-bottom:11px}
+.treatment-block-title>span{display:block;font-size:7.8px;font-weight:800;letter-spacing:.08em;color:#8c9891}
+.treatment-block-title h3{margin:4px 0 0;font-size:13px;color:#3a5146}
+.treatment-effect-list{display:flex;flex-direction:column;gap:6px}
+.treatment-effect-list>div{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid #edf0ee}
+.treatment-effect-list>div:first-child{border-top:0;padding-top:0}
+.treatment-effect-list svg{flex:none;color:#648274;margin-top:1px}
+.treatment-effect-list>div.warning svg{color:#9b675b}
+.treatment-effect-list>div>span{display:flex;flex-direction:column;gap:2px}
+.treatment-effect-list strong{font-size:9.5px;color:#41584d}
+.treatment-effect-list small{font-size:8.5px;color:#87938d}
+.treatment-monitoring-list{display:flex;flex-direction:column;gap:5px}
+.treatment-monitoring-list button{border:0;background:transparent;padding:6px 0;display:flex;align-items:center;justify-content:space-between;text-align:left;color:#496459;cursor:pointer}
+.treatment-monitoring-list button>span{display:flex;flex-direction:column;gap:2px}
+.treatment-monitoring-list strong{font-size:10px}
+.treatment-monitoring-list small{font-size:8.5px;color:#819087}
+.treatment-secondary-action{margin-top:10px;border:1px solid #dfe6e2;background:#fff;border-radius:9px;padding:7px 9px;color:#526f61;font-size:8.5px;font-weight:720;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.treatment-future-domain{border-style:dashed;background:rgba(255,255,255,.37)}
+.treatment-psychometrics-detail{padding-top:20px;border-top:1px solid #e4e9e6}
+.treatment-psychometrics-detail .patient-psychometrics>h2{font-size:18px;margin-top:0}
+
+@media(max-width:980px){
+ .patient-record-header{top:64px}
+ .patient-record-tabs{top:149px}
+ .summary-now-grid,.summary-dont-miss-list,.treatment-context-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+ .patient-record-v2{padding-left:14px!important;padding-right:14px!important}
+ .patient-record-header{position:relative;top:auto;align-items:flex-start;flex-direction:column;padding-top:18px;gap:13px;background:transparent;backdrop-filter:none}
+ .patient-record-identity h1{font-size:26px}
+ .patient-record-header-actions{width:100%}
+ .patient-record-primary{flex:1}
+ .patient-record-tabs{top:64px;margin-left:-14px;margin-right:-14px;padding:0 14px;gap:22px;overflow-x:auto;white-space:nowrap}
+ .summary-now-grid{grid-template-columns:1fr}
+ .patient-section-heading{align-items:flex-start;flex-direction:column;gap:6px}
+ .timeline-heading{align-items:flex-start}
+ .timeline-filters{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+ .timeline-event{grid-template-columns:30px minmax(0,1fr)}
+ .timeline-open{grid-column:2;justify-self:flex-start;padding-left:0}
+ .timeline-draft{align-items:flex-start;flex-direction:column}
+ .patient-record-detail{width:100vw;padding:18px 14px 48px}
+ .treatment-context-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+ .patient-record-tabs{gap:18px}
+ .patient-record-tabs button{font-size:10px}
+ .patient-record-header-meta{align-items:flex-start;flex-direction:column;gap:5px}
+ .summary-now-item{min-height:78px}
+}
+
+
+/* Public read-only IA preview */
+.patient-ia-static-preview .nav-item{cursor:default}
+.ia-preview-notice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 6px;padding:9px 11px;border:1px dashed #cfdcd5;border-radius:11px;background:#f3f7f4;color:#687970;font-size:9px}
+.ia-preview-notice>span{font-size:7.5px;font-weight:850;letter-spacing:.1em;color:#3c6d59}
+.ia-preview-notice>strong{font-size:9px;font-weight:700;color:#4f6259}
+.ia-preview-notice>a{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:#557566;text-decoration:none;font-weight:720}
+.preview-clinical-synthesis{border:1px solid #e0e7e3;border-radius:12px;background:rgba(255,255,255,.6);padding:13px 14px}
+.preview-clinical-synthesis p{margin:0;color:#52665d;font-size:10.5px;line-height:1.6}
+.preview-clinical-synthesis small{display:block;margin-top:7px;color:#929d97;font-size:8px}
+.preview-medication-readonly{padding:0 2px}
+.preview-medication-table{border-top:1px solid #e1e7e3}
+.preview-medication-table>div{display:grid;grid-template-columns:minmax(170px,1.4fr) 110px minmax(130px,1fr) auto;gap:12px;align-items:center;padding:11px 2px;border-bottom:1px solid #e7ebe8}
+.preview-medication-table strong{font-size:10.5px;color:#334b40}
+.preview-medication-table span{font-size:9.5px;color:#62736a}
+.preview-medication-table small{font-size:8.5px;color:#8a9690}
+.preview-history{padding:0 2px}
+.preview-history-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.preview-history-grid article{border:1px solid #e0e7e3;background:rgba(255,255,255,.58);border-radius:12px;padding:13px}
+.preview-history-grid small{font-size:8px;font-weight:800;letter-spacing:.06em;color:#87938d}
+.preview-history-grid p{margin:7px 0 0;font-size:10px;line-height:1.55;color:#4e6258}
+@media(max-width:760px){
+ .ia-preview-notice{align-items:flex-start;flex-direction:column}
+ .ia-preview-notice>a{margin-left:0}
+ .preview-medication-table>div{grid-template-columns:1fr 85px}
+ .preview-medication-table>div span:nth-of-type(2),.preview-medication-table small{grid-column:1/-1}
+ .preview-history-grid{grid-template-columns:1fr}
+}

@@ -68,7 +68,8 @@ export function mergeVisitContext(visit:PatientBundle,context:PatientBundle|null
 }
 const tabs:WorkspaceTab[]=['summary','sessions','history','medications','psychometrics'];
 export function workspaceLocation(search:string){
- const params=new URLSearchParams(search),requested=params.get('tab');
+ const params=new URLSearchParams(search),raw=params.get('tab');
+ const requested=raw==='trajectory'?'sessions':raw==='treatment'||raw==='psychometrics'?'medications':raw;
  const tab:WorkspaceTab=tabs.includes(requested as WorkspaceTab)?requested as WorkspaceTab:(!requested&&params.get('session')?'sessions':'summary');
  return {tab,sessionId:tab==='sessions'?params.get('session'):null};
 }

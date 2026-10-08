@@ -10,7 +10,7 @@ export async function middleware(request:NextRequest) {
   }});
   const {data:{user}}=await client.auth.getUser();
   const path=request.nextUrl.pathname;
-  const publicPath=path==='/login'||path==='/forgot-password';
+  const publicPath=path==='/login'||path==='/forgot-password'||path==='/ia-preview';
   let destination:string|null=null;
   if(!user&&!publicPath) destination='/login';
   if(user){

@@ -185,7 +185,7 @@ export default function Page() {
               onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
               onComplete={completeTask}
             />
-            <Metric icon={<TestTube2 />} label="Νέα για έλεγχο" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':reviewSubmissions.length?'Υποβολές ασθενών':'Δεν υπάρχουν νέες υποβολές'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
+            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':reviewSubmissions.length?'Νέες':'Καμία νέα υποβολή'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
             <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
@@ -248,9 +248,9 @@ export default function Page() {
       </div>}
 
       {widgetOpen&&<div className="dashboard-widget-overlay" onClick={()=>setWidgetOpen(null)}>
-        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Νέα για έλεγχο":"Εκκρεμότητες"} onClick={e=>e.stopPropagation()}>
+        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Υποβολές ασθενών":"Εκκρεμότητες"} onClick={e=>e.stopPropagation()}>
           <header className="dashboard-widget-head">
-            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Νέα για έλεγχο":"Εκκρεμότητες"}</h2></div>
+            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Υποβολές ασθενών":"Εκκρεμότητες"}</h2></div>
             <button onClick={()=>setWidgetOpen(null)} aria-label="Κλείσιμο"><X size={18}/></button>
           </header>
           {widgetError&&<div className="save-state error" role="alert">{widgetError}</div>}
@@ -264,9 +264,9 @@ export default function Page() {
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
             {reviewSubmissions.length?reviewSubmissions.map(submission=><div className="dashboard-widget-row review-submission-row" key={submission.key}>
-              <div><strong>{submission.patient_name||"Νέα συμπλήρωση"}</strong><span>{submission.tools.map(tool=>tool==="history"?"Αρχικό ιστορικό":tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span>{submission.status==="conflict"&&<small>Χρειάζεται έλεγχο ταυτότητας πριν συνδεθεί σε φάκελο.</small>}</div>
+              <div><div className="review-submission-title"><strong>{submission.patient_name||"Νέα συμπλήρωση"}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?"Χρειάζεται ταυτοποίηση":"Νέα"}</span></div><span>{submission.tools.map(tool=>tool==="history"?"Αρχικό ιστορικό":tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
               {submission.status==="conflict"&&submission.intake_id
-                ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>Έλεγχος <ChevronRight size={15}/></button>
+                ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>Ταυτοποίηση <ChevronRight size={15}/></button>
                 :submission.patient_id?<div className="review-row-actions">
                   {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>Ιστορικό</Link>}
                   {submission.psychometrics.length>0&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=psychometrics"}>Ψυχομετρικά</Link>}

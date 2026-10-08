@@ -161,11 +161,11 @@ export default function PatientSession({
   try{
    if(medOpen)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.');
    const fresh=await flushAll(true) as PatientBundle;
+   if(draft?.session_type==='follow_up'){setDetailed(false);return}
    const reference=draft?.session_type==='follow_up'?{section:{document:{kind:'mse' as const,fields:Object.values(mseTimeline(fresh,draft.id,draft.started_at).references).map(r=>r.field)}}}:null;
    const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id),reference?.section.document);
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
    if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
-   if(draft.session_type==='follow_up'){setDetailed(false);return}
    await onFinalize(draft.id);
   }catch{
    // The concrete save/finalize error is already rendered in the workspace.

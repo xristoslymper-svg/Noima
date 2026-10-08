@@ -11,11 +11,13 @@ export default function PatientTreatmentView({
  reload,
  beforeNavigate,
  onTimeline,
+ readOnly=false,
 }:{
  bundle:PatientBundle;
  reload:()=>Promise<unknown>;
  beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;
  onTimeline:()=>void;
+ readOnly?:boolean;
 }){
  const [showPsychometrics,setShowPsychometrics]=useState(false);
  const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
@@ -29,7 +31,7 @@ export default function PatientTreatmentView({
    <div className="patient-section-heading"><div><span className="kicker">ΘΕΡΑΠΕΙΑ</span><h2>Τι κάνουμε τώρα και πώς πάει</h2></div><button className="patient-text-link" onClick={onTimeline}>Προβολή στην Πορεία →</button></div>
   </section>
 
-  <MedicationsPanel bundle={bundle} reload={reload} beforeNavigate={beforeNavigate}/>
+  {readOnly?<section className="preview-medication-readonly"><div className="patient-section-heading"><div><span className="kicker">ΤΡΕΧΟΥΣΑ ΑΓΩΓΗ</span><h2>Φαρμακοθεραπεία</h2></div></div>{bundle.medications.filter(m=>m.status==='active').length?<div className="preview-medication-table">{bundle.medications.filter(m=>m.status==='active').map(m=><div key={m.id}><strong>{m.medication_name}</strong><span>{m.dose} {m.unit}</span><span>{m.frequency}</span><small>από {formatClinicDate(m.effective_from||m.started_at)}</small></div>)}</div>:<p className="patient-quiet-empty">Δεν υπάρχει ενεργή αγωγή.</p>}</section>:<MedicationsPanel bundle={bundle} reload={reload} beforeNavigate={beforeNavigate}/>} 
 
   <section className="treatment-context-grid">
    <div className="treatment-context-block">
@@ -39,7 +41,7 @@ export default function PatientTreatmentView({
    <div className="treatment-context-block">
     <div className="treatment-block-title"><span>ΠΑΡΑΚΟΛΟΥΘΗΣΗ</span><h3>Μετρήσεις</h3></div>
     {trajectories.length?<div className="treatment-monitoring-list">{trajectories.map(({code,scores})=><button key={code} onClick={()=>setShowPsychometrics(true)}><span><strong>{code}</strong><small>{scores.slice(-4).map(s=>s.score).join(' → ')}</small></span><ChevronRight size={14}/></button>)}</div>:<p className="patient-quiet-empty">Δεν υπάρχουν ολοκληρωμένες μετρήσεις.</p>}
-    <button className="treatment-secondary-action" onClick={()=>setShowPsychometrics(v=>!v)}><TestTube2 size={14}/>{showPsychometrics?'Κλείσιμο ψυχομετρικών':'Ψυχομετρικά · λεπτομέρειες / αποστολή'}</button>
+    {!readOnly&&<button className="treatment-secondary-action" onClick={()=>setShowPsychometrics(v=>!v)}><TestTube2 size={14}/>{showPsychometrics?'Κλείσιμο ψυχομετρικών':'Ψυχομετρικά · λεπτομέρειες / αποστολή'}</button>}
    </div>
    <div className="treatment-context-block treatment-future-domain">
     <div className="treatment-block-title"><span>ΤΗΡΗΣΗ ΘΕΡΑΠΕΙΑΣ</span><h3>Adherence</h3></div>
@@ -51,6 +53,6 @@ export default function PatientTreatmentView({
    </div>
   </section>
 
-  {showPsychometrics&&<section className="treatment-psychometrics-detail"><PatientPsychometrics bundle={bundle} reload={reload}/></section>}
+  {!readOnly&&showPsychometrics&&<section className="treatment-psychometrics-detail"><PatientPsychometrics bundle={bundle} reload={reload}/></section>}
  </div>;
 }

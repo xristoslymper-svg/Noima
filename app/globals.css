@@ -955,3 +955,32 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .compact-psychometric-card .instrument-meta{
   min-height:0!important;
 }
+
+/* Quiet application topbar: remove redundant context pill */
+.topbar{justify-content:flex-end!important;min-height:72px;height:72px!important;padding:0 30px!important}
+.topbar>.mobile-menu-button{margin-right:auto}
+.profile{text-decoration:none;color:inherit}
+.profile-copy{display:flex;flex-direction:column;min-width:0}
+.profile-copy strong{font-size:12px;color:#33463d;line-height:1.3}
+.profile-copy>span{font-size:10px!important;color:#8b9690!important;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pilot-badge{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ height:21px;
+ padding:0 7px;
+ border-radius:999px;
+ background:#f0f3f1;
+ border:1px solid #e1e6e3;
+ color:#77847d!important;
+ font-size:8px!important;
+ font-weight:800;
+ letter-spacing:.08em;
+ line-height:1;
+}
+@media(max-width:760px){
+ .topbar{height:64px!important;min-height:64px;padding:0 14px!important}
+ .profile{gap:8px}
+ .profile-copy{display:none!important}
+ .pilot-badge{height:20px;padding:0 6px}
+}

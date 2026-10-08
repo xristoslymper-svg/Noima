@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState,type FocusEvent} from 'react';
 import type {DemoMedication,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
 import {formatClinicDate} from '@/lib/clinic-time';
@@ -35,8 +35,9 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   const numericDose=Number(dose);
   if(!Number.isFinite(numericDose)||numericDose<=0||!unit.trim()||!frequency.trim()){setState('Συμπλήρωσε έγκυρη δόση, μονάδα και συχνότητα.');throw new Error('Μη έγκυρη αγωγή.')}
   const task=(async()=>{setSaving(true);setState('');let committed=false;try{
-   const sameDay=bundle.medicationEvents.find(e=>e.medication_id===m.id&&e.effective_on===today&&!bundle.medicationRevisions.some(r=>r.event_id===e.id));
-   await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:sessionId||null,dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:today,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
+   const effectiveOn=m.status==='planned'?m.started_at.slice(0,10):today;
+   const sameDay=bundle.medicationEvents.find(e=>e.medication_id===m.id&&e.effective_on===effectiveOn&&!bundle.medicationRevisions.some(r=>r.event_id===e.id));
+   await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:sessionId||null,dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
    committed=true;setDirty(false);setState('Αποθηκεύτηκε');
    try{await reload()}catch{setState('Αποθηκεύτηκε · η προβολή δεν ανανεώθηκε.')}
   }catch(error){setState(committed?'Αποθηκεύτηκε · η προβολή δεν ανανεώθηκε.':error instanceof Error?error.message:'Δεν αποθηκεύτηκε.');if(!committed)throw error}finally{setSaving(false)}})();
@@ -49,8 +50,8 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   try{await demoPost({action:'medication_stop',medication_id:m.id,session_id:sessionId||null,effective_on:value,reason:''});setState('Διακοπή καταγράφηκε');setStopDate('');await reload()}catch(error){setState(error instanceof Error?error.message:'Δεν καταγράφηκε η διακοπή.')}finally{setSaving(false)}
  }
  const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10),effects=bundle.medicationSideEffects.filter(e=>e.medication_id===m.id),editable=m.status!=='stopped';
- function leaveRow(event:React.FocusEvent<HTMLTableRowElement>){const next=event.relatedTarget as Node|null;if(next&&event.currentTarget.contains(next))return;if(dirty)void save().catch(()=>{})}
- return <tr className={dirty?'med-row-editing':''} onBlur={leaveRow} onKeyDown={e=>{if(e.key==='Enter'&&(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement))e.currentTarget.focus()}}>
+ function leaveRow(event:FocusEvent<HTMLTableRowElement>){const next=event.relatedTarget as Node|null;if(next&&event.currentTarget.contains(next))return;if(dirty)void save().catch(()=>{})}
+ return <tr className={dirty?'med-row-editing':''} onBlur={leaveRow} onKeyDown={e=>{if(e.key==='Enter'&&(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement))(e.target as HTMLElement).blur()}}>
   <th scope="row">{m.medication_name}{m.notes&&<small>{m.notes}</small>}{state&&<small className={state.includes('Αποθηκεύτηκε')||state.includes('καταγράφηκε')?'med-inline-state ok':'med-inline-state error'}>{saving?'Αποθήκευση…':state}</small>}</th>
   <td>{editable?<div className="med-inline-dose"><input aria-label={'Δόση '+m.medication_name} inputMode="decimal" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setDirty(true);setState('')}}/><input aria-label={'Μονάδα '+m.medication_name} value={unit} disabled={saving} onChange={e=>{setUnit(e.target.value);setDirty(true);setState('')}}/></div>:<>{m.dose} {m.unit}</>}</td>
   <td>{editable?<input className="med-inline-input" aria-label={'Συχνότητα '+m.medication_name} value={frequency} disabled={saving} onChange={e=>{setFrequency(e.target.value);setDirty(true);setState('')}}/>:m.frequency}</td>
@@ -83,7 +84,7 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
  },[bundle.patient.id,bundle.sessions,complete,dirty,dose,frequency,mode,name,reload,sessionId,start,stop,today,unit]);
  useEffect(()=>registerFlusher?.(key,save),[key,registerFlusher,save]);
  useEffect(()=>{onDirtyChange?.(key,dirty||saving);return()=>onDirtyChange?.(key,false)},[key,dirty,saving,onDirtyChange]);
- function leaveRow(event:React.FocusEvent<HTMLTableRowElement>){const next=event.relatedTarget as Node|null;if(next&&event.currentTarget.contains(next))return;if(dirty)void save().catch(()=>{})}
+ function leaveRow(event:FocusEvent<HTMLTableRowElement>){const next=event.relatedTarget as Node|null;if(next&&event.currentTarget.contains(next))return;if(dirty)void save().catch(()=>{})}
  return <tr className="med-new-row" onBlur={leaveRow}>
   <th scope="row"><input aria-label="Νέο φάρμακο" placeholder="＋ Φάρμακο…" value={name} disabled={saving} onChange={e=>{setName(e.target.value);setState('')}}/>{state&&<small className={state.includes('Αποθηκεύτηκε')?'med-inline-state ok':'med-inline-state error'}>{saving?'Αποθήκευση…':state}</small>}</th>
   <td><div className="med-inline-dose"><input aria-label="Νέα δόση" inputMode="decimal" placeholder="Δόση" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setState('')}}/><input aria-label="Νέα μονάδα" value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
@@ -96,7 +97,7 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
 
 function MedicationEffects({medication,bundle,sessionId,today,reload,editableEffects,registerFlusher,onDirtyChange}:{medication:DemoMedication;bundle:PatientBundle;sessionId?:string;today:string;reload:()=>Promise<unknown>;editableEffects:boolean}&Tracking){
  const effects=bundle.medicationSideEffects.filter(e=>e.medication_id===medication.id);
- return <>{effects.map(e=><div className={'med-effect '+(e.resolved_on?'resolved':'')} key={e.id}><span>{e.effect_text}</span><small>{e.severity==='severe'?'Σοβαρή':e.severity==='mild'?'Ήπια':'Μέτρια'} · {formatClinicDate(e.noted_on)}{e.resolved_on?' · επιλύθηκε '+formatClinicDate(e.resolved_on):''}</small></div>)}{!effects.length&&<small>Δεν υπάρχει δομημένη καταγραφή</small>}{editableEffects&&medication.status!=='stopped'&&<SideEffectEntry medication={medication} sessionId={sessionId} today={today} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</>;
+ return <>{effects.map(e=><div className={'med-effect '+(e.resolved_on?'resolved':'')} key={e.id}><span>{e.effect_text}</span><small>{e.severity==='severe'?'Σοβαρή':e.severity==='mild'?'Ήπια':'Μέτρια'} · {formatClinicDate(e.noted_on)}{e.resolved_on?' · επιλύθηκε '+formatClinicDate(e.resolved_on):''}</small></div>)}{!effects.length&&<small>Δεν υπάρχει δομημένη καταγραφή</small>}{editableEffects&&<SideEffectEntry medication={medication} sessionId={sessionId} today={today} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</>;
 }
 
 function SideEffectEntry({medication,sessionId,today,reload,registerFlusher,onDirtyChange}:{medication:DemoMedication;sessionId?:string;today:string;reload:()=>Promise<unknown>}&Tracking){

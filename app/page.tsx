@@ -10,6 +10,7 @@ import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
 
 import {
   Activity,
+  BookOpen,
   Bell,
   Check,
   Clock,
@@ -44,7 +45,7 @@ const nav = [
   [Home, "Επισκόπηση", "/"],
   [CalendarDays, "Ημερολόγιο", "/calendar"],
   [Users, "Ασθενείς", "/patients"],
-  [Activity, "Ψυχομετρικά τεστ", "/psychometrics"],
+  [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
 ] as const;
 
 export default function Page() {

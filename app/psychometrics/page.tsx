@@ -2,7 +2,7 @@
 import PilotProfile from '@/components/PilotProfile';
 import IntakeLauncher from '@/components/intake/IntakeLauncher';
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { diagnosisOptions, familyConditions, familyRelations, medicalOptions, reasonOptions, substanceOptions } from '@/lib/intake/history';
 import { Check, ChevronRight, Clock3, Eye, Mail, Plus, Search, ShieldCheck, Tablet, Trash2, X, Printer, UserRound, ChevronDown, UploadCloud, FileText, Sparkles, Bell, Activity, Home, Settings, Stethoscope, Users, CalendarDays, Menu } from "lucide-react";
 
@@ -87,8 +87,8 @@ export default function Psychometrics(){
  </div></section></main>
 }
 
-function PreviewChoice({children}:{children:React.ReactNode}){return <span className="history-preview-choice">{children}</span>}
-function PreviewQuestion({title,children}:{title:string;children:React.ReactNode}){return <div className="history-preview-question"><strong>{title}</strong><div className="history-preview-options">{children}</div></div>}
+function PreviewChoice({children}:{children:ReactNode}){return <span className="history-preview-choice">{children}</span>}
+function PreviewQuestion({title,children}:{title:string;children:ReactNode}){return <div className="history-preview-question"><strong>{title}</strong><div className="history-preview-options">{children}</div></div>}
 function HistoryQuestionnairePreview(){
  return <div className="history-questionnaire-preview">
   <section>

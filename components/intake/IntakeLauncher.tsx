@@ -70,6 +70,13 @@ export default function IntakeLauncher({
  },[fixed]);
 
  const selected=useMemo(()=>{
+  if(fixed)return {
+   patient_id:patientId||null,
+   appointment_id:appointmentId||null,
+   email:patientEmail,
+   label:subjectLabel||'Επιλεγμένος ασθενής',
+   hint:appointmentId&&!patientId?'Νέος ασθενής · ο φάκελος θα δημιουργηθεί μετά την υποβολή.':appointmentId?'Συνδεδεμένο με το συγκεκριμένο ραντεβού.':'Θα καταχωριστεί στον υπάρχοντα φάκελο.'
+  };
   if(subject.startsWith('patient:')){
    const p=patients.find(x=>x.id===subject.slice(8));
    return {patient_id:subject.slice(8),appointment_id:null,email:p?.email||'',label:p?[p.first_name,p.last_name].filter(Boolean).join(' '):'Επιλεγμένος ασθενής',hint:'Θα καταχωριστεί στον υπάρχοντα φάκελο.'};
@@ -78,14 +85,8 @@ export default function IntakeLauncher({
    const e=events.find(x=>x.id===subject.slice(12));
    return {patient_id:e?.patient_id||null,appointment_id:subject.slice(12),email:e?.provisional_email||'',label:e?.patient_name||'Επιλεγμένο ραντεβού',hint:e?.patient_id?'Συνδεδεμένο με το συγκεκριμένο ραντεβού.':'Νέος ασθενής · ο φάκελος θα δημιουργηθεί μετά την υποβολή.'};
   }
-  return {
-   patient_id:patientId||null,
-   appointment_id:appointmentId||null,
-   email:patientEmail,
-   label:subjectLabel||'Επιλεγμένος ασθενής',
-   hint:appointmentId&&!patientId?'Νέος ασθενής · ο φάκελος θα δημιουργηθεί μετά την υποβολή.':appointmentId?'Συνδεδεμένο με το συγκεκριμένο ραντεβού.':'Θα καταχωριστεί στον υπάρχοντα φάκελο.'
-  };
- },[subject,patients,events,patientId,appointmentId,patientEmail,subjectLabel]);
+  return {patient_id:null,appointment_id:null,email:'',label:'',hint:''};
+ },[fixed,subject,patients,events,patientId,appointmentId,patientEmail,subjectLabel]);
 
  useEffect(()=>{if(!email&&selected.email)setEmail(selected.email)},[selected.email,email]);
 

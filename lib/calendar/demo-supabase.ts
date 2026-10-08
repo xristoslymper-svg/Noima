@@ -18,6 +18,8 @@ export type DemoCalendarEvent = {
   readiness_label: string;
   status: "scheduled" | "cancelled" | "completed";
   payment_status: "unknown" | "pending" | "paid" | "not_applicable";
+  provisional_phone?: string;
+  provisional_email?: string;
   sms_reminder_enabled?: boolean;
   sms_reminder?: {status:string;due_at:string;processed_at:string|null;recipient_masked:string;message:string};
   updated_at: string;
@@ -49,7 +51,7 @@ export async function fetchDemoCalendarEvents(tester: string): Promise<DemoCalen
   await bootstrap(tester);
   const params = new URLSearchParams({
     select:
-      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,payment_status,sms_reminder_enabled,updated_at,series_id,recurrence_interval_weeks",
+      "id,tester_id,patient_id,session_id,patient_name,appointment_type,detail,scheduled_start,scheduled_end,readiness,readiness_label,status,payment_status,sms_reminder_enabled,provisional_phone,provisional_email,updated_at,series_id,recurrence_interval_weeks",
     tester_id: `eq.${tester}`,
     order: "scheduled_start.asc",
   });
@@ -167,4 +169,24 @@ export async function createDemoPatientAppointment(
     throw new Error(`calendar_patient_create_failed:${response.status}`);
   }
   return response.json() as Promise<{ patient: { id: string; first_name: string; last_name: string }; event: DemoCalendarEvent }>;
+}
+
+
+export async function createDemoProvisionalAppointment(
+  tester:string,
+  input:{first_name:string;last_name:string;phone:string;email:string;scheduled_start:string;scheduled_end:string;appointment_type?:string|null},
+):Promise<DemoCalendarEvent>{
+  const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/demo_calendar_create_provisional_appointment',{
+    method:'POST',headers:headers(),cache:'no-store',
+    body:JSON.stringify({
+      p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_phone:input.phone,p_email:input.email,
+      p_scheduled_start:input.scheduled_start,p_scheduled_end:input.scheduled_end,p_appointment_type:input.appointment_type??'initial_assessment'
+    })
+  });
+  if(!response.ok){
+    const message=await response.text();
+    if(message.includes('calendar_conflict'))throw new Error('calendar_conflict');
+    throw new Error('calendar_provisional_create_failed:'+response.status);
+  }
+  return response.json() as Promise<DemoCalendarEvent>;
 }

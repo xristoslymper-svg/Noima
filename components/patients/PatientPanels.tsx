@@ -93,7 +93,7 @@ export function MedicationsPanel({bundle,reload,beforeNavigate}:{bundle:PatientB
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty.current.size)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[]);
  return <section className="panel-stack medication-record">
   <div className="panel-heading medication-record-head">
-   <div><span className="kicker">ΑΓΩΓΗ</span><h2>Αγωγή</h2><p>Συμπλήρωσε ή άλλαξε την αγωγή απευθείας στον πίνακα. Οι αλλαγές αποθηκεύονται όταν φεύγεις από τη γραμμή.</p></div>
+   <div><span className="kicker">ΑΓΩΓΗ</span><h2>Αγωγή</h2></div>
   </div>
   <MedicationTable bundle={bundle} reload={reload} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   <details className="medication-history-details">

@@ -1,6 +1,7 @@
 .record { min-width:0; }
 /* Warm canvas for individual patient record only */
 .workspace { background:#f8f5ef; min-height:100vh; }
+.workspace :global(.topbar) { background:#fbfcfa; }
 .shell { display:block !important; }
 .tabs { display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--line,#e3e6df); margin-bottom:24px; padding:0 0 10px; overflow-x:auto; }
 .tabs button { display:flex; align-items:center; gap:8px; flex-shrink:0; padding:10px 16px; border:0; border-radius:8px; background:transparent; color:var(--muted,#6a746d); font:inherit; cursor:pointer; }

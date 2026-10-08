@@ -17,7 +17,11 @@ begin
  if p_patient is not null then
    select * into p from public.demo_patients where id=p_patient and tester_id=p_tester;
    if not found then raise exception 'patient_not_found'; end if;
-   if a.conflict->>'type'='amka' and (amka='' or coalesce(p.amka,'')<>amka) then
+   -- A possible-match label is a snapshot, not permission to ignore a later
+   -- exact match. Recheck under the identity lock before routing clinical data.
+   if (a.conflict->>'type'='amka' or (amka<>'' and exists(
+     select 1 from public.demo_patients dp where dp.tester_id=p_tester and dp.amka=regexp_replace(coalesce(a.identity->>'amka',''),'[^0-9]','','g')
+   ))) and (amka='' or coalesce(p.amka,'')<>amka) then
      raise exception 'amka_conflict_requires_matching_patient';
    end if;
  else
@@ -53,38 +57,38 @@ revoke all on function public.demo_intake_resolve(uuid,uuid,uuid,boolean) from p
 grant execute on function public.demo_intake_resolve(uuid,uuid,uuid,boolean) to authenticated;
 
 create or replace function private.pilot_impl_demo_medication_event_write(p_tester uuid,p_medication uuid,p_session uuid,p_type text,p_dose numeric,p_unit text,p_frequency text,p_effective date,p_reason text,p_expected_version integer,p_replace uuid default null,p_cancel boolean default false)
-returns public.demo_medications language plpgsql security definer set search_path=public as $$
+returns public.demo_medications language plpgsql security definer set search_path='' as $$
 declare m public.demo_medications; old_event public.demo_medication_events; new_id uuid; prior jsonb; state jsonb; stopped boolean:=false; e record;
 begin
- select * into m from demo_medications where id=p_medication and tester_id=p_tester for update;
+ select * into m from public.demo_medications where id=p_medication and tester_id=p_tester for update;
  if m.id is null then raise exception 'medication_not_found'; end if;
  if p_expected_version is null or m.plan_version<>p_expected_version then raise exception 'stale_medication'; end if;
- if p_session is not null and not exists(select 1 from demo_sessions where id=p_session and patient_id=m.patient_id and tester_id=p_tester and status='draft') then raise exception 'session_unavailable'; end if;
+ if p_session is not null and not exists(select 1 from public.demo_sessions where id=p_session and patient_id=m.patient_id and tester_id=p_tester and status='draft') then raise exception 'session_unavailable'; end if;
  if p_effective is null or p_type not in ('started','changed','stopped') then raise exception 'invalid_event'; end if;
  if p_replace is not null then
-  select * into old_event from demo_medication_events where id=p_replace and medication_id=m.id;
-  if old_event.id is null or exists(select 1 from demo_medication_event_revisions where event_id=p_replace) then raise exception 'stale_medication'; end if;
+  select * into old_event from public.demo_medication_events where id=p_replace and medication_id=m.id;
+  if old_event.id is null or exists(select 1 from public.demo_medication_event_revisions where event_id=p_replace) then raise exception 'stale_medication'; end if;
   if length(trim(coalesce(p_reason,'')))=0 then raise exception 'reason_required'; end if;
   if p_cancel and old_event.effective_on<=(now() at time zone 'Europe/Athens')::date then raise exception 'historical_correction_required'; end if;
-  insert into demo_medication_event_revisions(tester_id,event_id,reason) values(p_tester,p_replace,p_reason);
+  insert into public.demo_medication_event_revisions(tester_id,event_id,reason) values(p_tester,p_replace,p_reason);
  elsif p_cancel then raise exception 'event_required';
  end if;
  if not p_cancel then
-  if p_type<>'stopped' and exists(select 1 from demo_medication_events x where medication_id=m.id and effective_on=p_effective and not exists(select 1 from demo_medication_event_revisions r where r.event_id=x.id)) then raise exception 'event_date_conflict'; end if;
-  prior:=demo_medication_state(m.id,p_effective);
+  if p_type<>'stopped' and exists(select 1 from public.demo_medication_events x where medication_id=m.id and effective_on=p_effective and not exists(select 1 from public.demo_medication_event_revisions r where r.event_id=x.id)) then raise exception 'event_date_conflict'; end if;
+  prior:=public.demo_medication_state(m.id,p_effective);
   if p_type<>'stopped' and (p_dose is null or p_dose<=0 or length(trim(coalesce(p_unit,'')))=0 or length(trim(coalesce(p_frequency,'')))=0) then raise exception 'invalid_dose'; end if;
   state:=case when p_type='stopped' then prior||jsonb_build_object('status','stopped') else jsonb_build_object('dose',p_dose,'unit',p_unit,'frequency',p_frequency,'status','active') end;
-  insert into demo_medication_events(tester_id,patient_id,medication_id,session_id,event_type,previous_state,new_state,reason,effective_on,created_at) values(p_tester,m.patient_id,m.id,p_session,p_type,prior,state,coalesce(p_reason,''),p_effective,clock_timestamp()) returning id into new_id;
-  if p_replace is not null then update demo_medication_event_revisions set replacement_id=new_id where event_id=p_replace; end if;
+  insert into public.demo_medication_events(tester_id,patient_id,medication_id,session_id,event_type,previous_state,new_state,reason,effective_on,created_at) values(p_tester,m.patient_id,m.id,p_session,p_type,prior,state,coalesce(p_reason,''),p_effective,clock_timestamp()) returning id into new_id;
+  if p_replace is not null then update public.demo_medication_event_revisions set replacement_id=new_id where event_id=p_replace; end if;
  end if;
  -- A valid course has a start followed by changes and at most a terminal stop.
  stopped:=true;
- for e in select x.* from demo_medication_events x where medication_id=m.id and not exists(select 1 from demo_medication_event_revisions r where r.event_id=x.id) order by effective_on,created_at,id loop
+ for e in select x.* from public.demo_medication_events x where medication_id=m.id and not exists(select 1 from public.demo_medication_event_revisions r where r.event_id=x.id) order by effective_on,created_at,id loop
   if e.event_type='started' then if not stopped then raise exception 'conflicting_start'; end if; stopped:=false;
   elsif stopped then raise exception 'event_after_stop_or_before_start';
   elsif e.event_type='stopped' then stopped:=true; end if;
  end loop;
- update demo_medications set plan_version=plan_version+1,updated_at=now() where id=m.id returning * into m;
+ update public.demo_medications set plan_version=plan_version+1,updated_at=now() where id=m.id returning * into m;
  return m;
 end $$;
 

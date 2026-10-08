@@ -1,12 +1,12 @@
-import { PGlite } from '@electric-sql/pglite';
+import {databaseRuntime,migrateTestDatabase} from './helpers/database-runtime.mjs';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import {readFile} from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 
 // Real PostgreSQL in-process. Only the Supabase-owned auth schema/JWT role context
 // is emulated; the exact production migration, RLS, grants and triggers run here.
-const db = new PGlite();
+const db = await databaseRuntime();
 const a = '10000000-0000-4000-8000-000000000001';
 const b = '10000000-0000-4000-8000-000000000002';
 const colleague = '10000000-0000-4000-8000-000000000003';
@@ -31,18 +31,7 @@ async function rejected(id, query, params = [], pattern = /permission denied|row
 }
 
 before(async () => {
-  await db.exec(`
-    create role anon nologin; create role authenticated nologin;
-    create schema auth; create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, deleted_at timestamptz, banned_until timestamptz);
-    create function auth.uid() returns uuid language sql stable as
-    $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-    grant usage on schema auth, public to anon, authenticated;
-    grant execute on function auth.uid() to anon, authenticated;
-  `);
-  for (const name of (await readdir('supabase/migrations')).filter(x => x.endsWith('.sql')).sort()) {
-    try { await db.exec(await readFile(`supabase/migrations/${name}`, 'utf8')); }
-    catch (error) { throw new Error(`${name}: ${error.message} ${error.where ?? ''}`); }
-  }
+  await migrateTestDatabase(db);
   await sql('insert into auth.users(id) values ($1),($2),($3)', [a, b, colleague]);
   await sql('insert into public.profiles(id,full_name) values ($1,\'A\'),($2,\'B\'),($3,\'Colleague\')', [a,b,colleague]);
   await sql("insert into practices(id,name) values ($1,'A'),($2,'B')", [pa,pb]);
@@ -541,7 +530,7 @@ test('finalization is idempotent, immutable and supports append-only idempotent 
  const [current]=await sql('select version from demo_sessions where id=$1',[s.id]);
  await assert.rejects(sql('select demo_session_finalize($1,$2,1)',[t,s.id]),/stale_session/);
  const [done]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,s.id,current.version]);
- const [retry]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,s.id,current.version]);assert.equal(done.completed_at.toISOString(),retry.completed_at.toISOString());assert.equal(done.version,retry.version);
+ const [retry]=await sql('select * from demo_session_finalize($1,$2,$3)',[t,s.id,current.version]);assert.deepEqual(done.completed_at,retry.completed_at);assert.equal(done.version,retry.version);
  await assert.rejects(sql("select demo_session_save_section($1,$2,'assessment','changed','manual',1)",[t,s.id]),/session_unavailable/);
  await assert.rejects(sql("update demo_session_sections set content='bad' where session_id=$1",[s.id]),/immutable_record/);
  const args=[t,s.id,'60000000-0000-4000-8000-000000000003','correction','Typo','Corrected spelling'];
@@ -841,6 +830,19 @@ test('possible-match new-person resolution rechecks an AMKA created after submis
  await sql("update demo_patients set amka='33333333333' where id=$1",[late]);
  await rejected(a,'select demo_intake_resolve($1,$2,null,true)',[f.tester,f.id],/amka_conflict/);
  assert.equal((await sql("select count(*)::int n from demo_patients where tester_id=$1 and amka='33333333333'",[f.tester]))[0].n,1);
+});
+
+test('possible-match linking rechecks a later exact AMKA before routing clinical data',async()=>{
+ const f=await intakeFixture();
+ const [{id:original}]=await asUser(a,()=>sql("select (demo_patient_create_v3($1,'TEST Original Contact','',null,'6903333333')).id id",[f.tester]));
+ await submitFixture(f,{first_name:'TEST Later Exact',phone:'6903333333',amka:'55555555555'});
+ const [{id:exact}]=await asUser(a,()=>sql("select (demo_patient_create_v3($1,'TEST Later Exact','',null,'','','','55555555555')).id id",[f.tester]));
+ await rejected(a,'select demo_intake_resolve($1,$2,$3,false)',[f.tester,f.id,original],/amka_conflict_requires_matching_patient/);
+ const [pending]=await sql('select status,history_answers,psychometric_answers from private.demo_intakes where id=$1',[f.id]);
+ assert.equal(pending.status,'conflict');assert.ok(pending.history_answers);assert.ok(pending.psychometric_answers);
+ assert.equal((await sql('select count(*)::int n from private.demo_assessments where intake_id=$1',[f.id]))[0].n,0);
+ await asUser(a,()=>sql('select demo_intake_resolve($1,$2,$3,false)',[f.tester,f.id,exact]));
+ assert.equal((await sql('select patient_id from private.demo_assessments where intake_id=$1',[f.id]))[0].patient_id,exact);
 });
 
 test('phone and email conflicts can explicitly create a distinct person; provisional appointment survives materialization',async()=>{

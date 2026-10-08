@@ -31,3 +31,7 @@
 .alert { border-left:3px solid var(--green,#315f4d); padding-left:14px; }
 .headerNote { margin-top:6px; font-size:13px; color:var(--muted,#6a746d); }
 @media(max-width:700px) { .grid,.changes { grid-template-columns:1fr; gap:18px; } .tabs { gap:0; } .tabs button { padding:9px 10px; } .tabs button:last-child { margin-left:0; } .item { grid-template-columns:1fr; gap:5px; } }
+
+.compactHeroAction { min-width:0; padding:9px 13px; gap:9px; }
+.compactHeroAction :global(.patient-voice-icon) { width:32px; height:32px; }
+.compactHeroAction strong { font-size:12.5px; white-space:nowrap; }

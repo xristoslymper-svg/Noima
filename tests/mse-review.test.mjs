@@ -36,7 +36,7 @@ test('unreviewed previous domains need a decision; omitted domains do not imply 
 test('explicit global confirmation retains changed findings and confirms only documented references',async()=>{
  const {confirmMseUnchanged}=await import('../lib/clinical/mse-review.ts');
  const current={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Today changed',review:'changed'},{key:'speech',label:'Speech',text:''},{key:'cognition',label:'Cognition',text:''}]};
- const previous={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Old'},{key:'speech',label:'Speech',text:'Coherent',reference:{session_id:'old',date:'2026-10-01'}}]};
+ const previous={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Old'},{key:'speech',label:'Speech',text:'Coherent',reference:{session_id:'old',date:'2026-10-01'}},{key:'legacy',label:'Previous narrative',text:'Previous narrative observation',reference:{session_id:'old',date:'2026-10-01'}}]};
  const result=confirmMseUnchanged(current,previous);
- assert.equal(result.fields[0].text,'Today changed');assert.equal(result.fields[1].review,'unchanged');assert.equal(result.fields[1].reference.session_id,'old');assert.equal(result.fields[2].text,'');assert.equal(result.fields[2].review,undefined);assert.equal(current.fields[1].text,'');
+ assert.equal(result.fields[0].text,'Today changed');assert.equal(result.fields[1].review,'unchanged');assert.equal(result.fields[1].reference.session_id,'old');assert.equal(result.fields[2].text,'');assert.equal(result.fields[2].review,undefined);assert.equal(current.fields[1].text,'');assert.equal(result.fields.find(f=>f.key==='legacy').reference.session_id,'old');assert.equal(result.fields.find(f=>f.key==='legacy').review,'unchanged');
 });

@@ -14,7 +14,7 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
  const [domainsOpen,setDomainsOpen]=useState(false);
  const key='section:'+kind;const [conflict,setConflict]=useState<DemoSection|null|undefined>();
  const originalBaseline=kind==='mse'&&baseline?initialDocument('mse',baseline.content,baseline.document):null;
- const baselineDocument=timeline?{kind:'mse' as const,fields:mseItems.map<DocumentField>(([key,label])=>{const source=timeline.references[key];return source?{...source.field,reference:{session_id:source.sessionId,date:source.date}}:{key,label,text:''}}).concat(originalBaseline?.fields.filter(f=>f.key==='legacy')||[])}:originalBaseline;
+ const baselineDocument=timeline?{kind:'mse' as const,fields:mseItems.map<DocumentField>(([key,label])=>{const source=timeline.references[key];return source?{...source.field,reference:{session_id:source.sessionId,date:source.date}}:{key,label,text:''}}).concat((originalBaseline?.fields.filter(f=>f.key==='legacy')||[]).map(f=>{const visit=timeline.visits.find(v=>v.sessionId===baseline?.session_id);return visit?{...f,reference:{session_id:visit.sessionId,date:visit.date}}:f}))}:originalBaseline;
  const initialValue=initialDocument(kind,existing?.content,existing?.document);
  const mseContainer=useRef<HTMLDivElement>(null);
  const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialValue,version:existing?.version??null,write:async(document,version)=>{const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});

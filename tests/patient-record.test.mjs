@@ -57,3 +57,8 @@ test('start-today overrides an old or future appointment and since-then excludes
  const input=bundle({sessions:[{id:'visit',status:'completed',started_at:'2026-10-07T09:00:00Z',completed_at:'2026-10-07T10:00:00Z'}],appointments:[{session_id:'visit',scheduled_start:'2026-10-15T09:00:00Z'}],assessments:[{id:'during',instrument:'GAD-7',status:'completed',score:8,completed_at:'2026-10-07T09:30:00Z'},{id:'after',instrument:'GAD-7',status:'completed',score:7,completed_at:'2026-10-07T11:00:00Z'}]});
  const result=patientRecord(input,now);assert.equal(result.events.find(e=>e.kind==='visits').date,'2026-10-07T09:00:00Z');assert.deepEqual(result.sinceLatest.map(e=>e.id),['measurement-after']);
 });
+
+test('same-day treatment mutations appear since the completed encounter only with later recorded evidence',()=>{
+ const input=bundle({sessions:[{id:'visit',status:'completed',started_at:'2026-10-08T07:00:00Z',completed_at:'2026-10-08T08:00:00Z'}],medicationEvents:[{id:'new',event_type:'changed',effective_on:'2026-10-08',created_at:'2026-10-08T08:30:00Z'},{id:'during',event_type:'started',effective_on:'2026-10-08',created_at:'2026-10-08T07:30:00Z'},{id:'scheduled',event_type:'changed',effective_on:'2026-10-09',created_at:'2026-10-08T08:30:00Z'}],medicationSideEffects:[{id:'new',medication_id:'med',effect_text:'Reported effect',noted_on:'2026-10-08',created_at:'2026-10-08T08:31:00Z',resolved_on:null}]});
+ assert.deepEqual(new Set(patientRecord(input,now).sinceLatest.map(e=>e.id)),new Set(['med-new','effect-new']));
+});

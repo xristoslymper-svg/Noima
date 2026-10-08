@@ -1,6 +1,6 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export type RecordEvent={id:string;kind:'visits'|'treatment'|'measurements';date:string;title:string;detail:string;sessionId?:string;assessmentId?:string;scheduled?:boolean};
+export type RecordEvent={id:string;kind:'visits'|'treatment'|'measurements';date:string;title:string;detail:string;sessionId?:string;assessmentId?:string;scheduled?:boolean;recordedAt?:string};
 const eventLabels:Record<string,string>={started:'Έναρξη αγωγής',changed:'Αλλαγή αγωγής',stopped:'Διακοπή αγωγής'};
 const day=(value:string)=>value.length===10?value:new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
 export function completedMeasurements(bundle:PatientBundle,now=new Date()){
@@ -25,20 +25,19 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
  const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
  const events:RecordEvent[]=[
   ...completed.map(s=>({id:'visit-'+s.id,kind:'visits' as const,date:clinicalDate(bundle,s),title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση',detail:'Ολοκληρωμένη καταγραφή',sessionId:s.id})),
-  ...medicationEvents.map(e=>({id:'med-'+e.id,kind:'treatment' as const,date:e.effective_on,title:eventLabels[e.event_type],detail:[String(e.new_state?.medication_name||e.previous_state?.medication_name||medicationName(e.medication_id)),e.new_state?.dose!==undefined?`${e.new_state.dose} ${e.new_state.unit||''}`:'',e.reason].filter(Boolean).join(' · '),sessionId:e.session_id||undefined,scheduled:e.effective_on>today})),
+  ...medicationEvents.map(e=>({id:'med-'+e.id,kind:'treatment' as const,date:e.effective_on,recordedAt:e.created_at,title:eventLabels[e.event_type],detail:[String(e.new_state?.medication_name||e.previous_state?.medication_name||medicationName(e.medication_id)),e.new_state?.dose!==undefined?`${e.new_state.dose} ${e.new_state.unit||''}`:'',e.reason].filter(Boolean).join(' · '),sessionId:e.session_id||undefined,scheduled:e.effective_on>today})),
   ...bundle.medicationSideEffects.flatMap(e=>[
-   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,title:'Παρενέργεια',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
-   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,title:'Λήξη παρενέργειας',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
+   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:'Παρενέργεια',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
+   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:'Λήξη παρενέργειας',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
   ]),
   ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση',sessionId:a.session_id||undefined,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
- // Date-only treatment events cannot be ordered against the encounter's clock time.
- // A same-day event is included only when explicitly linked to that encounter.
+ // Same-day date-only events need a recorded timestamp to establish ordering.
  const sinceLatest=latestVisit?events.filter(e=>{
   if(e.kind==='visits'||e.scheduled)return false;
   const visitDate=latestVisit.completed_at||clinicalDate(bundle,latestVisit);
   if(e.date.length>10)return Date.parse(e.date)>Date.parse(visitDate);
-  return day(e.date)>day(visitDate);
+  return day(e.date)>day(visitDate)||(day(e.date)===day(visitDate)&&Boolean(e.recordedAt)&&Date.parse(e.recordedAt!)>Date.parse(visitDate));
  }):[];
  const risk=latestVisit?bundle.risks.find(r=>r.session_id===latestVisit.id)||null:null;
  const safetyLabels={suicidal_ideation:'Αυτοκτονικός ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'} as const;

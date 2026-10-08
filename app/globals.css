@@ -560,11 +560,12 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .patient-details-link{margin-top:54px;border:0;background:transparent;padding:0;color:#70847a;font-size:11px;font-weight:700;display:flex;gap:8px;align-items:center;cursor:pointer}.patient-details-link:hover{color:#376f5d}
 @media(max-width:650px){.clinical-start{min-height:360px;padding:18px 0 40px}.clinical-start h2{font-size:38px}.clinical-start-copy>p{font-size:15px}.clinical-start-cta{width:100%}}
 
-/* Minimal new-patient summary: the single primary action lives in the hero */
-.minimal-start{min-height:0;padding-top:18px;justify-content:flex-start}
+/* Minimal new-patient summary: primary recording action lives inside Summary */
+.minimal-start{min-height:330px;padding-top:18px;justify-content:center}
 .minimal-start .clinical-start-copy{width:min(100%,620px)}
-.minimal-start .clinical-start-scope{margin-top:0;max-width:600px}
-.minimal-start .patient-details-link{margin-top:30px}
+.minimal-start .clinical-start-cta{width:min(100%,430px);margin:0}
+.minimal-start .clinical-start-scope{margin-top:16px;max-width:600px}
+.minimal-start .patient-details-link{margin-top:44px}
 
 
 /* Medication record: list first, temporal detail on demand. */
@@ -1082,4 +1083,32 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 @media(max-width:760px){
  .library-psych-actions{width:100%;justify-content:space-between;align-items:flex-start}
  .library-new-test{margin-left:auto}
+}
+
+
+/* Inline medication editor */
+.medication-record-head{align-items:flex-end}
+.medication-record-head p{margin:5px 0 0;color:#7b8982;font-size:11px;line-height:1.5}
+.medication-table-editor{overflow-x:auto}
+.medication-table-editor .medication-lean-table{min-width:930px}
+.medication-table-editor input,.medication-table-editor select{width:100%;min-width:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#31473d;font:inherit;padding:6px 7px;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}
+.medication-table-editor input:hover,.medication-table-editor select:hover{background:#f8faf7;border-color:#e4e9e4}
+.medication-table-editor input:focus,.medication-table-editor select:focus{outline:0;background:#fff;border-color:#aac6b8;box-shadow:0 0 0 2px rgba(71,121,99,.10)}
+.medication-table-editor input[type="date"]{font-size:10px}
+.med-inline-dose{display:grid;grid-template-columns:minmax(58px,.75fr) minmax(48px,.55fr);gap:4px}
+.med-inline-input{min-width:120px!important}
+.med-inline-stop,.med-new-date{display:grid;gap:3px;margin-top:6px;color:#7c8a83;font-size:8.5px;font-weight:700}
+.med-inline-stop input,.med-new-date input{padding:4px 5px!important}
+.med-inline-status{font-size:9px!important;padding:5px 6px!important}
+.med-inline-state{display:block;margin-top:5px;font-size:8.5px;font-weight:650;line-height:1.35}
+.med-inline-state.ok{color:#4d7d69}.med-inline-state.error{color:#a45e63}
+.med-unsaved{display:block;margin-top:5px;color:#9a7c48;font-size:8px;line-height:1.35}
+.med-row-editing{background:#fffdf7}
+.med-new-row{background:#fafcf9;border-top:1px dashed #dbe4de}
+.med-new-row th,.med-new-row td{vertical-align:top}
+.med-new-row th>input{font-weight:700}
+.med-new-row td>small{display:block;color:#8c9791;font-size:8.5px;line-height:1.4;padding-top:6px}
+@media(max-width:760px){
+ .medication-table-editor{margin-left:-4px;margin-right:-4px}
+ .medication-record-head p{max-width:520px}
 }

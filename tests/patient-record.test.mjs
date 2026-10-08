@@ -37,3 +37,18 @@ test('important structured safety signals are retained even when ideation is neg
  const result=patientRecord(bundle({sessions:[{id:'latest',status:'completed',started_at:'2026-10-07'}],risks:[{session_id:'latest',suicidal_ideation:'negative',self_harm:'positive',harm_to_others:'positive'}]}),now);
  assert.deepEqual(result.safetyAlerts,['Αυτοτραυματισμός','Κίνδυνος προς τρίτους']);
 });
+
+test('encounter linkage does not move earlier clinical events into changes since the latest visit',()=>{
+ const result=patientRecord(bundle({sessions:[{id:'latest',status:'completed',started_at:'2026-10-07T09:00:00Z'}],medicationEvents:[{id:'historical',event_type:'started',effective_on:'2026-09-01',session_id:'latest'}],assessments:[{id:'earlier',instrument:'PHQ-9',status:'completed',score:10,completed_at:'2026-10-07T08:00:00Z',session_id:'latest'}]}),now);
+ assert.deepEqual(result.sinceLatest,[]);
+ assert.ok(result.events.some(e=>e.id==='med-historical'));
+ assert.ok(result.events.some(e=>e.id==='measurement-earlier'));
+});
+
+test('future timestamps today cannot become current scores, safety flags, trends, or completed measurement events',()=>{
+ const result=patientRecord(bundle({assessments:[{id:'future',instrument:'PHQ-9',status:'completed',score:12,completed_at:'2026-10-08T18:00:00Z',item9_review:true},{id:'now',instrument:'PHQ-9',status:'completed',score:6,completed_at:now.toISOString()},{id:'past',instrument:'PHQ-9',status:'completed',score:9,completed_at:'2026-10-07T12:00:00Z'}]}),now);
+ assert.equal(result.latestScores[0].current.id,'now');
+ assert.equal(result.latestScores[0].previous.id,'past');
+ assert.deepEqual(result.pendingSafety,[]);
+ assert.ok(!result.events.some(e=>e.assessmentId==='future'));
+});

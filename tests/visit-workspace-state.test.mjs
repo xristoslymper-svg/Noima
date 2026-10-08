@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,sessionClinicalTime,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch} from '../lib/clinical/visit-workspace-state.ts';
+import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,sessionClinicalTime,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch,workspaceMeasurementSearch,workspaceSelectedAssessment} from '../lib/clinical/visit-workspace-state.ts';
 import {initialDocument} from '../lib/clinical/visit-document.ts';
 
 test('completed follow-up history keeps established patients out of initial entry; drafts do not',()=>{
@@ -122,4 +122,16 @@ test('legacy medication and measurement links retain contextual destination',()=
  assert.deepEqual(workspaceLocation('?tab=medications'),{tab:'treatment',sessionId:null});
  assert.deepEqual(workspaceLocation('?tab=psychometrics'),{tab:'treatment',sessionId:null});
  assert.equal(workspaceTransitionSearch('?appointment=a','psychometrics'),'?appointment=a&tab=treatment&section=measurements');
+});
+
+test('measurement destinations retain the selected assessment and appointment through reloads and clear it on leaving',()=>{
+ const selected=workspaceMeasurementSearch('?appointment=appt&tab=timeline&session=visit','score/with spaces');
+ assert.deepEqual(workspaceLocation(selected),{tab:'treatment',sessionId:null});
+ assert.equal(workspaceSelectedAssessment(selected),'score/with spaces');
+ assert.equal(new URLSearchParams(selected).get('appointment'),'appt');
+ assert.equal(workspaceSelectedAssessment(workspaceTransitionSearch(selected,'history')),null);
+ assert.equal(new URLSearchParams(workspaceTransitionSearch(selected,'history')).has('assessment'),false);
+ assert.equal(workspaceSelectedAssessment(workspaceMeasurementSearch(selected)),null);
+ assert.equal(workspaceSelectedAssessment('?tab=psychometrics&assessment=legacy-score'),'legacy-score');
+ assert.equal(workspaceSelectedAssessment('?tab=summary&assessment=unrelated'),null);
 });

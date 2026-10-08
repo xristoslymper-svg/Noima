@@ -62,6 +62,7 @@ export function workspaceTransitionSearch(search:string,tab:WorkspaceTab|LegacyW
  if(destination==='summary')params.delete('tab');else params.set('tab',destination);
  if(destination==='timeline'&&sessionId)params.set('session',sessionId);else params.delete('session');
  if(tab==='psychometrics')params.set('section','measurements');else params.delete('section');
+ params.delete('assessment');
  if(options.clearAppointment)params.delete('appointment');
  const next=params.toString();return next?'?'+next:'';
 }
@@ -81,6 +82,14 @@ export function workspaceLocation(search:string){
 export function workspaceMeasurementsRequested(search:string){
  const params=new URLSearchParams(search);
  return params.get('tab')==='psychometrics'||(params.get('tab')==='treatment'&&params.get('section')==='measurements');
+}
+export function workspaceSelectedAssessment(search:string){
+ return workspaceMeasurementsRequested(search)?new URLSearchParams(search).get('assessment'):null;
+}
+export function workspaceMeasurementSearch(search:string,assessmentId?:string|null){
+ const params=new URLSearchParams(workspaceTransitionSearch(search,'psychometrics'));
+ if(assessmentId)params.set('assessment',assessmentId);
+ return '?'+params.toString();
 }
 export function hasCompletedClinicalHistory(bundle:Pick<PatientBundle,'sessions'>){
  return bundle.sessions.some(s=>s.status==='completed');

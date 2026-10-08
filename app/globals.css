@@ -828,3 +828,14 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 @media(max-width:1180px) and (min-width:761px){.library-redesign .psy-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:760px){.compact-psychometric-card .icon-only-actions{display:flex!important}.library-redesign .psy-grid{grid-template-columns:1fr 1fr!important}}
 @media(max-width:520px){.library-redesign .psy-grid{grid-template-columns:1fr!important}}
+
+/* Psychometric preview/action refinement */
+.compact-psychometric-card .icon-only-actions button{
+  width:36px!important;
+  height:26px!important;
+  min-height:26px!important;
+  padding:0!important;
+  border-radius:6px!important;
+}
+.compact-psychometric-card .icon-only-actions button svg{width:14px;height:14px}
+.preview-score-footer{justify-content:flex-start!important}

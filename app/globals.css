@@ -999,8 +999,16 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .assignment-tool-summary span{display:inline-flex;align-items:center;min-height:32px;padding:7px 11px;border:1px solid #dfe6e2;background:#f8faf8;border-radius:9px;color:#425b50;font-size:11px;font-weight:750}
 .assignment-tool-picker{margin:0 0 0 34px!important;background:#f8faf8!important;border:1px solid #edf0ee;border-radius:11px!important;padding:11px 12px!important}
 .assignment-tool-picker label{min-height:30px}
+.assignment-subject-modes{margin:0 0 10px 34px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.assignment-subject-modes button{border:1px solid #dfe6e2;background:#fff;border-radius:10px;padding:9px 10px;color:#64746d;font-size:10px;font-weight:700;cursor:pointer}
+.assignment-subject-modes button.selected{background:#eaf3ee;border-color:#bdd4c8;color:#356b59}
 .assignment-subject-select{margin:0 0 0 34px!important}
 .assignment-subject-select select{width:100%}
+.assignment-new-patient{margin:0 0 0 34px;padding:12px;border:1px solid #e0e7e3;background:#fafcfb;border-radius:12px;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.assignment-new-patient label{display:flex;flex-direction:column;gap:5px;font-size:10px;font-weight:750;color:#65766e}
+.assignment-new-patient label span{font-weight:500;color:#98a19c}
+.assignment-new-patient input{width:100%}
+.assignment-new-patient p{grid-column:1/-1;margin:2px 0 0;color:#87938d;font-size:9.5px;line-height:1.5}
 .assignment-subject-summary,.assignment-subject-confirm{margin-left:34px;display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #dde5e1;background:#f8faf9;border-radius:11px;color:#52665d}
 .assignment-subject-summary>svg:first-child,.assignment-subject-confirm>svg:first-child{color:#587a6b;flex:none}
 .assignment-subject-summary>svg:last-child{margin-left:auto;color:#5d876f;flex:none}
@@ -1020,7 +1028,9 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .scan-destination>small{font-size:9.5px;line-height:1.45;color:#7b8981}
 @media(max-width:700px){
  .assignment-intro{margin-right:26px}
- .assignment-tool-summary,.assignment-tool-picker,.assignment-subject-select,.assignment-subject-summary,.assignment-subject-confirm,.assignment-step .intake-channel-picker,.assignment-step .intake-channel-detail,.assignment-email{margin-left:0!important}
+ .assignment-tool-summary,.assignment-tool-picker,.assignment-subject-modes,.assignment-subject-select,.assignment-new-patient,.assignment-subject-summary,.assignment-subject-confirm,.assignment-step .intake-channel-picker,.assignment-step .intake-channel-detail,.assignment-email{margin-left:0!important}
+ .assignment-subject-modes{grid-template-columns:1fr}
+ .assignment-new-patient{grid-template-columns:1fr}
  .assignment-step .intake-channel-picker{grid-template-columns:repeat(3,1fr)}
  .assignment-step .intake-channel-picker button{font-size:10px;gap:4px;padding:9px 5px}
 }

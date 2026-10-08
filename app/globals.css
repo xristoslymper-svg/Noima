@@ -839,3 +839,46 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 }
 .compact-psychometric-card .icon-only-actions button svg{width:14px;height:14px}
 .preview-score-footer{justify-content:flex-start!important}
+
+/* Align initial history with compact library card model */
+.history-tool-grid{display:grid;grid-template-columns:minmax(0,1fr);max-width:300px}
+.compact-history-card{width:100%}
+.compact-history-card .history-code{display:inline-flex;align-items:center;gap:5px}
+.compact-history-card .icon-only-actions{display:flex!important;justify-content:flex-end!important;gap:5px!important;margin-top:9px!important}
+.compact-history-card .icon-only-actions button{width:36px!important;height:26px!important;min-height:26px!important;padding:0!important;border-radius:6px!important}
+.compact-history-card .icon-only-actions button svg{width:14px;height:14px;pointer-events:none}
+
+.real-history-preview{width:min(760px,calc(100vw - 36px));padding:30px 30px 24px}
+.real-history-preview>p{max-width:660px}
+.history-questionnaire-preview{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.history-questionnaire-preview>section{border:1px solid #e6ebe8;background:#fbfcfb;border-radius:14px;padding:16px}
+.history-preview-section-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.history-preview-section-head>span{width:24px;height:24px;border-radius:50%;background:#eef3f0;color:#46685a;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none}
+.history-preview-section-head>div{display:flex;flex-direction:column;gap:2px}
+.history-preview-section-head strong{font-size:12px;color:#32483e}
+.history-preview-section-head small{font-size:9px;color:#89958f}
+.history-preview-chip-grid,.history-preview-subchoices{display:flex;flex-wrap:wrap;gap:6px}
+.history-preview-choice{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dfe6e2;border-radius:8px;background:#fff;color:#5d6f66;font-size:9px;line-height:1.2}
+.history-preview-question{padding:11px 0;border-top:1px solid #edf0ee}
+.history-preview-question:first-of-type{border-top:0}
+.history-preview-question>strong{display:block;font-size:10px;color:#42574d;margin-bottom:7px;line-height:1.45}
+.history-preview-options{display:flex;flex-wrap:wrap;gap:6px}
+.history-preview-textarea{display:block;margin-top:11px;font-size:9.5px;font-weight:700;color:#596b63}
+.history-preview-textarea>span{font-weight:500;color:#9ca6a1;margin-left:4px}
+.history-preview-textarea>div{height:48px;border:1px solid #e0e6e2;border-radius:9px;background:#fff;margin-top:6px}
+.history-preview-matrix{display:flex;flex-direction:column}
+.history-preview-matrix>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #edf0ee}
+.history-preview-matrix>div:first-child{border-top:0}
+.history-preview-matrix>div>span{font-size:9.5px;color:#52665d}
+.history-preview-matrix>div>div{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.history-preview-family{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.history-preview-family>div{border:1px solid #e7ece9;background:#fff;border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:3px}
+.history-preview-family strong{font-size:9.5px;color:#43584e}
+.history-preview-family span{font-size:8.5px;color:#8a958f;line-height:1.4}
+@media(max-width:760px){
+ .history-tool-grid{max-width:none}
+ .real-history-preview{width:calc(100vw - 16px);padding:23px 15px}
+ .history-preview-family{grid-template-columns:1fr}
+ .history-preview-matrix>div{align-items:flex-start;flex-direction:column}
+ .history-preview-matrix>div>div{justify-content:flex-start}
+}

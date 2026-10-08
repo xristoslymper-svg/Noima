@@ -1,4 +1,6 @@
 "use client";
+import {groupPatientSubmissions,reviewChannelLabel,type OverviewIntake,type OverviewPsychometric} from '@/lib/clinical/submissions';
+
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
@@ -34,14 +36,10 @@ import {
 } from "lucide-react";
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
 type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
-type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null;intake_id:string|null;provenance:string|null};
-type OverviewIntake={id:string;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"submitted"|"conflict";submitted_at:string|null;created_at:string};
-type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"ready"|"conflict";when:string;has_history:boolean;psychometrics:string[]};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
-const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
 const reviewWhen=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 
 const nav = [
@@ -92,25 +90,7 @@ export default function Page() {
   const upcomingToday=todaySchedule.filter(event=>event.status==="scheduled"&&new Date(event.scheduled_start).getTime()>nowMs);
   const pendingPayments=schedule.filter(event=>event.status!=="cancelled"&&event.payment_status==="pending");
   const openTasks=tasks.filter(task=>task.status==="open");
-  const reviewSubmissions=useMemo<ReviewSubmission[]>(()=>{
-    const groups=new Map<string,ReviewSubmission>();
-    const addTool=(group:ReviewSubmission,tool:string)=>{if(!group.tools.includes(tool))group.tools.push(tool);if(tool==="history")group.has_history=true;else if(!group.psychometrics.includes(tool))group.psychometrics.push(tool)};
-    for(const intake of intakesForReview){
-      const group:ReviewSubmission={key:"intake:"+intake.id,intake_id:intake.id,patient_id:intake.patient_id,patient_name:intake.patient_name,tools:[],channel:intake.channel,status:intake.status==="conflict"?"conflict":"ready",when:intake.submitted_at||intake.created_at,has_history:false,psychometrics:[]};
-      intake.tools.forEach(tool=>addTool(group,tool));groups.set(group.key,group);
-    }
-    for(const assessment of psychometricsForReview){
-      const key=assessment.intake_id?"intake:"+assessment.intake_id:"assessment:"+assessment.id;
-      const existing=groups.get(key);
-      const group=existing||{key,intake_id:assessment.intake_id,patient_id:assessment.patient_id,patient_name:assessment.patient_name,tools:[],channel:reviewChannelLabel("",assessment.provenance||""),status:"ready" as const,when:assessment.completed_at||assessment.created_at,has_history:false,psychometrics:[]};
-      addTool(group,assessment.instrument);
-      group.patient_id=group.patient_id||assessment.patient_id;
-      group.patient_name=group.patient_name||assessment.patient_name;
-      if(!existing)groups.set(key,group);
-      if(Date.parse(assessment.completed_at||assessment.created_at)>Date.parse(group.when))group.when=assessment.completed_at||assessment.created_at;
-    }
-    return [...groups.values()].sort((a,b)=>Date.parse(b.when)-Date.parse(a.when));
-  },[intakesForReview,psychometricsForReview]);
+  const reviewSubmissions=useMemo(()=>groupPatientSubmissions(intakesForReview,psychometricsForReview),[intakesForReview,psychometricsForReview]);
 
   async function markPaymentPaid(event:OverviewEvent){
     if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");

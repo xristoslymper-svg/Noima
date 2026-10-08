@@ -91,7 +91,13 @@ test('GET rejects outdated cache and returns the same fresh card contract as POS
  const generated=await(await handler.POST(request())).json();assert.ok(generated.card);assert.equal(generated.card.synthesized,true);
  const get=()=>handler.GET(new Request('http://localhost/api/clinical/summary?tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1'));
  assert.deepEqual((await(await get()).json()).card,generated.card);
- b.sections[0].content='Changed plan';assert.equal((await get()).status,404);assert.equal(calls,2);
+ b.sections[0].content='Changed plan';const fresh=await(await get()).json();assert.equal(fresh.mode,'canonical');assert.equal(fresh.card.synthesized,false);assert.equal(calls,2);
+});
+
+test('uncached navigation returns canonical safety information without provider calls or generation claims',async()=>{
+ let calls=0;const db={};const handler=route(fixture(),async()=>{calls++;throw new Error('navigation must not generate')},{OPENAI_API_KEY:'local-fixture'},db);
+ const result=await handler.GET(new Request('http://localhost/api/clinical/summary?tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1'));
+ assert.equal(result.status,200);const data=await result.json();assert.equal(data.mode,'canonical');assert.equal(data.card.synthesized,false);assert.ok(data.findings.some(x=>x.key==='review:p'&&x.attention));assert.equal(calls,0);assert.equal(db.calls,undefined);
 });
 
 test('writer schema restricts citations to supplied IDs and one structural retry is still independently verified',async()=>{

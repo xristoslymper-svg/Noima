@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
+import { randomUUID } from 'node:crypto';
 
 // Real PostgreSQL in-process. Only the Supabase-owned auth schema/JWT role context
 // is emulated; the exact production migration, RLS, grants and triggers run here.
@@ -51,6 +52,19 @@ before(async () => {
   await asUser(a, () => sql("insert into clinical_sessions(id,patient_id,practice_id,session_type,scheduled_at) values($1,$2,$3,'initial_assessment',now())", [session,patientA,pa]));
 });
 after(async () => { await db.close(); });
+
+async function intakeFixture({tools=['history','PHQ-9'],identity={first_name:'TEST Intake'},appointment=null,channel='email'}={}){
+ const [{identity:owner}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const id=randomUUID(),token=randomUUID().replaceAll('-','')+randomUUID().replaceAll('-','');
+ await asUser(a,()=>appointment
+  ?sql('select demo_intake_assign($1,$2,$3,$4,null,$5::jsonb,$6)',[owner.workspace_id,id,token,appointment,JSON.stringify(tools),channel])
+  :sql('select demo_intake_assign_unattached($1,$2,$3,$4::jsonb,$5::jsonb,$6)',[owner.workspace_id,id,token,JSON.stringify(identity),JSON.stringify(tools),channel]));
+ return {id,token,tester:owner.workspace_id};
+}
+const psychFixture={'PHQ-9':[0,0,0,0,0,0,0,0,1],'GAD-7':[0,1,2,3,0,1,2]};
+async function submitFixture(f,identity={first_name:'TEST Intake'},psych=psychFixture){
+ return (await sql('select demo_intake_submit($1,$2::jsonb,$3::jsonb,$4::jsonb) result',[f.token,JSON.stringify(identity),JSON.stringify({other_note:'Fictional patient report'}),JSON.stringify(psych)]))[0].result;
+}
 
 test('pilot invitations require confirmed identity, are single-user, and never grant access from metadata',async()=>{
  const code='fixture-invitation-A';
@@ -774,5 +788,99 @@ test('structured correction retries are idempotent and stale tabs cannot append 
  const [second]=await sql('select * from demo_session_correction_create_v2($1,$2,$3,$4,$5,$6)',[t,session.id,'62100000-0000-4000-8000-000000000013','Fresh correction',JSON.stringify({review:{before:'Documented',after:'Changed'}}),1]);
  assert.notEqual(second.id,first.id);
  assert.equal((await sql('select count(*)::int n from demo_session_corrections where session_id=$1',[session.id]))[0].n,2);
+});
+
+
+test('unattached intake creates no ghost folder, invalid answers roll back, repeat submission materializes once',async()=>{
+ const f=await intakeFixture({tools:['history','PHQ-9','GAD-7']});
+ const count=async()=>(await sql('select count(*)::int n from demo_patients where tester_id=$1',[f.tester]))[0].n;
+ const before=await count();assert.equal((await sql('select patient_id from private.demo_intakes where id=$1',[f.id]))[0].patient_id,null);
+ await assert.rejects(submitFixture(f,{first_name:'TEST Intake'},{'PHQ-9':[1]}),/invalid_phq9/);assert.equal(await count(),before);
+ assert.equal((await submitFixture(f)).status,'submitted');assert.equal(await count(),before+1);
+ assert.equal((await submitFixture(f)).status,'submitted');assert.equal(await count(),before+1);
+ assert.equal((await sql('select * from private.demo_patient_reported_history where intake_id=$1',[f.id])).length,1);
+ const results=await sql('select instrument,score,item9_review,intake_id,provenance from private.demo_assessments where intake_id=$1',[f.id]);
+ assert.equal(results.length,2);assert.equal(results.find(x=>x.instrument==='PHQ-9').item9_review,true);assert.equal(results.find(x=>x.instrument==='GAD-7').score,9);
+ assert.ok(results.every(x=>x.intake_id===f.id&&x.provenance.includes('patient_intake:email')));
+});
+
+test('generic review and history integration cannot clear PHQ-9 item-9 follow-up',async()=>{
+ const f=await intakeFixture();await submitFixture(f);
+ const [assessment]=await sql('select * from private.demo_assessments where intake_id=$1',[f.id]);
+ const overview=async()=>(await asUser(a,()=>sql('select demo_overview_state($1) state',[f.tester])))[0].state;
+ let state=await overview();assert.ok(state.intakes.some(x=>x.id===f.id));assert.ok(state.psychometrics.some(x=>x.id===assessment.id));
+ await asUser(a,()=>sql('select demo_assessment_review($1,$2)',[f.tester,assessment.id]));
+ state=await overview();assert.ok(state.psychometrics.some(x=>x.id===assessment.id));
+ const [history]=await sql('select version from demo_patient_history where patient_id=$1',[assessment.patient_id]);
+ await asUser(a,()=>sql("select demo_intake_review($1,$2,'{}'::jsonb,$3)",[f.tester,f.id,history.version]));
+ state=await overview();assert.ok(!state.intakes.some(x=>x.id===f.id));assert.ok(state.psychometrics.some(x=>x.id===assessment.id));
+ await asUser(a,()=>sql('select demo_assessment_item9_review($1,$2)',[f.tester,assessment.id]));
+ state=await overview();assert.ok(!state.psychometrics.some(x=>x.id===assessment.id));
+});
+
+test('AMKA conflict preserves payload and cannot resolve into an unrelated folder or create a duplicate',async()=>{
+ const f=await intakeFixture();
+ const [{id:match}]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Exact AMKA')).id id",[f.tester]));
+ const [{id:other}]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Other AMKA')).id id",[f.tester]));
+ await sql("update demo_patients set amka='11111111111' where id=$1",[match]);await sql("update demo_patients set amka='22222222222' where id=$1",[other]);
+ assert.equal((await submitFixture(f,{first_name:'TEST Exact AMKA',amka:'11111111111'})).status,'conflict');
+ const [pending]=await sql('select * from private.demo_intakes where id=$1',[f.id]);assert.equal(pending.conflict.type,'amka');assert.ok(pending.history_answers);assert.ok(pending.psychometric_answers);
+ await rejected(a,'select demo_intake_resolve($1,$2,null,true)',[f.tester,f.id],/amka_conflict/);
+ await rejected(a,'select demo_intake_resolve($1,$2,$3,false)',[f.tester,f.id,other],/amka_conflict/);
+ assert.equal((await sql('select status from private.demo_intakes where id=$1',[f.id]))[0].status,'conflict');
+ const [{result}]=await asUser(a,()=>sql('select demo_intake_resolve($1,$2,$3,false) result',[f.tester,f.id,match]));assert.equal(result.patient_id,match);
+ assert.equal((await sql('select patient_id from private.demo_assessments where intake_id=$1',[f.id]))[0].patient_id,match);
+});
+
+test('possible-match new-person resolution rechecks an AMKA created after submission',async()=>{
+ const f=await intakeFixture({tools:['history']});
+ const [{id:match}]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Phone Match')).id id",[f.tester]));
+ await sql("update demo_patients set phone='6901234567' where id=$1",[match]);
+ assert.equal((await submitFixture(f,{first_name:'TEST New Person',phone:'6901234567',amka:'33333333333'})).status,'conflict');
+ const [{id:late}]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Late AMKA')).id id",[f.tester]));
+ await sql("update demo_patients set amka='33333333333' where id=$1",[late]);
+ await rejected(a,'select demo_intake_resolve($1,$2,null,true)',[f.tester,f.id],/amka_conflict/);
+ assert.equal((await sql("select count(*)::int n from demo_patients where tester_id=$1 and amka='33333333333'",[f.tester]))[0].n,1);
+});
+
+test('phone and email conflicts can explicitly create a distinct person; provisional appointment survives materialization',async()=>{
+ const [{identity:owner}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const [{id:existing}]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'TEST Shared Contact')).id id",[owner.workspace_id]));
+ await sql("update demo_patients set phone='6907654321',email='shared@example.invalid' where id=$1",[existing]);
+ for(const identity of [{first_name:'TEST Shared Phone',phone:'690 7654321'},{first_name:'TEST Shared Email',email:'SHARED@example.invalid'}]){
+  const f=await intakeFixture({tools:['history'],identity});assert.equal((await submitFixture(f,identity)).status,'conflict');
+  const [{result}]=await asUser(a,()=>sql('select demo_intake_resolve($1,$2,null,true) result',[f.tester,f.id]));assert.notEqual(result.patient_id,existing);
+ }
+ const [{event}]=await asUser(a,()=>sql("select demo_calendar_create_provisional_appointment($1,'TEST Provisional','','6905555555','provisional@example.invalid','2099-12-01 09:00 Europe/Athens','2099-12-01 09:50 Europe/Athens') event",[owner.workspace_id]));
+ const f=await intakeFixture({appointment:event.id,tools:['history']});await submitFixture(f,{first_name:'TEST Appointment'});
+ const [intake]=await sql('select patient_id,appointment_id from private.demo_intakes where id=$1',[f.id]);const [linked]=await sql('select patient_id from demo_calendar_events where id=$1',[event.id]);
+ assert.equal(intake.appointment_id,event.id);assert.equal(linked.patient_id,intake.patient_id);
+});
+
+test('same-day medication stop preserves start and dose events; stale stops and invalid course changes roll back',async()=>{
+ const t=randomUUID();await sql('select demo_tester_bootstrap($1)',[t]);const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Same Day Medication')).id id",[t]);
+ const [m]=await sql("select * from demo_medication_start($1,$2,null,'TEST Same Day',5,'mg','daily',current_date,'')",[t,p]);
+ await sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date,'',2)",[t,m.id]);
+ const [{state}]=await sql('select demo_medication_state($1,current_date) state',[m.id]);assert.equal(state.status,'stopped');assert.equal(state.dose,5);
+ const events=await sql('select event_type,new_state from demo_medication_events where medication_id=$1 order by created_at',[m.id]);assert.deepEqual(events.map(e=>e.event_type),['started','stopped']);assert.equal(events[0].new_state.status,'active');
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date,'',2)",[t,m.id]),/stale_medication/);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'changed',10,'mg','daily',current_date+1,'',3)",[t,m.id]),/event_after_stop/);
+ assert.equal((await sql('select count(*)::int n from demo_medication_events where medication_id=$1',[m.id]))[0].n,2);
+ const [future]=await sql("select * from demo_medication_start($1,$2,null,'TEST Future',5,'mg','daily',current_date+2,'')",[t,p]);
+ await assert.rejects(sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date,'',2)",[t,future.id]),/event_after_stop_or_before_start/);
+ await sql("select demo_medication_event_write($1,$2,null,'stopped',null,null,null,current_date+2,'',2)",[t,future.id]);
+ assert.equal((await sql('select demo_medication_state($1,current_date) state',[future.id]))[0].state.status,'planned');
+ assert.equal((await sql('select demo_medication_state($1,current_date+2) state',[future.id]))[0].state.status,'stopped');
+});
+
+test('manual folders and demographic edits cannot introduce the same AMKA in one workspace',async()=>{
+ const t=randomUUID();await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p1}]=await sql("select (demo_patient_create_v3($1,'TEST AMKA A','',null,'','','','44444444444','','','')).id id",[t]);
+ const [{id:p2}]=await sql("select (demo_patient_create_v3($1,'TEST AMKA B')).id id",[t]);
+ await assert.rejects(sql("select demo_patient_create_v3($1,'TEST Duplicate','',null,'','','','44444444444','','','')",[t]),/amka_conflict/);
+ await assert.rejects(sql("update demo_patients set amka='44444444444' where id=$1",[p2]),/amka_conflict/);
+ await sql("update demo_patients set first_name='TEST Updated AMKA A' where id=$1",[p1]);
+ const other=randomUUID();await sql('select demo_tester_bootstrap($1)',[other]);
+ await sql("select demo_patient_create_v3($1,'TEST Other Workspace','',null,'','','','44444444444','','','')",[other]);
 });
 

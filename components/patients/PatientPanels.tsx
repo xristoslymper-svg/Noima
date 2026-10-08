@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useState, useRef, type MutableRefObject } from 'react';
 import { Check, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
@@ -8,6 +8,7 @@ import MedicationTable from './MedicationTable';
 import { demoPost } from '@/lib/patients/demo-client';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {historyDraftFromAnswers,type HistoryAnswers} from '@/lib/intake/history';
+import {useOverlayDismiss} from '@/components/useOverlayDismiss';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
 const historyFields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Προηγούμενες θεραπείες'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνική λειτουργικότητα'],['allergies','Αλλεργίες']] as const;
@@ -23,11 +24,17 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const [reviewPatch,setReviewPatch]=useState<Record<string,string>>({});
  const [reviewSelected,setReviewSelected]=useState<Record<string,boolean>>({});
  const [reviewBusy,setReviewBusy]=useState(false);const [reviewError,setReviewError]=useState('');
+ const reviewBaseline=useRef('');
+ const reviewDirty=Boolean(reviewIntake)&&JSON.stringify([reviewPatch,reviewSelected])!==reviewBaseline.current;
+ const reviewDirtyRef=useRef(false);reviewDirtyRef.current=reviewDirty;
+ const closeReview=()=>{if(!reviewBusy&&(!reviewDirty||window.confirm('Υπάρχουν αλλαγές στον έλεγχο ιστορικού. Να ακυρωθούν;')))setReviewIntake(null)};
+ useOverlayDismiss(closeReview,{active:Boolean(reviewIntake),busy:reviewBusy});
  const loadReported=useCallback(async()=>{try{const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list',tester:getDemoTesterId(),patient_id:bundle.patient.id})});const d=await r.json();if(r.ok)setReported((d.intakes||[]).filter((x:{tools?:string[]})=>x.tools?.includes('history')))}catch{/* folder history remains available */}},[bundle.patient.id]);
  useEffect(()=>{void loadReported()},[loadReported,bundle.history?.version]);
  function beginReview(item:{id:string;channel:string;submitted_at:string|null;history_answers:HistoryAnswers}){
   const proposed=historyDraftFromAnswers(item.history_answers);const current=Object.fromEntries(historyFields.map(([k])=>[k,bundle.history?.[k]||''])) as Record<string,string>;const dateLabel=item.submitted_at?new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',year:'numeric'}).format(new Date(item.submitted_at)):'';
-  const patch=Object.fromEntries(historyFields.map(([k])=>[k,current[k]?current[k]+'\n\nΑναφορά ασθενούς'+(dateLabel?' · '+dateLabel:'')+':\n'+proposed[k]:proposed[k]]));setReviewPatch(patch);setReviewSelected(Object.fromEntries(historyFields.map(([k])=>[k,true])));setReviewError('');setReviewIntake(item)
+  if(dirty.current){setReviewError('Αποθηκεύστε πρώτα τις αλλαγές ιστορικού.');return}
+  const patch=Object.fromEntries(historyFields.map(([k])=>[k,current[k]?current[k]+'\n\nΑναφορά ασθενούς'+(dateLabel?' · '+dateLabel:'')+':\n'+proposed[k]:proposed[k]]));const selected=Object.fromEntries(historyFields.map(([k])=>[k,true]));reviewBaseline.current=JSON.stringify([patch,selected]);setReviewPatch(patch);setReviewSelected(selected);setReviewError('');setReviewIntake(item)
  }
  async function integrateReported(){
   if(!reviewIntake||reviewBusy)return;setReviewBusy(true);setReviewError('');
@@ -64,11 +71,12 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
   patientFlight.current=task;try{await task}finally{patientFlight.current=null}
  }
  const flushRef=useRef<()=>Promise<void>>(async()=>{});
- flushRef.current=async()=>{await draft.flush();if(patientDirty.current)await savePatient()};
- useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
+ flushRef.current=async()=>{if(reviewDirty||reviewBusy)throw new Error('Ολοκληρώστε ή ακυρώστε τον έλεγχο ιστορικού.');await draft.flush();if(patientDirty.current)await savePatient()};
+ useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current||reviewDirtyRef.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
   <div className="panel-heading"><div><span className="kicker">ΙΣΤΟΡΙΚΟ</span><h2>Στοχευμένη καταγραφή ιστορικού</h2><p>Κενό πεδίο σημαίνει «δεν έχει καταγραφεί» — ποτέ αρνητικό εύρημα.</p></div><button className="record compact" onClick={()=>void save().catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση ιστορικού'}</button></div>{reported.filter(x=>x.status==='submitted'&&!x.reviewed_at).map(item=><div className="reported-history-card" key={item.id}><div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΠΟ ΤΟΝ ΑΣΘΕΝΗ</span><strong>{item.channel==='tablet'?'Tablet ιατρείου':item.channel==='email'?'Email':'Έντυπο'}{item.submitted_at?' · '+new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.submitted_at)):''}</strong><small>Αναμένει έλεγχο · η αρχική απάντηση παραμένει αποθηκευμένη.</small></div><button onClick={()=>beginReview(item)}>Έλεγχος & ενσωμάτωση</button></div>)}
+  {reviewError&&!reviewIntake&&<div role="alert" className="save-state error">{reviewError}</div>}
   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
   {draft.error&&<div className="conflict-review"><button onClick={()=>void reload().then(b=>{if(b)setConflict(b as PatientBundle)})}>Σύγκριση εκδόσεων</button>{conflict&&<><pre>{historyFields.map(([key,label])=>label+': '+(conflict.history?.[key]||'—')).join('\n')}</pre><button onClick={()=>{draft.acceptServer(Object.fromEntries(historyFields.map(([key])=>[key,conflict.history?.[key]||''])),conflict.history?.version??0);setConflict(null)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(values,Object.fromEntries(historyFields.map(([key])=>[key,conflict.history?.[key]||''])),conflict.history?.version??0);setConflict(null)}}>Ρητή αντικατάσταση με τη δική μου</button></>}</div>}
   <section className={incomplete?'patient-details-card incomplete':'patient-details-card'}>
@@ -81,7 +89,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    </div>}
   </section>
   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Δεν έχει καταγραφεί"/></label>)}</div>
-  {reviewIntake&&<div className="intake-review-backdrop" onClick={()=>!reviewBusy&&setReviewIntake(null)}><section className="intake-review" onClick={e=>e.stopPropagation()}><button className="intake-launcher-close" onClick={()=>setReviewIntake(null)} disabled={reviewBusy}><X size={17}/></button><span className="kicker">PATIENT-REPORTED · ΑΝΑΜΕΝΕΙ ΕΛΕΓΧΟ</span><h2>Έλεγχος & ενσωμάτωση ιστορικού</h2><p>Το αρχικό self-report διατηρείται. Επιλέξτε τι θα ενσωματωθεί στο κλινικό ιστορικό και διορθώστε το κείμενο όπου χρειάζεται.</p><div className="intake-review-fields">{historyFields.map(([key,label])=><label key={key} className={reviewSelected[key]?'selected':''}><span><input type="checkbox" checked={Boolean(reviewSelected[key])} onChange={e=>setReviewSelected(v=>({...v,[key]:e.target.checked}))}/><strong>{label}</strong></span><textarea rows={4} disabled={!reviewSelected[key]} value={reviewPatch[key]||''} onChange={e=>setReviewPatch(v=>({...v,[key]:e.target.value}))}/></label>)}</div>{reviewError&&<div className="save-state error">{reviewError}</div>}<footer><button onClick={()=>setReviewIntake(null)} disabled={reviewBusy}>Ακύρωση</button><button className="record compact" onClick={()=>void integrateReported()} disabled={reviewBusy}>{reviewBusy?'Ενσωμάτωση…':'Ενσωμάτωση επιλεγμένων'}</button></footer></section></div>}
+  {reviewIntake&&<div className="intake-review-backdrop" onClick={closeReview}><section className="intake-review" onClick={e=>e.stopPropagation()}><button className="intake-launcher-close" onClick={closeReview} disabled={reviewBusy}><X size={17}/></button><span className="kicker">PATIENT-REPORTED · ΑΝΑΜΕΝΕΙ ΕΛΕΓΧΟ</span><h2>Έλεγχος & ενσωμάτωση ιστορικού</h2><p>Το αρχικό self-report διατηρείται. Επιλέξτε τι θα ενσωματωθεί στο κλινικό ιστορικό και διορθώστε το κείμενο όπου χρειάζεται.</p><div className="intake-review-fields">{historyFields.map(([key,label])=><label key={key} className={reviewSelected[key]?'selected':''}><span><input type="checkbox" checked={Boolean(reviewSelected[key])} onChange={e=>setReviewSelected(v=>({...v,[key]:e.target.checked}))}/><strong>{label}</strong></span><textarea rows={4} disabled={!reviewSelected[key]} value={reviewPatch[key]||''} onChange={e=>setReviewPatch(v=>({...v,[key]:e.target.value}))}/></label>)}</div>{reviewError&&<div className="save-state error">{reviewError}</div>}<footer><button onClick={closeReview} disabled={reviewBusy}>Ακύρωση</button><button className="record compact" onClick={()=>void integrateReported()} disabled={reviewBusy}>{reviewBusy?'Ενσωμάτωση…':'Ενσωμάτωση επιλεγμένων'}</button></footer></section></div>}
  </section>
 }
 
@@ -101,88 +109,4 @@ export function MedicationsPanel({bundle,reload,beforeNavigate}:{bundle:PatientB
    <MedicationTimeline bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   </details>
  </section>
-}
-export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,initialMedicationId}:{bundle:PatientBundle;sessionId?:string;initialMode?:'start'|'history'|'change'|'stop'|'side_effect';initialMedicationId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
- const active=bundle.medications.filter(x=>x.status==='active');
- const [mode,setMode]=useState<'start'|'history'|'change'|'stop'|'side_effect'>(initialMode||(active.length?'change':'start'));
- const selectable=mode==='side_effect'?bundle.medications:bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
- const [medId,setMedId]=useState(initialMedicationId||active[0]?.id||selectable[0]?.id||'');
- const selected=useMemo(()=>selectable.find(x=>x.id===medId),[selectable,medId]);
- const [name,setName]=useState('');
- const [dose,setDose]=useState(mode==='change'&&selected?String(selected.dose):'');
- const [unit,setUnit]=useState(selected?.unit||'mg');
- const [frequency,setFrequency]=useState(mode==='change'?selected?.frequency||'':'');
- const athensToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const [effective,setEffective]=useState(athensToday);
- const [stopped,setStopped]=useState(athensToday);
- const [reason,setReason]=useState('');
- const [effect,setEffect]=useState('');
- const [severity,setSeverity]=useState<'mild'|'moderate'|'severe'>('moderate');
- const [impact,setImpact]=useState('');
- const [saving,setSaving]=useState(false);
- const [touched,setTouched]=useState(false);
- const savingRef=useRef(false);
- const [error,setError]=useState('');
- const [correctSameDay,setCorrectSameDay]=useState(false);
- const sameDayEvent=(mode==='change')?bundle.medicationEvents.find(e=>e.medication_id===medId&&e.effective_on===effective&&!bundle.medicationRevisions.some(r=>r.event_id===e.id)):undefined;
- useEffect(()=>setCorrectSameDay(false),[medId,effective,mode]);
-
- useEffect(()=>{if(mode==='change'&&selected){setDose(String(selected.dose));setUnit(selected.unit);setFrequency(selected.frequency)}},[selected,mode]);
-
- async function save(){
-  if(savingRef.current)return;
-  if((mode==='start'||mode==='history')&&(!name.trim()||!dose||!frequency.trim())){setError('Συμπληρώστε φάρμακο, δόση και συχνότητα.');return}
-  if(sameDayEvent&&(!correctSameDay||!reason.trim())){setError('Επιβεβαιώστε τη διόρθωση της ίδιας ημέρας και καταγράψτε την αιτία.');return}
-  if(mode==='change'&&(!selected||!dose||!frequency.trim())){setError('Επιλέξτε φάρμακο και συμπληρώστε νέα δόση και συχνότητα.');return}
-  if((mode==='stop'||mode==='side_effect')&&!selected){setError('Επιλέξτε φάρμακο.');return}
-  if(mode==='side_effect'&&!effect.trim()){setError('Καταγράψτε την παρενέργεια.');return}
-  savingRef.current=true;setSaving(true);setError('');
-  let committed=false;
-  try{
-   const draft=bundle.sessions.find(x=>sessionId?x.id===sessionId&&x.status==='draft':x.status==='draft');
-   if(sessionId&&!draft)throw new Error('Το συγκεκριμένο πρόχειρο δεν είναι διαθέσιμο.');
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:draft?.id||null,name,dose:Number(dose),unit,frequency,started_on:effective,stopped_on:stopped,reason});
-   if(mode==='start')await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:draft?.id||null,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='change')await demoPost({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,effective_on:effective,reason});
-   if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:draft?.id||null,effect,severity,impact,noted_on:effective,note:reason});
-   committed=true;
-   try{await onSaved()}catch{/* mutation is committed; the folder can refresh independently */}
-   setTouched(false);onClose();
-  }catch(cause){if(!committed)setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{savingRef.current=false;setSaving(false)}
- }
-
- function safeClose(){if(saving)return;if(touched&&!window.confirm('Υπάρχουν μη αποθηκευμένες αλλαγές. Κλείσιμο χωρίς αποθήκευση;'))return;onClose()}
-  const title=mode==='history'?'Προηγούμενη αγωγή':mode==='start'?'Καταχώριση φαρμάκου':mode==='change'?'Αλλαγή δόσης':mode==='stop'?'Διακοπή αγωγής':'Καταγραφή παρενέργειας';
- return <div className="entry-modal-backdrop" onClick={safeClose}><section className="entry-modal medication-runtime-modal" onClick={e=>e.stopPropagation()} onChangeCapture={()=>setTouched(true)}>
-  <button className="entry-close" onClick={safeClose} aria-label="Κλείσιμο"><X size={19}/></button><span className="kicker">ΔΙΑΧΕΙΡΙΣΗ ΑΓΩΓΗΣ</span><h2>{title}</h2>
-  <div className="mode-switch medication-modes">
-   <button className={mode==='change'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('change')}}>Αλλαγή δόσης</button>
-   <button className={mode==='start'||mode==='history'?'active':''} onClick={()=>{setMode('start');setName('');setDose('');setFrequency('')}}>Προσθήκη φαρμάκου</button>
-   <button className={mode==='stop'?'active':''} disabled={!active.length} onClick={()=>{setMedId(active[0]?.id||'');setMode('stop')}}>Διακοπή</button>
-   <button className={mode==='side_effect'?'active':''} disabled={!bundle.medications.length} onClick={()=>{setMedId(active[0]?.id||bundle.medications[0]?.id||'');setMode('side_effect')}}>Παρενέργεια</button>
-  </div>
-
-  {mode!=='start'&&mode!=='history'&&<><label>Φάρμακο<select value={medId} onChange={e=>setMedId(e.target.value)}>{selectable.map(m=><option key={m.id} value={m.id}>{m.medication_name}{m.status==='planned'?' · προγραμματισμένη':m.status==='stopped'?' · διακοπείσα':''}</option>)}</select></label>{selected&&<div className="current-dose">{selected.status==='stopped'?'Τελευταία δόση πριν τη διακοπή':selected.status==='planned'?'Προγραμματισμένη αγωγή':'Τρέχουσα αγωγή'} <strong>{selected.dose} {selected.unit} · {selected.frequency}</strong></div>}</>}
-  {(mode==='start'||mode==='history')&&<label>Κατάσταση λήψης<select value={mode} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει τώρα / προγραμματισμένη έναρξη</option><option value="history">Έχει διακοπεί · προηγούμενη αγωγή</option></select></label>}
-  {(mode==='start'||mode==='history')&&<label>Φάρμακο<input value={name} onChange={e=>setName(e.target.value)} placeholder="π.χ. Sertraline"/></label>}
-
-  {(mode==='start'||mode==='history'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>Συχνότητα<input value={frequency} onChange={e=>setFrequency(e.target.value)} placeholder="π.χ. 1× πρωί"/></label><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}
-  {mode==='history'&&<label>Έχει διακοπεί από<input type="date" value={stopped} onChange={e=>setStopped(e.target.value)} max={athensToday}/></label>}
-  {mode==='stop'&&<label>Ημερομηνία διακοπής<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label>}
-  {mode==='side_effect'&&<><label>Παρενέργεια<input value={effect} onChange={e=>setEffect(e.target.value)} placeholder="π.χ. μειωμένη libido"/></label><div className="med-form-grid side-effect-grid"><label>Βαρύτητα<select value={severity} onChange={e=>setSeverity(e.target.value as 'mild'|'moderate'|'severe')}><option value="mild">Ήπια</option><option value="moderate">Μέτρια</option><option value="severe">Σοβαρή</option></select></label><label>Ημερομηνία<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label><label className="span-two">Επίδραση στη λειτουργικότητα<input value={impact} onChange={e=>setImpact(e.target.value)} placeholder="Προαιρετικό"/></label></div></>}
-
-  <label>{mode==='side_effect'?'Κλινική σημείωση':'Λόγος / σημείωση'}<textarea rows={3} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Προαιρετική κλινική σημείωση"/></label>
-
-  <div className="med-preview"><span>ΠΡΟΕΠΙΣΚΟΠΗΣΗ</span><p>{
-   mode==='change'&&selected?selected.medication_name+': '+selected.dose+' '+selected.unit+' → '+(dose||'—')+' '+unit+' · '+(frequency||'—')+' · από '+effective:
-   mode==='history'?(name||'Προηγούμενη αγωγή')+': '+dose+' '+unit+' · '+frequency+' · '+effective+' έως '+stopped+' · Διακοπείσα':
-   mode==='start'?(name||'Νέα αγωγή')+': '+(dose||'—')+' '+unit+' · '+(frequency||'—')+' · από '+effective:
-   mode==='stop'&&selected?'Διακοπή '+selected.medication_name+' από '+effective:
-   selected?(effect||'Παρενέργεια')+' · '+selected.medication_name+' · '+effective:'—'
-  }</p>{(mode==='change'||mode==='stop')&&effective>athensToday&&<small>Η αλλαγή είναι μελλοντική και δεν θα μεταβάλει την ενεργή αγωγή πριν από αυτή την ημερομηνία.</small>}</div>
-  {sameDayEvent&&<div className="current-dose"><p>Υπάρχει ήδη καταγραφή αγωγής στις {effective}. Η διόρθωση κρατά την αρχική καταγραφή στο ιστορικό· δεν καταγράφει δεύτερη αλλαγή μέσα στην ίδια ημέρα.</p><label><input type="checkbox" checked={correctSameDay} onChange={e=>setCorrectSameDay(e.target.checked)}/> Διόρθωση καταγραφής ίδιας ημέρας</label><small>Συμπληρώστε την αιτία διόρθωσης.</small></div>}
-  {error&&<div className="save-state error" role="alert">{error}</div>}
-  <footer className="entry-footer"><button onClick={safeClose}>Ακύρωση</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?'Αποθήκευση…':'Αποθήκευση'}</button></footer>
- </section></div>
 }

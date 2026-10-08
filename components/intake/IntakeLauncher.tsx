@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
+import {useAccountSession} from '@/components/AccountSessionBoundary';
 
 type Device={id:string;label:string;active:boolean};
 type Patient={id:string;first_name:string;last_name:string;email?:string};
@@ -31,6 +32,7 @@ export default function IntakeLauncher({
  onClose:()=>void;
  onDone?:()=>void;
 }){
+ const account=useAccountSession();
  const [tools,setTools]=useState<string[]>(defaultTools);
  const [channel,setChannel]=useState<Channel>(initialChannel);
  const [devices,setDevices]=useState<Device[]>([]);
@@ -110,19 +112,18 @@ export default function IntakeLauncher({
     return;
    }
    if(channel==='email'){
-    const body='Καλησπέρα σας,\n\nΠαρακαλώ συμπληρώστε το ερωτηματολόγιο από τον παρακάτω ασφαλή σύνδεσμο:\n'+d.intakeLink+'\n\nΟ σύνδεσμος είναι προσωπικός και λήγει αυτόματα.\n\nΣας ευχαριστώ.';
-    const mail=await fetch('/api/intake/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intake_id:d.intake.id,token:d.intakeToken,to:email.trim(),subject:'Συμπλήρωση ερωτηματολογίου πριν την επίσκεψη',body})});
+    const mail=await fetch('/api/intake/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intake_id:d.intake.id,token:d.intakeToken,to:email.trim(),tools,doctor_name:account?.identity?.full_name||''})});
     const md=await mail.json();
     if(!mail.ok){
-     if(md.code==='connect'){
-      window.location.href='mailto:'+encodeURIComponent(email.trim())+'?'+new URLSearchParams({subject:'Συμπλήρωση ερωτηματολογίου πριν την επίσκεψη',body}).toString().replaceAll('+','%20');
-      setDone('Άνοιξε το email σας με τον ασφαλή σύνδεσμο έτοιμο για '+selected.label+'.');
+     if(md.code==='connect'&&md.fallback?.subject&&md.fallback?.body){
+      window.location.href='mailto:'+encodeURIComponent(email.trim())+'?'+new URLSearchParams({subject:String(md.fallback.subject),body:String(md.fallback.body)}).toString().replaceAll('+','%20');
+      setDone('Άνοιξε το email σας με το προσωπικό link έτοιμο για '+selected.label+'.');
       onDone?.();
       return;
      }
      throw new Error(md.error||'Το email δεν στάλθηκε.');
     }
-    setDone('Το email για '+selected.label+' έγινε δεκτό για αποστολή.');
+    setDone('Στάλθηκε προσωπικό link στον/στην '+selected.label+'. Οι απαντήσεις θα επιστρέψουν αυτόματα στον φάκελο.');
     onDone?.();
     return;
    }
@@ -172,7 +173,7 @@ export default function IntakeLauncher({
      <button className={channel==='print'?'selected':''} onClick={()=>setChannel('print')}><Printer size={18}/> Εκτύπωση</button>
     </div>
     {channel==='tablet'&&<div className="intake-channel-detail">{devices.length?<label>Συσκευή<select value={deviceId} onChange={e=>setDeviceId(e.target.value)}>{devices.map(d=><option key={d.id} value={d.id}>{d.label}</option>)}</select></label>:<p>Δεν έχει συνδεθεί tablet. <Link href="/tablet" target="_blank">Άνοιγμα λειτουργίας Tablet ↗</Link></p>}</div>}
-    {channel==='email'&&<label className="assignment-email">Email παραλήπτη<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="patient@example.com"/></label>}
+    {channel==='email'&&<div className="assignment-email-wrap"><label className="assignment-email">Email παραλήπτη<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="patient@example.com"/></label><p>Ο ασθενής θα λάβει προσωπικό link. Δεν χρειάζεται λογαριασμό· συμπληρώνει online και η υποβολή επιστρέφει αυτόματα σε αυτή την ανάθεση.</p></div>}
     {channel==='print'&&<div className="intake-channel-detail"><p>Το έντυπο θα φέρει μοναδικό κωδικό αυτής της ανάθεσης. Όταν εισαχθεί ξανά στο Noima, το αποτέλεσμα θα επιστρέψει στον ίδιο ασθενή ή ραντεβού.</p></div>}
    </div>
 

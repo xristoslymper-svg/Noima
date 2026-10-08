@@ -930,3 +930,28 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
     border-radius:16px!important;
   }
 }
+
+/* Library card copy hierarchy: every fact appears once */
+.instrument-area-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:26px;
+  padding:5px 9px;
+  border-radius:8px;
+  background:#f1f4f2;
+  color:#526b60;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+.compact-psychometric-card>h2{
+  font-size:17px!important;
+  margin:9px 0 2px!important;
+}
+.compact-history-card>h2{
+  margin-top:9px!important;
+}
+.compact-psychometric-card .instrument-meta{
+  min-height:0!important;
+}

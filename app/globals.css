@@ -1088,27 +1088,63 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 
 /* Inline medication editor */
 .medication-record-head{align-items:flex-end}
-.medication-record-head p{margin:5px 0 0;color:#7b8982;font-size:11px;line-height:1.5}
-.medication-table-editor{overflow-x:auto}
-.medication-table-editor .medication-lean-table{min-width:930px}
-.medication-table-editor input,.medication-table-editor select{width:100%;min-width:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#31473d;font:inherit;padding:6px 7px;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}
-.medication-table-editor input:hover,.medication-table-editor select:hover{background:#f8faf7;border-color:#e4e9e4}
-.medication-table-editor input:focus,.medication-table-editor select:focus{outline:0;background:#fff;border-color:#aac6b8;box-shadow:0 0 0 2px rgba(71,121,99,.10)}
-.medication-table-editor input[type="date"]{font-size:10px}
-.med-inline-dose{display:grid;grid-template-columns:minmax(58px,.75fr) minmax(48px,.55fr);gap:4px}
-.med-inline-input{min-width:120px!important}
-.med-inline-stop,.med-new-date{display:grid;gap:3px;margin-top:6px;color:#7c8a83;font-size:8.5px;font-weight:700}
-.med-inline-stop input,.med-new-date input{padding:4px 5px!important}
+.medication-table-editor{overflow-x:auto;overflow-y:visible}
+.medication-table-editor .medication-lean-table{min-width:900px}
+.medication-table-editor .medication-lean-table th:nth-child(1){width:19%}
+.medication-table-editor .medication-lean-table th:nth-child(2){width:12%}
+.medication-table-editor .medication-lean-table th:nth-child(3){width:16%}
+.medication-table-editor .medication-lean-table th:nth-child(4){width:18%}
+.medication-table-editor .medication-lean-table th:nth-child(5){width:14%}
+.medication-table-editor .medication-lean-table th:nth-child(6){width:14%}
+.medication-table-editor .medication-lean-table th:nth-child(7){width:135px}
+.medication-table-editor input,.medication-table-editor select{width:100%;min-width:0;border:1px solid #dfe6e2;border-radius:7px;background:#fff;color:#31473d;font:inherit;padding:6px 7px;transition:border-color .15s ease,box-shadow .15s ease}
+.medication-table-editor input:focus,.medication-table-editor select:focus{outline:0;border-color:#8fb4a3;box-shadow:0 0 0 2px rgba(71,121,99,.10)}
+.medication-table-editor input[type="date"]{font-size:9.5px}
+.required-star{color:#9c4f55;font-weight:800}
+.med-dose-display{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}
+.med-dose-display b{font-weight:500;color:#687a71}
+.med-inline-dose{display:flex;align-items:center;gap:2px;max-width:116px}
+.med-inline-dose input:first-child{width:67px}
+.med-inline-dose input:last-child{width:47px;padding-left:5px;padding-right:5px}
+.med-inline-input{min-width:108px!important}
 .med-inline-status{font-size:9px!important;padding:5px 6px!important}
-.med-inline-state{display:block;margin-top:5px;font-size:8.5px;font-weight:650;line-height:1.35}
-.med-inline-state.ok{color:#4d7d69}.med-inline-state.error{color:#a45e63}
-.med-unsaved{display:block;margin-top:5px;color:#9a7c48;font-size:8px;line-height:1.35}
-.med-row-editing{background:#fffdf7}
-.med-new-row{background:#fafcf9;border-top:1px dashed #dbe4de}
+.med-new-date{display:grid;gap:3px;color:#697b72;font-size:8.5px;font-weight:750}
+.med-new-date+ .med-new-date{margin-top:6px}
+.med-row-editing,.med-new-row{background:#fbfdfb}
 .med-new-row th,.med-new-row td{vertical-align:top}
-.med-new-row th>input{font-weight:700}
-.med-new-row td>small{display:block;color:#8c9791;font-size:8.5px;line-height:1.4;padding-top:6px}
+.med-inline-error{display:block;margin-top:5px;color:#a55259;font-size:8.5px;font-weight:650;line-height:1.35}
+.med-empty-cell,.med-no-actions{color:#9ca7a1}
+.med-actions-head{white-space:nowrap}
+.med-row-actions{vertical-align:middle!important}
+.med-row-action-links{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.med-row-action-links button,.med-add-effect,.med-add-row button{border:0;background:transparent;color:#4f7464;padding:3px 0;display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:750;cursor:pointer}
+.med-row-action-links button:hover,.med-add-effect:hover,.med-add-row button:hover{color:#275945}
+.med-row-action-links .danger-link{color:#9b5d61}
+.med-action-pair{display:flex;align-items:center;gap:5px}
+.med-action-pair button{width:29px;height:29px;border-radius:8px;border:1px solid #dbe4df;background:#fff;color:#5a7066;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.med-action-pair button.primary{background:#2f725f;border-color:#2f725f;color:#fff}
+.med-action-pair button.danger{background:#fff5f4;border-color:#e7c8c8;color:#95575c}
+.med-action-pair button:disabled{opacity:.35;cursor:not-allowed}
+.med-stop-inline{display:grid;gap:6px;min-width:120px}
+.med-stop-inline input{padding:5px!important}
+.med-add-row td{padding:7px 18px!important;border-top:1px dashed #dce5df}
+.med-add-row button{font-size:10px;padding:6px 0;color:#326b57}
+.med-add-effect{font-size:8.5px;margin-top:4px}
+.med-inline-effect{display:grid;gap:5px;min-width:150px}
+.med-inline-effect>input{font-size:9px}
+.med-effect-controls{display:grid;grid-template-columns:1fr 1.15fr;gap:4px}
+.med-effect-controls select,.med-effect-controls input{font-size:8.5px!important;padding:5px!important}
+.medication-search{position:relative;min-width:150px}
+.medication-search>svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#7d8d85;z-index:1;pointer-events:none}
+.medication-search>input{padding-left:27px!important;font-weight:700}
+.medication-search-menu{position:absolute;left:0;top:calc(100% + 5px);width:max(310px,100%);max-height:270px;overflow:auto;background:#fff;border:1px solid #dce5df;border-radius:11px;box-shadow:0 15px 38px rgba(32,56,45,.16);z-index:80;padding:5px}
+.medication-search-menu button{width:100%;border:0;background:transparent;border-radius:8px;padding:8px 9px;display:grid;grid-template-columns:minmax(90px,.8fr) minmax(100px,1fr) auto;align-items:center;gap:8px;text-align:left;cursor:pointer}
+.medication-search-menu button:hover,.medication-search-menu button.active{background:#f0f6f2}
+.medication-search-menu strong{font-size:9.5px;color:#2f4f42}
+.medication-search-menu span{font-size:9px;color:#5f7369}
+.medication-search-menu i{font-style:normal;font-size:8px;color:#8a9690;white-space:nowrap}
+.medication-search-loading{padding:9px;color:#87938d}
 @media(max-width:760px){
  .medication-table-editor{margin-left:-4px;margin-right:-4px}
- .medication-record-head p{max-width:520px}
+ .medication-search-menu{width:280px}
 }

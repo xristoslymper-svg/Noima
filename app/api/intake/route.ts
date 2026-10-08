@@ -29,8 +29,9 @@ async function handlePOST(request:Request){
    if(!appointment&&!patient&&!provisional?.first_name)return Response.json({error:'Συμπληρώστε το όνομα του νέου ασθενή.'},{status:400});
    const device=String(b.device_id||'');if(channel==='tablet'&&!isClinicalId(device))return Response.json({error:'Επιλέξτε συνδεδεμένο tablet.'},{status:400});
    const id=randomUUID(),secret=token();
-   const intake=await rpc('demo_intake_assign',{p_tester:tester,p_id:id,p_token:secret,p_appointment:appointment||null,p_patient:patient||null,p_tools:selected,p_channel:channel,p_device:device||null});
-   if(provisional)await rpc('demo_intake_prefill',{p_tester:tester,p_id:id,p_identity:provisional});
+   const intake=provisional
+    ?await rpc('demo_intake_assign_unattached',{p_tester:tester,p_id:id,p_token:secret,p_identity:provisional,p_tools:selected,p_channel:channel,p_device:device||null})
+    :await rpc('demo_intake_assign',{p_tester:tester,p_id:id,p_token:secret,p_appointment:appointment||null,p_patient:patient||null,p_tools:selected,p_channel:channel,p_device:device||null});
    const origin=process.env.NOIMA_APP_ORIGIN||new URL(request.url).origin;
    return Response.json({intake,intakeToken:secret,intakeLink:new URL('/intake',origin).href+'#'+secret,printLink:new URL('/intake?print=1',origin).href+'#'+secret});
   }

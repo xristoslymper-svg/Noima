@@ -500,7 +500,7 @@ export default function CalendarPage() {
           >
             <Menu size={21} />
           </button>
-          <div className="search"><span>Ψ · ημερολόγιο</span></div>
+          
           <PilotProfile/>
         </header>
 

@@ -725,3 +725,86 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 
 .scan-page{min-height:100vh;background:#f5f7f4;padding:24px}.scan-page>header{width:min(760px,100%);margin:0 auto 20px;display:flex;justify-content:space-between;align-items:center}.scan-page>header>a{display:flex;align-items:center;gap:5px;color:#597067;font-size:12px;font-weight:700}.scan-card{width:min(720px,100%);margin:auto;background:#fff;border:1px solid #e0e7e3;border-radius:22px;padding:30px;box-shadow:0 14px 40px rgba(35,53,45,.06)}.scan-card h1{font-family:Georgia,serif;color:#293d34;font-size:30px;margin:7px 0}.scan-card>p{color:#738079;font-size:13px;line-height:1.6}.scan-card>small{display:block;color:#8a9690;font-size:10px;margin-top:13px;line-height:1.45}.scan-drop{margin:22px 0 13px;border:1.5px dashed #b9ccc2;background:#f8fbf9;border-radius:16px;padding:27px;display:flex;align-items:center;flex-direction:column;gap:6px;color:#4d7464;cursor:pointer;text-align:center}.scan-drop strong{font-size:14px}.scan-drop span{font-size:11px;color:#89968f}.scan-drop input{position:absolute;opacity:0;pointer-events:none}.scan-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin:12px 0}.scan-thumbs img{width:100%;height:112px;object-fit:cover;border-radius:9px;border:1px solid #e1e7e3}.scan-submit{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:15px}.scan-spin{animation:scanSpin .8s linear infinite}@keyframes scanSpin{to{transform:rotate(360deg)}}.scan-review-warning{width:min(760px,100%);margin:0 auto 13px;background:#fff6e8;border:1px solid #eddbba;border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:3px;color:#795f38;font-size:11px}.scan-review-warning strong{font-size:12px}.print-assignment-code{font-weight:800;letter-spacing:.08em}.print-options{display:inline-flex;flex-wrap:wrap;gap:5px 12px}.print-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:3px 14px;font-size:11px;margin:8px 0}.psy-heading-actions .add-instrument{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 @media(max-width:700px){.scan-page{padding:14px}.scan-card{padding:23px 16px}.print-grid{grid-template-columns:1fr}}
+
+
+/* Clinical Library clarity pass */
+.library-redesign{max-width:1280px!important;margin:0 auto!important;padding-top:38px!important}
+.library-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:24px}
+.library-heading h1{font-size:38px;line-height:1;letter-spacing:-.045em;margin:0 0 9px;color:#26352f}
+.library-heading p{margin:0;color:#7b8781;font-size:13px}
+.library-utility-actions{display:flex;align-items:center;gap:7px}
+.library-utility{height:36px;border:1px solid #e1e6e3;background:rgba(255,255,255,.78);color:#5c6c65;border-radius:10px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:720;cursor:pointer;box-shadow:none}
+.library-utility:hover{background:#fff;border-color:#d4ddd8;color:#334b41}
+.library-searchbar{height:44px;width:min(620px,100%);display:flex;align-items:center;gap:9px;border:1px solid #e0e5e2;background:#fff;border-radius:13px;padding:0 13px;color:#89948f;margin-bottom:28px}
+.library-searchbar:focus-within{border-color:#bdccc5;box-shadow:0 0 0 3px rgba(70,109,92,.06)}
+.library-searchbar input{border:0;outline:0;background:transparent;width:100%;font:inherit;font-size:12px;color:#32433c}
+.library-searchbar input::placeholder{color:#a0aaa5}
+
+.library-family{margin-top:0;margin-bottom:30px}
+.library-family-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:11px}
+.library-family-heading>div{display:flex;align-items:baseline;gap:10px;min-width:0}
+.library-family-heading>div>span{font-size:15px;font-weight:800;color:#304239;letter-spacing:-.01em}
+.library-family-heading small{font-size:10px;color:#8b9690;font-weight:500}
+.history-library-row{display:grid;grid-template-columns:38px minmax(240px,1fr) auto;gap:14px;align-items:center;background:#fff;border:1px solid #e3e8e5;border-radius:15px;padding:15px 16px;box-shadow:0 6px 22px rgba(37,57,48,.025)}
+.history-library-icon{width:36px;height:36px;border-radius:10px;background:#f2f5f3;color:#5e756a;display:grid;place-items:center}
+.history-library-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.history-library-copy strong{font-size:14px;color:#2d4138}
+.history-library-copy span{font-size:11px;color:#6e7e76}
+.history-library-copy small{font-size:9.5px;color:#98a19d}
+
+.library-inline-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.library-inline-actions button,.library-card-actions button{border:1px solid #dfe5e1!important;background:#fff!important;color:#596b63!important;border-radius:8px!important;min-height:32px;padding:7px 8px!important;font-size:9px!important;font-weight:700!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;cursor:pointer;box-shadow:none!important}
+.library-inline-actions button:hover,.library-card-actions button:not(:disabled):hover{background:#f7f9f8!important;border-color:#cfd9d4!important;color:#344d42!important}
+.library-card-actions button:disabled{opacity:.34;cursor:not-allowed}
+.library-inline-actions button:focus-visible,.library-card-actions button:focus-visible,.library-utility:focus-visible,.library-category-tabs button:focus-visible{outline:2px solid #6f9384;outline-offset:2px}
+
+.psychometric-family{padding-top:4px}
+.library-psych-heading{margin-bottom:12px}
+.library-clinical-note{white-space:nowrap;color:#98a29d!important}
+.library-category-tabs{padding:0!important;margin:0 0 15px!important;gap:3px!important}
+.library-category-tabs button{border:0!important;background:transparent!important;color:#76837d!important;border-radius:8px!important;padding:7px 10px!important;font-size:9px!important;font-weight:690!important}
+.library-category-tabs button:hover{background:#f2f4f2!important;color:#4b5e55!important}
+.library-category-tabs button.active{background:#eef2ef!important;color:#2f5f50!important;box-shadow:inset 0 0 0 1px #dce5e0!important}
+
+.library-redesign .psy-grid{gap:11px}
+.library-instrument-card{border-radius:15px!important;padding:15px!important;box-shadow:0 5px 18px rgba(43,62,52,.02)!important;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.library-instrument-card:hover{border-color:#d4ddd8;box-shadow:0 10px 28px rgba(43,62,52,.045)!important;transform:translateY(-1px)}
+.library-instrument-card .instrument-code{background:#f1f4f2;color:#4d6c5f}
+.library-instrument-card .instrument-category{margin-top:12px;color:#87938d}
+.library-instrument-card .instrument-category+h2{font-size:19px;margin-top:4px}
+.library-instrument-card>p{min-height:24px}
+.library-instrument-card .instrument-meta{margin-top:11px;padding-top:9px;min-height:58px}
+.library-card-actions{display:grid!important;grid-template-columns:1.35fr .8fr .8fr .9fr;gap:4px!important;margin-top:12px!important}
+.library-redesign .library-card-actions button:first-child{background:#fff!important;color:#596b63!important;border-color:#dfe5e1!important}
+
+.library-history-preview{position:relative;width:min(620px,calc(100vw - 48px));max-height:88vh;overflow:auto;background:#fff;border-radius:20px;padding:30px;box-shadow:0 28px 90px rgba(25,42,34,.2)}
+.library-history-preview h2{font-family:Georgia,serif;font-size:29px;letter-spacing:-.03em;color:#2d4037;margin:7px 0 8px}
+.library-history-preview>p{font-size:12px;line-height:1.65;color:#75817b;max-width:540px}
+.history-preview-meta{display:flex;gap:8px;margin:16px 0 20px}
+.history-preview-meta span{border:1px solid #e1e6e3;border-radius:999px;padding:6px 9px;color:#687870;font-size:9px;font-weight:700}
+.history-preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.history-preview-grid>div{display:flex;align-items:center;gap:8px;border:1px solid #e8ece9;border-radius:10px;padding:10px 11px;color:#53675d;font-size:10px}
+.history-preview-grid svg{color:#668879;flex:none}
+.library-history-preview footer{display:flex;justify-content:flex-end;margin-top:22px;padding-top:16px;border-top:1px solid #edf0ee}
+.library-history-preview footer button{border:1px solid #dde4df;background:#fff;color:#53655d;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer}
+
+@media(max-width:1180px){
+ .library-card-actions{grid-template-columns:1fr 1fr}
+ .history-library-row{grid-template-columns:38px 1fr}
+ .history-library-row .library-inline-actions{grid-column:2;justify-content:flex-start}
+}
+@media(max-width:760px){
+ .library-redesign{padding-top:26px!important}
+ .library-heading{align-items:flex-start;flex-direction:column;gap:15px}
+ .library-heading h1{font-size:32px}
+ .library-utility-actions{width:100%;flex-wrap:wrap}
+ .library-searchbar{margin-bottom:24px}
+ .library-family-heading{align-items:flex-start;flex-direction:column;gap:4px}
+ .library-family-heading>div{align-items:flex-start;flex-direction:column;gap:2px}
+ .library-clinical-note{white-space:normal}
+ .history-library-row{grid-template-columns:34px 1fr;padding:14px}
+ .history-library-row .library-inline-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;width:100%}
+ .library-card-actions{grid-template-columns:1fr 1fr}
+ .history-preview-grid{grid-template-columns:1fr}
+ .library-history-preview{width:calc(100vw - 20px);padding:23px 18px}
+}

@@ -7,9 +7,31 @@ export function authorization(provider:Provider,state:string,challenge:string){c
 export async function tokens(provider:Provider,params:Record<string,string>){const c=config(provider);const r=await fetch(c.token,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:c.id,client_secret:c.secret,...params}),signal:AbortSignal.timeout(15000),cache:'no-store'});if(!r.ok)throw new Error('mail_reconnect');const d=await r.json();if(!d.access_token)throw new Error('mail_reconnect');return {access_token:d.access_token as string,refresh_token:d.refresh_token as string|undefined,expires_at:Date.now()+Number(d.expires_in||3600)*1000}}
 export async function mailboxEmail(provider:Provider,access:string){const r=await fetch(provider==='google'?'https://openidconnect.googleapis.com/v1/userinfo':'https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName',{headers:{Authorization:'Bearer '+access},signal:AbortSignal.timeout(15000),cache:'no-store'});if(!r.ok)throw new Error('mail_reconnect');const d=await r.json();const email=provider==='google'?(d.email_verified?d.email:null):(d.mail||d.userPrincipalName);if(!validEmail(email))throw new Error('mail_reconnect');return email as string}
 export function validEmail(value:unknown):value is string{return typeof value==='string'&&value.length<=254&&/^[^\s<>\r\n@]+@[^\s<>\r\n@]+\.[^\s<>\r\n@]+$/.test(value)}
-export function mime(from:string,to:string,subject:string,body:string){if(!validEmail(from)||!validEmail(to)||/[\r\n]/.test(subject))throw new Error('invalid_message');return Buffer.from(['From: '+from,'To: '+to,'Subject: =?UTF-8?B?'+Buffer.from(subject).toString('base64')+'?=','MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(body).toString('base64').match(/.{1,76}/g)?.join('\r\n')||''].join('\r\n')).toString('base64url')}
-export async function send(provider:Provider,access:string,from:string,to:string,subject:string,body:string){
- const payload=provider==='google'?{raw:mime(from,to,subject,body)}:{message:{subject,body:{contentType:'Text',content:body},toRecipients:[{emailAddress:{address:to}}]},saveToSentItems:true};
+const encoded=(value:string)=>Buffer.from(value).toString('base64').match(/.{1,76}/g)?.join('\r\n')||'';
+export function mime(from:string,to:string,subject:string,body:string,html?:string){
+ if(!validEmail(from)||!validEmail(to)||/[\r\n]/.test(subject))throw new Error('invalid_message');
+ const headers=['From: '+from,'To: '+to,'Subject: =?UTF-8?B?'+Buffer.from(subject).toString('base64')+'?=','MIME-Version: 1.0'];
+ if(!html)return Buffer.from([...headers,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',encoded(body)].join('\r\n')).toString('base64url');
+ const boundary='noima_'+Buffer.from(subject+to).toString('base64url').slice(0,24);
+ return Buffer.from([
+  ...headers,
+  'Content-Type: multipart/alternative; boundary="'+boundary+'"',
+  '',
+  '--'+boundary,
+  'Content-Type: text/plain; charset=UTF-8',
+  'Content-Transfer-Encoding: base64',
+  '',
+  encoded(body),
+  '--'+boundary,
+  'Content-Type: text/html; charset=UTF-8',
+  'Content-Transfer-Encoding: base64',
+  '',
+  encoded(html),
+  '--'+boundary+'--'
+ ].join('\r\n')).toString('base64url');
+}
+export async function send(provider:Provider,access:string,from:string,to:string,subject:string,body:string,html?:string){
+ const payload=provider==='google'?{raw:mime(from,to,subject,body,html)}:{message:{subject,body:{contentType:html?'HTML':'Text',content:html||body},toRecipients:[{emailAddress:{address:to}}]},saveToSentItems:true};
  const r=await fetch(provider==='google'?'https://gmail.googleapis.com/gmail/v1/users/me/messages/send':'https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:'Bearer '+access,'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(20000)});
  if(!r.ok)throw new Error(r.status>=500?'mail_unknown':r.status===401?'mail_reconnect':'mail_rejected');
  return provider==='google'?String((await r.json()).id||''):r.headers.get('request-id')||'';

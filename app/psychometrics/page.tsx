@@ -4,7 +4,7 @@ import IntakeLauncher from '@/components/intake/IntakeLauncher';
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { diagnosisOptions, familyConditions, familyRelations, medicalOptions, reasonOptions, substanceOptions } from '@/lib/intake/history';
-import { Check, ChevronRight, Clock3, Eye, Mail, Plus, Search, ShieldCheck, Tablet, Trash2, X, Printer, UserRound, ChevronDown, UploadCloud, FileText, Sparkles, Bell, Activity, Home, Settings, Stethoscope, Users, CalendarDays, Menu } from "lucide-react";
+import { Clock3, Mail, Plus, Search, ShieldCheck, Tablet, Trash2, X, Printer, UserRound, UploadCloud, FileText, Activity, Home, Users, CalendarDays, Menu } from "lucide-react";
 
 type Instrument={code:string;title:string;area:string;minutes:string;source:string;period:string;items:string[];options:{label:string;score:number}[];interpret:(n:number)=>string};
 const frequency=[{label:"Καθόλου",score:0},{label:"Μερικές μέρες",score:1},{label:"Περισσότερες από τις μισές μέρες",score:2},{label:"Σχεδόν κάθε μέρα",score:3}];

@@ -10,8 +10,6 @@ type Event={id:string;patient_id:string|null;patient_name:string;scheduled_start
 type Channel='tablet'|'email'|'print';
 
 const toolLabel=(tool:string)=>tool==='history'?'Αρχικό ιστορικό':tool;
-const channelLabel=(channel:Channel)=>channel==='tablet'?'Tablet':channel==='email'?'Email':'Εκτύπωση';
-
 export default function IntakeLauncher({
  patientId,
  appointmentId,

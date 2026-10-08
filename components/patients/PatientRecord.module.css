@@ -1,4 +1,5 @@
 .record { min-width:0; }
+.workspace { background:#f8f5ef; min-height:100vh; }
 .shell { display:block !important; }
 .tabs { display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--line,#e3e6df); margin-bottom:24px; padding:0 0 10px; overflow-x:auto; }
 .tabs button { display:flex; align-items:center; gap:8px; flex-shrink:0; padding:10px 16px; border:0; border-radius:8px; background:transparent; color:var(--muted,#6a746d); font:inherit; cursor:pointer; }
@@ -13,7 +14,7 @@
 .muted { color:var(--muted,#6a746d); font-size:13px; }
 .list { list-style:none; padding:0; margin:0; display:grid; gap:12px; }
 .changes { list-style:none; padding:0; margin:14px 0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; font-size:13px; }
-.identity h1 { font-size:28px; color:#293e35; }
+.identity h1 { font-size:28px; }
 .visit { border-left:3px solid #477663; padding-left:12px; }
 .visit strong { font-size:16px; }
 .item { display:grid; grid-template-columns:130px minmax(0,1fr); gap:16px; padding:14px 0; border-bottom:1px solid var(--line,#e3e6df); }

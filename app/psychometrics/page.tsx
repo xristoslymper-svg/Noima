@@ -65,17 +65,16 @@ export default function Psychometrics(){
     <small className="library-clinical-note">Screening & παρακολούθηση · όχι αυτόνομη διάγνωση</small>
   </div>
   <div className="category-tabs library-category-tabs">{categories.map(cat=><button key={cat} className={category===cat?"active":""} onClick={()=>setCategory(cat)}>{cat}</button>)}</div>
-  <section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card" key={i.code}>
-    <div className="instrument-top"><span className="instrument-code">{i.code}</span><span className="instrument-time"><Clock3 size={13}/>{i.minutes}</span></div>
+  <section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card compact-psychometric-card" key={i.code} role="button" tabIndex={0} aria-label={`Προεπισκόπηση ${i.code}`} onClick={()=>open(i)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open(i)}}}>
+    <div className="instrument-top"><span className="instrument-code">{i.code}</span><span className="instrument-time"><Clock3 size={12}/>{i.minutes}</span></div>
     <div className="instrument-category">{i.area}</div>
     <h2>{i.code}</h2>
     <p>{i.title}</p>
-    <div className="instrument-meta"><span>{i.items.length} ερωτήσεις · {i.minutes}</span><span>{i.code==="PHQ-2"||i.code==="GAD-2"?"Σύντομο screening":i.code==="PHQ-4"?"Σύντομο screening κατάθλιψης & άγχους":i.code==="PCL-5"?"Αξιολόγηση συμπτωμάτων PTSD":"Πλήρης αξιολόγηση συμπτωμάτων"}</span><small>{i.source}</small></div>
-    <div className="instrument-actions library-card-actions">
-      <button onClick={()=>open(i)}><Eye size={14}/> Προεπισκόπηση</button>
-      <button disabled={!assignable} title={assignable?undefined:"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} onClick={()=>assignable&&launch([i.code],"tablet")}><Tablet size={14}/> Tablet</button>
-      <button disabled={!assignable} title={assignable?undefined:"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} onClick={()=>assignable&&launch([i.code],"email")}><Mail size={14}/> Email</button>
-      <button onClick={()=>assignable?launch([i.code],"print"):(setActive(i),setAnswers({}),setTimeout(()=>window.print(),100))}><Printer size={14}/> Εκτύπωση</button>
+    <div className="instrument-meta"><span>{i.items.length} ερωτήσεις</span><small>{i.source}</small></div>
+    <div className="instrument-actions library-card-actions icon-only-actions" onClick={e=>e.stopPropagation()}>
+      <button disabled={!assignable} title={assignable?"Tablet":"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} aria-label={assignable?`Αποστολή ${i.code} σε tablet`:`Tablet μη διαθέσιμο για ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"tablet")}}><Tablet size={15}/></button>
+      <button disabled={!assignable} title={assignable?"Email":"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} aria-label={assignable?`Αποστολή ${i.code} με email`:`Email μη διαθέσιμο για ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"email")}}><Mail size={15}/></button>
+      <button title="Εκτύπωση" aria-label={`Εκτύπωση ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"print");else{setActive(i);setAnswers({});setTimeout(()=>window.print(),100)}}}><Printer size={15}/></button>
     </div>
    </article>})}</section>
  </section>

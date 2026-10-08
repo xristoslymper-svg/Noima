@@ -1,0 +1,55 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
+import {emptyContinuity,validContinuity,mergeContinuityProposal,type ContinuityDraft} from '@/lib/clinical/continuity';
+import {mseTimeline,previousMseReference,finalizationBlocker} from '@/lib/clinical/visit-workspace-state';
+import {demoPost} from '@/lib/patients/demo-client';
+import {getDemoTesterId} from '@/lib/demo-tester';
+import {useClinicalDraft} from './useClinicalDraft';
+import SectionDictation from '@/components/dictation/SectionDictation';
+import RiskEditor from './RiskTreeEditor';
+import StructuredVisitEditor from './StructuredVisitEditor';
+import {MedicationModal} from './PatientPanels';
+import VisitScores from './VisitScores';
+import VisitNextAppointment from './VisitNextAppointment';
+import styles from './FollowupClosure.module.css';
+
+type Props={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;reloadContext:()=>Promise<unknown>;contextReady:boolean;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;flushAll:(requireRefresh?:boolean)=>Promise<unknown>;onDetailed:()=>void;onFinalize:(version:number)=>Promise<void>;onFinishLater?:()=>Promise<void>;finalizing:boolean;finalizeError:string};
+export default function FollowupClosure(p:Props){
+ const {bundle,session,registerFlusher,onDirtyChange}=p;
+ const text=(key:string)=>bundle.sections.find(s=>s.session_id===session.id&&s.section_key===key)?.content||'';
+ const initial:ContinuityDraft=session.closure_draft||{...emptyContinuity,clinical_state_summary:text('interview'),treatment_decision:text('plan'),next_review_focus:text('review'),adherence:text('adherence')};
+ const draft=useClinicalDraft<ContinuityDraft>({storageKey:session.id+':closure',initial,version:session.closure_version||0,write:async(value,version)=>{const result=await demoPost({action:'save_closure',session_id:session.id,value,expected_version:version});return {value:result.session.closure_draft,version:result.session.closure_version}},onSaved:p.reload,onDirty:dirty=>onDirtyChange('closure',dirty)});
+ useEffect(()=>registerFlusher('closure',draft.flush),[registerFlusher,draft.flush]);
+ const [dictating,setDictating]=useState(false),[extracting,setExtracting]=useState(false),[error,setError]=useState(''),[proposal,setProposal]=useState<ContinuityDraft|null>(null),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false);
+ const flight=useRef(false);
+ const [med,setMed]=useState<{mode:'start'|'change'|'stop'|'side_effect';id?:string}|null>(null);
+ useEffect(()=>registerFlusher('closure-medication',async()=>{if(med)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.')}),[registerFlusher,med]);
+ function change(key:keyof ContinuityDraft,value:string){setConfirmed(false);draft.change({...draft.value,[key]:value})}
+ async function extract(){if(extracting)return;setExtracting(true);setError('');try{const snapshot=draft.value.transcript;const r=await fetch('/api/clinical/closure',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),session_id:session.id,transcript:snapshot})});const result=await r.json();if(!r.ok)throw new Error(result.error);if(!validContinuity(result.proposal))throw new Error('Η πρόταση δεν ήταν έγκυρη.');setProposal(result.proposal)}catch(e){setError(e instanceof Error?e.message:'Δεν δημιουργήθηκε πρόταση.')}finally{setExtracting(false)}}
+ async function finalize(){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{if(!confirmed)throw new Error('Επιβεβαιώστε πρώτα τη σημερινή κλινική μνήμη.');const fresh=await p.flushAll(true) as PatientBundle;const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=finalizationBlocker([...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))],fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)});if(blocker)throw new Error(blocker.message);await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
+ const risk=bundle.risks.find(r=>r.session_id===session.id);
+ const mse=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse');
+ const reference=previousMseReference(bundle,session.id,session.started_at);
+ const timeline=p.contextReady?mseTimeline(bundle,session.id,session.started_at):undefined;
+ return <section className={styles.closure}>
+  <header><span className="kicker">ΚΛΕΙΣΙΜΟ ΕΠΑΝΕΞΕΤΑΣΗΣ</span><h2>Τι άλλαξε σήμερα;</h2><button type="button" onClick={p.onDetailed} disabled={busy||extracting}>Αναλυτική καταγραφή</button></header>
+  <label>Σύντομη καταγραφή<textarea rows={3} value={draft.value.transcript} disabled={extracting} onChange={e=>change('transcript',e.target.value)} placeholder="Πορεία, αλλαγές, απόφαση θεραπείας και τι θα ελέγξουμε την επόμενη φορά."/></label>
+  <div className={styles.actions}><button type="button" onClick={()=>setDictating(true)} disabled={extracting}>Υπαγόρευση</button><button type="button" onClick={()=>void extract()} disabled={extracting||draft.value.transcript.trim().length<2}>{extracting?'Δημιουργία πρότασης…':'Οργάνωση σε πρόταση'}</button></div>
+  {proposal&&<section className={styles.proposal}><h3>Πρόταση προς έλεγχο</h3>{(['clinical_state_summary','treatment_decision','next_review_focus','adherence','pinned_context'] as const).map(k=><p key={k}><strong>{{clinical_state_summary:'Κλινική αποτίμηση',treatment_decision:'Θεραπευτική απόφαση',next_review_focus:'Επόμενος έλεγχος',adherence:'Λήψη αγωγής',pinned_context:'Context'}[k]}: </strong>{proposal[k]||'Δεν αναφέρθηκε — διατηρείται η υπάρχουσα καταγραφή.'}</p>)}<p>Δεν ενημερώνει την αγωγή ή την εκτίμηση κινδύνου.</p><button type="button" onClick={()=>{draft.change(mergeContinuityProposal(draft.value,proposal));setConfirmed(false);setProposal(null)}}>Χρήση ως επεξεργάσιμο πρόχειρο</button><button type="button" onClick={()=>setProposal(null)}>Απόρριψη</button></section>}
+  <div className={styles.fields}>{([['clinical_state_summary','Πού μείναμε — σημερινή κλινική αποτίμηση'],['treatment_decision','Απόφαση θεραπείας'],['next_review_focus','Τι θα ελέγξουμε την επόμενη φορά']] as const).map(([k,label])=><label key={k}>{label}<textarea rows={2} value={draft.value[k]} onChange={e=>change(k,e.target.value)}/></label>)}</div>
+  <section><h3>Λήψη αγωγής</h3>{!draft.value.adherence&&<div className={styles.actions}>{['Κανονική λήψη','Υπήρξε θέμα','Δεν αξιολογήθηκε'].map(label=><button type="button" key={label} onClick={()=>change('adherence',label)}>{label}</button>)}</div>}<label>Σημερινή ανασκόπηση λήψης<input value={draft.value.adherence} onChange={e=>change('adherence',e.target.value)}/></label></section>
+  <section><h3>Αγωγή τώρα</h3>{p.contextReady?<>{bundle.medications.filter(m=>m.status==='active').map(m=><div className={styles.medication} key={m.id}><span>{m.medication_name} · {m.dose} {m.unit} · {m.frequency}</span><button type="button" onClick={()=>change('treatment_decision','Συνέχιση της τρέχουσας αγωγής χωρίς αλλαγή.')}>Χωρίς αλλαγή</button><button type="button" onClick={()=>setMed({mode:'change',id:m.id})}>Αλλαγή</button><button type="button" onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button></div>)}<button type="button" onClick={()=>setMed({mode:'start'})}>Προσθήκη αγωγής</button></>:<p role="status">Φόρτωση αγωγής…</p>}</section>
+  <details className={styles.details} open={!mse?.content.trim()}><summary>MSE · {mse?.content.trim()?'Καταγεγραμμένο — έλεγχος':'Χρειάζεται σημερινή ανασκόπηση'}</summary>{p.contextReady?<StructuredVisitEditor sessionId={session.id} kind="mse" compact existing={mse} followup baseline={reference?.section} timeline={timeline} onSaved={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p>Φόρτωση προηγούμενου MSE…</p>}</details>
+  <details className={styles.details} open={!risk||risk.suicidal_ideation==='not_assessed'||risk.suicidal_ideation==='positive'}><summary>Κίνδυνος · {risk&&risk.suicidal_ideation!=='not_assessed'?'Σημερινή καταγραφή':'Χρειάζεται σημερινή εκτίμηση'}</summary><RiskEditor sessionId={session.id} existing={risk} onSaved={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>
+  <details className={styles.details}><summary>Μετρήσεις & επόμενο ραντεβού</summary>{p.contextReady&&<><VisitScores bundle={bundle} sessionId={session.id} reload={p.reloadContext}/><VisitNextAppointment bundle={bundle} reload={p.reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>}</details>
+  <details className={styles.details}><summary>📌 Προσωπικό context για την επόμενη επίσκεψη</summary><label>Μόνο ό,τι θέλετε να θυμάστε<textarea rows={2} value={draft.value.pinned_context} onChange={e=>change('pinned_context',e.target.value)}/></label></details>
+  <p role="status">{draft.saving?'Αποθήκευση προχείρου…':draft.error||(draft.savedAt?'Πρόχειρο αποθηκευμένο · '+draft.savedAt:'')}</p>
+  {draft.error&&<button type="button" onClick={()=>void p.reload().then(b=>{const s=(b as PatientBundle).sessions.find(s=>s.id===session.id);if(s){draft.acceptServer(s.closure_draft||emptyContinuity,s.closure_version||0);setConfirmed(false)}}).catch(e=>setError(e.message))}>Φόρτωση αποθηκευμένου προχείρου</button>}
+  {(error||p.finalizeError)&&<p role="alert">{error||p.finalizeError}</p>}
+  <label className={styles.confirm}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>Ελέγχω και επιβεβαιώνω την κλινική μνήμη και την απόφαση θεραπείας.</label>
+  <div className={styles.actions}><button type="button" disabled={!confirmed||busy||p.finalizing||extracting||Boolean(med)} onClick={()=>void finalize()}>{busy||p.finalizing?'Οριστικοποίηση…':'Επιβεβαίωση & οριστικοποίηση'}</button>{p.onFinishLater&&<button type="button" disabled={busy||p.finalizing||extracting||Boolean(med)} onClick={()=>void p.onFinishLater?.()}>Συνέχεια αργότερα</button>}</div>
+  {dictating&&<SectionDictation title="Τι άλλαξε σήμερα;" onClose={()=>setDictating(false)} onInsert={t=>{change('transcript',[draft.value.transcript,t].filter(Boolean).join('\n'));setDictating(false)}}/>}
+  {med&&<MedicationModal bundle={bundle} sessionId={session.id} initialMode={med.mode} initialMedicationId={med.id} onClose={()=>setMed(null)} onSaved={async()=>{await p.reloadContext();setConfirmed(false);setMed(null)}}/>}
+ </section>;
+}

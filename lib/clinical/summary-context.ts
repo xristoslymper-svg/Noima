@@ -1,7 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=18;
+export const SUMMARY_POLICY_VERSION=19;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -55,8 +55,7 @@ function medicationNeedsReview(text:string,med:PatientBundle['medications'][numb
 }
 const dateLabel=(date?:string)=>date?date.slice(0,10):'';
 function clinicalSessionTime(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
- const appointment=bundle.appointments?.find(a=>a.session_id===session.id);
- return appointment?.scheduled_start||session.started_at||session.completed_at||'';
+ return session.started_at||session.completed_at||'';
 }
 function structuredCorrections(bundle:PatientBundle,sessionId:string){
  return (bundle.corrections||[]).filter(c=>c.session_id===sessionId).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)||a.id.localeCompare(b.id));

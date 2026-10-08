@@ -129,7 +129,7 @@ test('clinical overview uses encounter chronology and effective structured risk 
  );
  b.corrections.push({id:'risk-correction',session_id:'newer',created_at:'2026-10-06T15:00:00Z',reason:'Corrected risk',patch:{risk:{before:{suicidal_ideation:'negative'},after:{suicidal_ideation:'positive',intent:'unknown',plan:'unknown',self_harm:'negative',attempt_history:'negative',harm_to_others:'negative',protective_factors:'',clinical_note:'Corrected note',tree:{version:1,answers:{wish:'negative',intent:'negative',plan:'negative',others:'negative'},notes:{}}}}}});
  const c=buildSummaryContext(b,'2026-10-06');
- assert.equal(c.sources.find(s=>s.id==='section:new-text').date,'2026-10-06T09:00:00Z');
+ assert.equal(c.sources.find(s=>s.id==='section:new-text').date,'2026-10-06T13:00:00Z');
  assert.match(c.findings.find(x=>x.key==='risk').text,/Θετικά ευρήματα: Ιδεασμός/);
  assert.match(c.findings.find(x=>x.key==='risk').text,/Πρόθεση παραμένει άγνωστο/);
  assert.ok(c.findings.some(x=>x.key==='risk-note'&&x.text.includes('Corrected note')));

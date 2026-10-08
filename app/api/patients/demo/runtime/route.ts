@@ -22,6 +22,8 @@ function failure(error:unknown){
  if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή πρόχειρη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
  if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή πρόχειρη καταγραφή διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
  if(message.includes('appointment_unavailable'))return Response.json({error:'Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.',code:'appointment_unavailable'},{status:409});
+ if(message.includes('mse_review_required'))return Response.json({error:'Ελέγξτε τις προηγούμενες ενότητες MSE: διατήρηση, αλλαγή ή μη αξιολόγηση σήμερα.'},{status:422});
+ if(message.includes('closure_confirmation_required'))return Response.json({error:'Συμπληρώστε και επιβεβαιώστε την κλινική μνήμη, τη θεραπευτική απόφαση, τη λήψη αγωγής και τον επόμενο έλεγχο.'},{status:422});
  if(message.includes('session_unavailable'))return Response.json({error:'Η συγκεκριμένη καταγραφή δεν είναι πλέον διαθέσιμη.',code:'session_unavailable'},{status:409});
  return Response.json({error:'Η ενέργεια δεν αποθηκεύτηκε. Δοκιμάστε ξανά.'},{status:502});
 }
@@ -71,6 +73,8 @@ async function handlePOST(request:Request){
     const task=first(await rpc('demo_task_for_session',{p_tester:tester,p_session:body.session_id}));
     return Response.json({ok:true,task});
    }
+   case 'save_closure': {const session=first(await rpc('demo_closure_save',{p_tester:tester,p_session:body.session_id,p_value:body.value,p_expected_version:body.expected_version}));return Response.json({session})}
+   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));queueSummary(request,session.patient_id);return Response.json({session})}
    case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }

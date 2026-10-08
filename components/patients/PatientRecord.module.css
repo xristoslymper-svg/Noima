@@ -346,3 +346,9 @@
     min-height:auto;
   }
 }
+
+/* Continuity is a compact reading surface, not a second dashboard. */
+.continuity .section{padding:16px 0;margin:0;border-radius:0;background:transparent;box-shadow:none;border-bottom:1px solid var(--line,#e3e6df)}
+.memory{white-space:pre-wrap;max-width:900px;margin:9px 0;font-size:16px;line-height:1.55}.currentRows{display:grid;gap:8px;margin-top:10px}.currentRows>div{display:grid;grid-template-columns:95px 1fr;gap:12px}.currentRows p{margin:0}.more{margin-left:auto}.more summary{cursor:pointer;padding:8px 15px;font-size:22px}.more[open]{display:flex}.more button{font-size:13px}
+
+.continuity .memory{font-size:16px;line-height:1.55}.continuity .list{margin:10px 0}.continuity .section .link{padding:3px 7px}

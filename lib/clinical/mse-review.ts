@@ -11,6 +11,17 @@ export function mseReviewCounts(document:VisitDocument,previous?:VisitDocument|n
  const fields=document.fields.filter(f=>f.key!=='legacy');
  return {reviewed:fields.filter(f=>f.review||f.text.trim()).length,total:fields.length,changed:fields.filter(f=>f.text.trim()&&f.text!==(previous?.fields.find(p=>p.key===f.key)?.text||'')).length};
 }
+// One explicit action confirms only previously observed domains, never new normal findings.
+export function confirmMseUnchanged(document:VisitDocument,previous:VisitDocument):VisitDocument{
+ const fields=document.fields.map(field=>{
+  if(field.review||field.text.trim())return field;
+  const ref=previous.fields.find(p=>p.key===field.key&&p.text.trim()&&p.review!=='not_assessed');
+  return ref?{...ref,review:'unchanged' as const}:field;
+ });
+ const legacy=previous.fields.find(f=>f.key==='legacy'&&f.text.trim());
+ if(legacy&&!fields.some(f=>f.key==='legacy'))fields.push({...legacy,review:'unchanged'});
+ return {...document,fields};
+}
 export function mseDeltas(previous:VisitDocument,current:VisitDocument){
  return current.fields.flatMap(field=>{
   const before=previous.fields.find(f=>f.key===field.key);

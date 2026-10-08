@@ -8,7 +8,7 @@ export function completedMeasurements(bundle:PatientBundle,now=new Date()){
  return bundle.assessments.filter(a=>a.status==='completed'&&a.completed_at&&a.score!==null&&Date.parse(a.completed_at)<=now.getTime()&&day(a.completed_at)<=today).sort((a,b)=>Date.parse(b.completed_at!)-Date.parse(a.completed_at!)||a.id.localeCompare(b.id));
 }
 export function clinicalDate(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
- return bundle.appointments.find(a=>a.session_id===session.id)?.scheduled_start||session.started_at;
+ return session.started_at;
 }
 export function patientRecord(bundle:PatientBundle,now=new Date()){
  const today=bundle.clinical_day||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
@@ -36,9 +36,9 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
  // A same-day event is included only when explicitly linked to that encounter.
  const sinceLatest=latestVisit?events.filter(e=>{
   if(e.kind==='visits'||e.scheduled)return false;
-  const visitDate=clinicalDate(bundle,latestVisit);
-  if(e.date.length>10)return Date.parse(e.date)>=Date.parse(visitDate);
-  return day(e.date)>day(visitDate)||(day(e.date)===day(visitDate)&&e.sessionId===latestVisit.id);
+  const visitDate=latestVisit.completed_at||clinicalDate(bundle,latestVisit);
+  if(e.date.length>10)return Date.parse(e.date)>Date.parse(visitDate);
+  return day(e.date)>day(visitDate);
  }):[];
  const risk=latestVisit?bundle.risks.find(r=>r.session_id===latestVisit.id)||null:null;
  const safetyLabels={suicidal_ideation:'Αυτοκτονικός ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'} as const;

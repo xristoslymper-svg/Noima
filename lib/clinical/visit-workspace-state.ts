@@ -116,8 +116,7 @@ export function finalizationBlocker(sections:{section_key:string;content:string;
  return missing?{anchor:missing[0]==='review'?'plan':missing[0],message:'Χρειάζεται καταγραφή: '+missing[1]+'.'}:null;
 }
 export function sessionClinicalTime(bundle:Pick<PatientBundle,'appointments'>,session:{id:string;started_at:string}){
- const appointment=bundle.appointments?.find(item=>item.session_id===session.id);
- return appointment?.scheduled_start||session.started_at;
+ return session.started_at;
 }
 export function previousMseReference(bundle:PatientBundle|null,sessionId:string,startedAt:string){
  if(!bundle)return null;

@@ -2,7 +2,7 @@ import type {PatientBundle} from '../patients/demo-runtime';
 // Plain text, not executable HTML/Markdown. No AI-derived conclusions or invitation tokens.
 export function patientRecordText(b:PatientBundle,exportedAt=new Date().toISOString()){
  const lines=[`Ψ / Noima — Κλινικός φάκελος`,`Μόνο φανταστικά δεδομένα · Εξαγωγή ${exportedAt}`,`${b.patient.first_name} ${b.patient.last_name}`,`ID: ${b.patient.id}`,`Ηλικία: ${b.patient.reported_age??'Δεν καταγράφηκε'}`,`Λόγος προσέλευσης: ${b.patient.chief_complaint||'Δεν καταγράφηκε'}`,`Τηλέφωνο: ${b.patient.phone||'Δεν καταγράφηκε'} · Email: ${b.patient.email||'Δεν καταγράφηκε'}`,'','ΙΣΤΟΡΙΚΟ',JSON.stringify(b.history,null,2)||'Δεν καταγράφηκε'];
- const clinicalTime=(session:PatientBundle['sessions'][number])=>b.appointments.find(a=>a.session_id===session.id)?.scheduled_start||session.started_at;
+ const clinicalTime=(session:PatientBundle['sessions'][number])=>session.started_at;
  for(const s of [...b.sessions].sort((a,c)=>Date.parse(clinicalTime(a))-Date.parse(clinicalTime(c)))){
   lines.push('',`ΚΑΤΑΓΡΑΦΗ ${clinicalTime(s)} · ${s.status==='completed'?'Οριστικοποιημένη':'Πρόχειρη'} · ${s.id}`,`Ολοκλήρωση τεκμηρίωσης: ${s.completed_at||'—'} · Έκδοση ${s.version}`);
   for(const section of b.sections.filter(x=>x.session_id===s.id))lines.push('',section.section_key,section.content,`Πηγή ${section.source} · έκδοση ${section.version}`);

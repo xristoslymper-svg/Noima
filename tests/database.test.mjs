@@ -776,3 +776,53 @@ test('structured correction retries are idempotent and stale tabs cannot append 
  assert.equal((await sql('select count(*)::int n from demo_session_corrections where session_id=$1',[session.id]))[0].n,2);
 });
 
+
+test('continuity approval is scoped, versioned, atomic with finalization and immutable after completion',async()=>{
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Continuity Tester') on conflict(user_id) do nothing",[a]);
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const workspace=identity.workspace_id;await sql('select demo_tester_bootstrap($1)',[workspace]);
+ const [patient]=await asUser(a,()=>sql("select * from demo_patient_create_v2($1,'TEST Continuity')",[workspace]));
+ const [s]=await asUser(a,()=>sql("select * from demo_session_start($1,$2,'follow_up')",[workspace,patient.id]));
+ const value={transcript:'Clinician note',clinical_state_summary:'Stable',treatment_decision:'Continue',next_review_focus:'Tolerance',pinned_context:'Presentation',adherence:'Not assessed',source:'ai_assisted'};
+ await rejected(b,'select demo_closure_save($1,$2,$3,0)',[workspace,s.id,JSON.stringify(value)],/pilot_not_authorized|permission/i);
+ const [draft]=await asUser(a,()=>sql('select * from demo_closure_save($1,$2,$3,0)',[workspace,s.id,JSON.stringify(value)]));
+ assert.equal(draft.continuity,null);assert.equal(draft.closure_version,1);
+ await rejected(a,'select demo_closure_save($1,$2,$3,0)',[workspace,s.id,JSON.stringify(value)],/stale_closure/);
+ await rejected(a,'select demo_closure_finalize($1,$2,$3,false,1)',[workspace,s.id,draft.version],/closure_confirmation_required/);
+ await rejected(a,'select demo_closure_finalize($1,$2,$3,true,1)',[workspace,s.id,draft.version],/missing_sections/);
+ const [unchanged]=await sql('select * from demo_sessions where id=$1',[s.id]);
+ assert.equal(unchanged.continuity,null);assert.equal(unchanged.status,'draft');
+ assert.equal((await sql('select count(*)::int n from demo_session_sections where session_id=$1',[s.id]))[0].n,0);
+ await asUser(a,()=>sql("select demo_session_save_section($1,$2,'mse','Clinician exam','manual',null)",[workspace,s.id]));
+ await asUser(a,()=>sql('select demo_session_save_risk($1,$2,$3,null)',[workspace,s.id,JSON.stringify({suicidal_ideation:'negative'})]));
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[s.id]);
+ await rejected(a,'select demo_closure_finalize($1,$2,$3,true,1)',[workspace,s.id,draft.version],/stale_session/);
+ const [done]=await asUser(a,()=>sql('select * from demo_closure_finalize($1,$2,$3,true,1)',[workspace,s.id,version]));
+ assert.equal(done.status,'completed');assert.equal(done.continuity.approved_by,a);assert.equal(done.continuity.session_id,s.id);assert.ok(done.continuity.approved_at);assert.equal(done.closure_draft,null);
+ const [retry]=await asUser(a,()=>sql('select * from demo_closure_finalize($1,$2,$3,true,1)',[workspace,s.id,version]));assert.deepEqual(retry.continuity,done.continuity);
+ await rejected(a,'select demo_closure_save($1,$2,$3,1)',[workspace,s.id,JSON.stringify(value)],/session_unavailable/);
+ await assert.rejects(sql("update demo_sessions set continuity='{}' where id=$1",[s.id]),/immutable_record/);
+});
+
+test('closure blocks unreviewed MSE references and follows append-only corrected snapshots',async()=>{
+ const t='62200000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Continuity MSE')).id id",[t]);
+ const [old]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const previous={kind:'mse',fields:[{key:'mood',label:'Mood',text:'Previous observation'}]};
+ await sql("select demo_session_save_document($1,$2,'mse',$3,null)",[t,old.id,JSON.stringify(previous)]);
+ for(const k of ['interview','assessment','plan','review'])await sql("select demo_session_save_section($1,$2,$3,'Clinician record','manual',null)",[t,old.id,k]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,old.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ await sql("update demo_sessions set started_at=now()-interval '1 day' where id=$1",[old.id]);
+ const [{version:oldVersion}]=await sql('select version from demo_sessions where id=$1',[old.id]);await sql('select demo_session_finalize($1,$2,$3)',[t,old.id,oldVersion]);
+ const [next]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p]);
+ const value={transcript:'Note',clinical_state_summary:'Delta',treatment_decision:'Continue',next_review_focus:'Review',pinned_context:'',adherence:'Not assessed',source:'manual'};
+ await sql('select demo_closure_save($1,$2,$3,0)',[t,next.id,JSON.stringify(value)]);
+ const current={kind:'mse',fields:[{key:'appearance',label:'Appearance',text:'Current observation',review:'changed'}]};
+ await sql("select demo_session_save_document($1,$2,'mse',$3,null)",[t,next.id,JSON.stringify(current)]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,next.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [{version}]=await sql('select version from demo_sessions where id=$1',[next.id]);
+ await assert.rejects(sql('select demo_closure_finalize($1,$2,$3,true,1)',[t,next.id,version]),/mse_review_required/);
+ await sql('select demo_session_correction_create_v2($1,$2,$3,$4,$5,0)',[t,old.id,'62200000-0000-4000-8000-000000000011','Correct previous domain',JSON.stringify({mse:{before:previous,after:{kind:'mse',fields:[{key:'appearance',label:'Appearance',text:'Corrected observation'}]}}})]);
+ const [done]=await sql('select * from demo_closure_finalize($1,$2,$3,true,1)',[t,next.id,version]);assert.equal(done.status,'completed');
+ assert.deepEqual((await sql("select document from demo_session_sections where session_id=$1 and section_key='mse'",[old.id]))[0].document,previous);
+});

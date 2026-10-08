@@ -13,11 +13,11 @@ test('empty record stays empty without synthesizing clinical statuses',()=>{
 test('chronology uses encounter dates; drafts and superseded mutations are not clinical events',()=>{
  const input=bundle({sessions:[{id:'late',status:'completed',started_at:'2026-10-07',completed_at:'2026-10-08'},{id:'latest',status:'completed',started_at:'2026-10-06'},{id:'draft',status:'draft',started_at:'2026-10-08'}],appointments:[{session_id:'late',scheduled_start:'2026-10-01T10:00:00Z'}],medicationEvents:[{id:'replaced',event_type:'changed',effective_on:'2026-10-07'},{id:'valid',event_type:'changed',effective_on:'2026-10-07',new_state:{medication_name:'Medication',dose:10,unit:'mg'}},{id:'irrelevant',event_type:'edited',effective_on:'2026-10-08'}],medicationRevisions:[{event_id:'replaced'}]});
  const original=JSON.stringify(input);const result=patientRecord(input,now);
- assert.equal(result.latestVisit.id,'latest');assert.deepEqual(result.events.map(e=>e.id),['med-valid','visit-latest','visit-late']);assert.equal(JSON.stringify(input),original);
+ assert.equal(result.latestVisit.id,'late');assert.deepEqual(result.events.map(e=>e.id),['med-valid','visit-late','visit-latest']);assert.equal(JSON.stringify(input),original);
 });
-test('same-day date-only changes need an encounter link; timestamped measurements retain actual ordering',()=>{
+test('same-day date-only changes are not claimed as after the encounter; timestamped measurements retain actual ordering',()=>{
  const result=patientRecord(bundle({sessions:[{id:'visit',status:'completed',started_at:'2026-10-07T09:00:00Z'}],medicationEvents:[{id:'linked',event_type:'started',effective_on:'2026-10-07',session_id:'visit'},{id:'ambiguous',event_type:'changed',effective_on:'2026-10-07'},{id:'later',event_type:'stopped',effective_on:'2026-10-08'},{id:'future',event_type:'changed',effective_on:'2026-10-09'}],assessments:[{id:'score',instrument:'PHQ-9',status:'completed',score:12,completed_at:'2026-10-07T12:00:00Z'}]}),now);
- assert.deepEqual(new Set(result.sinceLatest.map(e=>e.id)),new Set(['med-linked','med-later','measurement-score']));
+ assert.deepEqual(new Set(result.sinceLatest.map(e=>e.id)),new Set(['med-later','measurement-score']));
  assert.equal(result.events.find(e=>e.id==='med-future').scheduled,true);
 });
 test('safety is taken from the latest completed encounter, never from a draft or older negative assessment',()=>{
@@ -51,4 +51,9 @@ test('future timestamps today cannot become current scores, safety flags, trends
  assert.equal(result.latestScores[0].previous.id,'past');
  assert.deepEqual(result.pendingSafety,[]);
  assert.ok(!result.events.some(e=>e.assessmentId==='future'));
+});
+
+test('start-today overrides an old or future appointment and since-then excludes events within the encounter',()=>{
+ const input=bundle({sessions:[{id:'visit',status:'completed',started_at:'2026-10-07T09:00:00Z',completed_at:'2026-10-07T10:00:00Z'}],appointments:[{session_id:'visit',scheduled_start:'2026-10-15T09:00:00Z'}],assessments:[{id:'during',instrument:'GAD-7',status:'completed',score:8,completed_at:'2026-10-07T09:30:00Z'},{id:'after',instrument:'GAD-7',status:'completed',score:7,completed_at:'2026-10-07T11:00:00Z'}]});
+ const result=patientRecord(input,now);assert.equal(result.events.find(e=>e.kind==='visits').date,'2026-10-07T09:00:00Z');assert.deepEqual(result.sinceLatest.map(e=>e.id),['measurement-after']);
 });

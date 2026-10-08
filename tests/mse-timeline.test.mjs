@@ -28,7 +28,7 @@ test('history applies structured corrections and narrative replacement without i
  const narrative=mseTimeline(b,'s4',b.sessions[3].started_at);assert.equal(narrative.visits[1].narrative,'Narrative correction, not structured observations');assert.equal(narrative.references.speech.sessionId,'s1');
 });
 test('drafts and future encounters are excluded and encounter time orders the history',()=>{
- const b=fixture();b.sessions[1].status='draft';b.appointments=[{session_id:'s3',scheduled_start:'2026-10-05T09:00:00Z'}];
+ const b=fixture();b.sessions[1].status='draft';b.sessions[2].started_at='2026-10-05T09:00:00Z';b.appointments=[{session_id:'s3',scheduled_start:'2026-10-05T09:00:00Z'}];
  assert.deepEqual(mseTimeline(b,'s4',b.sessions[3].started_at).visits.map(v=>v.sessionId),['s1']);
 });
 test('confirming an older reference preserves provenance and requires a fresh domain decision',()=>{

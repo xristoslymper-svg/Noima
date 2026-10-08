@@ -80,7 +80,7 @@ test('previous MSE follows encounter time, not late documentation completion tim
   sessions:[
    {id:'older',status:'completed',started_at:'2026-10-01T10:00:00Z',completed_at:'2026-10-06T10:00:00Z'},
    {id:'current',status:'draft',started_at:'2026-10-05T12:00:00Z',completed_at:null},
-   {id:'future-clinical',status:'completed',started_at:'2026-10-02T10:00:00Z',completed_at:'2026-10-03T10:00:00Z'},
+   {id:'future-clinical',status:'completed',started_at:'2026-10-07T10:00:00Z',completed_at:'2026-10-08T10:00:00Z'},
   ],
   appointments:[
    {id:'a1',session_id:'older',scheduled_start:'2026-10-01T09:00:00Z'},
@@ -94,7 +94,7 @@ test('previous MSE follows encounter time, not late documentation completion tim
   addenda:[],
   corrections:[{id:'c1',session_id:'older',created_at:'2026-10-06T11:00:00Z',patch:{mse:{before:null,after:corrected}}}],
  };
- assert.equal(sessionClinicalTime(bundle,bundle.sessions[0]),'2026-10-01T09:00:00Z');
+ assert.equal(sessionClinicalTime(bundle,bundle.sessions[0]),'2026-10-01T10:00:00Z');
  const reference=previousMseReference(bundle,'current',bundle.sessions[1].started_at);
  assert.equal(reference.session.id,'older');
  assert.equal(reference.section.document.fields[0].text,'Υποκειμενικό συναίσθημα: Αγχώδες');

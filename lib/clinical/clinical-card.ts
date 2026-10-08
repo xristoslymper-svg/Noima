@@ -15,7 +15,7 @@ export function clinicalCardPreview(items:CardItem[],limit:number){
  return {preview,rest};
 }
 export function buildClinicalCard(bundle:PatientBundle,context:SummaryContext,findings:Finding[]=[],synthesized=false):ClinicalCard{
- const time=(id:string)=>{const s=bundle.sessions.find(s=>s.id===id)!;return bundle.appointments.find(a=>a.session_id===id)?.scheduled_start||s.started_at||s.completed_at||''};
+ const time=(id:string)=>{const s=bundle.sessions.find(s=>s.id===id)!;return s.started_at||s.completed_at||''};
  const latest=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(time(b.id))-Date.parse(time(a.id)))[0];
  const narrativeCorrections=new Set(context.layers.corrections.filter(c=>c.kind==='addendum').map(c=>c.session_id));
  function section(kind:'assessment'|'mse',sessionId=latest?.id){

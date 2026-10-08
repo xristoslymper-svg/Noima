@@ -1,3 +1,4 @@
+import type {ContinuityDraft,VisitContinuity} from '../clinical/continuity';
 import {pilotAuthorization} from '@/lib/pilot/request-scope';
 import {isClinicalId} from '@/lib/clinical/identity';
 import type {VisitDocument} from '@/lib/clinical/visit-document';
@@ -7,7 +8,7 @@ const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_
 const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json', ...pilotAuthorization() });
 
 export type DemoPatient = { id:string; tester_id:string; first_name:string; last_name:string; reported_age:number|null; phone:string; landline:string; contact_phone:string; amka:string; address:string; email:string; chief_complaint:string; note:string; status:string; created_at:string; updated_at:string };
-export type DemoSession = { id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
+export type DemoSession = { closure_draft?:ContinuityDraft|null; closure_version?:number; continuity?:VisitContinuity|null; id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
 export type DemoSection = { document?:VisitDocument|null; id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
 export type DemoRisk = { tree?:import('../clinical/risk-tree').RiskTree; harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
 export type DemoHistory = { patient_id:string; psychiatric_history:string; medical_history:string; previous_treatments:string; hospitalizations:string; family_history:string; substance_history:string; social_functioning:string; allergies:string; version:number; updated_at:string };
@@ -44,7 +45,7 @@ export async function listPatientRows(tester:string){
  const diagnosisSections=rows<{patient_id:string;session_id:string;document?:VisitDocument|null;updated_at:string}>(sectionData);
  const diagnosisCorrections=rows<{id:string;session_id:string;patch:Record<string,{after?:unknown}>;created_at:string}>(correctionData);
  const effectiveAssessment=(sessionId:string,document?:VisitDocument|null)=>{let value=document;for(const correction of diagnosisCorrections.filter(item=>item.session_id===sessionId)){const after=correction.patch?.assessment?.after;if(after&&typeof after==='object'&&'kind' in after&&(after as VisitDocument).kind==='assessment')value=after as VisitDocument}return value};
- const sessionTime=(session:DemoSession)=>appointments.find(a=>a.session_id===session.id)?.scheduled_start||session.started_at;
+ const sessionTime=(session:DemoSession)=>session.started_at;
  const completedFor=(patientId:string)=>sessions.filter(s=>s.patient_id===patientId&&s.status==='completed').sort((a,b)=>Date.parse(sessionTime(b))-Date.parse(sessionTime(a)));
  const now=Date.now();
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));

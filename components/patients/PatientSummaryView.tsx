@@ -12,11 +12,13 @@ export default function PatientSummaryView({
  onOpenVisit,
  onTreatment,
  onHistory,
+ previewOnly=false,
 }:{
  bundle:PatientBundle;
  onOpenVisit:(id?:string)=>void;
  onTreatment:()=>void;
  onHistory:()=>void;
+ previewOnly?:boolean;
 }){
  const completed=[...bundle.sessions].filter(s=>s.status==='completed').sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
  const latestVisit=completed[0];
@@ -75,7 +77,7 @@ export default function PatientSummaryView({
 
   <section className="summary-synthesis">
    <div className="patient-section-heading"><div><span className="kicker">ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ</span><h2>Σύντομη εικόνα του φακέλου</h2></div></div>
-   <ClinicalSummary compact bundle={bundle} onSessions={onOpenVisit} onPsychometrics={onTreatment} onMedications={onTreatment} onHistory={onHistory}/>
+   {previewOnly?<div className="preview-clinical-synthesis"><p>Η συνοπτική σύνθεση εμφανίζεται εδώ μετά την κλινική καταγραφή. Στο preview προβάλλεται μόνο η νέα ιεραρχία, χωρίς κλήση σε πραγματικά δεδομένα ή AI.</p><small>UI preview · στατικά υποθετικά δεδομένα</small></div>:<ClinicalSummary compact bundle={bundle} onSessions={onOpenVisit} onPsychometrics={onTreatment} onMedications={onTreatment} onHistory={onHistory}/>} 
   </section>
  </div>;
 }

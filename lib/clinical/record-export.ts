@@ -1,10 +1,11 @@
 import type {PatientBundle} from '../patients/demo-runtime';
-// Plain text, not executable HTML/Markdown. No AI-derived conclusions or invitation tokens.
+// Plain text, not executable HTML/Markdown. No unapproved AI-derived conclusions or invitation tokens.
 export function patientRecordText(b:PatientBundle,exportedAt=new Date().toISOString()){
  const lines=[`Ψ / Noima — Κλινικός φάκελος`,`Μόνο φανταστικά δεδομένα · Εξαγωγή ${exportedAt}`,`${b.patient.first_name} ${b.patient.last_name}`,`ID: ${b.patient.id}`,`Ηλικία: ${b.patient.reported_age??'Δεν καταγράφηκε'}`,`Λόγος προσέλευσης: ${b.patient.chief_complaint||'Δεν καταγράφηκε'}`,`Τηλέφωνο: ${b.patient.phone||'Δεν καταγράφηκε'} · Email: ${b.patient.email||'Δεν καταγράφηκε'}`,'','ΙΣΤΟΡΙΚΟ',JSON.stringify(b.history,null,2)||'Δεν καταγράφηκε'];
  const clinicalTime=(session:PatientBundle['sessions'][number])=>session.started_at;
  for(const s of [...b.sessions].sort((a,c)=>Date.parse(clinicalTime(a))-Date.parse(clinicalTime(c)))){
   lines.push('',`ΚΑΤΑΓΡΑΦΗ ${clinicalTime(s)} · ${s.status==='completed'?'Οριστικοποιημένη':'Πρόχειρη'} · ${s.id}`,`Ολοκλήρωση τεκμηρίωσης: ${s.completed_at||'—'} · Έκδοση ${s.version}`);
+  if(s.continuity?.approved_at)lines.push('','ΕΠΙΒΕΒΑΙΩΜΕΝΗ ΚΛΙΝΙΚΗ ΜΝΗΜΗ',s.continuity.clinical_state_summary,'Απόφαση θεραπείας: '+s.continuity.treatment_decision,'Επόμενος έλεγχος: '+s.continuity.next_review_focus,'Λήψη αγωγής: '+s.continuity.adherence,'Context: '+s.continuity.pinned_context,'Πηγή: '+s.continuity.source+' · Επιβεβαίωση: '+s.continuity.approved_at,'Αρχικό κείμενο κλινικού: '+s.continuity.transcript);
   for(const section of b.sections.filter(x=>x.session_id===s.id))lines.push('',section.section_key,section.content,`Πηγή ${section.source} · έκδοση ${section.version}`);
   lines.push('','ΔΟΜΗΜΕΝΟΣ ΚΙΝΔΥΝΟΣ',JSON.stringify(b.risks.find(r=>r.session_id===s.id)||null,null,2));
   for(const a of b.addenda.filter(a=>a.session_id===s.id))lines.push('',`${a.kind} ${a.created_at} · ${a.id}`,`Λόγος: ${a.reason}`,a.content);

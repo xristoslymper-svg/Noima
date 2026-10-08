@@ -49,6 +49,14 @@ export default function IntakeLauncher({
  const fixed=Boolean(patientId||appointmentId);
 
  useEffect(()=>{
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+  const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!busy)onClose()};
+  document.addEventListener('keydown',onKeyDown);
+  return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',onKeyDown)};
+ },[busy,onClose]);
+
+ useEffect(()=>{
   let live=true;
   void (async()=>{
    const tester=getDemoTesterId();

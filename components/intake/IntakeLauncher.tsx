@@ -150,7 +150,7 @@ export default function IntakeLauncher({
    <button className="intake-launcher-close" onClick={onClose} disabled={busy} aria-label="Κλείσιμο"><X size={18}/></button>
    <span className="kicker">ΑΝΑΘΕΣΗ ΕΡΓΑΛΕΙΟΥ</span>
    <h2 id="assignment-title">Συμπλήρωση από ασθενή</h2>
-   <p className="assignment-intro">Το εργαλείο συνδέεται πρώτα με τον ασθενή ή το ραντεβού. Ο τρόπος συμπλήρωσης αλλάζει μόνο τον τρόπο παράδοσης.</p>
+   <p className="assignment-intro">Επίλεξε σε ποιον προορίζεται το εργαλείο. Αν δεν υπάρχει ακόμη φάκελος ή ραντεβού, μπορείς να ξεκινήσεις ως νέος ασθενής.</p>
 
    <div className="assignment-step">
     <div className="assignment-step-title"><span>1</span><div><strong>Εργαλείο</strong><small>{lockTools?'Έχει ήδη επιλεγεί από τη Βιβλιοθήκη.':'Επιλέξτε τι θα συμπληρώσει ο ασθενής.'}</small></div></div>
@@ -164,7 +164,7 @@ export default function IntakeLauncher({
    </div>
 
    <div className="assignment-step">
-    <div className="assignment-step-title"><span>2</span><div><strong>Ασθενής / ραντεβού</strong><small>{fixed?'Η σύνδεση είναι ήδη καθορισμένη.':'Επιλέξτε μία φορά πού θα καταχωριστεί το αποτέλεσμα.'}</small></div></div>
+    <div className="assignment-step-title"><span>2</span><div><strong>Σε ποιον</strong><small>{fixed?'Η σύνδεση είναι ήδη καθορισμένη.':'Υπάρχων φάκελος, ραντεβού ή νέος ασθενής.'}</small></div></div>
     {!fixed
       ?<>
         <div className="assignment-subject-modes">

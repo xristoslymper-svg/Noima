@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import ts from 'typescript';
+import {readFileSync} from 'node:fs';
+import * as continuity from '../lib/clinical/continuity.ts';
+import * as context from '../lib/clinical/continuity-context.ts';
+import {isClinicalId} from '../lib/clinical/identity.ts';
+const code=ts.transpileModule(readFileSync('app/api/clinical/closure/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const session='10000000-0000-4000-8000-000000000001';
+const fixture=()=>({patient:{id:'p'},sessions:[{id:'old',patient_id:'p',status:'completed',continuity:{approved_at:'2026-10-01',pinned_context:'Παρουσίαση'}},{id:session,patient_id:'p',status:'draft'}],contextRevisions:[{source_session_id:'old',patient_id:'p',revision:1,action:'resolved',content:'Παρουσίαση'}],medications:[{status:'active',medication_name:'Sertraline',dose:50,unit:'mg',frequency:'πρωί'}]});
+function route({owned=true,reply={},failed=false,key=true}={}){const b=fixture(),before=JSON.stringify(b),requests=[];const m={exports:{}};vm.runInNewContext(code,{module:m,exports:m.exports,Response,AbortSignal,process:{env:{OPENAI_API_KEY:key?'fixture':undefined}},fetch:async(url,options)=>{requests.push(JSON.parse(options.body));if(failed)throw Error('offline');return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify(reply)}]}]})},require:n=>n.includes('pilot/route')?{withPilot:f=>f}:n.includes('demo-runtime')?{request:async()=>owned?[{id:session,patient_id:'p',status:'draft',session_type:'follow_up'}]:[],patientBundle:async()=>b}:n.includes('identity')?{isClinicalId}:n.includes('continuity-context')?context:continuity});return {post:transcript=>m.exports.POST(new Request('http://localhost/api/clinical/closure',{method:'POST',body:JSON.stringify({tester:'20000000-0000-4000-8000-000000000001',session_id:session,transcript})})),requests,unchanged:()=>JSON.stringify(b)===before}}
+test('organization uses authoritative medication reference only, excludes resolved context and never writes approved records',async()=>{
+ const h=route({reply:{clinical_state_summary:'Κοιμάται 6 ώρες, αναφέρει ναυτία.',treatment_decision:'Συνέχιση ίδιας αγωγής.',next_review_focus:'Σε δύο εβδομάδες.',pinned_context:'',adherence:''}});const r=await h.post('Κοιμάται έξι ώρες, αναφέρει λίγη ναυτία, συνεχίζουμε ίδια αγωγή, επανέλεγχος σε δύο εβδομάδες.');assert.equal(r.status,200);const d=await r.json();assert.equal(d.proposal.adherence,'');assert.equal('approved_at' in d.proposal,false);assert.equal(h.unchanged(),true);assert.equal(h.requests[0].store,false);const input=JSON.parse(h.requests[0].input);assert.equal(input.reference.medications[0].dose,50);assert.equal(input.reference.active_context.length,0);assert.match(h.requests[0].instructions,/never populate missing fields from reference/);
+});
+test('invalid or another workspace visit never invokes the provider',async()=>{const h=route({owned:false});assert.equal((await h.post('Μικρή καταγραφή.')).status,404);assert.equal(h.requests.length,0)});
+test('provider failure retains clinician input and malformed optional context fails safely',async()=>{for(const opts of [{failed:true},{reply:{pinned_context:'x'.repeat(2001)}}]){const h=route(opts);assert.equal((await h.post('Δεν διερευνήθηκε ιδεασμός.')).status,502);assert.equal(h.unchanged(),true)}});
+test('missing provider configuration leaves manual route available without inference',async()=>{const h=route({key:false});assert.equal((await h.post('Ελλιπές ιστορικό.')).status,503);assert.equal(h.requests.length,0)});

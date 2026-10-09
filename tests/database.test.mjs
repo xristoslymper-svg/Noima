@@ -804,6 +804,29 @@ test('continuity approval is scoped, versioned, atomic with finalization and imm
  await assert.rejects(sql("update demo_sessions set continuity='{}' where id=$1",[s.id]),/immutable_record/);
 });
 
+test('AI proposal corrected before finalization persists exactly in approved continuity and legacy sections',async()=>{
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const t=identity.workspace_id;
+ const [p]=await asUser(a,()=>sql("select * from demo_patient_create_v2($1,'TEST Autosave correction')",[t]));
+ const [s]=await asUser(a,()=>sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]));
+ const proposal={transcript:'Υποθετικό περιστατικό',clinical_state_summary:'Παλαιά πρόταση AI',treatment_decision:'Δεν ελήφθη νέα απόφαση',next_review_focus:'Ύπνος',pinned_context:'',adherence:'Δεν αξιολογήθηκε',source:'ai_assisted'};
+ const [first]=await asUser(a,()=>sql('select * from demo_closure_save($1,$2,$3,0)',[t,s.id,JSON.stringify(proposal)]));
+ const corrected={...proposal,clinical_state_summary:'Ακριβής διόρθωση κλινικού: ο κίνδυνος δεν διερευνήθηκε πλήρως.'};
+ const [second]=await asUser(a,()=>sql('select * from demo_closure_save($1,$2,$3,$4)',[t,s.id,JSON.stringify(corrected),first.closure_version]));
+ await rejected(a,'select demo_closure_save($1,$2,$3,$4)',[t,s.id,JSON.stringify(proposal),first.closure_version],/stale_closure/);
+ const [refreshed]=await asUser(a,()=>sql('select * from demo_sessions where id=$1',[s.id]));
+ assert.equal(refreshed.closure_draft.clinical_state_summary,corrected.clinical_state_summary);
+ await asUser(a,()=>sql("select demo_session_save_section($1,$2,'mse','Δεν αξιολογήθηκε σήμερα','manual',null)",[t,s.id]));
+ await asUser(a,()=>sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'unknown',clinical_note:'Μη πλήρης εκτίμηση'})]));
+ const [{version}]=await asUser(a,()=>sql('select version from demo_sessions where id=$1',[s.id]));
+ const [done]=await asUser(a,()=>sql('select * from demo_closure_finalize($1,$2,$3,true,$4)',[t,s.id,version,second.closure_version]));
+ assert.equal(done.continuity.clinical_state_summary,corrected.clinical_state_summary);
+ const [reopened]=await asUser(a,()=>sql('select * from demo_sessions where id=$1',[s.id]));
+ assert.equal(reopened.continuity.clinical_state_summary,corrected.clinical_state_summary);
+ const sections=await asUser(a,()=>sql("select section_key,content from demo_session_sections where session_id=$1 and section_key in ('interview','assessment')",[s.id]));
+ assert.ok(sections.length);assert.ok(sections.every(x=>x.content===corrected.clinical_state_summary));
+});
+
 test('closure blocks unreviewed MSE references and follows append-only corrected snapshots',async()=>{
  const t='62200000-0000-4000-8000-000000000010';await sql('select demo_tester_bootstrap($1)',[t]);
  const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Continuity MSE')).id id",[t]);

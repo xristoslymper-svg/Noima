@@ -10,11 +10,13 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  const blocked=useRef(false); const callbacks=useRef({write,onSaved,onDirty});callbacks.current={write,onSaved,onDirty};
  const incomingJson=JSON.stringify(initial);
  const backupKey=storageKey+':older-recovery';
+ const recoveredKey=useRef<string|null>(null);
  const backupOlder=(value:T,originalVersion:number|null)=>{
   try{
    sessionStorage.setItem(backupKey,JSON.stringify({value,version:originalVersion}));
    setOlderRecovery(value);
-  }catch{/* Never overwrite a newer database record with a stale local draft. */}
+   return true;
+  }catch{return false}
  };
  const flush=useCallback(async function flush():Promise<void>{
   if(timer.current)clearTimeout(timer.current);
@@ -24,6 +26,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   const snapshot=latest.current;setSaving(true);setError('');
   const task=(async()=>{try{const result=await callbacks.current.write(snapshot,v.current);v.current=result.version;saved.current=JSON.stringify(result.value);
    if(JSON.stringify(latest.current)===JSON.stringify(snapshot)){latest.current=result.value;setValue(result.value);clearRecovery(storageKey)}
+   else try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}))}catch{}
    callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
   }catch(e){
    const message=e instanceof Error?e.message:'Αποτυχία αποθήκευσης';
@@ -43,6 +46,10 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(JSON.stringify(latest.current)!==saved.current)return flush();
  },[storageKey,quietRecovery]);
  useEffect(()=>{
+  // Recovery belongs to opening an editor, not to each autosave version update.
+  // Keep this guard through Strict Mode effect replay as well.
+  if(recoveredKey.current===storageKey)return;
+  recoveredKey.current=storageKey;
   try{
    const older=sessionStorage.getItem(backupKey);
    if(older){const parsed=JSON.parse(older);if(parsed?.value)setOlderRecovery(parsed.value as T)}
@@ -61,7 +68,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
    }
    latest.current=local.value;v.current=local.version;setValue(local.value);
    callbacks.current.onDirty(true);
-   if(quietRecovery){
+   if(disposition==='retry'){
     // A same-version draft is safe to retry through optimistic locking.
     timer.current=setTimeout(()=>void flush().catch(()=>{}),700);
    }else{
@@ -98,8 +105,8 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   clearRecovery(storageKey);callbacks.current.onDirty(false);
  },[initial,incomingJson,version,storageKey,saving]);
  useEffect(()=>()=>{if(timer.current)clearTimeout(timer.current)},[]);
- function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{sessionStorage.setItem(storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
- function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
+ function change(update:T|((current:T)=>T)){const next=typeof update==='function'?(update as (current:T)=>T)(latest.current):update;latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{sessionStorage.setItem(storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
+ function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);if(JSON.stringify(latest.current)!==JSON.stringify(next)&&JSON.stringify(latest.current)!==saved.current&&!backupOlder(latest.current,v.current)){setError('Δεν διατηρήθηκε το τοπικό αντίγραφο. Το κείμενό σας παραμένει ανοιχτό.');return}latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
  function resolve(next:T,server:T,serverVersion:number|null){v.current=serverVersion;saved.current=JSON.stringify(server);blocked.current=false;setError('');change(next)}
  // On a genuine conflict, allowing navigation must not discard local text.
  // Preserve a recoverable copy first; never force a stale server write.

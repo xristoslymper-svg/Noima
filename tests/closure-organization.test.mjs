@@ -16,3 +16,13 @@ test('organization uses authoritative medication reference only, excludes resolv
 test('invalid or another workspace visit never invokes the provider',async()=>{const h=route({owned:false});assert.equal((await h.post('Μικρή καταγραφή.')).status,404);assert.equal(h.requests.length,0)});
 test('provider failure retains clinician input and malformed optional context fails safely',async()=>{for(const opts of [{failed:true},{reply:{pinned_context:'x'.repeat(2001)}}]){const h=route(opts);assert.equal((await h.post('Δεν διερευνήθηκε ιδεασμός.')).status,502);assert.equal(h.unchanged(),true)}});
 test('missing provider configuration leaves manual route available without inference',async()=>{const h=route({key:false});assert.equal((await h.post('Ελλιπές ιστορικό.')).status,503);assert.equal(h.requests.length,0)});
+
+test('clinical AI instruction contracts protect unsupported gender, workflow metadata and negated doses',()=>{
+ const followUp=readFileSync('app/api/clinical/closure/route.ts','utf8');
+ const section=readFileSync('app/api/clinical/extract/route.ts','utf8');
+ for(const source of [followUp,section]){
+  assert.match(source,/Never (guess|infer) .*sex or gender/i);
+  assert.match(source,/approval.status labels|process labels/i);
+  assert.match(source,/rejected (medication )?(alternative|dose|amount)|explicitly rejected/i);
+ }
+});

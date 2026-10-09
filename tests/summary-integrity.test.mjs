@@ -170,3 +170,33 @@ test('MSE trajectory compares encounter dates and both corrected snapshots; miss
  assert.deepEqual(finding.source_ids,['section:m1','section:m2','structured_correction:c1']);assert.equal(JSON.stringify(b),before);
  b.sessions[1].status='draft';assert.ok(!buildSummaryContext(b).findings.some(f=>f.key==='mse-change:m2'));
 });
+
+test('approved context is durable evidence: update, omission, resolution and new issue never overwrite history',async()=>{
+ const b=fixture();b.contextRevisions=[];
+ visit(b,1,'Αναφέρει εργασιακή πίεση.');b.sessions[0].patient_id=b.patient.id;
+ b.sessions[0].continuity={approved_at:'2026-10-01T09:00:00Z',approved_by:'clinician',pinned_context:'Παρουσίαση στη δουλειά την επόμενη εβδομάδα.'};
+ visit(b,2,'Αναφέρει βελτίωση στον ύπνο.');b.sessions[1].patient_id=b.patient.id;
+ b.sessions[1].continuity={approved_at:'2026-10-02T09:00:00Z',approved_by:'clinician',pinned_context:''};
+ const initial=buildSummaryContext(b,'2026-10-03');
+ assert.equal(initial.sources.find(s=>s.id==='context:1').content.status,'active');
+ assert.equal(initial.findings.filter(f=>f.key.startsWith('context:')).length,1);
+ assert.ok(canonicalSummaryFindings(initial).some(f=>f.text.includes('Παρουσίαση')));
+ const originalHash=await summaryContextHash(b,'2026-10-03');
+ b.contextRevisions.push({id:'r1',request_id:'req1',patient_id:b.patient.id,source_session_id:1,revision:1,action:'updated',content:'Η παρουσίαση μετατέθηκε για τον επόμενο μήνα.',actor_id:'clinician',created_at:'2026-10-02T11:00:00Z'});
+ const changed=buildSummaryContext(b,'2026-10-03');
+ assert.match(changed.findings.find(f=>f.key==='context:1').text,/μετατέθηκε/);
+ assert.equal(changed.sources.find(s=>s.id==='context:1').content.original,'Παρουσίαση στη δουλειά την επόμενη εβδομάδα.');
+ assert.notEqual(await summaryContextHash(b,'2026-10-03'),originalHash);
+ b.contextRevisions.push({id:'r2',request_id:'req2',patient_id:b.patient.id,source_session_id:1,revision:2,action:'resolved',content:'Η παρουσίαση ολοκληρώθηκε.',actor_id:'clinician',created_at:'2026-10-03T08:00:00Z'});
+ const resolved=buildSummaryContext(b,'2026-10-03');
+ assert.equal(resolved.sources.find(s=>s.id==='context:1').content.status,'resolved');
+ assert.deepEqual(resolved.findings.filter(f=>f.key.startsWith('context:')),[]);
+ assert.notEqual(await summaryContextHash(b,'2026-10-03'),originalHash);
+ visit(b,3,'Νέα καταγραφή στην επανεξέταση.');b.sessions[2].patient_id=b.patient.id;
+ b.sessions[2].continuity={approved_at:'2026-10-03T09:00:00Z',approved_by:'clinician',pinned_context:'Νέα προθεσμία παρουσίασης τον Νοέμβριο.'};
+ const recurring=buildSummaryContext(b,'2026-10-03');
+ assert.deepEqual(recurring.findings.filter(f=>f.key.startsWith('context:')).map(f=>f.key),['context:3']);
+ assert.equal(recurring.sources.find(s=>s.id==='context:1').content.status,'resolved');
+ assert.equal(b.sessions[0].continuity.pinned_context,'Παρουσίαση στη δουλειά την επόμενη εβδομάδα.');
+});
+

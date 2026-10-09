@@ -1,5 +1,62 @@
-.closure{max-width:880px;margin:auto;padding:24px;display:grid;gap:18px;color:var(--ink,#172b2a)}
-.closure header{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.closure h2{font-family:inherit;font-size:24px;margin:0;flex:1}.closure h3{font-family:inherit;font-size:15px;margin:0 0 8px}
-.closure label{display:grid;gap:6px;font-size:14px}.closure textarea,.closure input:not([type=checkbox]){width:100%;padding:10px;border:1px solid #d8e3df;border-radius:8px;font:inherit;background:#fff}.closure textarea{resize:vertical}.fields{display:grid;gap:14px}.actions{display:flex;flex-wrap:wrap;gap:8px}.closure button{font:inherit;font-size:13px;padding:7px 11px;border:1px solid #cadbd4;border-radius:7px;background:#f7faf8;cursor:pointer}.closure button:disabled{opacity:.5;cursor:default}.medication{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0}.medication span{flex:1;min-width:200px}.details{border-top:1px solid #e0e8e4;padding-top:12px}.details summary{cursor:pointer;font-weight:600;padding:5px 0 10px}.closure .confirm{display:flex;align-items:center;gap:8px}.proposal{padding:16px;background:#eef5f1;border-radius:8px}.proposal p{margin:6px 0;white-space:pre-wrap}@media(max-width:600px){.closure{padding:16px}}
-
+/* Follow-up is one calm clinical workspace, not a stack of unrelated forms. */
+.closure{width:100%;max-width:1180px;margin:0 auto;padding:clamp(8px,2vw,22px) clamp(0px,1vw,12px);display:grid;gap:16px;color:#293e35;box-sizing:border-box}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 0 7px}
+.heading h2{font-family:inherit;font-size:clamp(23px,2vw,29px);font-weight:750;letter-spacing:-.027em;margin:5px 0 0;line-height:1.2}
+.heading>button{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.closure h3{font-family:inherit;font-size:15px;font-weight:750;letter-spacing:-.01em;margin:0 0 10px}
+.card,.appointmentCard{min-width:0;padding:clamp(17px,2vw,25px);border:1px solid #e1e8e3;border-radius:18px;background:#fff;box-shadow:0 7px 24px rgba(36,65,48,.035)}
+.cardHeading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.cardHeading h3{margin:0}
+.cardMeta{color:#87948c;font-size:12px}
+.closure label{display:grid;gap:8px;font-size:13px;font-weight:650;color:#476055;min-width:0}
+.closure textarea,.closure input:not([type=checkbox]){width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid #dae5df;border-radius:11px;font:inherit;font-size:14px;line-height:1.55;color:#293e35;background:#fff;transition:border-color .15s,box-shadow .15s}
+.closure textarea{resize:vertical;min-height:76px}
+.closure textarea::placeholder,.closure input::placeholder{color:#97a59c;font-weight:400}
+.closure textarea:focus-visible,.closure input:focus-visible{outline:0;border-color:#669580;box-shadow:0 0 0 3px rgba(84,139,113,.12)}
+.visuallyHidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.fields>label:first-child{grid-column:1/-1}
+.fields>label textarea{min-height:85px}
+.actions,.footerActions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.card>.actions{margin-top:13px}
+.closure button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;font:inherit;font-size:12.5px;font-weight:650;padding:9px 13px;border:1px solid #d5e3db;border-radius:10px;color:#366c57;background:#f8faf8;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.closure button:hover:not(:disabled){background:#eaf3ed;border-color:#b9d4c5}
+.closure button:focus-visible{outline:3px solid #9fc8af;outline-offset:2px}
+.closure button:disabled{opacity:.5;cursor:default}
+.closure .actionPrimary{background:#307662;color:#fff;border-color:#307662}
+.closure .actionPrimary:hover:not(:disabled){background:#255f4e;border-color:#255f4e}
+.closure .actionPrimary:disabled{opacity:.48}
+.medication{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #edf1ee;padding:12px 0}
+.medication span{flex:1;min-width:210px;font-size:13px}
+.details{min-width:0;border:1px solid #e1e8e3;border-radius:15px;padding:0 18px;background:#fff;box-shadow:0 5px 20px rgba(36,65,48,.025)}
+.details>summary{display:flex;align-items:center;gap:12px;list-style:none;cursor:pointer;color:#2e5343;font-size:14px;font-weight:700;padding:18px 4px;min-height:22px}
+.details>summary::-webkit-details-marker{display:none}
+.details>summary::before{content:'';width:7px;height:7px;flex:0 0 7px;border-right:1.5px solid #658675;border-bottom:1.5px solid #658675;transform:rotate(-45deg);transition:transform .16s}
+.details[open]>summary::before{transform:rotate(45deg)}
+.details[open]>summary{border-bottom:1px solid #eef1ee;margin-bottom:17px}
+.details> :not(summary){margin:0 0 17px}
+.details .fieldLabel{margin-top:14px}
+.contextItem{margin:0 0 9px;font-size:13px;line-height:1.5;color:#485e52}
+.appointmentCard{background:#f8fbf9;border-color:#cfdfd5}
+.appointmentHeading{display:flex;align-items:center;gap:10px;color:#2e6955;border-bottom:1px solid #dfebe3;padding-bottom:12px;margin-bottom:15px}
+.appointmentHeading h3{margin:0;font-size:16px}
+.appointmentCard :global(.visit-next-heading){display:none}
+.appointmentCard :global(.visit-next){margin:0}
+.footerActions{padding:8px 0 1px;justify-content:flex-end;gap:10px}
+.footerActions .actionPrimary{min-height:43px;padding:11px 20px;font-size:13px}
+.proposal{padding:20px 22px;background:#f0f6f2;border:1px solid #d9e7df;border-radius:15px}
+.proposal p{margin:7px 0;white-space:pre-wrap;line-height:1.5;font-size:13px}
+.proposal>h3{margin-bottom:13px}
+.closure .confirm{display:flex;align-items:center;gap:8px;font-weight:500}
 .closure :global(.mse-columns[hidden]){display:none!important}
+@media(max-width:740px){
+ .closure{padding:9px 0;gap:12px}
+ .heading{flex-wrap:wrap;align-items:flex-start}
+ .card,.appointmentCard{padding:16px;border-radius:14px}
+ .fields{grid-template-columns:1fr;gap:13px}
+ .fields>label:first-child{grid-column:auto}
+ .details{padding:0 14px}
+ .footerActions{justify-content:stretch}
+ .footerActions button{flex:1}
+ .cardMeta{font-size:11px}
+}

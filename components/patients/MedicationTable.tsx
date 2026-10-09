@@ -1,9 +1,11 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useId,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {Ban,Check,Pencil,Plus,Search,X} from 'lucide-react';
 import type {DemoMedication,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
 import {formatClinicDate} from '@/lib/clinic-time';
+import {placeMedicationMenu,type MedicationMenuPlacement} from '@/lib/clinical/medication-menu-placement';
 
 type Mode='start'|'history'|'change'|'stop'|'side_effect';
 type Tracking={registerFlusher?:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange?:(key:string,dirty:boolean)=>void};
@@ -69,12 +71,19 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 
 function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
  const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
+ const [needsAction,setNeedsAction]=useState(false);
+ const newRowRef=useRef<HTMLTableRowElement>(null);
  const key='medication-new';
  const dirty=open&&Boolean(name.trim()||dose.trim()||frequency.trim()||mode==='history'||start!==today||unit!=='mg');
  const complete=Boolean(name.trim()&&dose.trim()&&frequency.trim()&&start&&(mode==='start'||stop));
  const pending=dirty||saving;
- const reset=()=>{setOpen(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
- const guard=useCallback(async()=>{if(pending)throw new Error('Ολοκλήρωσε ή ακύρωσε τη νέα αγωγή.')},[pending]);
+ const reset=()=>{setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
+ const guard=useCallback(async()=>{
+  if(!pending)return;
+  setNeedsAction(true);
+  requestAnimationFrame(()=>newRowRef.current?.scrollIntoView({behavior:'smooth',block:'center'}));
+  throw new Error('Υπάρχει ανοιχτή προσθήκη φαρμάκου. Αποθηκεύστε ή ακυρώστε την για να συνεχίσετε.');
+ },[pending]);
  useEffect(()=>registerFlusher?.(key,guard),[key,registerFlusher,guard]);
  useEffect(()=>{onDirtyChange?.(key,pending);return()=>onDirtyChange?.(key,false)},[key,pending,onDirtyChange]);
  async function save(){
@@ -90,20 +99,23 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν προστέθηκε η αγωγή.')}finally{setSaving(false)}
  }
  if(!open)return <tr className="med-add-row"><td colSpan={7}><button type="button" onClick={()=>setOpen(true)}><Plus size={15}/> Προσθήκη φαρμάκου</button></td></tr>;
- return <tr className="med-new-row">
-  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}</th>
+ return <tr ref={newRowRef} className="med-new-row">
+  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}{needsAction&&<span className="med-inline-error" role="status">Αποθηκεύστε ή ακυρώστε εδώ για να συνεχίσετε.</span>}</th>
   <td><div className="med-inline-dose"><input aria-label="Δόση" inputMode="decimal" placeholder="*" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setError('')}}/><input aria-label="Μονάδα" value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
   <td><input className="med-inline-input" aria-label="Συχνότητα" placeholder="*" value={frequency} disabled={saving} onChange={e=>{setFrequency(e.target.value);setError('')}}/></td>
   <td><label className="med-new-date">Έναρξη *<input type="date" value={start} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='history'&&<label className="med-new-date">Διακοπή *<input type="date" value={stop} disabled={saving} min={start} max={today} onChange={e=>setStop(e.target.value)}/></label>}</td>
   <td><select className="med-inline-status" aria-label="Κατάσταση νέας αγωγής" value={mode} disabled={saving} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει / προγραμματισμένη</option><option value="history">Προηγούμενη · διακοπείσα</option></select></td>
   <td><span className="med-empty-cell">—</span></td>
-  <td className="med-row-actions"><div className="med-action-pair"><button className="primary" type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?'Προσθήκη':'Συμπλήρωσε τα πεδία με *'}><Check size={15}/></button><button type="button" disabled={saving} onClick={reset} title="Ακύρωση"><X size={15}/></button></div></td>
+  <td className="med-row-actions"><div className="med-action-pair"><button className="primary" type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?'Προσθήκη':'Συμπλήρωσε τα πεδία με *'}><Check size={15}/></button><button type="button" disabled={saving} onClick={reset} title="Ακύρωση νέου φαρμάκου" aria-label="Ακύρωση νέου φαρμάκου"><X size={15}/></button></div></td>
  </tr>;
 }
 
 function MedicationSearchInput({value,onChange,disabled}:{value:string;onChange:(value:string)=>void;disabled?:boolean}){
  const [items,setItems]=useState<MedicationOption[]>([]),[open,setOpen]=useState(false),[loading,setLoading]=useState(false),[active,setActive]=useState(-1);
- const requestSeq=useRef(0);
+ const [placement,setPlacement]=useState<MedicationMenuPlacement|null>(null);
+ const inputRef=useRef<HTMLInputElement>(null);
+ const menuRef=useRef<HTMLDivElement>(null);
+ const menuId=useId(),requestSeq=useRef(0);
  useEffect(()=>{
   const query=value.trim();
   if(!query){setItems([]);setOpen(false);setLoading(false);return}
@@ -121,12 +133,35 @@ function MedicationSearchInput({value,onChange,disabled}:{value:string;onChange:
   },140);
   return()=>{clearTimeout(timer);controller.abort()}
  },[value]);
+ // The table scrolls horizontally, so rendering the dropdown inside the
+ // table forces overflow-y:auto and cuts off search results. Portaling into
+ // document.body keeps the menu fully visible without changing table scroll.
+ useEffect(()=>{
+  if(!open||disabled){setPlacement(null);return}
+  const update=()=>{
+   const rect=inputRef.current?.getBoundingClientRect();
+   if(!rect||rect.bottom<0||rect.top>window.innerHeight){setPlacement(null);return}
+   setPlacement(placeMedicationMenu(rect,{width:window.innerWidth,height:window.innerHeight}));
+  };
+  update();
+  window.addEventListener('resize',update);
+  window.addEventListener('scroll',update,true);
+  return()=>{window.removeEventListener('resize',update);window.removeEventListener('scroll',update,true)}
+ },[open,disabled,items.length,loading]);
+ useEffect(()=>{
+  if(active>=0)menuRef.current?.querySelectorAll('[role="option"]')[active]?.scrollIntoView({block:'nearest'});
+ },[active]);
  const choose=(item:MedicationOption)=>{onChange(item.brand);setOpen(false);setItems([]);setActive(-1)};
- return <div className="medication-search">
-  <Search size={14} aria-hidden="true"/>
-  <input aria-label="Φάρμακο" autoComplete="off" placeholder="Αναζήτηση φαρμάκου *" value={value} disabled={disabled} onFocus={()=>{if(value.trim())setOpen(true)}} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(!open||!items.length)return;if(e.key==='ArrowDown'){e.preventDefault();setActive(v=>Math.min(items.length-1,v+1))}else if(e.key==='ArrowUp'){e.preventDefault();setActive(v=>Math.max(0,v-1))}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')setOpen(false)}} onBlur={()=>setTimeout(()=>setOpen(false),120)}/>
-  {open&&(items.length>0||loading)&&<div className="medication-search-menu" role="listbox">{loading&&!items.length?<div className="medication-search-loading">…</div>:items.map((item,index)=><button type="button" key={item.id} className={active===index?'active':''} role="option" aria-selected={active===index} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(item)}><strong>{item.brand}</strong><span>{item.active}</span>{item.form&&<i>{item.form}</i>}</button>)}</div>}
- </div>;
+ const showMenu=open&&!disabled&&(items.length>0||loading)&&placement!==null;
+ return <>
+  <div className="medication-search">
+   <Search size={14} aria-hidden="true"/>
+   <input ref={inputRef} role="combobox" aria-label="Φάρμακο" aria-autocomplete="list" aria-expanded={showMenu} aria-controls={showMenu?menuId:undefined} autoComplete="off" placeholder="Αναζήτηση φαρμάκου *" value={value} disabled={disabled} onFocus={()=>{if(value.trim())setOpen(true)}} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(!open||!items.length)return;if(e.key==='ArrowDown'){e.preventDefault();setActive(v=>Math.min(items.length-1,v+1))}else if(e.key==='ArrowUp'){e.preventDefault();setActive(v=>Math.max(0,v-1))}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')setOpen(false)}} onBlur={()=>setTimeout(()=>setOpen(false),120)}/>
+  </div>
+  {showMenu&&createPortal(<div ref={menuRef} id={menuId} className="medication-search-menu" role="listbox" aria-label="Επιλογές φαρμάκων" style={{left:placement.left,top:placement.top,width:placement.width,maxHeight:placement.maxHeight}}>
+   {loading&&!items.length?<div className="medication-search-loading">Αναζήτηση…</div>:items.map((item,index)=><button type="button" key={item.id} className={active===index?'active':''} role="option" aria-selected={active===index} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(item)}><strong>{item.brand}</strong><span>{item.active}</span>{item.form&&<i>{item.form}</i>}</button>)}
+  </div>,document.body)}
+ </>;
 }
 
 function MedicationEffects({medication,bundle,sessionId,today,reload,editableEffects,registerFlusher,onDirtyChange}:{medication:DemoMedication;bundle:PatientBundle;sessionId?:string;today:string;reload:()=>Promise<unknown>;editableEffects:boolean}&Tracking){

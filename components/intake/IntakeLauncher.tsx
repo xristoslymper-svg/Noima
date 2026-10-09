@@ -17,7 +17,7 @@ export default function IntakeLauncher({
  patientEmail='',
  subjectLabel='',
  defaultTools=['history'],
- initialChannel='tablet',
+ initialChannel='email',
  lockTools=false,
  onClose,
  onDone
@@ -141,7 +141,7 @@ export default function IntakeLauncher({
      }
      throw new Error(md.error||'Το email δεν στάλθηκε.');
     }
-    setDone('Στάλθηκε προσωπικό link στον/στην '+selected.label+'. '+(!selected.patient_id?'Ο φάκελος θα δημιουργηθεί αυτόματα με την υποβολή.':'Οι απαντήσεις θα επιστρέψουν αυτόματα στον φάκελο.'));
+    setDone('Στάλθηκε προσωπικό link στον/στην '+selected.label+'. '+(!selected.patient_id?'Ο φάκελος θα δημιουργηθεί αυτόματα με την υποβολή.':'Οι απαντήσεις θα εμφανιστούν αυτόματα στον φάκελο, χωρίς πρόσθετη ενσωμάτωση.'));
     onDone?.();
     return;
    }
@@ -206,7 +206,7 @@ export default function IntakeLauncher({
      <button className={channel==='print'?'selected':''} onClick={()=>setChannel('print')}><Printer size={18}/> Εκτύπωση</button>
     </div>
     {channel==='tablet'&&<div className="intake-channel-detail">{devices.length?<label>Συσκευή<select value={deviceId} onChange={e=>setDeviceId(e.target.value)}>{devices.map(d=><option key={d.id} value={d.id}>{d.label}</option>)}</select></label>:<p>Δεν έχει συνδεθεί tablet. <Link href="/tablet" target="_blank">Άνοιγμα λειτουργίας Tablet ↗</Link></p>}</div>}
-    {channel==='email'&&<div className="assignment-email-wrap"><label className="assignment-email">Email παραλήπτη<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="patient@example.com"/></label><p>Ο ασθενής θα λάβει προσωπικό link. Δεν χρειάζεται λογαριασμό· συμπληρώνει online και η υποβολή επιστρέφει αυτόματα σε αυτή την ανάθεση.</p></div>}
+    {channel==='email'&&<div className="assignment-email-wrap"><label className="assignment-email">Email παραλήπτη<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="patient@example.com"/></label><p>Ο ασθενής λαμβάνει προσωπικό σύνδεσμο και συμπληρώνει online, χωρίς λογαριασμό. Το ιστορικό εμφανίζεται αυτόματα στον φάκελο — δεν απαιτείται ξεχωριστή έγκριση παραλαβής.</p></div>}
     {channel==='print'&&<div className="intake-channel-detail"><p>Το έντυπο θα φέρει μοναδικό κωδικό αυτής της ανάθεσης. Όταν εισαχθεί ξανά στο Noima, το αποτέλεσμα θα επιστρέψει στην ίδια ανάθεση και, αν δεν υπάρχει φάκελος, θα δημιουργηθεί μετά την καταχώριση.</p></div>}
    </div>
 

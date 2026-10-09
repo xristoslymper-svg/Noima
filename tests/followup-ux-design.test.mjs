@@ -34,7 +34,7 @@ test('signposting is by field placeholder instead of long doctor-facing explanat
  assert.match(followup,/Τι αξίζει να θυμόμαστε/);
  assert.match(followup,/Συμπτώματα, λειτουργικότητα, μεταβολές/);
  assert.doesNotMatch(followup,/Η πρόταση δεν αλλάζει αγωγή ή εκτίμηση κινδύνου/);
- assert.match(css,/max-width:1180px/);
+ assert.match(css,/max-width:800px/);
  assert.match(css,/\.details>summary::before/);
 });
 

@@ -12,3 +12,14 @@ export function shouldAdoptClinicalDraftServer({
  const remoteChanged=localVersion!==incomingVersion||savedJson!==incomingJson;
  return remoteChanged&&(localJson===savedJson||localJson===incomingJson);
 }
+
+/** A recovered browser draft must not force a stale clinical overwrite. */
+export function recoveredClinicalDraftDisposition({
+ recoveredJson,serverJson,recoveredVersion,serverVersion,
+}:{
+ recoveredJson:string;serverJson:string;recoveredVersion:number|null;serverVersion:number|null;
+}):'same'|'archive'|'retry'{
+ if(recoveredJson===serverJson)return 'same';
+ if(recoveredVersion!==serverVersion)return 'archive';
+ return 'retry';
+}

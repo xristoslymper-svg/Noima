@@ -8,6 +8,7 @@
 .cardHeading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-bottom:12px}
 .cardHeading h3{margin:0}
 .cardMeta{color:#87948c;font-size:12px}
+.captureHint{margin:0 0 12px;color:#63766b;font-size:12px;line-height:1.5}
 .closure label{display:grid;gap:8px;font-size:13px;font-weight:650;color:#476055;min-width:0}
 .closure textarea,.closure input:not([type=checkbox]){width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid #dae5df;border-radius:11px;font:inherit;font-size:14px;line-height:1.55;color:#293e35;background:#fff;transition:border-color .15s,box-shadow .15s}
 .closure textarea{resize:vertical;min-height:76px}

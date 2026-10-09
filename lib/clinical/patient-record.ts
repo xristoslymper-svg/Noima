@@ -13,6 +13,9 @@ export function completedMeasurements(bundle:PatientBundle,now=new Date()){
 export function clinicalDate(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
  return session.started_at;
 }
+export function upcomingAppointments(bundle:Pick<PatientBundle,'appointments'>,now=new Date()){
+ return bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>=now.getTime()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start));
+}
 export function patientRecord(bundle:PatientBundle,now=new Date()){
  const today=bundle.clinical_day||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
  const completed=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(clinicalDate(bundle,b))-Date.parse(clinicalDate(bundle,a))||a.id.localeCompare(b.id));
@@ -44,6 +47,6 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
  }):[];
  const risk=latestVisit?effectiveRisk(bundle.risks.find(r=>r.session_id===latestVisit.id),bundle.corrections,latestVisit.id)||null:null;
  const safetyAlerts=riskFindings(risk).filter(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value)).map(f=>({self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'}[f.key]||f.label));
- const nextAppointment=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>=now.getTime()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0]||null;
+ const nextAppointment=upcomingAppointments(bundle,now)[0]||null;
  return {today,completed,latestVisit,risk,safetyAlerts,nextAppointment,latestScores,activeEffects,events,sinceLatest,activeMedications:bundle.medications.filter(m=>m.status==='active'),pendingSafety:measured.filter(a=>day(a.completed_at!)<=today&&a.item9_review&&!a.item9_reviewed_at)};
 }

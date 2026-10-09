@@ -45,7 +45,7 @@ test('history screen avoids the extra eight-field intake approval and exposes cl
 test('opening received history clears its inbox notification without clinical approval',()=>{
  const api=readFileSync('app/api/intake/route.ts','utf8');
  const history=readFileSync('components/patients/PatientReportedHistory.tsx','utf8');
- const migration=readFileSync('supabase/migrations/20261009154000_intake_viewed_without_review.sql','utf8');
+ const migration=readFileSync('supabase/migrations/20261009153029_intake_viewed_without_review.sql','utf8');
  assert.match(api,/b\.action==='mark_viewed'/);
  assert.match(history,/if\(!compact&&received\.length&&!viewed/);
  assert.match(history,/action:'mark_viewed'/);

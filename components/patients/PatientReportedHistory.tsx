@@ -14,13 +14,25 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
  useEffect(()=>{
   const controller=new AbortController();
   setLoading(true);setError(false);setData([]);
-  void (async()=>{
-   const response=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list',tester:getDemoTesterId(),patient_id:patientId}),signal:controller.signal,cache:'no-store'});
-   if(!response.ok)throw new Error('intake_list_failed');
-   const result=await response.json();
-   if(!controller.signal.aborted)setData(receivedPatientHistories((result.intakes||[]) as ReceivedHistory[]));
-  })().catch(()=>{if(!controller.signal.aborted)setError(true)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
-  return()=>controller.abort();
+  let inFlight=false;
+  const load=async(silent=false)=>{
+   if(inFlight||controller.signal.aborted)return;
+   inFlight=true;
+   try{
+    const response=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list',tester:getDemoTesterId(),patient_id:patientId}),signal:controller.signal,cache:'no-store'});
+    if(!response.ok)throw new Error('intake_list_failed');
+    const result=await response.json();
+    if(!controller.signal.aborted){setData(receivedPatientHistories((result.intakes||[]) as ReceivedHistory[]));setError(false)}
+   }catch{if(!controller.signal.aborted&&!silent)setError(true)}
+   finally{inFlight=false;if(!controller.signal.aborted&&!silent)setLoading(false)}
+  };
+  void load();
+  // New patient answers appear without manual refresh or approval, including
+  // when the doctor returns to an already open patient folder.
+  const refresh=()=>{if(document.visibilityState==='visible')void load(true)};
+  window.addEventListener('focus',refresh);
+  const timer=window.setInterval(refresh,60_000);
+  return()=>{controller.abort();window.removeEventListener('focus',refresh);window.clearInterval(timer)};
  },[patientId,retry]);
  if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
  if(error)return compact?null:<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>;

@@ -51,8 +51,8 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
  const overview=patientReportedHighlights(h);
  if(compact)return <section className="patient-reported-summary" aria-label="Ιστορικό ασθενούς">
   <span className="kicker">ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ</span>
-  <h2>Το ιστορικό παραλήφθηκε</h2>
-  <p className="patient-reported-muted">Συμπληρώθηκε {dateLabel(latest.submitted_at)} · αυτοαναφορά ασθενούς, όχι κλινική επιβεβαίωση.</p>
+  <h2>Ο ασθενής συμπλήρωσε το ιστορικό</h2>
+  <p className="patient-reported-muted">Απαντήσεις της {dateLabel(latest.submitted_at)} · αυτοαναφορά ασθενούς κατά τη συμπλήρωση, χωρίς κλινική επιβεβαίωση.</p>
   {overview.length>0&&<ul>{overview.slice(0,3).map(item=><li key={item}>{item}</li>)}</ul>}
   {onOpen&&<button type="button" className="patient-reported-link" onClick={onOpen}>Όλες οι απαντήσεις →</button>}
  </section>;

@@ -52,6 +52,28 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('payment can be cleared without changing appointment or weakening ownership',async()=>{
+ const paymentOwner='75500000-0000-4000-8000-000000000001';
+ await sql('insert into auth.users(id) values($1)',[paymentOwner]);
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Payment QA') on conflict(user_id) do nothing",[paymentOwner]);
+ const [{identity}]=await asUser(paymentOwner,()=>sql('select pilot_identity() identity'));
+ const t=identity.workspace_id;await asUser(paymentOwner,()=>sql('select demo_tester_bootstrap($1)',[t]));
+ const [p]=await asUser(paymentOwner,()=>sql("select * from demo_patient_create_v2($1,'QA Payment reset')",[t]));
+ const [{event}]=await asUser(paymentOwner,()=>sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-11-01 10:00 Europe/Athens','2099-11-01 10:50 Europe/Athens','follow_up') event",[t,p.id]));
+ const query='select * from demo_payment_set($1,$2,$3)';
+ for(const status of ['paid','unknown','pending','unknown']){
+   const [updated]=await asUser(paymentOwner,()=>sql(query,[t,event.id,status]));
+   assert.equal(updated.payment_status,status);
+   assert.equal(new Date(updated.scheduled_start).getTime(),Date.parse(event.scheduled_start));
+   assert.equal(updated.patient_id,p.id);
+   assert.equal(updated.status,'scheduled');
+ }
+ await rejected(a,query,[t,event.id,'unknown'],/pilot_not_authorized/);
+ await rejected(paymentOwner,query,[t,event.id,'invalid'],/invalid_payment_status/);
+ await rejected(paymentOwner,query,[t,event.id,null],/invalid_payment_status/);
+ await rejected(paymentOwner,'select private.pilot_impl_demo_payment_set($1,$2,$3)',[t,event.id,'unknown'],/permission denied/);
+});
+
 test('pilot invitations require confirmed identity, are single-user, and never grant access from metadata',async()=>{
  const code='fixture-invitation-A';
  await sql("update auth.users set email='a@example.invalid',email_confirmed_at=now() where id=$1",[a]);

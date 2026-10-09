@@ -8,6 +8,8 @@ import IntakeLauncher from "@/components/intake/IntakeLauncher";
 import {calendarSegment as segment, calendarWindow, calendarLanes, cancelledHistoryPlacement} from "@/lib/calendar/layout";
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
+import {useCalendarPosition} from "@/components/calendar/useCalendarPosition";
+import {applyPaymentUpdate, nextWeekDate, upcomingAppointments} from "@/lib/calendar/appointment-context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
 import { getDemoTesterId } from "@/lib/demo-tester";
@@ -203,6 +205,7 @@ export default function CalendarPage() {
   const currentTimeRef=useRef<HTMLDivElement|null>(null);
   const centeredTodayRef=useRef<string|null>(null);
   const [nowMs,setNowMs]=useState(()=>Date.now());
+  const {ready:positionReady,restoring:restoringPosition,remember:rememberPosition}=useCalendarPosition({date:focusDate,view,filter:statusFilter,setDate:setFocusDate,setView,setFilter:setStatusFilter,scroller:weekScrollerRef,loading});
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -309,7 +312,7 @@ export default function CalendarPage() {
     finally{quickBusyRef.current=false;setQuickBusy(false);}
   }
 
-  async function setPaymentStatus(event:CalendarEvent,status:"paid"|"pending"){
+  async function setPaymentStatus(event:CalendarEvent,status:"paid"|"pending"|"unknown"){
     if(paymentBusy)return;
     setPaymentBusy(true);setQuickError("");
     try{
@@ -317,8 +320,8 @@ export default function CalendarPage() {
       const data=(await response.json().catch(()=>({}))) as {event?:CalendarEvent;error?:string};
       if(!response.ok||!data.event)throw new Error(data.error||"Η πληρωμή δεν ενημερώθηκε.");
       const updated=data.event;
-      setEvents(current=>current.map(item=>item.id===updated.id?updated:item));
-      setSelectedEvent(current=>current?.id===updated.id?updated:current);
+      setEvents(current=>current.map(item=>item.id===updated.id?applyPaymentUpdate(item,updated):item));
+      setSelectedEvent(current=>current?.id===updated.id?applyPaymentUpdate(current,updated):current);
     }catch(error){
       setQuickError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.");
       await refreshEvents();
@@ -353,7 +356,7 @@ export default function CalendarPage() {
   );
 
   useEffect(() => {
-    if (view !== "week") return;
+    if (view !== "week" || !positionReady || restoringPosition.current) return;
     const scroller = weekScrollerRef.current;
     if (!scroller) return;
     const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${focusDate}"]`);
@@ -362,8 +365,10 @@ export default function CalendarPage() {
       const left = target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2;
       scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
     });
-  }, [view, days, focusDate]);
+  }, [view, days, focusDate, positionReady, restoringPosition]);
   useEffect(()=>{
+    if(!positionReady)return;
+    if(restoringPosition.current){centeredTodayRef.current=currentDay;return}
     if(view!=="week"||focusDate!==currentDay){centeredTodayRef.current=null;return}
     if(loading||centeredTodayRef.current===currentDay)return;
     const frame=requestAnimationFrame(()=>{
@@ -378,7 +383,7 @@ export default function CalendarPage() {
       scroller.scrollTo({top:Math.max(0,markerTop-headerHeight-visibleHours*.4),behavior:"instant"});
     });
     return()=>cancelAnimationFrame(frame);
-  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end]);
+  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition]);
 
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -573,7 +578,7 @@ export default function CalendarPage() {
                 )}
               </section>
             ) : (
-              <section ref={weekScrollerRef} className="calendar-week-card interactive-week">
+              <section ref={weekScrollerRef} onScroll={rememberPosition} className="calendar-week-card interactive-week">
                 <div className="calendar-time-grid">
                   <div className="week-time-corner" />
                   {days.map(day => {
@@ -744,14 +749,15 @@ export default function CalendarPage() {
 
             {appointmentActionsOpen&&<div ref={appointmentActionsRef} className="calendar-appointment-actions-menu">
               <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
-              {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{const next=addMinutes(selectedEvent.scheduled_start,7*24*60);setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:dateKey(new Date(next))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
+              {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:nextWeekDate(dateKey(new Date(selectedEvent.scheduled_start)))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
             </div>}
 
             {selectedEvent.patient_id&&selectedEvent.status!=="cancelled"&&<div className="calendar-payment-state">
-              <div><strong>Κατάσταση πληρωμής</strong><span>{selectedEvent.payment_status==="paid"?"Πληρωμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":"Δεν έχει σημειωθεί"}</span></div>
+              <div><strong>Κατάσταση πληρωμής</strong><span role="status">{selectedEvent.payment_status==="paid"?"Πληρωμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":selectedEvent.payment_status==="not_applicable"?"Χωρίς χρέωση":"Δεν έχει σημειωθεί"}</span></div>
               <div className="calendar-payment-choice">
-                <button className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}><Check size={14}/> Πληρωμένο</button>
-                <button className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Εκκρεμεί</button>
+                <button aria-pressed={selectedEvent.payment_status==="paid"} className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}>{selectedEvent.payment_status==="paid"&&<Check size={14}/>} Πληρωμένο</button>
+                <button aria-pressed={selectedEvent.payment_status==="pending"} className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Εκκρεμεί</button>
+                {selectedEvent.payment_status!=="unknown"&&<button disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"unknown")}>Δεν έχει σημειωθεί</button>}
               </div>
             </div>}
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
@@ -767,6 +773,10 @@ export default function CalendarPage() {
           mode={appointmentEditor.mode}
           event={appointmentEditor.event}
           patients={patients}
+          events={events}
+          eventsLoading={loading}
+          eventsError={calendarError}
+          onViewExisting={event=>{setAppointmentEditor(null);setFocusDate(dateKey(new Date(event.scheduled_start)));setSelectedEvent(event)}}
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
           initialDuration={appointmentEditor.duration}
@@ -840,6 +850,10 @@ export default function CalendarPage() {
 
       {undoEvent && <div className="calendar-undo" role="status"><span>Το ραντεβού ακυρώθηκε.</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/> Αναίρεση</button><button aria-label="Κλείσιμο ειδοποίησης" onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{quickError}</span>}</div>}
       <style jsx global>{`
+        .calendar-payment-state{flex-wrap:wrap}.calendar-payment-choice{flex-wrap:wrap}
+        .appointment-next-suggestion{font-size:12px;line-height:1.6;color:#53685f;margin:0 0 14px}
+        .appointment-existing-bookings:empty{display:none}.appointment-existing-bookings{background:#f2f7f4;border:1px solid #dce7df;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;color:#33483f}
+        .appointment-existing-bookings ul{list-style:none;padding:0;margin:8px 0;max-height:150px;overflow:auto}.appointment-existing-bookings li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0}.appointment-existing-bookings button{border:1px solid #cadbd1;border-radius:8px;background:white;color:#356b59;padding:7px 10px;cursor:pointer}.appointment-existing-bookings small{color:#61756b}
         .calendar-page-content{max-width:1500px;margin:0 auto;padding:32px 38px 64px}
         .calendar-page-heading{align-items:center;margin-bottom:20px}
         .calendar-page-heading h1{font-size:34px;letter-spacing:-.045em;margin:0;color:#263c33}
@@ -969,6 +983,10 @@ function AppointmentEditor({
   mode,
   event,
   patients,
+  events,
+  eventsLoading,
+  eventsError,
+  onViewExisting,
   focusDate,
   initialMinute,
   initialDuration,
@@ -982,6 +1000,10 @@ function AppointmentEditor({
   mode: "create" | "edit";
   event?: CalendarEvent;
   patients: PatientOption[];
+  events: CalendarEvent[];
+  eventsLoading: boolean;
+  eventsError: string;
+  onViewExisting: (event: CalendarEvent) => void;
   focusDate: string;
   initialMinute?: number;
   initialDuration?: number;
@@ -1013,6 +1035,7 @@ function AppointmentEditor({
   const [typeManuallyChosen,setTypeManuallyChosen]=useState(false);
   const [smsReminder,setSmsReminder]=useState(event?.sms_reminder_enabled??true);
   const selectedPatient=patients.find(p=>p.id===patientId);
+  const upcoming=upcomingAppointments(events,patientId,Date.now(),nextFor?.id);
   const selectedPatientIsNew=Boolean(selectedPatient&&!selectedPatient.last_session);
   useEffect(()=>{
     if(mode!=="create"||!selectedPatient||typeManuallyChosen)return;
@@ -1123,6 +1146,14 @@ function AppointmentEditor({
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
       {selectedStartIso&&<div className="appointment-datetime-context"><CalendarDays size={16}/><div><span>Ημερομηνία & ώρα</span><strong>{dateTimeLabel(selectedStartIso)}</strong></div></div>}
+      {mode==="create"&&nextFor&&<p className="appointment-next-suggestion">Αρχική πρόταση: μία εβδομάδα μετά το επιλεγμένο ραντεβού, την ίδια ώρα Αθήνας. Μπορείτε να αλλάξετε ημερομηνία και ώρα.</p>}
+      {mode==="create"&&patientId&&<div className="appointment-existing-bookings" aria-label="Ήδη προγραμματισμένα ραντεβού">
+        {eventsLoading?<p role="status">Έλεγχος προγραμματισμένων ραντεβού…</p>:eventsError?<p role="status">Δεν ήταν δυνατός ο έλεγχος των ήδη προγραμματισμένων ραντεβού.</p>:upcoming.length>0?<>
+          <strong>Ήδη προγραμματισμένα για τον ασθενή ({upcoming.length})</strong>
+          <ul>{upcoming.map(existing=><li key={existing.id}><span>{dateTimeLabel(existing.scheduled_start)}</span><button type="button" disabled={saving} aria-label={"Προβολή ραντεβού "+dateTimeLabel(existing.scheduled_start)} onClick={()=>onViewExisting(existing)}>Προβολή</button></li>)}</ul>
+          <small>Η δημιουργία προσθέτει νέο ραντεβού. Δεν αλλάζει τα υπάρχοντα.</small>
+        </>:null}
+      </div>}
       {pastSelection&&<div className="appointment-past-warning" role="status"><Clock size={15}/><div><strong>Η επιλεγμένη ώρα έχει ήδη περάσει.</strong><span>Μπορείτε να καταχωρίσετε το ραντεβού αναδρομικά.</span></div></div>}
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
         {mode === "create" && <div ref={patientPickerRef} className="appointment-patient-field">

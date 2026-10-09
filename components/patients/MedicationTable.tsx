@@ -71,12 +71,19 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 
 function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
  const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
+ const [needsAction,setNeedsAction]=useState(false);
+ const newRowRef=useRef<HTMLTableRowElement>(null);
  const key='medication-new';
  const dirty=open&&Boolean(name.trim()||dose.trim()||frequency.trim()||mode==='history'||start!==today||unit!=='mg');
  const complete=Boolean(name.trim()&&dose.trim()&&frequency.trim()&&start&&(mode==='start'||stop));
  const pending=dirty||saving;
- const reset=()=>{setOpen(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
- const guard=useCallback(async()=>{if(pending)throw new Error('Ολοκλήρωσε ή ακύρωσε τη νέα αγωγή.')},[pending]);
+ const reset=()=>{setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
+ const guard=useCallback(async()=>{
+  if(!pending)return;
+  setNeedsAction(true);
+  requestAnimationFrame(()=>newRowRef.current?.scrollIntoView({behavior:'smooth',block:'center'}));
+  throw new Error('Υπάρχει ανοιχτή προσθήκη φαρμάκου. Αποθηκεύστε ή ακυρώστε την για να συνεχίσετε.');
+ },[pending]);
  useEffect(()=>registerFlusher?.(key,guard),[key,registerFlusher,guard]);
  useEffect(()=>{onDirtyChange?.(key,pending);return()=>onDirtyChange?.(key,false)},[key,pending,onDirtyChange]);
  async function save(){
@@ -92,14 +99,14 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν προστέθηκε η αγωγή.')}finally{setSaving(false)}
  }
  if(!open)return <tr className="med-add-row"><td colSpan={7}><button type="button" onClick={()=>setOpen(true)}><Plus size={15}/> Προσθήκη φαρμάκου</button></td></tr>;
- return <tr className="med-new-row">
-  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}</th>
+ return <tr ref={newRowRef} className="med-new-row">
+  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}{needsAction&&<span className="med-inline-error" role="status">Αποθηκεύστε ή ακυρώστε εδώ για να συνεχίσετε.</span>}</th>
   <td><div className="med-inline-dose"><input aria-label="Δόση" inputMode="decimal" placeholder="*" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setError('')}}/><input aria-label="Μονάδα" value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
   <td><input className="med-inline-input" aria-label="Συχνότητα" placeholder="*" value={frequency} disabled={saving} onChange={e=>{setFrequency(e.target.value);setError('')}}/></td>
   <td><label className="med-new-date">Έναρξη *<input type="date" value={start} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='history'&&<label className="med-new-date">Διακοπή *<input type="date" value={stop} disabled={saving} min={start} max={today} onChange={e=>setStop(e.target.value)}/></label>}</td>
   <td><select className="med-inline-status" aria-label="Κατάσταση νέας αγωγής" value={mode} disabled={saving} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει / προγραμματισμένη</option><option value="history">Προηγούμενη · διακοπείσα</option></select></td>
   <td><span className="med-empty-cell">—</span></td>
-  <td className="med-row-actions"><div className="med-action-pair"><button className="primary" type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?'Προσθήκη':'Συμπλήρωσε τα πεδία με *'}><Check size={15}/></button><button type="button" disabled={saving} onClick={reset} title="Ακύρωση"><X size={15}/></button></div></td>
+  <td className="med-row-actions"><div className="med-action-pair"><button className="primary" type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?'Προσθήκη':'Συμπλήρωσε τα πεδία με *'}><Check size={15}/></button><button type="button" disabled={saving} onClick={reset} title="Ακύρωση νέου φαρμάκου" aria-label="Ακύρωση νέου φαρμάκου"><X size={15}/></button></div></td>
  </tr>;
 }
 

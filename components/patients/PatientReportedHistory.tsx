@@ -15,6 +15,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   const controller=new AbortController();
   setLoading(true);setError(false);setData([]);
   let inFlight=false;
+  let viewed=false;
   const load=async(silent=false)=>{
    if(inFlight||controller.signal.aborted)return;
    inFlight=true;
@@ -22,7 +23,16 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
     const response=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list',tester:getDemoTesterId(),patient_id:patientId}),signal:controller.signal,cache:'no-store'});
     if(!response.ok)throw new Error('intake_list_failed');
     const result=await response.json();
-    if(!controller.signal.aborted){setData(receivedPatientHistories((result.intakes||[]) as ReceivedHistory[]));setError(false)}
+    const received=receivedPatientHistories((result.intakes||[]) as ReceivedHistory[]);
+    if(!controller.signal.aborted){setData(received);setError(false)}
+    if(!compact&&received.length&&!viewed&&!controller.signal.aborted){
+     // Passive read receipt only. Original self-report and clinician review
+     // state are untouched, and no extra confirmation is shown.
+     try{
+      const seen=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark_viewed',tester:getDemoTesterId(),patient_id:patientId}),signal:controller.signal});
+      if(seen.ok)viewed=true;
+     }catch{/* read receipt is optional; the answers remain accessible */}
+    }
    }catch{if(!controller.signal.aborted&&!silent)setError(true)}
    finally{inFlight=false;if(!controller.signal.aborted&&!silent)setLoading(false)}
   };
@@ -33,7 +43,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   window.addEventListener('focus',refresh);
   const timer=window.setInterval(refresh,60_000);
   return()=>{controller.abort();window.removeEventListener('focus',refresh);window.clearInterval(timer)};
- },[patientId,retry]);
+ },[patientId,retry,compact]);
  if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
  if(error)return compact?null:<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>;
  if(!data.length)return compact?null:<p className="patient-reported-muted">Δεν έχει επιστραφεί ακόμη ερωτηματολόγιο ιστορικού.</p>;

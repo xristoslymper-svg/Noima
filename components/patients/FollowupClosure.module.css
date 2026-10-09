@@ -1,5 +1,5 @@
 /* Follow-up is one calm clinical workspace, not a stack of unrelated forms. */
-.closure{width:100%;max-width:1180px;margin:0 auto;padding:clamp(8px,2vw,22px) clamp(0px,1vw,12px);display:grid;gap:16px;color:#293e35;box-sizing:border-box}
+.closure{width:100%;max-width:800px;margin:0 auto;padding:clamp(8px,2vw,22px) clamp(0px,1vw,12px);display:grid;gap:16px;color:#293e35;box-sizing:border-box}
 .heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 0 7px}
 .heading h2{font-family:inherit;font-size:clamp(23px,2vw,29px);font-weight:750;letter-spacing:-.027em;margin:5px 0 0;line-height:1.2}
 .heading>button{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}

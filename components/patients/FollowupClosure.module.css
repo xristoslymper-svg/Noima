@@ -59,6 +59,8 @@
 .proposal>h3{margin-bottom:13px}
 .closure .confirm{display:flex;align-items:center;gap:8px;font-weight:500}
 .closure :global(.mse-columns[hidden]){display:none!important}
+
+.closure .voice{background:var(--green,#2d6f63);color:#fff;border-color:transparent;font-weight:600;padding:10px 15px}
 @media(max-width:740px){
  .closure{padding:9px 0;gap:12px}
  .heading{flex-wrap:wrap;align-items:flex-start}

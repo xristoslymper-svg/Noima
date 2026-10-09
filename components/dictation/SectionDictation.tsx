@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Mic2, Square, X } from 'lucide-react';
+import {appendDictationText,MAX_DICTATION_TEXT} from '@/lib/clinical/dictation-text';
 
 type Stage = 'ready' | 'permission' | 'recording' | 'transcribing' | 'review' | 'error';
-type Props = { title: string; onClose: () => void; onInsert: (text: string) => void };
+type Props = { title: string; storageKey:string; onClose: () => void; onInsert: (text: string) => void };
 
-export default function SectionDictation({ title, onClose, onInsert }: Props) {
+export default function SectionDictation({ title, storageKey, onClose, onInsert }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -16,7 +17,15 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
   const [stage, setStage] = useState<Stage>('ready');
   const [seconds, setSeconds] = useState(0);
   const [text, setText] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [accepted,setAccepted]=useState('');
+  const acceptedValue=useRef(accepted);acceptedValue.current=accepted;
+  const [recovered,setRecovered]=useState(false),[recoveryReady,setRecoveryReady]=useState(false);
+  const retryAudio=useRef<Blob|null>(null),request=useRef<AbortController|null>(null);
+  const recoveryKey='noima-dictation:'+storageKey;
+  useEffect(()=>{try{const saved=JSON.parse(sessionStorage.getItem(recoveryKey)||'null');if(saved&&typeof saved.accepted==='string'&&typeof saved.text==='string'&&saved.accepted.length+saved.text.length<=MAX_DICTATION_TEXT){setAccepted(saved.accepted);setText(saved.text);setRecovered(Boolean(saved.accepted||saved.text));if(saved.text)setStage('review')}}catch{}setRecoveryReady(true)},[recoveryKey]);
+  useEffect(()=>{if(recoveryReady)try{if(accepted||text)sessionStorage.setItem(recoveryKey,JSON.stringify({accepted,text}));else sessionStorage.removeItem(recoveryKey)}catch{}},[accepted,text,recoveryReady,recoveryKey]);
+  function insert(){try{const combined=appendDictationText(accepted,text);if(!combined)return;onInsert(combined);try{sessionStorage.removeItem(recoveryKey)}catch{}}catch(e){setError(e instanceof Error?e.message:'Δεν προστέθηκε το κείμενο.');setStage('error')}}
+  function continueRecording(){try{const combined=appendDictationText(accepted,text);acceptedValue.current=combined;setAccepted(combined);setText('');retryAudio.current=null;void start()}catch(e){setError(e instanceof Error?e.message:'Δεν μπορεί να προστεθεί τμήμα.');setStage('error')}}
   const [error, setError] = useState('');
 
   function clearTimer() {
@@ -54,6 +63,8 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
 
     return () => {
       alive.current = false;
+      request.current?.abort();
+      retryAudio.current=null;
       clearTimer();
       if (recorder.current) {
         recorder.current.onstop = null;
@@ -71,6 +82,9 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
       return;
     }
 
+    retryAudio.current=blob;
+    busy.current=true;
+    request.current=new AbortController();
     setStage('transcribing');
 
     try {
@@ -78,12 +92,13 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
       const extension = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('mpeg') ? 'mp3' : 'webm';
       form.append('file', blob, `dictation.${extension}`);
 
-      const response = await fetch('/api/transcribe', { method: 'POST', body: form });
+      const response = await fetch('/api/transcribe', { method: 'POST', body: form,signal:request.current.signal });
       const data = (await response.json().catch(() => ({}))) as { text?: string; error?: string; code?: string };
 
+      if(!alive.current)return;
       if (!response.ok) {
         if (data.code === 'missing_api_key') {
-          fail('Η υπηρεσία GPT μεταγραφής δεν είναι ρυθμισμένη στο production περιβάλλον.');
+          fail('Η υπηρεσία μεταγραφής δεν είναι διαθέσιμη. Το κείμενό σας διατηρείται.');
         } else {
           fail(data.error || 'Η μεταγραφή δεν ολοκληρώθηκε. Δοκιμάστε ξανά.');
         }
@@ -97,6 +112,7 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
       }
 
       busy.current = false;
+      try{appendDictationText(acceptedValue.current,transcript)}catch(e){setError(e instanceof Error?e.message:'Το κείμενο είναι πολύ μεγάλο.')}
       setText(transcript);
       setStage('review');
     } catch {
@@ -184,71 +200,29 @@ export default function SectionDictation({ title, onClose, onInsert }: Props) {
         </button>
       </header>
 
-      <p>Σύντομη υπαγόρευση έως 60″ με GPT speech-to-text και έλεγχο πριν από την προσθήκη.</p>
-      <p className="dictation-help">
-        Η ηχογράφηση αποστέλλεται με ασφάλεια στην υπηρεσία μεταγραφής και επιστρέφει μόνο κείμενο. Ελέγξτε το αποτέλεσμα πριν το καταχωρήσετε.
-      </p>
-
+      <p>Υπαγορεύστε σύντομα τμήματα έως 60″. Μπορείτε να προσθέσετε όσα χρειάζονται στο ίδιο πρόχειρο.</p>
+      <p className="dictation-help">Ο ήχος χρησιμοποιείται για μεταγραφή και δεν αποθηκεύεται στον φάκελο. Ελέγξτε ιδιαίτερα αρνήσεις, φάρμακα και δόσεις.</p>
+      {recovered&&<p role="status">Ανακτήθηκε κείμενο προηγούμενης υπαγόρευσης για αυτή την ενότητα.</p>}
+      {accepted&&<label>Προηγούμενα ελεγμένα τμήματα<textarea rows={3} value={accepted} maxLength={MAX_DICTATION_TEXT} disabled={stage==='recording'||stage==='transcribing'||stage==='permission'} onChange={e=>setAccepted(e.target.value)}/></label>}
       <div className="dictation-status" role="status" aria-live="polite">
-        {stage === 'ready' && 'Έτοιμο. Πατήστε Έναρξη και μιλήστε καθαρά.'}
-        {stage === 'permission' && 'Επιτρέψτε τη χρήση του μικροφώνου…'}
-        {stage === 'recording' && `Ηχογράφηση · ${seconds} / 60″`}
-        {stage === 'transcribing' && 'Μετατροπή ομιλίας σε κείμενο με GPT…'}
-        {stage === 'review' && 'Ελέγξτε και διορθώστε τη μεταγραφή πριν την προσθήκη.'}
+        {stage==='ready'&&'Έτοιμο για σύντομη υπαγόρευση.'}
+        {stage==='permission'&&'Επιτρέψτε τη χρήση του μικροφώνου…'}
+        {stage==='recording'&&`Ηχογράφηση · ${seconds} / 60″`}
+        {stage==='transcribing'&&'Μετατροπή ομιλίας σε κείμενο…'}
+        {stage==='review'&&'Διορθώστε αν χρειάζεται. Προσθέστε άλλο τμήμα ή χρησιμοποιήστε το κείμενο.'}
       </div>
-
-      {stage === 'error' && <p className="dictation-error" role="alert">{error}</p>}
-
-      {stage === 'ready' && (
-        <button className="dictation-primary" onClick={() => void start()}>
-          <Mic2 size={18} /> Έναρξη ηχογράφησης
-        </button>
-      )}
-
-      {stage === 'recording' && (
-        <button className="dictation-primary" onClick={stop}>
-          <Square size={16} /> Διακοπή & μεταγραφή
-        </button>
-      )}
-
-      {(stage === 'review' || stage === 'error') && (
-        <div className="dictation-review">
-          {editing || stage === 'error' ? (
-            <label>
-              Κείμενο προς έλεγχο
-              <textarea
-                autoFocus
-                rows={7}
-                value={text}
-                onChange={event => setText(event.target.value)}
-                placeholder="Γράψτε ή διορθώστε το κείμενο της ενότητας…"
-              />
-            </label>
-          ) : (
-            <p className="dictation-transcript">{text}</p>
-          )}
-          <small>Ελέγξτε ιδιαίτερα αρνήσεις, ονόματα φαρμάκων και δόσεις. Το ΟΚ αποδέχεται τη μεταγραφή. Ακολουθεί ξεχωριστός έλεγχος πριν αποθηκευτεί κλινικό κείμενο.</small>
-        </div>
-      )}
-
-      <footer>
-        <span>Μεταγραφή προς έλεγχο · δεν ενημερώνει ακόμη τον κλινικό φάκελο.</span>
-        <div>
-          {stage === 'review' ? (
-            <>
-              <button onClick={() => setEditing(true)} disabled={editing}>Επεξεργασία</button>
-              <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>ΟΚ</button>
-            </>
-          ) : (
-            <>
-              <button onClick={onClose}>Ακύρωση</button>
-              {stage === 'error' && (
-                <button className="dictation-primary" disabled={!text.trim()} onClick={() => onInsert(text.trim())}>ΟΚ</button>
-              )}
-            </>
-          )}
-        </div>
-      </footer>
+      {error&&<p className="dictation-error" role="alert">{error}</p>}
+      {stage==='ready'&&<button className="dictation-primary" onClick={()=>void start()}><Mic2 size={18}/> Έναρξη ηχογράφησης</button>}
+      {stage==='recording'&&<button className="dictation-primary" onClick={stop}><Square size={16}/> Διακοπή & μεταγραφή</button>}
+      {(stage==='review'||stage==='error')&&<label>Κείμενο προς έλεγχο<textarea autoFocus rows={5} value={text} onChange={e=>setText(e.target.value)} placeholder="Διορθώστε ή γράψτε το κείμενο αυτού του τμήματος…"/></label>}
+      <footer><span>Επεξεργάσιμο πρόχειρο · η κλινική έγκριση ακολουθεί στην καταγραφή.</span><div>
+        {(stage==='review'||stage==='error')&&<>
+          <button onClick={continueRecording}>Προσθήκη επόμενου τμήματος</button>
+          {stage==='error'&&retryAudio.current&&<button onClick={()=>void transcribe(retryAudio.current!)}>Επανάληψη μεταγραφής</button>}
+        </>}
+        {!['recording','transcribing','permission'].includes(stage)&&<button className="dictation-primary" disabled={!text.trim()&&!accepted.trim()} onClick={insert}>Χρήση κειμένου</button>}
+        <button onClick={onClose}>Κλείσιμο — διατήρηση κειμένου</button>
+      </div></footer>
     </dialog>
   );
 }

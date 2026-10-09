@@ -7,6 +7,7 @@ import { getDemoTesterId } from "@/lib/demo-tester";
 import type { PatientBundle } from "@/lib/patients/demo-runtime";
 import ClinicalSummary from "@/components/patients/ClinicalSummary";
 import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
+import {overviewSelectionState, restoreOverviewSelection} from '@/lib/overview/selection';
 
 import {
   Activity,
@@ -70,7 +71,7 @@ export default function Page() {
   const [nowMs,setNowMs]=useState(()=>Date.now());
   const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
   const [overviewRetry,setOverviewRetry]=useState(0);
-  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();setOverviewState('loading');void (async()=>{
+  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();const entryState=window.history.state;setOverviewState('loading');void (async()=>{
     const response=await fetch("/api/overview?tester="+encodeURIComponent(tester),{cache:"no-store"});
     const data=await response.json();if(!response.ok)throw new Error('overview_unavailable');
     if(cancelled)return;
@@ -78,7 +79,7 @@ export default function Page() {
     const todayKey=overviewDateKey(new Date());
     const todayPatientIds=events.filter(event=>overviewDateKey(new Date(event.scheduled_start))===todayKey&&event.status!=="cancelled"&&event.patient_id).map(event=>event.patient_id as string);
     setSchedule(events);setTasks((data.tasks||[]) as TodoTask[]);setPsychometricsForReview((data.psychometrics||[]) as OverviewPsychometric[]);setIntakesForReview((data.intakes||[]) as OverviewIntake[]);
-    setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:todayPatientIds[0]||null);
+    setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:restoreOverviewSelection(entryState,tester,todayKey,todayPatientIds)||todayPatientIds[0]||null);
     setOverviewState('ready');
     void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});
   })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
@@ -86,6 +87,11 @@ export default function Page() {
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
+
+  function selectPatient(patientId:string){
+    setSelectedPatientId(patientId);
+    window.history.replaceState(overviewSelectionState(window.history.state,{workspace:getDemoTesterId(),day:today,patientId}),'');
+  }
 
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
 
@@ -198,7 +204,7 @@ export default function Page() {
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
+                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>event.patient_id&&selectPatient(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
 

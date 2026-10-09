@@ -42,6 +42,16 @@
 .appointmentHeading h3{margin:0;font-size:16px}
 .appointmentCard :global(.visit-next-heading){display:none}
 .appointmentCard :global(.visit-next){margin:0}
+.appointmentCard :global(.visit-next-quick){display:flex;flex-wrap:wrap;gap:7px;margin:0 0 13px}
+.appointmentCard :global(.visit-inline-fields){display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px;margin:14px 0 11px}
+.appointmentCard :global(.visit-inline-fields label){flex:1 1 155px;max-width:235px}
+.appointmentCard :global(.visit-inline-fields input),.appointmentCard :global(.visit-inline-fields select){width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid #d8e5dc;min-height:41px;background:#fff}
+.appointmentCard :global(.calendar-sms-setting){margin-top:10px;border-top:1px solid #e1e9e3;padding-top:12px;color:#6a8374;font-size:12px}
+.appointmentCard :global(.calendar-sms-setting summary){cursor:pointer;font-weight:650}
+.appointmentCard :global(.calendar-sms-setting label){margin-top:11px;display:flex;align-items:center;gap:8px}
+.appointmentCard :global(.calendar-sms-setting input[type=checkbox]){width:auto}
+.appointmentCard :global(.calendar-sms-setting small){display:block;color:#83968c;margin-top:7px;font-size:11px}
+
 .footerActions{padding:8px 0 1px;justify-content:flex-end;gap:10px}
 .footerActions .actionPrimary{min-height:43px;padding:11px 20px;font-size:13px}
 .proposal{padding:20px 22px;background:#f0f6f2;border:1px solid #d9e7df;border-radius:15px}

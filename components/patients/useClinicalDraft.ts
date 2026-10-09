@@ -28,6 +28,8 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  // Genuine local changes are never overwritten.
  useEffect(()=>{
   if(flight.current)return;
+  // A pending parent refresh must not downgrade a newer successful local write.
+  if(version!==null&&v.current!==null&&version<v.current)return;
   if(!shouldAdoptClinicalDraftServer({
    localJson:JSON.stringify(latest.current),savedJson:saved.current,
    incomingJson,localVersion:v.current,incomingVersion:version,

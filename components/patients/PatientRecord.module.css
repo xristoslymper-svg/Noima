@@ -352,3 +352,29 @@
 .memory{white-space:pre-wrap;max-width:900px;margin:9px 0;font-size:16px;line-height:1.55}.currentRows{display:grid;gap:8px;margin-top:10px}.currentRows>div{display:grid;grid-template-columns:95px 1fr;gap:12px}.currentRows p{margin:0}.more{margin-left:auto}.more summary{cursor:pointer;padding:8px 15px;font-size:22px}.more[open]{display:flex}.more button{font-size:13px}
 
 .continuity .memory{font-size:16px;line-height:1.55}.continuity .list{margin:10px 0}.continuity .section .link{padding:3px 7px}
+
+/* Folder polish; these rules do not reach the visit editor. */
+.workspace :global(.generic-patient-page) { padding-top:18px; }
+.hero { padding:8px 0 14px !important; margin-bottom:12px; }
+.hero :global(.patient-record-context),.headerNote { color:#586c61; font-size:13px; }
+.hero :global(.patient-voice-cta strong) { white-space:normal; }
+.tabs,.contentSurface { box-shadow:none; }
+.contentSurface { border-radius:16px; }
+.contentSurface :global(.kicker) { font-size:11px; color:#52695d; letter-spacing:.06em; }
+.section p { font-size:14px; }
+.muted,.item time { color:#5c7064; font-size:12px; }
+.link,.filters button,.details>summary { font-size:12px; }
+.item strong { font-size:14px; }
+.item p { font-size:13px; }
+.contentSurface :global(.panel-heading p) { font-size:13px; }
+.contentSurface :global(.patient-reported-summary) { padding:14px 0; margin:0; border:0; border-bottom:1px solid #e7ece8; border-radius:0; background:transparent; }
+.contentSurface :global(.patient-reported-summary h2) { font-size:16px; }
+.contentSurface :global(.patient-reported-muted) { color:#5c7064; font-size:13px; }
+.contentSurface :global(.patient-details-card.incomplete) { background:transparent; border-color:#e1e7e3; }
+.contentSurface :global(.patient-missing-fields) { flex-basis:100%; font-size:12px; color:#5c7064; margin:8px 0 0; }
+.contentSurface :global(.clinical-table-wrap),.grid>div { box-shadow:none; }
+.contentSurface :global(.med-row-action-links) { gap:12px; }
+.contentSurface :global(.med-add-effect) { font-size:12px; max-width:170px; text-align:left; }
+.contentSurface :global(.med-row-action-links button) { font-size:12px; }
+.contentSurface :global(.clinical-lean-table td),.contentSurface :global(.clinical-lean-table th) { font-size:12px; }
+@media(max-width:700px) { .currentRows>div { grid-template-columns:1fr; gap:3px; } .item { grid-template-columns:1fr; gap:5px; } .workspace :global(.generic-patient-page) { padding-top:12px; } }

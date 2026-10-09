@@ -1,4 +1,4 @@
-import {emptyHistory, type HistoryAnswers} from './history';
+import {emptyHistory, type HistoryAnswers} from './history.ts';
 export type ReceivedHistory={
  id:string;
  status:string;

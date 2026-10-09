@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {shouldAdoptClinicalDraftServer} from '../lib/clinical/draft-reconciliation.ts';
+import {shouldAdoptClinicalDraftServer,recoveredClinicalDraftDisposition} from '../lib/clinical/draft-reconciliation.ts';
 
 const evaluate=(local,saved,incoming,localVersion=1,incomingVersion=2)=>
  shouldAdoptClinicalDraftServer({
@@ -36,5 +36,35 @@ test('history navigation preserves unresolved local drafts instead of trapping t
  assert.match(hook,/sessionStorage\.setItem\(storageKey,JSON\.stringify\(\{value:latest\.current,version:v\.current\}\)\)/);
  assert.match(hook,/if\(!blocked\.current\)return false/);
  assert.match(hook,/if\(flight\.current\)return/);
- assert.match(source,/Κράτησε τις αλλαγές μου/);
+ assert.doesNotMatch(source,/Σύγκριση εκδόσεων|Κράτησε τις αλλαγές μου|Χρήση τελευταίας αποθηκευμένης έκδοσης/);
+ assert.match(source,/quietRecovery:true/);
+ assert.match(source,/<details className="patient-doctor-notes">/);
+ assert.doesNotMatch(source,/className="conflict-review"/);
+});
+
+test('outdated unsaved browser text becomes a private backup, not a banner or server overwrite',()=>{
+ const previous={psychiatric_history:'παλιές σημειώσεις'};
+ const current={psychiatric_history:'ενημερωμένα δεδομένα'};
+ assert.equal(recoveredClinicalDraftDisposition({
+  recoveredJson:JSON.stringify(previous),serverJson:JSON.stringify(current),
+  recoveredVersion:1,serverVersion:2,
+ }),'archive');
+ assert.equal(recoveredClinicalDraftDisposition({
+  recoveredJson:JSON.stringify(previous),serverJson:JSON.stringify(previous),
+  recoveredVersion:1,serverVersion:2,
+ }),'same');
+});
+
+test('a draft from the current server version is retryable via optimistic locking',()=>{
+ const local={medical_history:'Γνήσιες μη αποθηκευμένες σημειώσεις'};
+ const saved={medical_history:''};
+ assert.equal(recoveredClinicalDraftDisposition({
+  recoveredJson:JSON.stringify(local),serverJson:JSON.stringify(saved),
+  recoveredVersion:2,serverVersion:2,
+ }),'retry');
+ const hook=readFileSync(new URL('../components/patients/useClinicalDraft.ts',import.meta.url),'utf8');
+ assert.match(hook,/quietRecovery&&disposition==='archive'/);
+ assert.match(hook,/backupOlder\(local\.value,local\.version\)/);
+ assert.match(hook,/if\(quietRecovery\)/);
+ assert.match(hook,/timer\.current=setTimeout\(\(\)=>void flush\(\)\.catch/);
 });

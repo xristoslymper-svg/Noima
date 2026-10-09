@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {getDemoTesterId} from '@/lib/demo-tester';
-import {requestClinicalSummary} from '@/lib/clinical/summary-request';
+import {requestClinicalSummary,clinicalSummaryRetryDelayMs,CLINICAL_SUMMARY_RETRY_DELAY_MS} from '@/lib/clinical/summary-request';
 import {buildClinicalCard,type ClinicalCard} from '@/lib/clinical/clinical-card';
 import {buildSummaryContext,summaryContextKey,clinicDay} from '@/lib/clinical/summary-context';
 import ClinicalCardView from './ClinicalCardView';
@@ -12,14 +12,26 @@ type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|nu
 export default function ClinicalSummary({bundle,compact=false}:Props){
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
  const handledRefresh=useRef(0);
+ const retryAfter=useRef<{key:string;at:number}|null>(null);
  const [result,setResult]=useState<{key:string;data:Result}|null>(null);
  const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
  const key=summaryContextKey(bundle,clinicDay());
  useEffect(()=>{const focus=()=>setRetry(n=>n+1);window.addEventListener('focus',focus);const timer=setInterval(focus,60000);return()=>{window.removeEventListener('focus',focus);clearInterval(timer)}},[]);
  useEffect(()=>{
-  const controller=new AbortController();let active=true;setState('loading');
   const force=refresh>handledRefresh.current;handledRefresh.current=refresh;
-  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,signal:controller.signal}).then(data=>{if(active){setResult({key,data});setState('ready')}}).catch(()=>{if(active)setState('unavailable')});
+  // A changed patient record (key) or a manual refresh bypasses the passive cooldown.
+  if(!force&&retryAfter.current?.key===key&&Date.now()<retryAfter.current.at)return;
+  const controller=new AbortController();let active=true;setState('loading');
+  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,signal:controller.signal}).then(data=>{
+   if(!active)return;
+   const delay=clinicalSummaryRetryDelayMs(data.mode);
+   retryAfter.current=delay?{key,at:Date.now()+delay}:null;
+   setResult({key,data});setState('ready');
+  }).catch(()=>{
+   if(!active)return;
+   retryAfter.current={key,at:Date.now()+CLINICAL_SUMMARY_RETRY_DELAY_MS};
+   setState('unavailable');
+  });
   return()=>{active=false;controller.abort()};
  },[key,retry,refresh,bundle.patient.id]);
  const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));

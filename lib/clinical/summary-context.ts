@@ -1,8 +1,9 @@
 import {riskFindings,riskFindingLabel} from './risk-findings.ts';
+import {continuityContexts} from './continuity-context.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=20;
+export const SUMMARY_POLICY_VERSION=21;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -130,6 +131,17 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  for(const a of bundle.addenda.filter(a=>ids.has(a.session_id)))add({id:'addendum:'+a.id,kind:'addendum',label:`${a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · ${dateLabel(a.created_at)}`,date:a.created_at,session_id:a.session_id,content:a,target:'sessions',record_id:a.id});
  for(const correction of (bundle.corrections||[]).filter(c=>ids.has(c.session_id)))add({id:'structured_correction:'+correction.id,kind:'structured_correction',label:`Δομημένη διόρθωση · ${dateLabel(correction.created_at)}`,date:correction.created_at,session_id:correction.session_id,content:correction,target:'sessions',record_id:correction.id});
  for(const a of bundle.appointments)add({id:'appointment:'+a.id,kind:'appointment',label:'Ραντεβού · '+a.scheduled_start,content:a,target:'calendar',record_id:a.id});
+ // Only approved contexts are eligible; revisions change current state without rewriting encounters.
+ const longitudinalContexts=continuityContexts(bundle);
+ for(const item of longitudinalContexts){
+  add({id:'context:'+item.sourceSessionId,kind:'confirmed_context',
+   label:(item.status==='active'?'Ενεργό επιβεβαιωμένο context':'Επιλυμένο ιστορικό context')+' · '+dateLabel(item.updatedAt),
+   date:item.updatedAt,session_id:item.sourceSessionId,
+   content:{status:item.status,current:item.content,original:item.original,approved_at:item.approvedAt,
+    updated_at:item.updatedAt,source_visit:item.sourceDate,
+    history:item.history.map(r=>({revision:r.revision,action:r.action,content:r.content,created_at:r.created_at}))},
+   target:'sessions',record_id:item.sourceSessionId});
+ }
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
  const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
  const durable=sources.filter(s=>s.kind==='history'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
@@ -139,6 +151,12 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  const correctedParents=new Set([...bundle.addenda.filter(a=>a.kind==='correction').map(a=>a.session_id),...(bundle.corrections||[]).map(c=>c.session_id)]);
  const findings:Finding[]=[];
  const push=(key:string,label:Category,text:string,source_ids:string[],attention=false,origin:Finding['origin']='canonical')=>findings.push({key,label,text,source_ids,attention,origin});
+ // Active confirmed context is visible even without AI. Resolved items are historical evidence only.
+ for(const item of longitudinalContexts.filter(item=>item.status==='active')){
+  push('context:'+item.sourceSessionId,'Πορεία',
+   'Ανοιχτό επιβεβαιωμένο θέμα ('+dateLabel(item.updatedAt)+'): '+item.content,
+   ['context:'+item.sourceSessionId],false,'canonical');
+ }
  const risk=latest?correctedRisk(bundle,latest.id):undefined;
  if(risk){const keys=Object.keys(riskNames).filter(k=>!(risk.tree&&k==='self_harm'&&(!risk.self_harm||risk.self_harm==='not_assessed')));const positive=keys.filter(k=>risk[k as keyof typeof risk]==='positive').map(k=>riskNames[k]);const negative=keys.filter(k=>risk[k as keyof typeof risk]==='negative').map(k=>riskNames[k]);const uncertain=keys.filter(k=>['unknown','not_assessed'].includes(String(risk[k as keyof typeof risk]))).map(k=>`${riskNames[k]} ${risk[k as keyof typeof risk]==='not_assessed'?'δεν διερευνήθηκε':'παραμένει άγνωστο'}`);const ideation=risk.tree?.answers.ideation;const description=ideation==='passive'?'παθητικές σκέψεις':ideation==='active'?'ενεργές σκέψεις':ideation==='both'?'παθητικές και ενεργές σκέψεις':'';const extra=riskFindings(risk).filter(f=>f.key.startsWith('tree:')&&!['tree:wish','tree:intent','tree:plan','tree:others','tree:ideation'].includes(f.key));const parts=[positive.length?`Θετικά ευρήματα: ${positive.join(', ')}${risk.suicidal_ideation==='positive'?` (${description||'μορφή μη προσδιορισμένη'}) · Πρόθεση: ${states[risk.intent]||'δεν διερευνήθηκε'} · Σχέδιο: ${states[risk.plan]||'δεν διερευνήθηκε'}`:''}.`:'',uncertain.length?`Δεν έχουν αποσαφηνιστεί: ${uncertain.join(', ')}.`:'',negative.length?`Δεν καταγράφηκαν: ${negative.join(', ')}.`:'',...extra.map(f=>`${f.previousBranch?'Προηγούμενος κλάδος προς επανέλεγχο: ':''}${f.label}: ${riskFindingLabel(f)}${f.note?' · '+f.note:''}.`)].filter(Boolean);push('risk','Κίνδυνος',`Εκτίμηση ${dateLabel(clinicalSessionTime(bundle,latest))}: ${parts.join(' ')} Δεν υποκαθιστά σημερινή εκτίμηση.`,['risk:'+latest.id],extra.some(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value))||keys.some(k=>!['intent','plan'].includes(k)&&risk[k as keyof typeof risk]!=='negative')||(['unknown','positive'].includes(risk.suicidal_ideation)&&[risk.intent,risk.plan].some(v=>v!=='negative')));}
  else push('risk-missing','Κίνδυνος','Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.',[],true);

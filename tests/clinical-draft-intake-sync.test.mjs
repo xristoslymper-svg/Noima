@@ -65,6 +65,6 @@ test('a draft from the current server version is retryable via optimistic lockin
  const hook=readFileSync(new URL('../components/patients/useClinicalDraft.ts',import.meta.url),'utf8');
  assert.match(hook,/quietRecovery&&disposition==='archive'/);
  assert.match(hook,/backupOlder\(local\.value,local\.version\)/);
- assert.match(hook,/if\(quietRecovery\)/);
+ assert.match(hook,/if\(disposition==='retry'\)/);
  assert.match(hook,/timer\.current=setTimeout\(\(\)=>void flush\(\)\.catch/);
 });

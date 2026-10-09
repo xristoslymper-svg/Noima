@@ -42,7 +42,8 @@ export default function FollowupClosure(p:Props){
  return <section className={styles.closure}>
   <header className={styles.heading}><div><span className="kicker">ΕΠΑΝΕΞΕΤΑΣΗ</span><h2>Σημερινή καταγραφή</h2></div><button type="button" onClick={p.onDetailed} disabled={busy||extracting}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
   <section className={styles.card} aria-label="Υπαγόρευση ή καταγραφή επίσκεψης">
-   <div className={styles.cardHeading}><h3>Σημειώσεις επίσκεψης</h3><span className={styles.cardMeta}>Με φωνή ή πληκτρολόγηση</span></div>
+   <div className={styles.cardHeading}><h3>Σημειώσεις επίσκεψης</h3><span className={styles.cardMeta}>Προαιρετικά · με φωνή ή πληκτρολόγηση</span></div>
+   <p className={styles.captureHint}>Για οργάνωση με AI — ή συμπληρώστε απευθείας την κλινική καταγραφή παρακάτω.</p>
    <label className={styles.fieldLabel}><span className={styles.visuallyHidden}>Σημερινές σημειώσεις</span><textarea rows={4} value={draft.value.transcript} disabled={extracting} onChange={e=>change('transcript',e.target.value)} placeholder="Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…"/></label>
    <div className={styles.actions}><button type="button" onClick={()=>setDictating(true)} disabled={extracting}><Mic2 size={16} aria-hidden="true"/> Υπαγόρευση</button><button type="button" className={styles.actionPrimary} onClick={()=>void extract()} disabled={extracting||draft.value.transcript.trim().length<2}><Sparkles size={16} aria-hidden="true"/>{extracting?'Οργάνωση…':'Οργάνωση με AI'}</button></div>
   </section>

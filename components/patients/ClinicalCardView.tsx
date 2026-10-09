@@ -15,6 +15,7 @@ export default function ClinicalCardView({card,patientId,compact=false}:{card:Cl
  return <div className={'clinical-card'+(compact?' clinical-card-compact':'')}>
   <p className="clinical-card-date">{card.date?'Τελευταία ολοκληρωμένη επίσκεψη · '+formatClinicDateTime(card.date):'Δεν υπάρχει ολοκληρωμένη επίσκεψη'}</p>
   {card.alerts.length>0&&<section className="clinical-card-attention" aria-label="Σημεία προσοχής"><strong>Χρειάζεται προσοχή</strong>{card.alerts.map(f=><details key={f.key}><summary>{f.label} · {f.text.split(/(?<=[.!?])\s/u)[0]}</summary><p>{f.text}</p>{sourceLinks([f])}</details>)}</section>}
+  {card.context?.length>0&&block('Ανοιχτά σημαντικά θέματα',card.context,'',compact?35:75)}
   <div className="clinical-card-grid">
    {block('Διάγνωση',card.diagnoses,'Δεν έχει καταγραφεί δομημένη διάγνωση.',compact?18:30)}
    {block('Τρέχουσα αγωγή',card.medications,'Δεν υπάρχει καταχωρισμένη ενεργή αγωγή.',compact?18:30)}
@@ -23,7 +24,6 @@ export default function ClinicalCardView({card,patientId,compact=false}:{card:Cl
   {comparison.preview.map((item,i)=><p className="clinical-card-change" key={i}>{item.text}</p>)}
   {comparison.rest.length>0&&<details className="clinical-card-details"><summary>Περισσότερες αλλαγές · {comparison.rest.length}</summary>{comparison.rest.map((item,i)=><p key={i}>{item.text}</p>)}</details>}
   {!compact&&card.changes.length>0&&<details className="clinical-card-details"><summary>Αλλαγές από την προηγούμενη επίσκεψη</summary>{card.changes.map((i,n)=><p key={n}>{i.text}</p>)}{sourceLinks(card.changes)}</details>}
-  {card.context?.length>0&&block('Ανοιχτά σημαντικά θέματα',card.context,'',compact?35:75)}
    {block('Πορεία & επόμενο βήμα',card.notes,'Δεν υπάρχει διαθέσιμη καταγραφή πορείας ή πλάνου.',card.synthesized?90:compact?30:65)}
   {!card.synthesized&&card.notes.length>0&&<small className="clinical-card-date">Αυτούσιες καταγραφές γιατρού.</small>}
   {!compact&&card.corrections.length>0&&<details className="clinical-card-details"><summary>Ιστορικό διορθώσεων · {card.corrections.length}</summary>{card.corrections.map(f=><p key={f.key}>{f.text}</p>)}{sourceLinks(card.corrections)}</details>}

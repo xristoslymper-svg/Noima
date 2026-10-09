@@ -191,7 +191,7 @@ export default function PatientSession({
  const sections=bundle.sections.filter(x=>x.session_id===draft.id);
  const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
  const timeline=draft.session_type==='follow_up'&&contextReady?mseTimeline(bundle,draft.id,draft.started_at):undefined;
- if(draft.session_type==='follow_up'&&!detailed)return <FollowupClosure bundle={bundle} session={draft} reload={reload} reloadContext={reloadContext} contextReady={contextReady} onDirtyChange={onDirtyChange} registerFlusher={registerFlusher} flushAll={flushAll} onDetailed={()=>void flushAll(true).then(()=>setDetailed(true)).catch(()=>{})} onFinalize={version=>onFinalize(draft.id,true,version)} onFinishLater={onFinishLater?finishLater:undefined} finalizing={finalizing} finalizeError={finalizeError||flushError} />;
+ if(draft.session_type==='follow_up'&&!detailed)return <FollowupClosure key={draft.id} bundle={bundle} session={draft} reload={reload} reloadContext={reloadContext} contextReady={contextReady} onDirtyChange={onDirtyChange} registerFlusher={registerFlusher} flushAll={flushAll} onDetailed={()=>void flushAll(true).then(()=>setDetailed(true)).catch(()=>{})} onFinalize={version=>onFinalize(draft.id,true,version)} onFinishLater={onFinishLater?finishLater:undefined} finalizing={finalizing} finalizeError={finalizeError||flushError} />;
  const blocker=finalizationBlocker(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null);
  const requiredStepState=(key:string)=>{
   if(key==='risk')return Boolean(risk&&risk.suicidal_ideation!=='not_assessed'&&(risk.suicidal_ideation!=='positive'||![risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed')));

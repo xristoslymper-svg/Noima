@@ -17,6 +17,7 @@ function failure(error:unknown){
  if(message.includes('invalid_document')||message.includes('invalid_correction_patch'))return Response.json({error:'Η δομή της καταγραφής δεν είναι έγκυρη.'},{status:422});
  if(message.includes('correction_reason_required'))return Response.json({error:'Χρειάζεται σύντομη αιτία για τη διόρθωση.'},{status:422});
  if(message.includes('stale_correction'))return Response.json({error:'Η καταγραφή διορθώθηκε σε άλλη καρτέλα. Επαναφορτώστε πριν αποθηκεύσετε τη δική σας διόρθωση.',code:'stale_correction'},{status:409});
+ if(message.includes('confirmed_context_required')||message.includes('context_resolved')||message.includes('invalid_context'))return Response.json({error:'Το context δεν είναι διαθέσιμο για αυτή την αλλαγή. Ανανεώστε τον φάκελο.'},{status:422});
  if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
  if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή πρόχειρη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
@@ -73,6 +74,7 @@ async function handlePOST(request:Request){
     const task=first(await rpc('demo_task_for_session',{p_tester:tester,p_session:body.session_id}));
     return Response.json({ok:true,task});
    }
+   case 'revise_context': return Response.json({revision:first(await rpc('demo_context_revise',{p_tester:tester,p_session:body.source_session_id,p_request:body.request_id,p_action:body.context_action,p_content:body.content||'',p_expected_revision:body.expected_revision}))});
    case 'save_closure': {const session=first(await rpc('demo_closure_save',{p_tester:tester,p_session:body.session_id,p_value:body.value,p_expected_version:body.expected_version}));return Response.json({session})}
    case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));queueSummary(request,session.patient_id);return Response.json({session})}
    case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}

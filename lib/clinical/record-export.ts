@@ -1,3 +1,5 @@
+import {riskFindings,riskFindingLabel} from './risk-findings.ts';
+import {effectiveRisk} from './corrections.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 // Plain text, not executable HTML/Markdown. No unapproved AI-derived conclusions or invitation tokens.
 export function patientRecordText(b:PatientBundle,exportedAt=new Date().toISOString()){
@@ -7,6 +9,7 @@ export function patientRecordText(b:PatientBundle,exportedAt=new Date().toISOStr
   lines.push('',`ΚΑΤΑΓΡΑΦΗ ${clinicalTime(s)} · ${s.status==='completed'?'Οριστικοποιημένη':'Πρόχειρη'} · ${s.id}`,`Ολοκλήρωση τεκμηρίωσης: ${s.completed_at||'—'} · Έκδοση ${s.version}`);
   if(s.continuity?.approved_at)lines.push('','ΕΠΙΒΕΒΑΙΩΜΕΝΗ ΚΛΙΝΙΚΗ ΜΝΗΜΗ',s.continuity.clinical_state_summary,'Απόφαση θεραπείας: '+s.continuity.treatment_decision,'Επόμενος έλεγχος: '+s.continuity.next_review_focus,'Λήψη αγωγής: '+s.continuity.adherence,'Context: '+s.continuity.pinned_context,'Πηγή: '+s.continuity.source+' · Επιβεβαίωση: '+s.continuity.approved_at,'Αρχικό κείμενο κλινικού: '+s.continuity.transcript);
   for(const section of b.sections.filter(x=>x.session_id===s.id))lines.push('',section.section_key,section.content,`Πηγή ${section.source} · έκδοση ${section.version}`);
+  lines.push('','ΚΑΤΑΓΡΑΦΗ ΚΙΝΔΥΝΟΥ',...riskFindings(effectiveRisk(b.risks.find(r=>r.session_id===s.id),b.corrections,s.id)).map(f=>(f.previousBranch?'Προηγούμενος κλάδος: ':'')+f.label+': '+riskFindingLabel(f)+(f.note?' · '+f.note:'')));
   lines.push('','ΔΟΜΗΜΕΝΟΣ ΚΙΝΔΥΝΟΣ',JSON.stringify(b.risks.find(r=>r.session_id===s.id)||null,null,2));
   for(const a of b.addenda.filter(a=>a.session_id===s.id))lines.push('',`${a.kind} ${a.created_at} · ${a.id}`,`Λόγος: ${a.reason}`,a.content);
   for(const c of (b.corrections||[]).filter(c=>c.session_id===s.id).sort((a,z)=>Date.parse(a.created_at)-Date.parse(z.created_at)||a.id.localeCompare(z.id)))lines.push('','ΔΟΜΗΜΕΝΗ ΔΙΟΡΘΩΣΗ '+c.created_at+' · '+c.id,'Λόγος: '+c.reason,JSON.stringify(c.patch,null,2));

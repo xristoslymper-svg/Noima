@@ -1,3 +1,6 @@
+import {riskFindings} from './risk-findings.ts';
+import {effectiveRisk} from './corrections.ts';
+import {assessmentLink,assessmentLinkLabel} from './assessment-link.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 
 export type RecordEvent={id:string;kind:'visits'|'treatment'|'measurements';date:string;title:string;detail:string;sessionId?:string;assessmentId?:string;scheduled?:boolean;recordedAt?:string};
@@ -30,7 +33,7 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
    {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:'Παρενέργεια',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
    ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:'Λήξη παρενέργειας',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
   ]),
-  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση',sessionId:a.session_id||undefined,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
+  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:(a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+' · '+assessmentLinkLabel(bundle,a),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
  // Same-day date-only events need a recorded timestamp to establish ordering.
  const sinceLatest=latestVisit?events.filter(e=>{
@@ -39,9 +42,8 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
   if(e.date.length>10)return Date.parse(e.date)>Date.parse(visitDate);
   return day(e.date)>day(visitDate)||(day(e.date)===day(visitDate)&&Boolean(e.recordedAt)&&Date.parse(e.recordedAt!)>Date.parse(visitDate));
  }):[];
- const risk=latestVisit?bundle.risks.find(r=>r.session_id===latestVisit.id)||null:null;
- const safetyLabels={suicidal_ideation:'Αυτοκτονικός ιδεασμός',intent:'Πρόθεση',plan:'Σχέδιο',self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'} as const;
- const safetyAlerts=risk?Object.entries(safetyLabels).filter(([key])=>risk[key as keyof typeof safetyLabels]==='positive').map(([,label])=>label):[];
+ const risk=latestVisit?effectiveRisk(bundle.risks.find(r=>r.session_id===latestVisit.id),bundle.corrections,latestVisit.id)||null:null;
+ const safetyAlerts=riskFindings(risk).filter(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value)).map(f=>({self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'}[f.key]||f.label));
  const nextAppointment=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>=now.getTime()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0]||null;
  return {today,completed,latestVisit,risk,safetyAlerts,nextAppointment,latestScores,activeEffects,events,sinceLatest,activeMedications:bundle.medications.filter(m=>m.status==='active'),pendingSafety:measured.filter(a=>day(a.completed_at!)<=today&&a.item9_review&&!a.item9_reviewed_at)};
 }

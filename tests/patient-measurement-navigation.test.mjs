@@ -6,6 +6,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {patientRecord,completedMeasurements} from '../lib/clinical/patient-record.ts';
 import * as instruments from '../lib/psychometrics/instruments.ts';
+import * as assessmentLink from '../lib/clinical/assessment-link.ts';
 import * as clinicTime from '../lib/clinic-time.ts';
 const require=createRequire(import.meta.url);
 const ts=require('typescript');
@@ -23,7 +24,7 @@ const empty=()=>null;
 const Psychometrics=presentation('PatientPsychometrics.tsx',{
  '@/components/mail/AssessmentEmail':empty,'@/components/intake/IntakeLauncher':empty,
  '@/lib/clinical/patient-record':{completedMeasurements},'@/lib/patients/demo-runtime':{},'@/lib/demo-tester':{getDemoTesterId:()=> 'fixture'},
- '@/lib/psychometrics/instruments':instruments,'@/lib/clinic-time':clinicTime,
+ '@/lib/clinical/assessment-link':assessmentLink,'@/lib/psychometrics/instruments':instruments,'@/lib/clinic-time':clinicTime,
 });
 const Treatment=presentation('PatientTreatment.tsx',{
  '@/lib/clinical/patient-record':{patientRecord},'./PatientPanels':{MedicationsPanel:empty},

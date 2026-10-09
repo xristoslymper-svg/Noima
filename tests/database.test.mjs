@@ -826,3 +826,28 @@ test('closure blocks unreviewed MSE references and follows append-only corrected
  const [done]=await sql('select * from demo_closure_finalize($1,$2,$3,true,1)',[t,next.id,version]);assert.equal(done.status,'completed');
  assert.deepEqual((await sql("select document from demo_session_sections where session_id=$1 and section_key='mse'",[old.id]))[0].document,previous);
 });
+
+
+test('confirmed context revisions are owner scoped, conflict safe, idempotent and never rewrite the approved visit',async()=>{
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const tester=identity.workspace_id;
+ const [p]=await asUser(a,()=>sql("select (demo_patient_create_v2($1,'QA Context','Fixture')).id id",[tester]));
+ const id='72000000-0000-4000-8000-000000000001';
+ const memory={pinned_context:'Σημαντική παρουσίαση',approved_at:new Date().toISOString(),approved_by:a};
+ await sql("insert into demo_sessions(id,tester_id,patient_id,session_type,status,completed_at,continuity) values($1,$2,$3,'follow_up','completed',now(),$4::jsonb)",[id,tester,p.id,JSON.stringify(memory)]);
+ const query='select to_jsonb(demo_context_revise($1,$2,$3,$4,$5,$6)) revision';
+ const req='73000000-0000-4000-8000-000000000001';
+ await rejected(b,query,[tester,id,req,'updated','Μετατέθηκε',0],/pilot_not_authorized/);
+ await rejected(a,query,[tester,id,req,'updated','',0],/invalid_context/);
+ const [{revision:r}]=await asUser(a,()=>sql(query,[tester,id,req,'updated','Μετατέθηκε',0]));assert.equal(r.revision,1);assert.equal(r.actor_id,a);
+ assert.equal((await asUser(a,()=>sql(query,[tester,id,req,'updated','Μετατέθηκε',0])))[0].revision.id,r.id);
+ await rejected(a,query,[tester,id,req,'updated','Άλλο',1],/context_request_conflict/);
+ await rejected(a,query,[tester,id,'73000000-0000-4000-8000-000000000002','resolved','',0],/stale_context/);
+ const [{revision:closed}]=await asUser(a,()=>sql(query,[tester,id,'73000000-0000-4000-8000-000000000003','resolved','',1]));assert.equal(closed.content,'Μετατέθηκε');
+ await rejected(a,query,[tester,id,'73000000-0000-4000-8000-000000000004','updated','Νέο',2],/context_resolved/);
+ const rows=await asUser(a,()=>sql('select * from demo_context_revisions($1,$2)',[tester,p.id]));assert.equal(rows.length,2);
+ await rejected(b,'select * from demo_context_revisions($1,$2)',[tester,p.id],/pilot_not_authorized/);
+ assert.deepEqual((await sql('select continuity from demo_sessions where id=$1',[id]))[0].continuity,memory);
+ await assert.rejects(sql('update private.demo_context_revisions set content=$1 where id=$2',['overwrite',r.id]),/context_revision_immutable/);
+ assert.equal((await sql("select has_function_privilege('anon','demo_context_revise(uuid,uuid,uuid,text,text,integer)','EXECUTE') allowed"))[0].allowed,false);
+});

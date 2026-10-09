@@ -1,3 +1,8 @@
+// Passive refresh should not repeatedly ask the LLM to regenerate the same
+// unavailable/canonical result. An explicit refresh or a changed context bypasses it.
+export const CLINICAL_SUMMARY_RETRY_DELAY_MS=15*60*1000;
+export const clinicalSummaryRetryDelayMs=(mode:string)=>mode==='canonical'?CLINICAL_SUMMARY_RETRY_DELAY_MS:0;
+
 // Read a verified cache or consume the generated response, including fallback.
 // A fallback is deliberately not cached by the server, but remains useful here.
 export async function requestClinicalSummary<T>({patientId,tester,hash,force=false,signal}:{patientId:string;tester:string;hash:string;force?:boolean;signal?:AbortSignal},request:typeof fetch=fetch):Promise<T>{

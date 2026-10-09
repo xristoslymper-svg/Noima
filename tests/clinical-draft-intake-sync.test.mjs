@@ -36,5 +36,5 @@ test('history navigation preserves unresolved local drafts instead of trapping t
  assert.match(hook,/sessionStorage\.setItem\(storageKey,JSON\.stringify\(\{value:latest\.current,version:v\.current\}\)\)/);
  assert.match(hook,/if\(!blocked\.current\)return false/);
  assert.match(hook,/if\(flight\.current\)return/);
- assert.match(source,/Σύγκριση εκδόσεων/);
+ assert.match(source,/Κράτησε τις αλλαγές μου/);
 });

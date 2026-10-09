@@ -33,31 +33,46 @@ const one=<T>(value:unknown):T=>rows<T>(value)[0];
 export async function bootstrap(tester:string){await rpc('demo_tester_bootstrap',{p_tester:tester})}
 export async function listPatients(tester:string){await bootstrap(tester);return rows<DemoPatient>(await request(`demo_patients?select=*&tester_id=eq.${encodeURIComponent(tester)}&order=updated_at.desc`))}
 export async function listPatientRows(tester:string){
- const patients=await listPatients(tester);
+ await bootstrap(tester);
  const tid=encodeURIComponent(tester);
- const [sessionData,appointmentData,sectionData,correctionData]=await Promise.all([
+ // Bootstrap must finish first; the five scoped reads are independent.
+ const [patientData,sessionData,appointmentData,sectionData,correctionData]=await Promise.all([
+  request(`demo_patients?select=*&tester_id=eq.${tid}&order=updated_at.desc`),
   request(`demo_sessions?select=*&tester_id=eq.${tid}&order=started_at.desc`),
   request(`demo_calendar_events?select=id,patient_id,session_id,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&order=scheduled_start.asc`),
   request(`demo_session_sections?select=patient_id,session_id,section_key,document,updated_at&tester_id=eq.${tid}&section_key=eq.assessment&order=updated_at.desc`),
   request(`demo_session_corrections?select=id,session_id,patch,created_at&tester_id=eq.${tid}&order=created_at.asc,id.asc`),
  ]);
+ const patients=rows<DemoPatient>(patientData);
  const sessions=rows<DemoSession>(sessionData);
  const appointments=rows<{id:string;patient_id:string|null;session_id:string|null;scheduled_start:string;scheduled_end:string;status:string}>(appointmentData);
  const diagnosisSections=rows<{patient_id:string;session_id:string;document?:VisitDocument|null;updated_at:string}>(sectionData);
  const diagnosisCorrections=rows<{id:string;session_id:string;patch:Record<string,{after?:unknown}>;created_at:string}>(correctionData);
- const effectiveAssessment=(sessionId:string,document?:VisitDocument|null)=>{let value=document;for(const correction of diagnosisCorrections.filter(item=>item.session_id===sessionId)){const after=correction.patch?.assessment?.after;if(after&&typeof after==='object'&&'kind' in after&&(after as VisitDocument).kind==='assessment')value=after as VisitDocument}return value};
- const sessionTime=(session:DemoSession)=>session.started_at;
- const completedFor=(patientId:string)=>sessions.filter(s=>s.patient_id===patientId&&s.status==='completed').sort((a,b)=>Date.parse(sessionTime(b))-Date.parse(sessionTime(a)));
+ // Request-local indexes preserve input order and first-match semantics. Do
+ // not cache them across requests: each read must reflect the current record.
+ const correctedAssessments=new Map<string,VisitDocument>();
+ for(const correction of diagnosisCorrections){const after=correction.patch?.assessment?.after;if(after&&typeof after==='object'&&'kind' in after&&(after as VisitDocument).kind==='assessment')correctedAssessments.set(correction.session_id,after as VisitDocument)}
+ const assessmentKey=(patientId:string,sessionId:string)=>JSON.stringify([patientId,sessionId]);
+ const assessments=new Map<string,typeof diagnosisSections[number]>();
+ for(const section of diagnosisSections){const key=assessmentKey(section.patient_id,section.session_id);if(!assessments.has(key))assessments.set(key,section)}
+ const completed=new Map<string,DemoSession[]>(),drafts=new Map<string,DemoSession>();
+ for(const session of sessions){
+  if(session.status==='completed'){const group=completed.get(session.patient_id)||[];group.push(session);completed.set(session.patient_id,group)}
+  else if(session.status==='draft'&&!drafts.has(session.patient_id))drafts.set(session.patient_id,session);
+ }
+ for(const group of completed.values())group.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const now=Date.now();
+ const nextAppointments=new Map<string,typeof appointments[number]>();
+ for(const appointment of appointments){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id)&&appointment.status==='scheduled'&&new Date(appointment.scheduled_end).getTime()>=now)nextAppointments.set(appointment.patient_id,appointment)}
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
  const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({
   ...patient,
   registry_number:registryNumber.get(patient.id)||0,
-  diagnosis:(()=>{for(const session of completedFor(patient.id)){const raw=diagnosisSections.find(section=>section.patient_id===patient.id&&section.session_id===session.id)?.document;const document=effectiveAssessment(session.id,raw);const field=document?.kind==='assessment'?document.fields.find(item=>item.key==='diagnosis'):undefined;if(field?.codes?.[0])return field.codes[0]}return null;})(),
-  draft:sessions.find(s=>s.patient_id===patient.id&&s.status==='draft')||null,
-  last_session:completedFor(patient.id)[0]||null,
-  next_appointment:appointments.find(a=>a.patient_id===patient.id&&a.status==='scheduled'&&new Date(a.scheduled_end).getTime()>=now)||null,
+  diagnosis:(()=>{for(const session of completed.get(patient.id)||[]){const raw=assessments.get(assessmentKey(patient.id,session.id))?.document;const document=correctedAssessments.get(session.id)||raw;const field=document?.kind==='assessment'?document.fields.find(item=>item.key==='diagnosis'):undefined;if(field?.codes?.[0])return field.codes[0]}return null;})(),
+  draft:drafts.get(patient.id)||null,
+  last_session:completed.get(patient.id)?.[0]||null,
+  next_appointment:nextAppointments.get(patient.id)||null,
  }));
 }
 export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;landline:string;contact_phone:string;amka:string;address:string;email:string;chief_complaint:string}){

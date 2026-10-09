@@ -26,3 +26,17 @@ test('microphone denial retains recovered text and supports manual continuation 
  const h=harness({denied:true,saved:{accepted:'Ελεγμένο πρώτο τμήμα.',text:''}});await h.click('Έναρξη ηχογράφησης');assert.ok(h.text().includes('Δεν δόθηκε πρόσβαση'));h.field('Κείμενο προς έλεγχο','Δεύτερο χειροκίνητο τμήμα.');assert.ok([...h.storage.values()].every(v=>!v.includes('audio')&&!v.includes('blob')));await h.click('Χρήση κειμένου');assert.equal(h.inserted[0],'Ελεγμένο πρώτο τμήμα.\n\nΔεύτερο χειροκίνητο τμήμα.');
 });
 test('blank segments do not add separators, repeated dictated words remain, and capacity fails explicitly',()=>{assert.equal(text.appendDictationText('  Α  ',' '),'Α');assert.equal(text.appendDictationText('Α','Α'),'Α\n\nΑ');assert.throws(()=>text.appendDictationText('x'.repeat(20000),'y'),/20.000/)});
+
+test('mixed Greek-English medication dictation preserves accepted and rejected dose, uncertain nausea, and no discontinuation through review',async()=>{
+ const transcript='Υποθετική δοκιμή ορολογίας. Sertraline 50 mg το πρωί. Όχι 75 mg. Αναφέρεται ναυτία, αλλά δεν είναι βέβαιη η σχέση με το φάρμακο. Δεν αποφασίστηκε διακοπή.';
+ const h=harness({responses:[Response.json({text:transcript})]});
+ await h.click('Έναρξη ηχογράφησης');
+ await h.click('Διακοπή & μεταγραφή');
+ assert.ok(h.text().includes('Sertraline 50 mg'));
+ assert.ok(h.text().includes('Όχι 75 mg'));
+ assert.ok(h.text().includes('δεν είναι βέβαιη'));
+ assert.ok(h.text().includes('Δεν αποφασίστηκε διακοπή'));
+ await h.click('Χρήση κειμένου');
+ assert.equal(h.inserted.length,1);
+ assert.equal(h.inserted[0],transcript);
+});

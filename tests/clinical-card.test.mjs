@@ -54,3 +54,19 @@ test('synthesis cannot silently omit the recorded review or leave resolved corre
  assert.ok(card.notes.some(i=>i.text.includes('δύο εβδομάδες')));
  assert.equal(card.corrections.length,1);assert.ok(!card.alerts.some(f=>f.key.startsWith('correction:')));
 });
+
+test('pre-visit clinical card shows active confirmed context even without AI, never resolved issues',()=>{
+ const b=fixture();b.sessions[0].patient_id=b.patient.id;
+ b.sessions[0].continuity={approved_at:'2026-10-07T12:00:00Z',approved_by:'doctor',pinned_context:'Σημαντική εργασιακή παρουσίαση.'};
+ b.contextRevisions=[{id:'r1',patient_id:b.patient.id,source_session_id:'s',revision:1,action:'updated',content:'Η παρουσίαση μεταφέρθηκε στις 20 Οκτωβρίου.',created_at:'2026-10-08T09:00:00Z'}];
+ const ctx=buildSummaryContext(b);
+ const fallback=buildClinicalCard(b,ctx);
+ const synthesis=buildClinicalCard(b,ctx,[{origin:'synthesis',text:'Αναφέρει καλύτερο ύπνο.',source_ids:['section:i']}],true);
+ assert.equal(fallback.context.length,1);
+ assert.deepEqual(synthesis.context,fallback.context);
+ assert.match(fallback.context[0].text,/20 Οκτωβρίου/);
+ assert.ok(fallback.context[0].source_ids.includes('context:s'));
+ b.contextRevisions.push({id:'r2',patient_id:b.patient.id,source_session_id:'s',revision:2,action:'resolved',content:'Η παρουσίαση ολοκληρώθηκε.',created_at:'2026-10-09T09:00:00Z'});
+ assert.deepEqual(buildClinicalCard(b,buildSummaryContext(b)).context,[]);
+});
+

@@ -185,7 +185,7 @@ export default function Page() {
               onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
               onComplete={completeTask}
             />
-            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':reviewSubmissions.length?'Νέες':'Καμία νέα υποβολή'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
+            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':reviewSubmissions.length?'Παραλήφθηκαν':'Καμία υποβολή'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
             <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
@@ -264,14 +264,14 @@ export default function Page() {
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
             {reviewSubmissions.length?reviewSubmissions.map(submission=><div className="dashboard-widget-row review-submission-row" key={submission.key}>
-              <div><div className="review-submission-title"><strong>{submission.patient_name||"Νέα συμπλήρωση"}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?"Χρειάζεται ταυτοποίηση":"Νέα"}</span></div><span>{submission.tools.map(tool=>tool==="history"?"Αρχικό ιστορικό":tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
+              <div><div className="review-submission-title"><strong>{submission.patient_name||"Νέα συμπλήρωση"}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?"Χρειάζεται ταυτοποίηση":"Παραλήφθηκε"}</span></div><span>{submission.tools.map(tool=>tool==="history"?"Αρχικό ιστορικό":tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
               {submission.status==="conflict"&&submission.intake_id
                 ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>Ταυτοποίηση <ChevronRight size={15}/></button>
                 :submission.patient_id?<div className="review-row-actions">
-                  {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>Ιστορικό</Link>}
+                  {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>Δείτε ιστορικό</Link>}
                   {submission.psychometrics.length>0&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=psychometrics"}>Ψυχομετρικά</Link>}
                  </div>:null}
-            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν νέες υποβολές για έλεγχο.</div>}
+            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν υποβολές ασθενών.</div>}
           </div>}
 
           {widgetOpen==="todo"&&<>

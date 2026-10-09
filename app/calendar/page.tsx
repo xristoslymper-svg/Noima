@@ -738,7 +738,7 @@ export default function CalendarPage() {
 
             <div className="calendar-popover-actions calendar-icon-actions calendar-icon-actions-compact">
               {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>Φάκελος</span></Link>}
-              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"} onClick={()=>{setIntakeEvent(selectedEvent);setSelectedEvent(null)}}><Activity size={20}/><span>Συμπλήρωση</span></button>
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"} onClick={()=>{setIntakeEvent(selectedEvent);setSelectedEvent(null)}}><Activity size={20}/><span>{selectedEvent.patient_id?"Ερωτηματολόγιο":"Στείλε ιστορικό"}</span></button>
               <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>Ραντεβού</span></button>
             </div>
 

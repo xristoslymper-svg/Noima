@@ -6,8 +6,7 @@ import {useClinicalDraft} from './useClinicalDraft';
 import MedicationTimeline from './MedicationTimeline';
 import MedicationTable from './MedicationTable';
 import { demoPost } from '@/lib/patients/demo-client';
-import {getDemoTesterId} from '@/lib/demo-tester';
-import {historyDraftFromAnswers,type HistoryAnswers} from '@/lib/intake/history';
+import PatientReportedHistory from './PatientReportedHistory';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
 const historyFields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Προηγούμενες θεραπείες'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνική λειτουργικότητα'],['allergies','Αλλεργίες']] as const;
@@ -17,22 +16,6 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const dirty=useRef(false);
  const draft=useClinicalDraft<Record<string,string>>({storageKey:bundle.patient.id+':history',initial,version:bundle.history?.version??0,write:async(history,version)=>{const d=await demoPost({action:'save_history',patient_id:bundle.patient.id,history,expected_version:version});return {value:Object.fromEntries(historyFields.map(([key])=>[key,d.history[key]||''])),version:d.history.version}},onSaved:reload,onDirty:d=>{dirty.current=d}});
  const values=draft.value,saving=draft.saving,state=draft.error||(draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt+' · Αθήνα':'');
- const [conflict,setConflict]=useState<PatientBundle|null>(null);
- const [reported,setReported]=useState<Array<{id:string;channel:string;status:string;submitted_at:string|null;reviewed_at:string|null;history_answers:HistoryAnswers}>>([]);
- const [reviewIntake,setReviewIntake]=useState<{id:string;channel:string;submitted_at:string|null;history_answers:HistoryAnswers}|null>(null);
- const [reviewPatch,setReviewPatch]=useState<Record<string,string>>({});
- const [reviewSelected,setReviewSelected]=useState<Record<string,boolean>>({});
- const [reviewBusy,setReviewBusy]=useState(false);const [reviewError,setReviewError]=useState('');
- const loadReported=useCallback(async()=>{try{const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list',tester:getDemoTesterId(),patient_id:bundle.patient.id})});const d=await r.json();if(r.ok)setReported((d.intakes||[]).filter((x:{tools?:string[]})=>x.tools?.includes('history')))}catch{/* folder history remains available */}},[bundle.patient.id]);
- useEffect(()=>{void loadReported()},[loadReported,bundle.history?.version]);
- function beginReview(item:{id:string;channel:string;submitted_at:string|null;history_answers:HistoryAnswers}){
-  const proposed=historyDraftFromAnswers(item.history_answers);const current=Object.fromEntries(historyFields.map(([k])=>[k,bundle.history?.[k]||''])) as Record<string,string>;const dateLabel=item.submitted_at?new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',year:'numeric'}).format(new Date(item.submitted_at)):'';
-  const patch=Object.fromEntries(historyFields.map(([k])=>[k,current[k]?current[k]+'\n\nΑναφορά ασθενούς'+(dateLabel?' · '+dateLabel:'')+':\n'+proposed[k]:proposed[k]]));setReviewPatch(patch);setReviewSelected(Object.fromEntries(historyFields.map(([k])=>[k,true])));setReviewError('');setReviewIntake(item)
- }
- async function integrateReported(){
-  if(!reviewIntake||reviewBusy)return;setReviewBusy(true);setReviewError('');
-  try{const patch=Object.fromEntries(historyFields.filter(([k])=>reviewSelected[k]).map(([k])=>[k,reviewPatch[k]||'']));const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'review',tester:getDemoTesterId(),id:reviewIntake.id,patch,expected_history_version:bundle.history?.version??0})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Δεν ολοκληρώθηκε η ενσωμάτωση.');setReviewIntake(null);await reload();await loadReported()}catch(cause){setReviewError(cause instanceof Error?cause.message:'Δεν ολοκληρώθηκε η ενσωμάτωση.')}finally{setReviewBusy(false)}
- }
  const [patientOpen,setPatientOpen]=useState(false);
  const [patientValues,setPatientValues]=useState(patientInitial);
  const [patientSaving,setPatientSaving]=useState(false);
@@ -68,9 +51,13 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">ΙΣΤΟΡΙΚΟ</span><h2>Στοχευμένη καταγραφή ιστορικού</h2><p>Κενό πεδίο σημαίνει «δεν έχει καταγραφεί» — ποτέ αρνητικό εύρημα.</p></div><button className="record compact" onClick={()=>void save().catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση ιστορικού'}</button></div>{reported.filter(x=>x.status==='submitted'&&!x.reviewed_at).map(item=><div className="reported-history-card" key={item.id}><div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΠΟ ΤΟΝ ΑΣΘΕΝΗ</span><strong>{item.channel==='tablet'?'Tablet ιατρείου':item.channel==='email'?'Email':'Έντυπο'}{item.submitted_at?' · '+new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.submitted_at)):''}</strong><small>Αναμένει έλεγχο · η αρχική απάντηση παραμένει αποθηκευμένη.</small></div><button onClick={()=>beginReview(item)}>Έλεγχος & ενσωμάτωση</button></div>)}
-  {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
-  {draft.error&&<div className="conflict-review"><p>Η αποθηκευμένη έκδοση του ιστορικού ενημερώθηκε. Το μη αποθηκευμένο κείμενό σας διατηρείται προσωρινά σε αυτή τη συσκευή. Μπορείτε να αλλάξετε καρτέλα χωρίς να αντικαταστήσετε τα εγκεκριμένα στοιχεία και να επιστρέψετε για σύγκριση.</p><button onClick={()=>void reload().then(b=>{if(b)setConflict(b as PatientBundle)})}>Σύγκριση εκδόσεων</button>{conflict&&<><pre>{historyFields.map(([key,label])=>label+': '+(conflict.history?.[key]||'—')).join('\n')}</pre><button onClick={()=>{draft.acceptServer(Object.fromEntries(historyFields.map(([key])=>[key,conflict.history?.[key]||''])),conflict.history?.version??0);setConflict(null)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(values,Object.fromEntries(historyFields.map(([key])=>[key,conflict.history?.[key]||''])),conflict.history?.version??0);setConflict(null)}}>Ρητή αντικατάσταση με τη δική μου</button></>}</div>}
+  <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
+  <PatientReportedHistory patientId={bundle.patient.id}/>
+  {draft.error&&<div className="conflict-review" role="alert">
+   <p>Οι σημειώσεις άλλαξαν ενώ τις επεξεργαζόσασταν. Οι δικές σας αλλαγές διατηρούνται. Μπορείτε να συνεχίσετε σε άλλη καρτέλα.</p>
+   <button type="button" onClick={()=>void reload().then(b=>{if(!b)return;const latest=b as PatientBundle;draft.acceptServer(Object.fromEntries(historyFields.map(([key])=>[key,latest.history?.[key]||''])),latest.history?.version??0)})}>Χρήση τελευταίας αποθηκευμένης έκδοσης</button>
+   <button type="button" onClick={()=>void reload().then(b=>{if(!b)return;const latest=b as PatientBundle;draft.resolve(values,Object.fromEntries(historyFields.map(([key])=>[key,latest.history?.[key]||''])),latest.history?.version??0)})}>Κράτησε τις αλλαγές μου</button>
+  </div>}
   <section className={incomplete?'patient-details-card incomplete':'patient-details-card'}>
    <div className="patient-details-head"><div><strong>Στοιχεία ασθενή</strong><span>{incomplete?'Υπάρχουν βασικά στοιχεία που δεν έχουν ακόμη συμπληρωθεί.':'Τα βασικά στοιχεία του φακέλου είναι συμπληρωμένα.'}</span></div><button onClick={()=>{if(patientOpen&&patientDirty.current){void savePatient().catch(()=>{});return}setPatientOpen(open=>!open);setPatientState('')}}>{patientOpen?'Κλείσιμο':'Επεξεργασία στοιχείων'}</button></div>
    {!patientOpen&&<div className="record-contact-strip"><span>{bundle.patient.reported_age==null?'Χωρίς ηλικία':bundle.patient.reported_age+' ετών'}</span><span>{bundle.patient.phone||'Χωρίς κινητό'}</span><span>{bundle.patient.amka?'ΑΜΚΑ '+bundle.patient.amka:'Χωρίς ΑΜΚΑ'}</span><span>{bundle.patient.address||'Χωρίς διεύθυνση'}</span><span>{bundle.patient.email||'Χωρίς email'}</span><span>{bundle.patient.chief_complaint||'Χωρίς καταγεγραμμένο λόγο προσέλευσης'}</span></div>}
@@ -80,8 +67,13 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
     <button className="record compact" disabled={patientSaving||!patientValues.first_name.trim()} onClick={()=>void savePatient().catch(()=>{})}>{patientSaving?'Αποθήκευση…':'Αποθήκευση στοιχείων'}</button>
    </div>}
   </section>
-  <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Δεν έχει καταγραφεί"/></label>)}</div>
-  {reviewIntake&&<div className="intake-review-backdrop" onClick={()=>!reviewBusy&&setReviewIntake(null)}><section className="intake-review" onClick={e=>e.stopPropagation()}><button className="intake-launcher-close" onClick={()=>setReviewIntake(null)} disabled={reviewBusy}><X size={17}/></button><span className="kicker">PATIENT-REPORTED · ΑΝΑΜΕΝΕΙ ΕΛΕΓΧΟ</span><h2>Έλεγχος & ενσωμάτωση ιστορικού</h2><p>Το αρχικό self-report διατηρείται. Επιλέξτε τι θα ενσωματωθεί στο κλινικό ιστορικό και διορθώστε το κείμενο όπου χρειάζεται.</p><div className="intake-review-fields">{historyFields.map(([key,label])=><label key={key} className={reviewSelected[key]?'selected':''}><span><input type="checkbox" checked={Boolean(reviewSelected[key])} onChange={e=>setReviewSelected(v=>({...v,[key]:e.target.checked}))}/><strong>{label}</strong></span><textarea rows={4} disabled={!reviewSelected[key]} value={reviewPatch[key]||''} onChange={e=>setReviewPatch(v=>({...v,[key]:e.target.value}))}/></label>)}</div>{reviewError&&<div className="save-state error">{reviewError}</div>}<footer><button onClick={()=>setReviewIntake(null)} disabled={reviewBusy}>Ακύρωση</button><button className="record compact" onClick={()=>void integrateReported()} disabled={reviewBusy}>{reviewBusy?'Ενσωμάτωση…':'Ενσωμάτωση επιλεγμένων'}</button></footer></section></div>}
+  <details className="patient-doctor-notes" open={draft.error?true:undefined}>
+   <summary>Κλινικές σημειώσεις ιστορικού <span>Προαιρετικά</span></summary>
+   <p className="patient-reported-muted">Προσθέστε ή διορθώστε στοιχεία μόνο αν το χρειάζεστε. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
+   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
+   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Προσθέστε μια κλινική σημείωση, αν χρειάζεται"/></label>)}</div>
+   <button type="button" className="record compact" onClick={()=>void save().catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση σημειώσεων'}</button>
+  </details>
  </section>
 }
 

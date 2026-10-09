@@ -39,6 +39,13 @@ async function handlePOST(request:Request){
    const patient=String(b.patient_id||'');if(patient&&!isClinicalId(patient))return Response.json({error:'Μη έγκυρος ασθενής.'},{status:400});
    return Response.json({intakes:await rpc('demo_intake_list',{p_tester:tester,p_patient:patient||null})});
   }
+  // Viewing patient-reported answers is not a clinical approval.
+  if(b.action==='mark_viewed'){
+   const patient=String(b.patient_id||'');
+   if(!isClinicalId(patient))return Response.json({error:'Μη έγκυρος ασθενής.'},{status:400});
+   await rpc('demo_intake_mark_viewed',{p_tester:tester,p_patient:patient});
+   return Response.json({ok:true});
+  }
   if(b.action==='revoke'){if(!isClinicalId(String(b.id||'')))return Response.json({error:'Μη έγκυρο intake.'},{status:400});await rpc('demo_intake_revoke',{p_tester:tester,p_id:b.id});return Response.json({ok:true})}
   if(b.action==='review'){
    if(!isClinicalId(String(b.id||''))||!Number.isInteger(b.expected_history_version)||!b.patch||typeof b.patch!=='object'||Array.isArray(b.patch))return Response.json({error:'Μη έγκυρη ενσωμάτωση.'},{status:400});

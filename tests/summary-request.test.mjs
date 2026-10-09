@@ -16,3 +16,11 @@ test('failed or aborted generation is an error, never an indefinite preparing re
  await assert.rejects(requestClinicalSummary({...args,force:true},async()=>Response.json({}, {status:503})),/summary_unavailable/);
  const signal=AbortSignal.abort();await assert.rejects(requestClinicalSummary({...args,signal},async(url,options)=>{assert.equal(options.signal,signal);options.signal.throwIfAborted()}));
 });
+
+test('passive canonical retries are cooled down, synthesized results are not throttled',async()=>{
+ const {clinicalSummaryRetryDelayMs,CLINICAL_SUMMARY_RETRY_DELAY_MS}=await import('../lib/clinical/summary-request.ts');
+ assert.equal(clinicalSummaryRetryDelayMs('canonical'),CLINICAL_SUMMARY_RETRY_DELAY_MS);
+ assert.ok(clinicalSummaryRetryDelayMs('canonical')>=10*60*1000);
+ assert.equal(clinicalSummaryRetryDelayMs('synthesis'),0);
+});
+

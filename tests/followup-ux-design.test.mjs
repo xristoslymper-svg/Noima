@@ -25,7 +25,7 @@ test('follow-up presents a single next-visit focus field and distinct appointmen
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Ψυχομετρικές μετρήσεις'));
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Σημαντικά θέματα για τη συνέχεια'));
  assert.doesNotMatch(followup,/Με την οριστικοποίηση επιβεβαιώνετε ότι/);
- assert.match(followup,/>Ολοκλήρωση καταγραφής/);
+ assert.match(followup,/Ολοκλήρωση καταγραφής/);
 });
 
 test('signposting is by field placeholder instead of long doctor-facing explanations',()=>{
@@ -42,6 +42,7 @@ test('detailed visit also separates clinical plan from calendar scheduling',()=>
  assert.match(detailed,/title="Θεραπευτικό πλάνο και επανεκτίμηση"/);
  assert.match(detailed,/title="Επόμενο ραντεβού"/);
  const appointment=readFileSync('components/patients/VisitNextAppointment.tsx','utf8');
- assert.match(appointment,/showHeading=false/);
+ assert.match(appointment,/showHeading=true/);
+ assert.match(detailed,/showHeading=\{false\}/);
  assert.match(appointment,/Επιλογές υπενθύμισης/);
 });

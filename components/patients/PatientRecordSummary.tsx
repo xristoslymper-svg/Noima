@@ -6,6 +6,7 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 import PatientContext from './PatientContext';
 import {assessmentLinkLabel} from '@/lib/clinical/assessment-link';
 import ClinicalSummary from './ClinicalSummary';
+import PatientReportedHistory from './PatientReportedHistory';
 import styles from './PatientRecord.module.css';
 export function recordDate(value:string){return value.length===10?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Athens'}).format(new Date(value+'T12:00:00Z')):formatClinicDateTime(value)}
 export default function PatientRecordSummary({bundle,reload,onVisit,onMeasurements,onTreatment,onHistory}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onVisit:(id?:string)=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;onHistory:()=>void}){
@@ -14,6 +15,7 @@ export default function PatientRecordSummary({bundle,reload,onVisit,onMeasuremen
  const [synthesisOpen,setSynthesisOpen]=useState(false);
  const riskLabels:Record<string,string>={negative:'Δεν αναφέρθηκε αυτοκτονικός ιδεασμός',positive:'Θετική καταγραφή αυτοκτονικού ιδεασμού',unknown:'Αυτοκτονικός ιδεασμός: άγνωστο',not_assessed:'Δεν διερευνήθηκε'};
  return <div className={styles.record+' '+styles.continuity}>
+   <PatientReportedHistory patientId={bundle.patient.id} compact onOpen={onHistory}/>
   <section className={styles.section}><span className="kicker">ΠΟΥ ΕΙΧΑΜΕ ΜΕΙΝΕΙ</span>{memory?.approved_at?<><p className={styles.memory}>{memory.clinical_state_summary}</p><p className={styles.muted}>Επιβεβαιώθηκε από τον κλινικό · {recordDate(memory.approved_at)} <button className={styles.link} onClick={()=>onVisit(record.latestVisit!.id)}>Πλήρης επίσκεψη</button></p>{amended&&<p role="status">Υπάρχει μεταγενέστερη προσθήκη ή διόρθωση. <button className={styles.link} onClick={()=>onVisit(record.latestVisit!.id)}>Ελέγξτε την πλήρη καταγραφή</button></p>}</>:<p className={styles.muted}>{record.latestVisit?'Η τελευταία επίσκεψη δεν περιλαμβάνει επιβεβαιωμένη σύντομη κλινική μνήμη.':'Δεν έχει ολοκληρωθεί ακόμη η πρώτη επίσκεψη.'}{record.latestVisit&&<> <button className={styles.link} onClick={()=>onVisit(record.latestVisit!.id)}>Άνοιγμα καταγραφής</button></>}</p>}</section>
   <section className={styles.section}><span className="kicker">ΓΙΑ ΣΗΜΕΡΑ</span><p className={styles.memory}>{memory?.approved_at?memory.next_review_focus:'Δεν υπάρχει επιβεβαιωμένο σημείο επόμενου ελέγχου.'}</p></section>
   <section className={styles.section}><span className="kicker">ΑΠΟ ΤΟΤΕ</span>{record.sinceLatest.length?<ul className={styles.list}>{record.sinceLatest.slice(0,4).map(event=><li key={event.id}><span className={styles.muted}>{recordDate(event.date)}</span> · <strong>{event.title}</strong> · {event.detail}{event.assessmentId&&<> <button className={styles.link} onClick={()=>onMeasurements(event.assessmentId)}>Ανασκόπηση</button></>}</li>)}</ul>:<p className={styles.muted}>Δεν υπάρχουν νέες κλινικές καταχωρήσεις.</p>}{record.sinceLatest.length>4&&<button className={styles.link} onClick={()=>onVisit()}>Όλες οι αλλαγές στην Πορεία</button>}</section>

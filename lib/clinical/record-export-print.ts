@@ -55,6 +55,9 @@ const historyFields=[
  ['Αλλεργίες','allergies']
 ] as const;
 const medicationEvents:Record<string,string>={started:'Έναρξη',changed:'Αλλαγή',stopped:'Διακοπή',side_effect:'Παρενέργεια'};
+const medicationStatuses:Record<string,string>={active:'Ενεργή',stopped:'Διακομμένη',ended:'Ολοκληρωμένη',scheduled:'Προγραμματισμένη',pending:'Εκκρεμής'};
+const appointmentStatuses:Record<string,string>={scheduled:'Προγραμματισμένο',completed:'Ολοκληρωμένο',cancelled:'Ακυρωμένο',rescheduled:'Μετακινήθηκε'};
+const appointmentKinds:Record<string,string>={initial_assessment:'Αρχική αξιολόγηση',follow_up:'Επανεξέταση',other:'Άλλο'};
 function medicalName(b:PatientBundle,id:string,oldState:Record<string,unknown>|null,newState:Record<string,unknown>|null){
  const fromEvent=newState?.medication_name||oldState?.medication_name;
  if(nonempty(fromEvent))return String(fromEvent);
@@ -90,14 +93,14 @@ export function patientRecordPrintableHtml(b:PatientBundle,nonce:string,exported
    return '<article class="visit"><header><h3>'+escapeHtml(s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση')+'</h3><p>'+printDate(s.started_at)+' · Οριστικοποιημένη καταγραφή'+(s.completed_at?' · Οριστικοποίηση: '+printDate(s.completed_at):'')+'</p></header>'+continuity+sections.map(item=>renderRecordedSection(b,s.id,item)).join('')+riskBlock+additions+corrected+'</article>';
   }).join(''):'<p class="hint">Δεν υπάρχουν ολοκληρωμένες επισκέψεις.</p>');
  const meds=section('Καταγεγραμμένη αγωγή κατά την εξαγωγή',
- b.medications.length?'<ul class="facts">'+b.medications.map(m=>'<li><strong>'+display(m.medication_name)+'</strong> · '+display(m.dose)+' '+display(m.unit)+' · '+display(m.frequency)+' · '+display(m.status)+' · Από '+printDate(m.effective_from||m.started_at)+(m.ended_at?' · Έως '+printDate(m.ended_at):'')+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχει καταγεγραμμένη αγωγή.</p>');
+ b.medications.length?'<ul class="facts">'+b.medications.map(m=>'<li><strong>'+display(m.medication_name)+'</strong> · '+display(m.dose)+' '+display(m.unit)+' · '+display(m.frequency)+' · '+escapeHtml(medicationStatuses[m.status]||m.status)+' · Από '+printDate(m.effective_from||m.started_at)+(m.ended_at?' · Έως '+printDate(m.ended_at):'')+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχει καταγεγραμμένη αγωγή.</p>');
  const timeline=section('Ιστορικό αλλαγών αγωγής',
  b.medicationEvents.length?'<ul class="facts">'+[...b.medicationEvents].sort((a,c)=>String(a.effective_on).localeCompare(String(c.effective_on))).map(event=>'<li>'+printDate(event.effective_on)+' · '+escapeHtml(medicationEvents[event.event_type]||event.event_type)+' · '+escapeHtml(medicalName(b,event.medication_id,event.previous_state,event.new_state))+(event.reason?' · '+escapeHtml(event.reason):'')+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχουν καταχωρισμένα συμβάντα αγωγής.</p>');
  const effects=section('Καταγεγραμμένες παρενέργειες',
  b.medicationSideEffects.length?'<ul class="facts">'+b.medicationSideEffects.map(e=>'<li>'+printDate(e.noted_on)+' · '+escapeHtml(medicalName(b,e.medication_id,null,null))+' · '+display(e.effect_text)+(e.resolved_on?' · Λήξη: '+printDate(e.resolved_on):' · Χωρίς καταχωρισμένη ημερομηνία λήξης')+'</li>').join('')+'</ul>':'<p class="hint">Δεν έχουν καταγραφεί παρενέργειες.</p>');
  const measurements=b.assessments.filter(a=>a.status==='completed'&&a.score!==null).sort((a,c)=>Date.parse(a.completed_at||'')-Date.parse(c.completed_at||''));
  const psychometrics=section('Ψυχομετρικές μετρήσεις',measurements.length?'<ul class="facts">'+measurements.map(a=>'<li><strong>'+escapeHtml(a.instrument)+' · '+display(a.score)+'</strong> · '+printDate(a.completed_at)+(a.item9_review?(a.item9_reviewed_at?' · Ανασκόπηση στοιχείου 9 καταχωρίστηκε':' · Εκκρεμεί ανασκόπηση στοιχείου 9'):'')+(a.answers?.length?' · Απαντήσεις: '+a.answers.map(display).join(', '):'')+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχουν ολοκληρωμένες μετρήσεις.</p>');
- const appointments=section('Ραντεβού',b.appointments.length?'<ul class="facts">'+[...b.appointments].sort((a,c)=>Date.parse(a.scheduled_start)-Date.parse(c.scheduled_start)).map(a=>'<li>'+printDate(a.scheduled_start)+' · '+display(a.appointment_type)+' · '+display(a.status)+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχουν καταχωρισμένα ραντεβού.</p>');
+ const appointments=section('Ραντεβού',b.appointments.length?'<ul class="facts">'+[...b.appointments].sort((a,c)=>Date.parse(a.scheduled_start)-Date.parse(c.scheduled_start)).map(a=>'<li>'+printDate(a.scheduled_start)+' · '+escapeHtml(appointmentKinds[a.appointment_type]||a.appointment_type)+' · '+escapeHtml(appointmentStatuses[a.status]||a.status)+'</li>').join('')+'</ul>':'<p class="hint">Δεν υπάρχουν καταχωρισμένα ραντεβού.</p>');
  const summary='<div class="intro"><p><strong>Προέλευση:</strong> Κλινικές καταγραφές και πληροφορίες του υποθετικού φακέλου κατά την ημερομηνία εξαγωγής. Πρόκειται για παρουσίαση υπάρχοντος υλικού, όχι νέα ιατρική γνωμάτευση ή πρόταση AI.</p>'+
   (draftCount?'<p><strong>Πρόχειρες καταγραφές:</strong> '+draftCount+' δεν περιλαμβάνονται σε αυτή την εκτυπώσιμη έκδοση επειδή δεν έχουν οριστικοποιηθεί. Διατηρούνται στο τεχνικό αντίγραφο δεδομένων.</p>':'')+'</div>';
  const stylesheet=[

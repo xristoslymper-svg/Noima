@@ -6,15 +6,14 @@ import {demoPost} from '@/lib/patients/demo-client';
 import {useClinicalDraft} from './useClinicalDraft';
 import ICD10Picker from './ICD10Picker';
 import MseDomain from './MseDomain';
-import AssessmentFieldDictation from './AssessmentFieldDictation';
-import assessmentStyles from './AssessmentFieldDictation.module.css';
-import {appendAssessmentDictation} from '@/lib/clinical/assessment-dictation';
+import ClinicalTextField from '@/components/dictation/ClinicalTextField';
 import type {mseTimeline} from '@/lib/clinical/visit-workspace-state';
 import {formatClinicDateTime} from '@/lib/clinic-time';
 import {visibleMseField,recordMseField,mseReviewCounts,confirmMseUnchanged} from '@/lib/clinical/mse-review';
 const assessmentLabels:Record<string,string>={diagnosis:'Διάγνωση',formulation:'Διατύπωση περίπτωσης',impression:'Κλινική εκτίμηση'};
 export default function StructuredVisitEditor({sessionId,kind,existing,followup,baseline,timeline,onSaved,registerFlusher,onDirtyChange,compact=false}:{compact?:boolean;sessionId:string;kind:'mse'|'assessment';existing?:DemoSection;followup:boolean;baseline?:DemoSection|null;timeline?:ReturnType<typeof mseTimeline>;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
  const [domainsOpen,setDomainsOpen]=useState(false);
+ const [writingFields,setWritingFields]=useState<Record<string,boolean>>({});
  const key='section:'+kind;const [conflict,setConflict]=useState<DemoSection|null|undefined>();
  const originalBaseline=kind==='mse'&&baseline?initialDocument('mse',baseline.content,baseline.document):null;
  const baselineDocument=timeline?{kind:'mse' as const,fields:mseItems.map<DocumentField>(([key,label])=>{const source=timeline.references[key];return source?{...source.field,reference:{session_id:source.sessionId,date:source.date}}:{key,label,text:''}}).concat((originalBaseline?.fields.filter(f=>f.key==='legacy')||[]).map(f=>{const visit=timeline.visits.find(v=>v.sessionId===baseline?.session_id);return visit?{...f,reference:{session_id:visit.sessionId,date:visit.date}}:f}))}:originalBaseline;
@@ -24,7 +23,7 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
  const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialValue,version:existing?.version??null,write:async(document,version)=>{const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
  const currentDraft=useRef(draft);currentDraft.current=draft;
  useEffect(()=>registerFlusher(key,draft.flush),[key,registerFlusher,draft.flush]);
- function change(index:number,field:Partial<DocumentField>){draft.change({...draft.value,fields:draft.value.fields.map((f,i)=>i===index?{...f,...field}:f)})}
+ function change(index:number,field:Partial<DocumentField>){const value=currentDraft.current.currentValue();draft.change({...value,fields:value.fields.map((f,i)=>i===index?{...f,...field}:f)})}
  const reviewCounts=mseReviewCounts(draft.value,baselineDocument);
  const mseFields=[...mseItems.map(([key])=>draft.value.fields.findIndex(field=>field.key===key)).filter(index=>index>=0),...draft.value.fields.map((field,index)=>({field,index})).filter(({field})=>!mseItems.some(([key])=>key===field.key)).map(({index})=>index)].map(index=>({field:draft.value.fields[index],index}));
  const assessmentFields=draft.value.fields.map((field,index)=>({field,index}));
@@ -36,20 +35,18 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
   const diagnosis=field.key==='diagnosis',differential=field.key.startsWith('differential-');
   const label=diagnosis?'Διάγνωση ή διαγνωστική υπόθεση':assessmentLabels[field.key]||(differential?'Διαφορική διάγνωση':field.label);
   const placeholder=diagnosis?'Διάγνωση ή πιθανή διαγνωστική κατεύθυνση…':field.key==='impression'?'Σημερινή κλινική εικόνα, σημαντικά ευρήματα και συμπεράσματα…':field.key==='formulation'?'Παράγοντες που συμβάλλουν στην εικόνα και την πορεία…':differential?'Πιθανές διαγνώσεις, εναλλακτικά ενδεχόμενα και στοιχεία υπέρ ή κατά…':'';
-  const inputId=sessionId+'-assessment-'+field.key;
   return <div className="visit-assessment-field" key={field.key}>
-   <div className={assessmentStyles.heading}>
-    <label htmlFor={inputId}>{label}</label>
-    <AssessmentFieldDictation fieldKey={field.key} title={label} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onInsert={text=>{
-     const latest=currentDraft.current;
-     const next=appendAssessmentDictation(latest.value,field.key,text);
-     if(next!==latest.value)latest.change(next);
-    }}/>
-   </div>
-   <textarea id={inputId} rows={2} placeholder={placeholder} value={field.text} onChange={e=>change(index,{text:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})}/>
+   <ClinicalTextField sessionId={sessionId} section="assessment" fieldKey={field.key} title={label} placeholder={placeholder} value={field.text} onChange={text=>change(index,{text})} onBlur={()=>void draft.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={pending=>setWritingFields(v=>v[field.key]===pending?v:{...v,[field.key]:pending})} onConfirm={async(text,{provenance})=>{
+    await currentDraft.current.flush();const latest=currentDraft.current;
+    const value=latest.currentValue();const target=value.fields.find(f=>f.key===field.key);if(!target||target.text!==provenance.original)throw new Error('Το πεδίο άλλαξε. Ελέγξτε τη νεότερη καταγραφή.');
+    latest.change({...value,fields:value.fields.map(f=>f.key===field.key?{...f,text,writing_provenance:provenance}:f)});
+    // Explicit confirmation has transferred the value to the recoverable draft.
+    // Draft errors remain visible and block navigation through its own flusher.
+    await latest.flush().catch(()=>{});
+   }}/>
    {(diagnosis||differential)&&<label className="diagnosis-certainty">Βεβαιότητα<select value={field.status||''} onChange={e=>change(index,{status:(e.target.value||undefined) as DocumentField['status']})}><option value="">Δεν ορίστηκε</option><option value="under_investigation">Υπό διερεύνηση</option><option value="provisional">Προσωρινή</option><option value="confirmed">Επιβεβαιωμένη</option></select></label>}
    {(diagnosis||differential)&&<div className="assessment-coding"><div className="visit-code-values">{field.codes?.map(c=><span key={c.code} title={c.label}><strong>{c.code}</strong><button type="button" aria-label={'Αφαίρεση '+c.code} onClick={()=>change(index,{codes:field.codes?.filter(x=>x.code!==c.code)})}>×</button></span>)}</div><details><summary>＋ ICD-10</summary><ICD10Picker showValues={false} value={field.codes||[]} onChange={codes=>change(index,{codes})}/></details></div>}
-   {differential&&<button type="button" className="assessment-remove" aria-label="Αφαίρεση διαφορικής διάγνωσης" onClick={()=>{if(!field.text.trim()&&!field.codes?.length||window.confirm('Αφαίρεση αυτής της διαφορικής διάγνωσης;'))draft.change({...draft.value,fields:draft.value.fields.filter((_,i)=>i!==index)})}}>×</button>}
+   {differential&&<button type="button" disabled={writingFields[field.key]} className="assessment-remove" aria-label="Αφαίρεση διαφορικής διάγνωσης" onClick={()=>{if(!field.text.trim()&&!field.codes?.length||window.confirm('Αφαίρεση αυτής της διαφορικής διάγνωσης;'))draft.change({...draft.value,fields:draft.value.fields.filter((_,i)=>i!==index)})}}>×</button>}
   </div>;
  }
 

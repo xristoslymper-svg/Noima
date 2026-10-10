@@ -1,21 +1,11 @@
-# Section dictation
+# Clinical writing
 
-Maria → Sessions → a section's **Υπαγόρευση** button opens `SectionDictation`.
+ClinicalTextField owns one existing textarea with microphone and explicit wording assistance. ClinicalWriting keeps pending review out of the autosaving clinical draft, with stable session/section/field identity and session-local recovery cleared on account change.
 
-The current production path is:
+FieldRecorder uses pause/resume, one microphone lease, 60 seconds of active audio and the existing 25 MB upload limit. It releases tracks on completion, cancellation and unmount. Transcription uses /api/transcribe; failed uploads retain audio in memory for explicit retry. Audio is never saved to browser storage. Additional dictation appends another paragraph; it never launches AI.
 
-1. Browser records up to 60 seconds with `MediaRecorder`.
-2. The completed audio blob is POSTed to the same-origin `/api/transcribe` route.
-3. The server forwards the file to OpenAI's `/v1/audio/transcriptions` endpoint using `gpt-transcribe`.
-4. The transcript is shown for clinician review/editing.
-5. Only after **ΟΚ** is it appended to the selected section's temporary React state.
+Polishing uses /api/clinical/polish, verified draft-session ownership, existing Responses API configuration and conservative wording-only instructions. Stale responses are discarded. The editable inline proposal requires acceptance, followed by a 10-second undo.
 
-`OPENAI_API_KEY` is server-only. It must never use a `NEXT_PUBLIC_` prefix and is never sent to the browser.
+Narrative confirmation creates an unapproved provenance entry and invokes the existing version-checked approval RPC. Assessment and closure use their existing JSON/versioned save paths with reviewed provenance metadata. Pending text is never autosaved as clinical documentation. Legacy proposals recover inline without launching AI.
 
-The transcription prompt asks the model to preserve the speaker's wording, especially negations, medication names, doses, units, scores, punctuation, and mixed Greek/English medical terminology. It explicitly tells the model not to summarize or infer clinical information.
-
-The audio is not written to Supabase or application storage by this implementation, and no transcript/audio logging is added. However, unlike the earlier local Whisper demo, the audio is sent to OpenAI for transcription. Treat this as health-data processing when using real patient data and cover it in the product's processor/subprocessor and privacy documentation.
-
-The UI remains review-first. No transcript becomes an approved clinical record automatically. Current section drafts remain temporary and disappear on refresh/navigation until the database workflow is connected.
-
-The old local Whisper worker remains in the repository for now but is no longer used by `SectionDictation`.
+Real microphone, recognition quality and authenticated live persistence require browser/clinician verification; deterministic tests and synthetic UI fixtures are not live microphone E2E.

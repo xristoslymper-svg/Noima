@@ -22,7 +22,7 @@ const requireMock=name=>{
  })};
  if(name==='./ICD10Picker')return {default:()=>React.createElement('span',{'data-testid':'icd-picker'})};
  if(name==='./MseDomain')return {default:()=>React.createElement('span',{'data-testid':'mse-domain'})};
- if(name==='./AssessmentFieldDictation')return {default:({title})=>React.createElement('button',{'aria-label':'Υπαγόρευση: '+title},'Υπαγόρευση')};
+ if(name==='@/components/dictation/ClinicalTextField')return {default:({title,value,placeholder})=>React.createElement('div',null,React.createElement('label',null,title),React.createElement('button',{'aria-label':'Υπαγόρευση: '+title}),React.createElement('textarea',{value,placeholder,readOnly:true}))};
  if(name.endsWith('.module.css'))return {default:{heading:'assessment-field-heading'}};
  if(name==='@/lib/clinical/mse-review')return {mseReviewCounts:()=>({changed:0}),visibleMseField:f=>f,recordMseField:(f,text)=>({...f,text}),confirmMseUnchanged:f=>f};
  if(name==='@/lib/clinic-time')return {formatClinicDateTime:value=>value};

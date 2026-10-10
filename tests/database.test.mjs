@@ -52,6 +52,27 @@ before(async () => {
 });
 after(async () => { await db.close(); });
 
+test('inline writing approval and JSON provenance preserve canonical values, versions and diagnostic metadata without migrations',async()=>{
+ const t='75600000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql("select * from demo_patient_create_v2($1,'QA Inline writing')",[t]);
+ const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const [base]=await sql("select * from demo_session_save_section($1,$2,'interview','Confirmed original','manual',null)",[t,s.id]);
+ const [entry]=await sql("select * from demo_proposal_create($1,$2,'interview','Raw dictation',$3,null)",[t,s.id,JSON.stringify({clinical_text:'Confirmed original\n\nReviewed dictation',facts:[],writing:{kind:'dictation',original:'Confirmed original'}})]);
+ assert.equal((await sql("select content from demo_session_sections where session_id=$1 and section_key='interview'",[s.id]))[0].content,'Confirmed original');
+ await assert.rejects(sql("select demo_proposal_approve($1,$2,'Reviewed','replace',null)",[t,entry.id]),/stale_section/);
+ const [approved]=await sql("select * from demo_proposal_approve($1,$2,$3,'replace',$4)",[t,entry.id,'Confirmed original\n\nReviewed dictation',base.version]);
+ assert.equal(approved.version,base.version+1);const [audit]=await sql('select * from demo_clinical_entries where id=$1',[entry.id]);assert.equal(audit.status,'approved');assert.equal(audit.proposal.writing.kind,'dictation');assert.equal(audit.transcript,'Raw dictation');
+ const provenance={kind:'ai',original:'Original impression',transcript:'Original impression',reviewed_text:'Reviewed impression',model:'fixture',reviewed_at:'2026-10-10T12:00:00Z'};
+ const doc={kind:'assessment',fields:[{key:'impression',label:'Clinical Assessment / Impression',text:'Reviewed impression',writing_provenance:provenance},{key:'differential-1',label:'Differential Diagnosis',text:'Existing differential',status:'provisional',codes:[{code:'F32.9',label:'Depressive episode, unspecified',system:'WHO ICD-10',edition:'2019'}]}]};
+ const [saved]=await sql("select * from demo_session_save_document($1,$2,'assessment',$3,null)",[t,s.id,JSON.stringify(doc)]);assert.deepEqual(saved.document,doc);assert.deepEqual((await sql("select document from demo_session_sections where session_id=$1 and section_key='assessment'",[s.id]))[0].document,doc);
+ await assert.rejects(sql("select demo_session_save_document($1,$2,'assessment',$3,null)",[t,s.id,JSON.stringify({...doc,fields:[]})]),/stale_section/);
+ const risk={suicidal_ideation:'negative',protective_factors:'Reviewed supports',clinical_note:'Original risk note',tree:{version:1,answers:{wish:'negative'},notes:{wish:'Patient quote'},writing_provenance:{protective_factors:provenance}}};
+ const [savedRisk]=await sql('select * from demo_session_save_risk_tree($1,$2,$3,null)',[t,s.id,JSON.stringify(risk)]);assert.deepEqual(savedRisk.tree.writing_provenance,risk.tree.writing_provenance);assert.deepEqual(savedRisk.tree.notes,risk.tree.notes);assert.equal(savedRisk.tree.answers.wish,'negative');assert.equal(savedRisk.clinical_note,'Original risk note');
+ const [p2]=await sql("select * from demo_patient_create_v2($1,'QA Inline closure')",[t]);const [followup]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p2.id]);
+ const value={transcript:'Confirmed notes',clinical_state_summary:'Reviewed impression',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'ai_assisted',writing_provenance:{clinical_state_summary:provenance}};
+ const [closure]=await sql('select * from demo_closure_save($1,$2,$3,0)',[t,followup.id,JSON.stringify(value)]);assert.deepEqual(closure.closure_draft,value);assert.equal(closure.continuity,null);assert.equal(closure.closure_version,1);
+});
+
 test('payment can be cleared without changing appointment or weakening ownership',async()=>{
  const paymentOwner='75500000-0000-4000-8000-000000000001';
  await sql('insert into auth.users(id) values($1)',[paymentOwner]);

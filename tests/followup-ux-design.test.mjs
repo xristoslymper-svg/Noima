@@ -18,7 +18,7 @@ test('new recording is not date-blocked: unfinished medication must point to its
 
 test('follow-up presents a single next-visit focus field and distinct appointment card',()=>{
  assert.match(followup,/Στην επόμενη επίσκεψη/);
- assert.match(followup,/placeholder="Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…"/);
+ assert.match(followup,/writingField\('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…'/);
  assert.doesNotMatch(followup,/Μετρήσεις & επόμενο ραντεβού/);
  assert.match(followup,/<summary>Ψυχομετρικές μετρήσεις<\/summary>/);
  assert.match(followup,/className=\{styles\.appointmentCard\} aria-label="Επόμενο ραντεβού"/);
@@ -29,7 +29,7 @@ test('follow-up presents a single next-visit focus field and distinct appointmen
 });
 
 test('signposting is by field placeholder instead of long doctor-facing explanations',()=>{
- assert.match(followup,/placeholder=\{\{clinical_state_summary:/);
+ assert.match(followup,/writingField\(k,label,\{clinical_state_summary:/);
  assert.match(followup,/Σημαντικά θέματα για τη συνέχεια/);
  assert.match(followup,/Τι αξίζει να θυμόμαστε/);
  assert.match(followup,/Συμπτώματα, λειτουργικότητα, μεταβολές/);

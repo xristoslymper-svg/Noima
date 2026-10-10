@@ -262,3 +262,8 @@
  .visit-structured.mse .mse-item[open] > summary > .mse-domain-preview{visibility:visible}
  .visit-structured.mse .mse-note-label textarea{font-size:16px}
 }
+
+/* Reserve scroll space for the temporary, compact field recorder. */
+body.clinical-recording-active{padding-bottom:90px;scroll-padding-bottom:100px}
+.clinical-recording-active .visit-document{padding-bottom:100px}
+.clinical-recording-active .visit-dialog{scroll-padding-bottom:100px}

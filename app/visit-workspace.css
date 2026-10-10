@@ -133,7 +133,22 @@
 .mse-options button[aria-pressed=true]:before{content:'✓ ';}
 .mse-options button:focus-visible{outline:2px solid #357653;outline-offset:2px}
 .visit-dialog .mse-note-label{font-size:12px}
-.visit-structured.assessment{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
+/* Clinical assessment: one reading path, with optional deeper reasoning. MSE styles are untouched. */
+.visit-structured.assessment{display:grid;grid-template-columns:minmax(0,1fr);gap:0;max-width:800px}
+.visit-structured.assessment>.visit-assessment-field{min-width:0;padding:14px 0 18px}
+.visit-structured.assessment .visit-assessment-field>label:first-child{padding-right:0}
+.visit-structured.assessment .visit-assessment-field textarea{width:100%}
+.visit-structured.assessment .diagnosis-certainty{margin-top:10px;max-width:240px}
+.visit-structured.assessment .assessment-coding{margin-top:8px}
+.visit-assessment-additional{min-width:0;border-top:1px solid #e0e6df;margin-top:10px;padding-top:4px}
+.visit-assessment-additional>summary{cursor:pointer;list-style:none;padding:17px 0;color:#355f4d;font-size:14px;font-weight:650}
+.visit-assessment-additional>summary::-webkit-details-marker{display:none}
+.visit-assessment-additional>summary::before{content:'›';display:inline-block;margin-right:9px;font-size:19px;line-height:12px;transform:rotate(0deg);transition:transform .15s}
+.visit-assessment-additional[open]>summary::before{transform:rotate(90deg)}
+.visit-assessment-additional>summary span{font-size:12px;color:#6e8076;font-weight:450}
+.visit-assessment-additional-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:0 0 6px}
+.visit-assessment-additional-fields .visit-assessment-field{min-width:0}
+.visit-assessment-additional-fields>.visit-text-button{justify-self:start}
 .visit-dialog .visit-assessment-field{position:relative;padding:12px 0;border-bottom:1px solid #e0e6df}
 .visit-assessment-field>label{padding-right:20px}
 .visit-assessment-field textarea{min-height:76px!important;field-sizing:content}

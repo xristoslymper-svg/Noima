@@ -13,7 +13,7 @@ import MseDomain from './MseDomain';
 import ICD10Picker from './ICD10Picker';
 
 const narrativeKeys=['interview','adherence','effects','functioning','plan','review'] as const;
-const assessmentLabels:Record<string,string>={diagnosis:'Διάγνωση',formulation:'Διατύπωση περίπτωσης',impression:'Κλινική αποτίμηση'};
+const assessmentLabels:Record<string,string>={diagnosis:'Διάγνωση',formulation:'Διατύπωση περίπτωσης',impression:'Κλινική εκτίμηση'};
 const riskOptions=[['not_assessed','Δεν διερευνήθηκε'],['unknown','Άγνωστο'],['negative','Αρνητικό'],['positive','Θετικό']] as const;
 function riskShape(r?:DemoRisk){return {suicidal_ideation:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',self_harm:r?.self_harm||'not_assessed',attempt_history:r?.attempt_history||'not_assessed',harm_to_others:r?.harm_to_others||'not_assessed',protective_factors:r?.protective_factors||'',clinical_note:r?.clinical_note||'',tree:r?.tree};}
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);

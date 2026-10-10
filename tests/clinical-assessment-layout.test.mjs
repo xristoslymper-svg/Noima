@@ -22,6 +22,8 @@ const requireMock=name=>{
  })};
  if(name==='./ICD10Picker')return {default:()=>React.createElement('span',{'data-testid':'icd-picker'})};
  if(name==='./MseDomain')return {default:()=>React.createElement('span',{'data-testid':'mse-domain'})};
+ if(name==='./AssessmentFieldDictation')return {default:({title})=>React.createElement('button',{'aria-label':'Υπαγόρευση: '+title},'Υπαγόρευση')};
+ if(name.endsWith('.module.css'))return {default:{heading:'assessment-field-heading'}};
  if(name==='@/lib/clinical/mse-review')return {mseReviewCounts:()=>({changed:0}),visibleMseField:f=>f,recordMseField:(f,text)=>({...f,text}),confirmMseUnchanged:f=>f};
  if(name==='@/lib/clinic-time')return {formatClinicDateTime:value=>value};
  return {};
@@ -40,14 +42,18 @@ test('clinical assessment is a single column with diagnosis and impression first
  assert.match(css,/\.visit-structured\.assessment\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
  const html=render('assessment',initialDocument('assessment'));
  const diagnosis=html.indexOf('Διάγνωση ή διαγνωστική υπόθεση');
- const impression=html.indexOf('Κλινική αποτίμηση');
- const advanced=html.indexOf('Πρόσθετη κλινική διερεύνηση');
+ const impression=html.indexOf('Κλινική εκτίμηση');
+ const advanced=html.indexOf('<summary>Διαφορική διάγνωση');
  assert.ok(diagnosis>=0&&diagnosis<impression&&impression<advanced);
  assert.match(html,/Διατύπωση περίπτωσης/);
  assert.match(html,/Διαφορική διάγνωση/);
  assert.match(html,/Βεβαιότητα/);
  assert.match(html,/ICD-10/);
  assert.match(html,/placeholder="Σημερινή κλινική εικόνα/);
+ assert.match(html,/aria-label="Υπαγόρευση: Κλινική εκτίμηση"/);
+ assert.match(html,/aria-label="Υπαγόρευση: Διαφορική διάγνωση"/);
+ assert.match(html,/placeholder="Πιθανές διαγνώσεις, εναλλακτικά ενδεχόμενα και στοιχεία υπέρ ή κατά…"/);
+ assert.doesNotMatch(html,/Πρόσθετη κλινική διερεύνηση/);
 });
 
 test('existing formulation and differential notes remain visible on first open and are not discarded',()=>{
@@ -71,6 +77,6 @@ test('additional assessment inputs default closed only when empty; MSE domain in
  assert.doesNotMatch(html,/visit-assessment-additional" open=/);
  const mse=render('mse',initialDocument('mse'));
  assert.equal((mse.match(/data-testid="mse-domain"/g)||[]).length,12);
- assert.doesNotMatch(mse,/Πρόσθετη κλινική διερεύνηση/);
+ assert.doesNotMatch(mse,/Υπαγόρευση:|Διαφορική διάγνωση/);
  assert.match(css,/\.visit-structured\.mse\{display:grid;grid-template-columns:1fr 1fr/);
 });

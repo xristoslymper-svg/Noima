@@ -1,0 +1,93 @@
+/* Clinical writing surface: shared with MSE, scoped to the visit editor only. */
+.visit-workspace {
+  --clinical-field-surface:var(--visit-surface,#fffefa);
+  --clinical-field-border:var(--visit-line,#e1e8e3);
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part,
+.visit-workspace [data-clinical-followup] > section {
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  padding:0!important;margin:0 auto 28px!important;border-radius:0!important;
+  width:100%;min-width:0;box-sizing:border-box;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part > header {
+  padding:0 2px;margin:0 0 14px;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part > header h3 {
+  font-size:15px;line-height:1.45;font-weight:750;color:#30483e;letter-spacing:0;
+}
+.visit-workspace .clinical-section,
+.visit-workspace .visit-structured.assessment,
+.visit-workspace .visit-assessment-field,
+.visit-workspace .risk-editor,
+.visit-workspace .visit-history-shell,
+.visit-workspace .visit-history-scroll,
+.visit-workspace .visit-history-intro {
+  background:transparent!important;box-shadow:none!important;
+}
+.visit-workspace [data-writing-editor="true"],
+.visit-workspace .mse-columns,
+.visit-workspace .history-question textarea,
+.visit-workspace .visit-history textarea,
+.visit-workspace .visit-structured.mse .mse-body,
+.visit-workspace .medication-table-editor {
+  background:var(--clinical-field-surface)!important;
+  border-color:var(--clinical-field-border)!important;
+}
+.visit-workspace [data-writing-editor="true"] {
+  border:1px solid var(--clinical-field-border);border-radius:12px;overflow:hidden;
+}
+.visit-workspace [data-writing-editor="true"] textarea {
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;line-height:1.6;padding:13px 14px!important;
+}
+.visit-workspace [data-writing-editor="true"]:focus-within {
+  border-color:#86ad9c;box-shadow:0 0 0 2px #eaf2ed;
+}
+.visit-workspace .mse-columns {
+  border:1px solid var(--clinical-field-border);border-radius:12px;overflow:hidden;
+  padding:0 14px;box-sizing:border-box;
+}
+.visit-workspace .mse-columns>.mse-item {background:transparent!important;}
+.visit-workspace .mse-columns>.mse-item:last-child {border-bottom:0;}
+.visit-workspace .mse-domain-preview:empty {min-width:0;}
+.visit-workspace .mse-body textarea {
+  background:var(--clinical-field-surface)!important;border:1px solid var(--clinical-field-border);border-radius:10px;
+}
+.visit-workspace .mse-review-actions .mse-clear {
+  margin-left:auto;min-width:32px;min-height:32px;padding:3px 8px;
+  border:0;background:transparent;color:#6c8074;font-size:19px;
+}
+.visit-workspace .clinical-provenance {margin-top:4px;}
+.visit-workspace .clinical-provenance>summary {
+  display:inline-flex!important;align-items:center;justify-content:center;
+  width:32px;height:32px;padding:0!important;list-style:none;border-radius:8px;
+  color:#617c6f;cursor:pointer;font-size:21px;line-height:1;
+}
+.visit-workspace .clinical-provenance>summary::marker {content:'';}
+.visit-workspace .clinical-provenance>summary::-webkit-details-marker {display:none;}
+.visit-workspace .clinical-provenance>summary::before {display:none!important;}
+.visit-workspace .clinical-provenance>summary span {display:block;transition:transform .15s;}
+.visit-workspace .clinical-provenance[open]>summary span {transform:rotate(90deg);}
+.visit-workspace .clinical-provenance>summary:hover {background:#edf2ed;}
+.visit-workspace .clinical-provenance>summary:focus-visible {outline:2px solid #54725f;outline-offset:2px;}
+.visit-workspace .clinical-provenance>div {font-size:12px;color:#63766b;white-space:pre-wrap;overflow-wrap:anywhere;}
+.visit-workspace .assessment-legacy-notes {font-size:12px;color:#63766b;margin-top:8px;}
+.visit-workspace .assessment-legacy-notes>summary {cursor:pointer;padding:8px 0;}
+.visit-workspace .visit-assessment-additional {background:transparent!important;}
+.visit-workspace [data-clinical-followup] textarea,
+.visit-workspace [data-clinical-followup] input:not([type="checkbox"]),
+.visit-workspace [data-clinical-followup]>details {
+  background:var(--clinical-field-surface);border-color:var(--clinical-field-border);
+}
+@media(max-width:760px) {
+  .visit-workspace .runtime-session > .visit-document > .visit-part,
+  .visit-workspace [data-clinical-followup] > section {margin-bottom:22px!important;}
+  .visit-workspace .mse-columns {padding:0 10px;}
+  .visit-workspace .clinical-provenance>summary,
+  .visit-workspace .mse-review-actions .mse-clear {min-width:44px;min-height:44px;}
+}
+
+/* Medication and plain input surfaces share the editor palette, without changing status chips. */
+.visit-workspace .medication-table-editor {border:1px solid var(--clinical-field-border);border-radius:12px;}
+.visit-workspace .medication-table-editor :is(table,tbody,tr,td,th) {background:transparent;}
+.visit-workspace :is(input:not([type=checkbox]):not([type=radio]),select) {background:var(--clinical-field-surface);}

@@ -12,9 +12,9 @@ export function mseReviewCounts(document:VisitDocument,previous?:VisitDocument|n
  return {reviewed:fields.filter(f=>f.review||f.text.trim()).length,total:fields.length,changed:fields.filter(f=>f.text.trim()&&f.text!==(previous?.fields.find(p=>p.key===f.key)?.text||'')).length};
 }
 // One explicit action confirms only previously observed domains, never new normal findings.
-export function confirmMseUnchanged(document:VisitDocument,previous:VisitDocument):VisitDocument{
+export function confirmMseUnchanged(document:VisitDocument,previous:VisitDocument,includeEmpty=false):VisitDocument{
  const fields=document.fields.map(field=>{
-  if(field.review||field.text.trim())return field;
+  if(field.text.trim()||(field.review&&!(includeEmpty&&field.review==='not_assessed')))return field;
   const ref=previous.fields.find(p=>p.key===field.key&&p.text.trim()&&p.review!=='not_assessed');
   return ref?{...ref,review:'unchanged' as const}:field;
  });
@@ -29,4 +29,14 @@ export function mseDeltas(previous:VisitDocument,current:VisitDocument){
   if(field.key==='legacy'||!before?.text.trim()||!field.text.trim()||field.review==='not_assessed'||before.text===field.text)return [];
   return [{key:field.key,label:field.label,before:before.text,after:field.text}];
  });
+}
+
+// Empty domains stay empty, never normal or carried forward. At an explicit
+// document save they receive the existing missing-assessment marker so a partial
+// exam does not require one redundant skip click per untouched domain.
+export function mseDocumentForSave(document:VisitDocument):VisitDocument{
+ if(document.kind!=='mse')return document;
+ return {...document,fields:document.fields.map(field=>
+  field.key!=='legacy'&&!field.text.trim()&&!field.review
+   ?{...field,review:'not_assessed' as const}:field)};
 }

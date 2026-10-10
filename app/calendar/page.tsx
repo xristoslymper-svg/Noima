@@ -476,7 +476,7 @@ export default function CalendarPage() {
           <X size={20} />
         </button>
         <div className="brand">
-          <div className="brand-mark">Ψ</div>
+          <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>
           <div className="brand-copy">
             <div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div>
           </div>

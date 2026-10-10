@@ -1,0 +1,53 @@
+name: Apply reviewed clinical UI refinement
+on:
+  push:
+    branches: [refine/clinical-editor-polish-20261010]
+    paths: [.github/workflows/clinical-ui-apply.yml]
+permissions:
+  contents: write
+concurrency:
+  group: clinical-ui-refinement
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
+      MAILBOX_ENCRYPTION_KEY: '0'
+      OPENAI_API_KEY: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply reviewed presentation changes
+        run: python3 scripts/clinical-ui-refinement.py
+      - run: npm ci
+      - run: npm run typecheck && npm run lint && npm test && npm run build
+      - name: Browser tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+          npx playwright install --with-deps chromium
+      - name: Real clinical composition checks with synthetic data
+        run: node browser-tests/clinical-cleanup.mjs
+      - name: Commit verified changes on the feature branch only
+        run: |
+          rm scripts/clinical-ui-refinement.py .github/workflows/clinical-ui-apply.yml
+          git add app components tests browser-tests scripts/clinical-ui-refinement.py .github/workflows/clinical-ui-apply.yml .github/workflows/clinical-source-handoff.yml
+          git diff --cached --check
+          git config user.name 'xristoslymper-svg'
+          git config user.email 'xristoslymper@gmail.com'
+          git commit -m 'Refine clinical editors: ivory surfaces, outside headings and quiet MSE'
+          git push origin HEAD:refs/heads/refine/clinical-editor-polish-20261010
+      - name: Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinical-ui-evidence
+          path: test-results/clinical-cleanup
+          retention-days: 7

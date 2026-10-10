@@ -406,3 +406,10 @@
 .more>button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:12px;color:#526b5c;border:1px solid #e1e9e2;border-radius:9px;background:#fff;min-height:38px;padding:8px 11px;cursor:pointer}
 .more>button:hover{background:#f1f6f2}
 @media(max-width:600px){.tabs .exportLink{padding:9px 11px;font-size:12px}.tabs .exportLink span{display:none}.more>button{white-space:normal;min-width:150px}}
+
+/* Record is the clinical action workspace: distinct but still a navigation tab. */
+.tabs button[data-record-tab="true"]{background:#e7f1eb;color:#285d4c;border:1px solid #b9d5c6;font-weight:700;box-shadow:0 1px 3px rgba(40,93,76,.045);padding:9px 13px;}
+.tabs button[data-record-tab="true"]:hover{background:#dcebe2;border-color:#a6cbb7;}
+.tabs button[data-record-tab="true"][aria-current="page"]{background:#235f4d;color:#fff;border-color:#235f4d;box-shadow:0 2px 8px rgba(35,95,77,.13);}
+.tabs button[data-record-tab="true"]:focus-visible{outline:2px solid #235f4d;outline-offset:2px;}
+@media(max-width:700px){.tabs button[data-record-tab="true"]{padding:8px 10px;}}

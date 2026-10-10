@@ -4,6 +4,6 @@ const render=(value,fullMicLabel=false)=>renderToStaticMarkup(React.createElemen
 test('one accessible textarea retains confirmed text and both compact header actions',()=>{
  const html=render('Δεν αναφέρει αϋπνία.');assert.equal((html.match(/<textarea/g)||[]).length,1);assert.equal((html.match(/<button/g)||[]).length,2);assert.match(html,/for="session-assessment-impression"/);assert.match(html,/id="session-assessment-impression"/);assert.match(html,/aria-label="Υπαγόρευση: Κλινική εκτίμηση"/);assert.match(html,/title="Βελτίωση διατύπωσης"/);assert.match(html,/Δεν αναφέρει αϋπνία/);assert.doesNotMatch(html,/<dialog|Πρόταση AI|Επιβεβαίωση/);
 });
-test('AI is unavailable for blank text; the initial interview may retain its full microphone label',()=>{
- assert.match(render(''),/title="Βελτίωση διατύπωσης"[^>]*disabled=""/);assert.match(render('Κείμενο',true),/Υπαγόρευση<\/button>/);assert.doesNotMatch(render('Κείμενο'),/> Υπαγόρευση<\/button>/);
+test('AI explains why it is unavailable for blank text; the initial interview retains its full microphone label',()=>{
+ assert.match(render(''),/title="Γράψτε ή υπαγορεύστε κείμενο πρώτα\."[^>]*disabled=""/);assert.match(render('Κείμενο',true),/Υπαγόρευση<\/button>/);assert.doesNotMatch(render('Κείμενο'),/> Υπαγόρευση<\/button>/);
 });

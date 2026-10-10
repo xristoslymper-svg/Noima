@@ -91,3 +91,68 @@
 .visit-workspace .medication-table-editor {border:1px solid var(--clinical-field-border);border-radius:12px;}
 .visit-workspace .medication-table-editor :is(table,tbody,tr,td,th) {background:transparent;}
 .visit-workspace :is(input:not([type=checkbox]):not([type=radio]),select) {background:var(--clinical-field-surface);}
+
+/* One external title + one content surface. No changes to clinical state or values. */
+.visit-workspace .visit-part-content,
+.visit-workspace .visit-part-surface {min-width:0;width:100%;box-sizing:border-box;}
+.visit-workspace .visit-part-surface {
+  background:var(--clinical-field-surface);
+  border:1px solid var(--clinical-field-border);border-radius:12px;
+  padding:18px;box-shadow:none;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part {
+  max-width:800px;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part > header {
+  padding:0;margin:0 0 12px;
+}
+.visit-workspace .clinical-field-section-title {
+  margin:0;font:inherit;font-size:15px;line-height:1.45;font-weight:750;
+  color:#30483e;letter-spacing:0;
+}
+.visit-workspace .clinical-field-section-title > label {font:inherit;color:inherit;}
+.visit-workspace [data-visit-part="interview"] .clinical-section {padding:0;margin:0;}
+/* Do not add an extra border around already-grouped medication/history content. */
+.visit-workspace .visit-part-surface .medication-table-editor,
+.visit-workspace .visit-part-surface .visit-history-shell {
+  border:0!important;border-radius:0;box-shadow:none!important;margin:0;
+}
+.visit-workspace .visit-part-surface .visit-history-intro {
+  padding:0 0 14px!important;align-items:flex-start;
+}
+.visit-workspace .visit-part-surface .visit-history-scroll {
+  padding:0!important;gap:18px;align-items:stretch;
+}
+.visit-workspace .visit-part-surface .history-question {
+  min-width:0;display:grid;grid-template-rows:auto 1fr auto;gap:6px;
+  padding:0;margin:0!important;border:0;
+}
+.visit-workspace .visit-part-surface .history-question > strong,
+.visit-workspace .visit-part-surface .history-question > span {margin:0;}
+.visit-workspace .visit-part-surface .history-question textarea {
+  box-sizing:border-box;display:block;width:100%;max-width:100%;
+  margin:0;min-height:84px!important;field-sizing:fixed;
+}
+.visit-workspace .visit-part-surface .visit-history-shell > p[role=status] {margin:10px 0 0;}
+.visit-workspace .visit-part-surface .risk-tree-layout {gap:22px;}
+.visit-workspace .visit-part-surface .risk-tree-editor > :first-child {margin-top:0;}
+.visit-workspace .visit-part-surface > .visit-hint:first-child {margin-top:0;}
+/* The compact follow-up retains its collapsible controls, with each title outside its body. */
+.visit-workspace [data-clinical-followup] > details {
+  border:0;background:transparent;padding:0;box-shadow:none;border-radius:0;
+}
+.visit-workspace [data-clinical-followup] > details > summary {
+  padding:0 0 12px;margin:0;border:0;min-height:32px;
+}
+.visit-workspace [data-clinical-followup] > details > .visit-part-surface,
+.visit-workspace [data-clinical-followup] > details > .visit-part-content {margin:0;}
+.visit-workspace [data-clinical-followup] > section > h3 {margin:0 0 12px;}
+.visit-workspace [data-clinical-followup] > section > div:has(> h3) {
+  border:0;padding:0;margin:0 0 12px;
+}
+@media(max-width:760px) {
+ .visit-workspace .visit-part-surface {padding:14px;}
+ .visit-workspace .visit-part-surface .visit-history-scroll {grid-template-columns:minmax(0,1fr)!important;gap:18px;}
+ .visit-workspace .visit-part-surface .history-question {grid-template-rows:auto auto auto;}
+ .visit-workspace .visit-part-surface .risk-tree-layout {grid-template-columns:minmax(0,1fr);}
+}

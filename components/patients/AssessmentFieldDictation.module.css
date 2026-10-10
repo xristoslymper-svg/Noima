@@ -1,6 +1,6 @@
 .heading{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;min-width:0}
 .heading label{font-size:13px;font-weight:650;color:#476055;padding:0;margin:0}
-.microphone{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:9px 13px;border:1px solid #d5e3db;border-radius:10px;background:#f8faf8;color:#366c57;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}
+.microphone{display:inline-flex;align-items:center;justify-content:center;width:36px;min-width:36px;height:36px;min-height:36px;padding:0;border:1px solid #d5e3db;border-radius:10px;background:#f8faf8;color:#366c57;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}
 .microphone:hover:not(:disabled){background:#eaf3ed;border-color:#b9d4c5}
 .microphone:focus-visible{outline:3px solid #9fc8af;outline-offset:2px}
 .microphone:disabled{opacity:.5;cursor:default}

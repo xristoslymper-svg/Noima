@@ -5,7 +5,7 @@ import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type Writ
 import {FieldRecorder} from '@/lib/clinical/field-recorder';
 import styles from './ClinicalTextField.module.css';
 export type WritingCommit={pending:WritingPending;provenance:WritingProvenance;rememberProposal:(id:string)=>void};
-type Props={sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
+type Props={sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;sectionHeading?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
 let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
@@ -83,7 +83,7 @@ export default function ClinicalTextField(p:Props){
  const micHint=awaitingAudio&&!capturing?'Μεταγράψτε ή απορρίψτε πρώτα τον αποθηκευμένο ήχο.':capturing?'Η υπαγόρευση είναι ενεργή σε αυτό το πεδίο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':snapshot.pending?.kind==='ai'?'Αποδεχτείτε ή απορρίψτε πρώτα την πρόταση AI.':'Υπαγόρευση';
  const status=snapshot.phase==='permission'?'Μικρόφωνο…':snapshot.phase==='transcribing'?'Μεταγραφή…':snapshot.phase==='paused'?'Σε παύση':'Ηχογράφηση';
  return <div className={styles.field} data-capture={capturing||undefined}>
-  <div className={styles.heading}><label htmlFor={id}>{p.title}</label><div className={styles.tools}>
+  <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
    <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic2 size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
    <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/></button>
   </div></div>

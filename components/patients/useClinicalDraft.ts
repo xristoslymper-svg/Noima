@@ -8,6 +8,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  const [olderRecovery,setOlderRecovery]=useState<T|null>(null);
  const latest=useRef(initial),saved=useRef(JSON.stringify(initial)),v=useRef(version),flight=useRef<Promise<void>|null>(null),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const blocked=useRef(false); const callbacks=useRef({write,onSaved,onDirty});callbacks.current={write,onSaved,onDirty};
+ const recoveredKey=useRef<string|null>(null);
  const incomingJson=JSON.stringify(initial);
  const backupKey=storageKey+':older-recovery';
  const backupOlder=(value:T,originalVersion:number|null)=>{
@@ -24,6 +25,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   const snapshot=latest.current;setSaving(true);setError('');
   const task=(async()=>{try{const result=await callbacks.current.write(snapshot,v.current);v.current=result.version;saved.current=JSON.stringify(result.value);
    if(JSON.stringify(latest.current)===JSON.stringify(snapshot)){latest.current=result.value;setValue(result.value);clearRecovery(storageKey)}
+   else{try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}))}catch{}}
    callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
   }catch(e){
    const message=e instanceof Error?e.message:'Αποτυχία αποθήκευσης';
@@ -43,6 +45,9 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(JSON.stringify(latest.current)!==saved.current)return flush();
  },[storageKey,quietRecovery]);
  useEffect(()=>{
+  // Recovery belongs to opening an editor, never to a save's version refresh.
+  if(recoveredKey.current===storageKey)return;
+  recoveredKey.current=storageKey;
   try{
    const older=sessionStorage.getItem(backupKey);
    if(older){const parsed=JSON.parse(older);if(parsed?.value)setOlderRecovery(parsed.value as T)}
@@ -61,12 +66,12 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
    }
    latest.current=local.value;v.current=local.version;setValue(local.value);
    callbacks.current.onDirty(true);
-   if(quietRecovery){
+   if(disposition==='retry'){
     // A same-version draft is safe to retry through optimistic locking.
     timer.current=setTimeout(()=>void flush().catch(()=>{}),700);
    }else{
     blocked.current=true;
-    setError('Ανακτήθηκε μη αποθηκευμένο κείμενο. Συγκρίνετε με την αποθηκευμένη έκδοση.');
+    setError('Υπάρχουν μη αποθηκευμένες αλλαγές και η καταγραφή έχει ενημερωθεί. Επιλέξτε ποια αλλαγή θέλετε να κρατήσετε.');
    }
   }catch{/* storage may be unavailable */}
  },[storageKey,backupKey,quietRecovery,version,flush]);
@@ -97,7 +102,14 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   blocked.current=false;setError('');setValue(initial);
   clearRecovery(storageKey);callbacks.current.onDirty(false);
  },[initial,incomingJson,version,storageKey,saving]);
- useEffect(()=>()=>{if(timer.current)clearTimeout(timer.current)},[]);
+ useEffect(()=>{
+  // React Strict Mode replays setup after cleanup; retain the recovery retry.
+  if(!blocked.current&&JSON.stringify(latest.current)!==saved.current){
+   if(timer.current)clearTimeout(timer.current);
+   timer.current=setTimeout(()=>void flush().catch(()=>{}),700);
+  }
+  return ()=>{if(timer.current)clearTimeout(timer.current)};
+ },[flush]);
  function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{sessionStorage.setItem(storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
  function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
  function resolve(next:T,server:T,serverVersion:number|null){v.current=serverVersion;saved.current=JSON.stringify(server);blocked.current=false;setError('');change(next)}
@@ -108,5 +120,5 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(!blocked.current)return false;
   try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}));return true}catch{return false}
  }
- return {value,change,flush,error,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
+ return {value,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
 }

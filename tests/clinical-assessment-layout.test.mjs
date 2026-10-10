@@ -30,7 +30,7 @@ vm.runInNewContext(js,{exports:mod.exports,module:mod,require:requireMock,React,
 const render=(kind,document)=>{
  draftState.current=document;
  const result=renderToStaticMarkup(React.createElement(mod.exports.default,{
-  sessionId:'qa-visit',kind,followup:false,registerFlusher:()=>()=>{},onDirtyChange(){},onSaved:async()=>{},
+  sessionId:'qa-visit',kind,followup:false,existing:{content:'',document,version:1},registerFlusher:()=>()=>{},onDirtyChange(){},onSaved:async()=>{},
  }));
  draftState.current=null;
  return result;

@@ -1,7 +1,7 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
-import {correctionsFor,effectiveRisk} from './corrections';
-import {riskFindings,riskFindingLabel} from './risk-findings';
+import {correctionsFor,effectiveRisk} from './corrections.ts';
+import {riskFindings,riskFindingLabel} from './risk-findings.ts';
 
 // Read-only, printable clinical presentation for the fictional-patient environment.
 // The complete canonical data backup remains available through patientRecordText.

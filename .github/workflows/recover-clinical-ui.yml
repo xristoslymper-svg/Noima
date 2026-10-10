@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fetch the exact sandbox-tested Git objects and synthetic evidence
+      - name: Fetch hash-verified source and synthetic evidence
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 'https://sb-4oy7wkb4rbj6.vercel.run/clinical-ui-20261010-ae1f3f34/clinical-ui.bundle' -o /tmp/clinical-ui.bundle
@@ -31,11 +31,23 @@ jobs:
           actual=set(subprocess.check_output(['git','diff','FETCH_HEAD^','FETCH_HEAD','--name-only']).decode().splitlines())
           assert actual==allowed, (actual-allowed,allowed-actual)
           PY
-          # Only the new review branch is written. No main or production update.
-          git push origin FETCH_HEAD:refs/heads/ui/clinical-editor-cleanup-20261010
-          echo 'Published reviewed commit d2e0f30c35c79b1ac8e178d1dd148f45d19fd408'
+          # This token is contents-only: do not publish any workflow change.
+          export GIT_INDEX_FILE=/tmp/clinical-ui.index
+          git read-tree FETCH_HEAD
+          git update-index --force-remove .github/workflows/clinical-editor-browser.yml
+          tree=$(git write-tree)
+          commit=$(printf '%s\n' 'Refine clinical editors: cream surfaces, concise headings and implicit missing MSE domains' | git -c user.name='NOIMA UI automation' -c user.email='noima-ui@users.noreply.github.com' commit-tree "$tree" -p 4dc0671e5f308dab36afa8af6f77c8c9293611e8)
+          test "$(git diff FETCH_HEAD "$commit" --name-only)" = .github/workflows/clinical-editor-browser.yml
+          test -z "$(git diff 4dc0671e5f308dab36afa8af6f77c8c9293611e8 "$commit" --name-only -- .github/workflows)"
+          # Write only the isolated review branch. Never main or production.
+          git push origin "$commit":refs/heads/ui/clinical-editor-cleanup-20261010
+          echo "Published application commit: $commit"
+          echo "$commit" > /tmp/clinical-ui-source-sha.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: verified-clinical-ui-evidence
-          path: /tmp/clinical-ui-evidence.zip
+          path: |
+            /tmp/clinical-ui-evidence.zip
+            /tmp/clinical-ui-source-sha.txt
           retention-days: 7

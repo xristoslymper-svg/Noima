@@ -8,8 +8,7 @@ export type WritingCommit={pending:WritingPending;provenance:WritingProvenance;r
 type Props={sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
 let activeCapture:symbol|null=null;
 
-// Keep recording controls in the editor's DOM subtree. A body portal is inert
-// and behind the top layer when VisitWorkspace opens its native modal dialog.
+// Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
  const [snapshot,setSnapshot]=useState<WritingSnapshot>({phase:'idle',pending:null,error:'',confirmed:p.value});
  const [seconds,setSeconds]=useState(0),[undo,setUndo]=useState<{before:string;after:string;expires:number}|null>(null);

@@ -248,7 +248,7 @@ export default function CalendarPage() {
       });
       const data = (await response.json().catch(() => ({}))) as { session?: { id: string; patient_id: string }; error?: string };
       if (!response.ok || !data.session) throw new Error(data.error || "session");
-      window.location.href = "/patients/demo/" + encodeURIComponent(data.session.patient_id) + "?tab=sessions&session=" + encodeURIComponent(data.session.id);
+      window.location.href = "/patients/demo/" + encodeURIComponent(data.session.patient_id) + "?tab=record&session=" + encodeURIComponent(data.session.id);
     } catch (cause) {
       setCalendarError(cause instanceof Error ? cause.message : "Δεν ήταν δυνατή η έναρξη της συνεδρίας.");
       setOpeningSession(null);

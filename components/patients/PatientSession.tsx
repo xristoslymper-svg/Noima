@@ -137,11 +137,10 @@ export default function PatientSession({
  useEffect(()=>{
   const root=documentRef.current;if(!root)return;
   const sections=[...root.querySelectorAll<HTMLElement>('[data-visit-part]')];
-  const scroller=root.closest<HTMLElement>('.visit-dialog')||document.scrollingElement;
   let frame=0;
-  const update=()=>{frame=0;const top=scroller instanceof HTMLElement&&scroller.matches('.visit-dialog')?scroller.getBoundingClientRect().top:0;setActivePart(activeVisitPart(sections.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
+  const update=()=>{frame=0;const top=0;setActivePart(activeVisitPart(sections.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
-  const target=scroller?.matches('.visit-dialog')?scroller:window;
+  const target=window;
   target.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
   const observer=new ResizeObserver(schedule);sections.forEach(section=>observer.observe(section));update();
   return()=>{target.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);observer.disconnect();if(frame)cancelAnimationFrame(frame)};

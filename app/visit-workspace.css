@@ -1,39 +1,39 @@
-.visit-dialog{width:min(1120px,96vw);max-height:94dvh;margin:auto;padding:0 36px 28px;border:1px solid #d9e3df;border-radius:18px;background:#fbfcfb;color:#233e36;box-shadow:0 24px 100px #102c3940;overflow-y:auto}
-.visit-dialog::backdrop{background:#142d3c80;backdrop-filter:blur(3px)}
-.visit-dialog-title{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:18px 0;background:#fbfcfbf5;border-bottom:1px solid #dce5e0}
-.visit-dialog-title div{display:flex;gap:20px;align-items:center}.visit-dialog-title span{font-size:11px;letter-spacing:.12em;color:#62766d}.visit-dialog-title strong{font-size:16px}
-.visit-dialog button,.visit-dialog input,.visit-dialog textarea,.visit-dialog select{font:inherit}.visit-dialog button{cursor:pointer}.visit-dialog button:disabled{cursor:default;opacity:.55}
-.visit-dialog :focus-visible{outline:2px solid #258975;outline-offset:3px}
-.visit-dialog .session-workspace{padding:0;border:0;background:transparent;box-shadow:none}.visit-dialog .session-work-head{padding:24px 0;margin:0;border:0}.visit-dialog h2{font-size:26px}.visit-dialog .session-work-head p{font-size:13px;color:#6a7b73}
+
+
+
+
+.visit-workspace button,.visit-workspace input,.visit-workspace textarea,.visit-workspace select{font:inherit}.visit-workspace button{cursor:pointer}.visit-workspace button:disabled{cursor:default;opacity:.55}
+.visit-workspace :focus-visible{outline:2px solid #258975;outline-offset:3px}
+.visit-workspace .session-workspace{padding:0;border:0;background:transparent;box-shadow:none}.visit-workspace .session-work-head{padding:24px 0;margin:0;border:0}.visit-workspace h2{font-size:26px}.visit-workspace .session-work-head p{font-size:13px;color:#6a7b73}
 .visit-document{min-width:0;border:0;padding:0;margin:0}.visit-part{border-top:1px solid #dbe5df;padding:24px 0}.visit-part>header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.visit-part>header span{font-size:12px;color:#809188}.visit-part h3{font-size:18px;font-weight:600;margin:0}.visit-hint,.visit-context-status{font-size:12px;color:#6b7e74;line-height:1.6}
-.visit-structured.mse{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.visit-structured.mse>.visit-hint,.visit-structured.mse>.visit-save,.visit-structured.mse>.save-state{grid-column:1/-1}.mse-item{padding:12px 0;border-bottom:1px solid #e3e9e5}.mse-item summary{cursor:pointer;display:flex;flex-direction:column;gap:4px;list-style:none}.mse-item summary>span:before{content:'＋';font-size:12px;color:#688c7e;margin-right:8px}.mse-item[open] summary>span:before{content:'−'}.mse-item summary>span{font-size:14px;font-weight:600}.mse-item summary>small{font-size:12px;color:#718078;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:440px}.mse-item p{font-size:12px;color:#78867e;line-height:1.5}.visit-dialog label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#50685c}.visit-dialog textarea,.visit-dialog input,.visit-dialog select{box-sizing:border-box;max-width:100%;border:1px solid #d5e1da;border-radius:8px;background:#fff;padding:10px 12px;color:#253e33}.visit-dialog textarea{width:100%;min-height:78px;resize:vertical;line-height:1.65}.mse-item label{font-size:0}.mse-item textarea{font-size:14px}.visit-dialog .clinical-section,.visit-dialog .risk-editor{border:0;box-shadow:none;background:transparent;padding:12px 0}.visit-dialog .clinical-section textarea{min-height:90px}.visit-dialog .visit-assessment-field{padding:12px 0}.visit-dialog .visit-assessment-field>label{font-weight:600;margin-bottom:8px}.visit-dialog .visit-assessment-field select{max-width:230px;font-weight:400}.visit-text-button,.visit-close{border:0;background:transparent;color:#347b64;padding:10px 0;font-size:12px}.visit-save{font-size:11px;color:#688273;min-height:16px}.visit-history details{padding:12px 0;border-bottom:1px solid #e3e9e5}.visit-history summary{cursor:pointer;font-size:14px;margin-bottom:8px}.visit-inline-fields{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.visit-inline-fields button{padding:10px;border:1px solid #c9d9d0;border-radius:7px;background:#f4f8f5}.visit-med-table{overflow:auto;margin-bottom:14px}.visit-med-table>div{min-width:650px;display:grid;grid-template-columns:1.3fr .7fr 1fr 1.5fr .9fr 1fr;gap:12px;padding:13px 0;border-bottom:1px solid #e1e8e3;font-size:12px;align-items:center}.visit-additional{padding:20px 0;font-size:13px}.visit-dialog .finalize-bar{position:sticky;bottom:0;background:#f1f6f2;border:1px solid #dce6df;border-radius:12px;padding:16px;z-index:3}.visit-dialog .finalize-bar span{max-width:620px}.visit-start-choices{display:flex;gap:8px;flex-wrap:wrap}.visit-start-choices button{padding:9px 12px;background:#f5f9f6;border:1px solid #d1e2d8;border-radius:8px;color:#376650}.visit-dialog .entry-modal-backdrop{z-index:20}.visit-dialog .entry-modal{max-height:88dvh;overflow:auto}.visit-dialog .icd-results{max-height:240px;overflow:auto}
-@media(max-width:700px){.visit-dialog{width:100vw;max-width:100vw;max-height:100dvh;height:100dvh;border-radius:0;padding:0 16px 20px}.visit-dialog-title div{align-items:flex-start;gap:5px;flex-direction:column}.visit-structured.mse{grid-template-columns:1fr}.visit-dialog .session-work-head{flex-direction:column;gap:12px}.visit-dialog .finalize-bar{position:static;flex-direction:column;align-items:stretch}.visit-inline-fields{align-items:stretch}.mse-item summary>small{max-width:calc(100vw - 40px)}}
+.visit-structured.mse{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.visit-structured.mse>.visit-hint,.visit-structured.mse>.visit-save,.visit-structured.mse>.save-state{grid-column:1/-1}.mse-item{padding:12px 0;border-bottom:1px solid #e3e9e5}.mse-item summary{cursor:pointer;display:flex;flex-direction:column;gap:4px;list-style:none}.mse-item summary>span:before{content:'＋';font-size:12px;color:#688c7e;margin-right:8px}.mse-item[open] summary>span:before{content:'−'}.mse-item summary>span{font-size:14px;font-weight:600}.mse-item summary>small{font-size:12px;color:#718078;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:440px}.mse-item p{font-size:12px;color:#78867e;line-height:1.5}.visit-workspace label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#50685c}.visit-workspace textarea,.visit-workspace input,.visit-workspace select{box-sizing:border-box;max-width:100%;border:1px solid #d5e1da;border-radius:8px;background:#fff;padding:10px 12px;color:#253e33}.visit-workspace textarea{width:100%;min-height:78px;resize:vertical;line-height:1.65}.mse-item label{font-size:0}.mse-item textarea{font-size:14px}.visit-workspace .clinical-section,.visit-workspace .risk-editor{border:0;box-shadow:none;background:transparent;padding:12px 0}.visit-workspace .clinical-section textarea{min-height:90px}.visit-workspace .visit-assessment-field{padding:12px 0}.visit-workspace .visit-assessment-field>label{font-weight:600;margin-bottom:8px}.visit-workspace .visit-assessment-field select{max-width:230px;font-weight:400}.visit-text-button,.visit-close{border:0;background:transparent;color:#347b64;padding:10px 0;font-size:12px}.visit-save{font-size:11px;color:#688273;min-height:16px}.visit-history details{padding:12px 0;border-bottom:1px solid #e3e9e5}.visit-history summary{cursor:pointer;font-size:14px;margin-bottom:8px}.visit-inline-fields{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.visit-inline-fields button{padding:10px;border:1px solid #c9d9d0;border-radius:7px;background:#f4f8f5}.visit-med-table{overflow:auto;margin-bottom:14px}.visit-med-table>div{min-width:650px;display:grid;grid-template-columns:1.3fr .7fr 1fr 1.5fr .9fr 1fr;gap:12px;padding:13px 0;border-bottom:1px solid #e1e8e3;font-size:12px;align-items:center}.visit-additional{padding:20px 0;font-size:13px}.visit-workspace .finalize-bar{position:sticky;bottom:0;background:#f1f6f2;border:1px solid #dce6df;border-radius:12px;padding:16px;z-index:3}.visit-workspace .finalize-bar span{max-width:620px}.visit-start-choices{display:flex;gap:8px;flex-wrap:wrap}.visit-start-choices button{padding:9px 12px;background:#f5f9f6;border:1px solid #d1e2d8;border-radius:8px;color:#376650}.visit-workspace .entry-modal-backdrop{z-index:20}.visit-workspace .entry-modal{max-height:88dvh;overflow:auto}.visit-workspace .icd-results{max-height:240px;overflow:auto}
+@media(max-width:700px){.visit-structured.mse{grid-template-columns:1fr}.visit-workspace .session-work-head{flex-direction:column;gap:12px}.visit-workspace .finalize-bar{position:static;flex-direction:column;align-items:stretch}.visit-inline-fields{align-items:stretch}.mse-item summary>small{max-width:calc(100vw - 40px)}}
 
 .visit-code-picker ul{list-style:none;padding:0;max-height:230px;overflow:auto;border:1px solid #dbe5df;border-radius:8px}.visit-code-picker li button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #e4ebe6;background:white;font-size:13px}.visit-code-picker li button:hover{background:#edf5ef}.visit-code-values{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.visit-code-values>span{padding:5px 8px;background:#eaf3ed;border-radius:6px;font-size:12px}.visit-code-values button{border:0;background:none;margin-left:8px}.visit-history summary small{display:block;color:#7b8980;font-size:12px;font-weight:400;margin-top:4px}
 
 /* Clinical document pass: calm canvas, progressive disclosure, minimal chrome */
-.visit-dialog{width:min(1180px,97vw);max-height:96dvh;padding:0 44px 24px;border-color:#e4e9e5;border-radius:20px;background:#fbfaf7;color:#263a33;box-shadow:0 28px 100px rgba(20,45,60,.22)}
-.visit-dialog::backdrop{background:rgba(24,39,45,.48);backdrop-filter:blur(4px)}
-.visit-dialog-title{padding:15px 0;background:rgba(251,250,247,.96);border-bottom:1px solid #e7ebe8}
-.visit-dialog-title span{font-size:10px;letter-spacing:.1em;color:#87938d}.visit-dialog-title strong{font-size:14px;font-weight:650}
-.visit-dialog .session-work-head{padding:26px 0 14px;align-items:flex-start}.visit-dialog .session-work-head h2{font-size:22px;letter-spacing:-.025em;margin:0 0 4px}.visit-dialog .session-work-head p{margin:0;color:#8a958f;font-size:11px}
-.visit-dialog .session-save-overview{font-size:11px;color:#6f8278}.visit-dialog .session-save-overview small{display:none}
+
+
+
+
+.visit-workspace .session-work-head{padding:26px 0 14px;align-items:flex-start}.visit-workspace .session-work-head h2{font-size:22px;letter-spacing:-.025em;margin:0 0 4px}.visit-workspace .session-work-head p{margin:0;color:#8a958f;font-size:11px}
+.visit-workspace .session-save-overview{font-size:11px;color:#6f8278}.visit-workspace .session-save-overview small{display:none}
 .visit-document{background:transparent}.visit-part{padding:34px 0;border-top:1px solid #e7ebe8}.visit-part:first-child{border-top:0}
 .visit-part>header{margin-bottom:18px}.visit-part>header h3{font-size:17px;letter-spacing:-.015em;font-weight:650;color:#263d35}
-.visit-dialog .clinical-section{padding:0}.visit-dialog .clinical-section-head{margin-bottom:8px}.visit-dialog .clinical-section-head h3{font-size:13px;font-weight:600}.visit-dialog .clinical-section-head span{display:none}
-.visit-dialog .section-mic{width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:#6f857a;font-size:0;display:inline-flex;align-items:center;justify-content:center}.visit-dialog .section-mic:hover{background:#eef3ef;color:#2f705b}
+.visit-workspace .clinical-section{padding:0}.visit-workspace .clinical-section-head{margin-bottom:8px}.visit-workspace .clinical-section-head h3{font-size:13px;font-weight:600}.visit-workspace .clinical-section-head span{display:none}
+.visit-workspace .section-mic{width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:#6f857a;font-size:0;display:inline-flex;align-items:center;justify-content:center}.visit-workspace .section-mic:hover{background:#eef3ef;color:#2f705b}
 .clinical-section-head .section-mic--icon{width:36px;min-width:36px;height:36px;min-height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;gap:0;border-radius:10px;font-size:0}
 @media(max-width:760px){.clinical-section-head .section-mic--icon{width:44px;min-width:44px;height:44px;min-height:44px}}
-.visit-dialog .section-editor,.visit-dialog textarea{background:rgba(255,255,255,.62);border:1px solid #e0e6e2;border-radius:10px;box-shadow:none;transition:border-color .15s,background .15s,box-shadow .15s}.visit-dialog textarea:focus{background:#fff;border-color:#83aa9a;box-shadow:0 0 0 3px rgba(80,130,108,.07);outline:0}
-.visit-dialog .clinical-section>div[role=status]{min-height:0;font-size:10px;color:#93a099}.visit-dialog .clinical-section>div[role=status]:empty{display:none}
+.visit-workspace .section-editor,.visit-workspace textarea{background:rgba(255,255,255,.62);border:1px solid #e0e6e2;border-radius:10px;box-shadow:none;transition:border-color .15s,background .15s,box-shadow .15s}.visit-workspace textarea:focus{background:#fff;border-color:#83aa9a;box-shadow:0 0 0 3px rgba(80,130,108,.07);outline:0}
+.visit-workspace .clinical-section>div[role=status]{min-height:0;font-size:10px;color:#93a099}.visit-workspace .clinical-section>div[role=status]:empty{display:none}
 .visit-structured.mse{display:block}.visit-structured.mse>.visit-hint{margin:0 0 10px}
 .mse-item{padding:0;border-bottom:1px solid #e7ebe8}.mse-item summary{min-height:54px;display:grid;grid-template-columns:190px 1fr;align-items:center;gap:20px;padding:0 4px}.mse-item summary>span{font-size:13px;font-weight:650;color:#31473f}.mse-item summary>span:before{display:none}.mse-item summary>small{font-size:12px;color:#6f7e77;max-width:none}.mse-item summary>small.mse-empty{color:#a0aaa5}.mse-item[open]{padding:14px 4px 18px}.mse-item[open] summary{min-height:32px}.mse-item p{margin:6px 0 12px;color:#89948f}.mse-writing{position:relative}.mse-writing textarea{padding-right:48px;min-height:82px}.mse-mic{position:absolute;right:9px;top:9px;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:#698277;display:flex;align-items:center;justify-content:center}.mse-mic:hover{background:#edf3ef;color:#2f705b}
 .risk-editor>h3{display:none}.risk-principle{font-size:11px;color:#87948d;margin:0 0 16px}.risk-grid{display:grid;gap:18px}.risk-grid label{display:grid;grid-template-columns:minmax(190px,1fr) 2fr;align-items:center;gap:20px;padding-bottom:15px;border-bottom:1px solid #e9edea}.risk-choice-group{display:flex;gap:6px;flex-wrap:wrap}.risk-choice-group button{border:1px solid #dfe6e1;background:rgba(255,255,255,.55);color:#63736b;border-radius:999px;padding:7px 11px;font-size:11px}.risk-choice-group button.selected{border-color:#6d9987;background:#e8f1ec;color:#275e4d;font-weight:700}.risk-note{margin-top:18px}.review-signal{border:1px solid #ead6b5!important;background:#fff9ef!important;border-radius:10px!important;padding:14px!important}
 .visit-additional{opacity:.72}.visit-additional[open]{opacity:1}.visit-additional>summary{font-size:11px;color:#70837a}
-.visit-dialog .finalize-bar{display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;bottom:0;margin:12px -12px 0;padding:13px 14px;background:rgba(247,249,246,.96);border:1px solid #e0e7e2;border-radius:12px;box-shadow:0 -8px 24px rgba(35,62,54,.035);backdrop-filter:blur(8px)}
-.visit-finalize-status{display:flex;flex-direction:column;gap:2px}.visit-finalize-status strong{font-size:11px;color:#557568}.visit-finalize-status span{font-size:10px;color:#98734f}.visit-dialog .finalize-bar>button{border:0;border-radius:9px;background:#2f6f5b;color:#fff;padding:11px 15px;font-size:12px;font-weight:700}
+.visit-workspace .finalize-bar{display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;bottom:0;margin:12px -12px 0;padding:13px 14px;background:rgba(247,249,246,.96);border:1px solid #e0e7e2;border-radius:12px;box-shadow:0 -8px 24px rgba(35,62,54,.035);backdrop-filter:blur(8px)}
+.visit-finalize-status{display:flex;flex-direction:column;gap:2px}.visit-finalize-status strong{font-size:11px;color:#557568}.visit-finalize-status span{font-size:10px;color:#98734f}.visit-workspace .finalize-bar>button{border:0;border-radius:9px;background:#2f6f5b;color:#fff;padding:11px 15px;font-size:12px;font-weight:700}
 .visit-close{margin-top:8px!important;font-size:11px!important;color:#70837a!important}
-@media(max-width:700px){.visit-dialog{padding:0 18px 18px}.mse-item summary{grid-template-columns:1fr;gap:3px;padding:12px 2px}.risk-grid label{grid-template-columns:1fr;gap:8px}.visit-dialog .finalize-bar{margin-left:0;margin-right:0}.visit-dialog .session-work-head{padding-top:20px}}
+@media(max-width:700px){.mse-item summary{grid-template-columns:1fr;gap:3px;padding:12px 2px}.risk-grid label{grid-template-columns:1fr;gap:8px}.visit-workspace .finalize-bar{margin-left:0;margin-right:0}.visit-workspace .session-work-head{padding-top:20px}}
 
 /* Compact MSE + risk controls */
 @media(min-width:900px){
@@ -60,14 +60,14 @@
 .visit-history-shell>p[role=status]{margin:7px 15px 9px;font-size:10px;color:#89968f}
 
 /* Unified pastel clinical design system */
-.visit-dialog{
+.visit-workspace{
  --visit-canvas:#f8f6f1;--visit-surface:#fffefa;--visit-sage:#dfece5;--visit-sage-2:#edf4f0;
  --visit-sage-ink:#315e50;--visit-blue:#e8eff2;--visit-peach:#f6e9df;--visit-rose:#f5e7e5;
  --visit-ink:#263a34;--visit-muted:#7c8b84;--visit-line:#e2e7e3;
  background:var(--visit-canvas);color:var(--visit-ink);font-family:var(--font-sans,Arial,sans-serif)
 }
-.visit-dialog h2,.visit-dialog h3,.visit-dialog strong,.visit-dialog label,.visit-dialog button{font-family:inherit}
-.visit-dialog .session-work-head h2{font-size:21px;font-weight:680;color:var(--visit-ink)}
+.visit-workspace h2,.visit-workspace h3,.visit-workspace strong,.visit-workspace label,.visit-workspace button{font-family:inherit}
+.visit-workspace .session-work-head h2{font-size:21px;font-weight:680;color:var(--visit-ink)}
 .visit-part>header h3{font-size:16px;font-weight:680;color:var(--visit-ink)}
 .visit-hint,.risk-principle,.visit-history-intro span{font-size:11px;line-height:1.55;color:var(--visit-muted)}
 .visit-scroll-nav{position:sticky;top:61px;z-index:8;display:flex;align-items:flex-start;justify-content:center;padding:10px 18px 9px;margin:0 -20px 8px;background:rgba(248,246,241,.94);backdrop-filter:blur(12px);border-bottom:1px solid rgba(220,227,222,.75)}
@@ -88,10 +88,10 @@
 .visit-history-shell{background:#f3f5f1;border-color:var(--visit-line);box-shadow:0 6px 24px rgba(50,70,62,.025)}
 .visit-history-intro{background:#f8faf6;border-color:var(--visit-line)}.visit-history-scroll{background:rgba(255,254,250,.72)}
 .history-question textarea{border-color:#e1e6e2!important;background:var(--visit-surface)!important}
-.visit-dialog textarea,.visit-dialog input,.visit-dialog select{font-family:inherit;color:var(--visit-ink)}
-.visit-dialog textarea:focus,.visit-dialog input:focus{border-color:#9dbdad!important;box-shadow:0 0 0 3px rgba(134,172,154,.11)!important}
+.visit-workspace textarea,.visit-workspace input,.visit-workspace select{font-family:inherit;color:var(--visit-ink)}
+.visit-workspace textarea:focus,.visit-workspace input:focus{border-color:#9dbdad!important;box-shadow:0 0 0 3px rgba(134,172,154,.11)!important}
 .review-signal{background:var(--visit-peach)!important;border-color:#ead7c7!important;color:#694f3f}
-.visit-dialog .finalize-bar{background:rgba(247,249,245,.95);border-color:#dfe6e1}.visit-dialog .finalize-bar>button{background:#426f60}.visit-dialog .finalize-bar>button:hover{background:#365f52}
+.visit-workspace .finalize-bar{background:rgba(247,249,245,.95);border-color:#dfe6e1}.visit-workspace .finalize-bar>button{background:#426f60}.visit-workspace .finalize-bar>button:hover{background:#365f52}
 @media(max-width:700px){.visit-scroll-nav{top:55px;overflow-x:auto;justify-content:flex-start}.visit-scroll-nav button{min-width:70px}.visit-scroll-nav span{font-size:8px}}
 
 /* Lightweight risk matrix */
@@ -108,11 +108,11 @@
 @media(max-width:520px){.risk-grid label{grid-template-columns:1fr;gap:7px;padding:10px 0}.risk-choice-group{justify-self:start}}
 
 /* Final chrome reduction */
-.visit-dialog-title{min-height:54px;display:flex;align-items:center;justify-content:space-between}.visit-dialog-title>strong{font-size:14px;font-weight:680;letter-spacing:.01em;color:var(--visit-ink)}
-.visit-dialog .finalize-bar{justify-content:flex-end;padding:9px 12px;min-height:0}.visit-finalize-status{display:none}
+
+.visit-workspace .finalize-bar{justify-content:flex-end;padding:9px 12px;min-height:0}.visit-finalize-status{display:none}
 
 /* Contextual completion guidance; shown only after an attempted completion. */
-.visit-dialog .finalize-bar{flex-wrap:wrap}
+.visit-workspace .finalize-bar{flex-wrap:wrap}
 .visit-finalize-guidance{font-size:11px;color:#60766c;flex:1;order:-1}
 .visit-finalize-guidance button{border:0;background:transparent;color:#347b64;text-decoration:underline;padding:4px}
 
@@ -134,7 +134,7 @@
 .mse-options button[aria-pressed=true]{background:#e5f0e8;border-color:#638e77;color:#214f39;font-weight:600}
 .mse-options button[aria-pressed=true]:before{content:'✓ ';}
 .mse-options button:focus-visible{outline:2px solid #357653;outline-offset:2px}
-.visit-dialog .mse-note-label{font-size:12px}
+.visit-workspace .mse-note-label{font-size:12px}
 /* Clinical assessment: one reading path, with optional deeper reasoning. MSE styles are untouched. */
 .visit-structured.assessment{display:grid;grid-template-columns:minmax(0,1fr);gap:0;max-width:800px}
 .visit-structured.assessment>.visit-assessment-field{min-width:0;padding:14px 0 18px}
@@ -151,7 +151,7 @@
 .visit-assessment-additional-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:0 0 6px}
 .visit-assessment-additional-fields .visit-assessment-field{min-width:0}
 .visit-assessment-additional-fields>.visit-text-button{justify-self:start}
-.visit-dialog .visit-assessment-field{position:relative;padding:12px 0;border-bottom:1px solid #e0e6df}
+.visit-workspace .visit-assessment-field{position:relative;padding:12px 0;border-bottom:1px solid #e0e6df}
 .visit-assessment-field>label{padding-right:20px}
 .visit-assessment-field textarea{min-height:76px!important;field-sizing:content}
 .diagnosis-certainty{font-size:11px!important;font-weight:400!important}
@@ -165,7 +165,7 @@
 .mse-axis legend{float:left;width:180px;box-sizing:border-box;padding-top:8px;padding-right:12px;margin:0}
 .mse-options{margin-left:180px}.mse-axis:after{content:'';display:block;clear:both}
 .visit-scroll-nav button{font-size:11px;color:#73857a}
-.visit-dialog-title>button{border:1px solid #d4dfd7;border-radius:8px;background:#fffefa;padding:7px 11px;color:#426b55;cursor:pointer}
+
 @media(max-width:700px){.mse-axis legend{float:none;width:auto;padding-top:0;margin-bottom:7px}.mse-options{margin-left:0}}
 
 /* Independent vertical domain order: 1–6 left, 7–12 right. */
@@ -203,21 +203,21 @@
 
 
 /* Compact clinical writing density: preserve layout, reduce vertical stretch. */
-.visit-dialog .clinical-section .section-editor{min-height:64px!important;padding-top:9px!important;padding-bottom:9px!important}
-.visit-dialog .visit-assessment-field{padding-top:8px!important;padding-bottom:8px!important}
-.visit-dialog .visit-assessment-field textarea{min-height:58px!important;padding-top:8px!important;padding-bottom:8px!important}
-.visit-dialog .history-question textarea{min-height:58px!important}
+.visit-workspace .clinical-section .section-editor{min-height:64px!important;padding-top:9px!important;padding-bottom:9px!important}
+.visit-workspace .visit-assessment-field{padding-top:8px!important;padding-bottom:8px!important}
+.visit-workspace .visit-assessment-field textarea{min-height:58px!important;padding-top:8px!important;padding-bottom:8px!important}
+.visit-workspace .history-question textarea{min-height:58px!important}
 
 /* MSE: same two-column/domain structure with tighter internal rhythm. */
-.visit-dialog .mse-column{gap:4px}
-.visit-dialog .mse-column .mse-item:not([open]) summary{height:88px!important;min-height:88px!important;padding:9px 12px!important}
-.visit-dialog .mse-item summary{padding:9px 12px!important}
-.visit-dialog .mse-item[open]{padding:0 12px 11px!important}
-.visit-dialog .mse-body{gap:8px;padding-top:2px}
-.visit-dialog .mse-axis legend{margin-bottom:5px}
-.visit-dialog .mse-options{gap:4px}
-.visit-dialog .mse-options button{min-height:30px;padding:5px 8px}
-.visit-dialog .mse-note-label textarea{min-height:58px!important}
+.visit-workspace .mse-column{gap:4px}
+.visit-workspace .mse-column .mse-item:not([open]) summary{height:88px!important;min-height:88px!important;padding:9px 12px!important}
+.visit-workspace .mse-item summary{padding:9px 12px!important}
+.visit-workspace .mse-item[open]{padding:0 12px 11px!important}
+.visit-workspace .mse-body{gap:8px;padding-top:2px}
+.visit-workspace .mse-axis legend{margin-bottom:5px}
+.visit-workspace .mse-options{gap:4px}
+.visit-workspace .mse-options button{min-height:30px;padding:5px 8px}
+.visit-workspace .mse-note-label textarea{min-height:58px!important}
 
 /* Make calendar intent explicit: this scheduler is for the next encounter. */
 .visit-next-heading{margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--visit-line)}
@@ -266,4 +266,10 @@
 /* Reserve scroll space for the temporary, compact field recorder. */
 body.clinical-recording-active{padding-bottom:90px;scroll-padding-bottom:100px}
 .clinical-recording-active .visit-document{padding-bottom:100px}
-.clinical-recording-active .visit-dialog{scroll-padding-bottom:100px}
+.clinical-recording-active 
+
+/* The visit shares the patient page and its document scroll. */
+.visit-workspace{width:100%;max-width:none;height:auto;max-height:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;overflow:visible}
+.visit-workspace .session-workspace{min-width:0}.visit-workspace .finalize-bar{position:static;margin:16px 0 0;flex-wrap:wrap}.visit-workspace .session-work-head{padding-top:8px}
+.record-entry{max-width:640px;padding:12px 0}.record-entry button{display:block;margin:10px 0;padding:12px 16px;border:1px solid #cfddd3;border-radius:10px;background:#f1f7f2;color:#315f4d;cursor:pointer}
+@media(max-width:760px){.visit-workspace .finalize-bar{align-items:stretch;flex-direction:column}.visit-workspace .finalize-bar button{min-height:44px}}

@@ -46,10 +46,10 @@ export function mseTimeline(bundle:PatientBundle,sessionId:string,startedAt:stri
  return {visits,references};
 }
 
-export type WorkspaceTab='summary'|'timeline'|'treatment'|'history';
+export type WorkspaceTab='summary'|'timeline'|'treatment'|'history'|'record';
 type LegacyWorkspaceTab='sessions'|'medications'|'psychometrics';
 function canonicalTab(tab:WorkspaceTab|LegacyWorkspaceTab):WorkspaceTab{
- return tab==='sessions'?'timeline':tab==='medications'||tab==='psychometrics'?'treatment':tab;
+ return tab==='sessions'?'record':tab==='medications'||tab==='psychometrics'?'treatment':tab;
 }
 export type WorkspaceHeroAction='resume'|'new_initial'|'new_follow_up';
 export function workspaceHeroAction(established:boolean,hasDraft:boolean,hasIntended:boolean):WorkspaceHeroAction{
@@ -59,8 +59,13 @@ export function workspaceHeroAction(established:boolean,hasDraft:boolean,hasInte
 export function workspaceTransitionSearch(search:string,tab:WorkspaceTab|LegacyWorkspaceTab,sessionId?:string|null,options:{clearAppointment?:boolean}={}){
  const params=new URLSearchParams(search);
  const destination=canonicalTab(tab);
- if(destination==='summary')params.delete('tab');else params.set('tab',destination);
- if(destination==='timeline'&&sessionId)params.set('session',sessionId);else params.delete('session');
+ const selected=sessionId===undefined?(params.get('session')||params.get('record_session')):sessionId;
+ params.delete('record_session');
+ if(destination==='summary'&&!selected)params.delete('tab');else params.set('tab',destination);
+ if(selected)params.set('session',selected);else params.delete('session');
+ // Legacy timeline/session links opened visits. Background selection on the
+ // timeline has its own URL key so refresh can keep the timeline visible.
+ if(destination==='timeline'&&selected){params.delete('session');params.set('record_session',selected)}
  if(tab==='psychometrics')params.set('section','measurements');else params.delete('section');
  params.delete('assessment');
  if(options.clearAppointment)params.delete('appointment');
@@ -73,11 +78,11 @@ export function mergeVisitContext(visit:PatientBundle,context:PatientBundle|null
  const merge=<T>(old:T[],fresh:T[],key:(row:T)=>string)=>[...old.filter(row=>!fresh.some(item=>key(item)===key(row))),...fresh];
  return {...context,sessions:merge(context.sessions,visit.sessions,s=>s.id),sections:merge(context.sections,visit.sections,s=>s.id),risks:merge(context.risks,visit.risks,r=>r.session_id),proposals:merge(context.proposals,visit.proposals,p=>p.id),addenda:merge(context.addenda,visit.addenda,a=>a.id),corrections:merge(context.corrections||[],visit.corrections||[],c=>c.id)};
 }
-const tabs=['summary','timeline','treatment','history','sessions','medications','psychometrics'];
+const tabs=['summary','timeline','treatment','history','record','sessions','medications','psychometrics'];
 export function workspaceLocation(search:string){
  const params=new URLSearchParams(search),requested=params.get('tab');
- const tab:WorkspaceTab=requested&&tabs.includes(requested)?canonicalTab(requested as WorkspaceTab|LegacyWorkspaceTab):(!requested&&params.get('session')?'timeline':'summary');
- return {tab,sessionId:tab==='timeline'?params.get('session'):null};
+ const tab:WorkspaceTab=requested&&tabs.includes(requested)?canonicalTab(requested as WorkspaceTab|LegacyWorkspaceTab):(!requested&&params.get('session')?'record':'summary');
+ return {tab:tab==='timeline'&&params.get('session')?'record' as const:tab,sessionId:params.get('session')||params.get('record_session')};
 }
 export function workspaceMeasurementsRequested(search:string){
  const params=new URLSearchParams(search);

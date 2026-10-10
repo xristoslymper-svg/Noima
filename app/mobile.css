@@ -1,0 +1,218 @@
+/* Shared small-screen layer. Desktop layouts and clinical behaviour stay in
+   their owning components; only narrow viewports use these rules. */
+@media screen and (max-width: 760px) {
+  html { scroll-padding-top: 76px; }
+  .app-shell, .workspace, .secondary-content, .patient-main,
+  .calendar-page-grid, .registry-wrap, .psy-content { min-width: 0; }
+  .content, .calendar-page-content, .generic-patient-page,
+  .secondary-content .registry-wrap, .secondary-content .psy-content {
+    padding: 22px 14px max(36px, env(safe-area-inset-bottom)) !important;
+  }
+  .page-heading, .calendar-page-heading, .library-heading,
+  .secondary-content.registry-page .registry-heading {
+    display: flex; flex-direction: column; align-items: stretch; gap: 16px;
+  }
+  .page-heading h1, .registry-heading h1, .patient-hero h1,
+  .library-heading h1 { font-size: 28px; overflow-wrap: anywhere; }
+  .sidebar:not(.mobile-open) { visibility: hidden; pointer-events: none; }
+  .sidebar.mobile-open { visibility: visible; overflow-y: auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .mobile-menu-button, .mobile-nav-close { width: 44px; height: 44px; }
+  .sidebar .nav-item { min-height: 48px; }
+  .topbar .profile { min-height: 44px; }
+  :is(button, a, summary, input, select, textarea):focus-visible { outline: 2px solid #2f6f63; outline-offset: 3px; }
+  /* 16px avoids focus zoom in mobile Safari; zoom itself remains enabled. */
+  body input:not([type=checkbox]):not([type=radio]), body select, body textarea {
+    font-size: 16px !important; min-width: 0; max-width: 100%;
+  }
+  body input:not([type=checkbox]):not([type=radio]), body select { min-height: 44px; }
+  button { touch-action: manipulation; }
+  fieldset { min-width: 0; }
+  textarea { width: 100%; }
+  .card, .brief-block { padding: 16px; }
+  .metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .metric { min-width: 0; padding: 14px; }
+  .metric span, .metric small { overflow-wrap: anywhere; }
+  .card-head, .session-info, .patient-name-line { min-width: 0; }
+  .patient-name-line { flex-wrap: wrap; }
+  .session-info strong { overflow-wrap: anywhere; }
+  .session-actions { flex-wrap: wrap; }
+  .session-actions .small-button { display: inline-flex; min-height: 44px; }
+  .session-mic { width: 44px; height: 44px; }
+  .dashboard-widget-sheet { padding: 20px 14px; max-height: 90dvh; overflow-y: auto; }
+  .dashboard-widget-sheet button, .review-row-actions a { min-height: 44px; }
+  .dashboard-widget-row, .review-submission-row { min-width: 0; overflow-wrap: anywhere; }
+  .secondary-content.registry-page .registry-stats { display: flex; flex-wrap: wrap; }
+  .registry-filters { flex-wrap: wrap; gap: 6px; }
+  .registry-filters button { min-height: 44px; }
+  .registry-filters select { width: 100%; }
+  .registry-row { grid-template-columns: 30px minmax(0,1fr) 44px; gap: 10px; padding: 14px 12px; }
+  .registry-row .registry-patient { grid-column: 2; align-items: flex-start; }
+  .registry-patient > div { min-width: 0; }
+  .registry-patient strong, .registry-patient small { overflow-wrap: anywhere; }
+  .registry-avatar { display: none; }
+  .registry-appointment { grid-column: 2; justify-self: start; min-height: 44px; font-size: 13px; }
+  .registry-open { grid-column: 3; grid-row: auto; min-width: 44px; min-height: 44px; }
+  .registry-labels { display: none; }
+  .registry-heading .record { align-self: flex-start; }
+  .patient-hero { min-width: 0; }
+  .patient-tabs { max-width: 100%; }
+  .patient-tabs button { flex-shrink: 0; min-height: 44px; }
+  .patient-voice-cta { width: 100%; white-space: normal; }
+  .patient-details-head, .panel-heading { flex-wrap: wrap; gap: 12px; }
+  .patient-details-card button, .panel-heading button { min-height: 44px; }
+  .clinical-table-wrap, .visit-med-table { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+  .clinical-table-wrap button { min-height: 44px; }
+  .assessment-assign, .assessment-share > div { flex-wrap: wrap; }
+  .assessment-assign label { min-width: 0; width: 100%; }
+  .assessment-share { overflow-wrap: anywhere; }
+  .library-heading, .library-heading > div { min-width: 0; }
+  .library-search, .psy-search { width: 100%; max-width: 100%; }
+  .psy-filters, .library-filters { flex-wrap: wrap; }
+  .instrument-actions button, .icon-only-actions button { min-width: 44px; min-height: 44px; }
+  /* Dialogs scroll inside the visible viewport, including landscape phones. */
+  .calendar-move-overlay, .calendar-appointment-popover-backdrop,
+  .entry-modal-backdrop, .voice-command-overlay { padding: 10px; overflow-y: auto; }
+  .calendar-appointment-dialog, .calendar-move-dialog, .calendar-appointment-popover,
+  .entry-modal, .voice-command-card, .instrument-modal, .assessment-email-dialog {
+    width: min(100%, 620px); max-width: 100%; max-height: calc(100dvh - 20px);
+    overflow-y: auto; overscroll-behavior: contain; padding: 22px 16px;
+  }
+  .calendar-appointment-dialog, .calendar-appointment-popover { overflow-wrap: anywhere; }
+  .calendar-popover-close, .calendar-move-close, .entry-modal-close,
+  .voice-command-close, .history-preview-close { min-width: 44px; min-height: 44px; }
+  .appointment-form-grid, .appointment-quick-patient-grid { grid-template-columns: minmax(0,1fr); }
+  .appointment-form-grid > *, .appointment-form-grid label { min-width: 0; grid-column: auto; }
+  .appointment-patient-field { grid-column: 1 / -1; }
+  .appointment-editor-footer { flex-direction: column; align-items: stretch; }
+  .appointment-editor-footer button { min-height: 44px; white-space: normal; }
+  .appointment-linked-record, .calendar-series-scope { flex-wrap: wrap; }
+  .calendar-page-actions { display: flex; flex-wrap: wrap; width: 100%; }
+  .calendar-page-actions button { min-height: 44px; }
+  .calendar-control-bar { flex-wrap: wrap; gap: 8px; }
+  .calendar-date-nav { width: 100%; flex-wrap: wrap; }
+  .calendar-date-nav strong { flex: 1; text-align: center; }
+  .calendar-filter { flex: 1 1 100%; }
+  .calendar-filter select { width: 100%; }
+  .calendar-date-input { flex: 1; }
+  .calendar-control-bar button { min-width: 44px; min-height: 44px; }
+  .calendar-view-switch { display: flex; margin-left: 0; }
+  .calendar-view-switch button { font-size: 13px !important; }
+  .calendar-week-card.interactive-week { max-width: 100%; overflow: auto; }
+  .calendar-page-grid .clinical-agenda-row { grid-template-columns: 54px 2px minmax(0,1fr) !important; }
+  .agenda-actions { grid-column: 3; flex-wrap: wrap; justify-content: flex-start !important; }
+  .agenda-actions button, .calendar-icon-actions button, .calendar-icon-actions a,
+  .calendar-payment-choice button, .calendar-quick-cancel { min-width: 44px; min-height: 44px; }
+  .calendar-name-row { min-width: 0; }
+  .calendar-name-row h3 { overflow-wrap: anywhere; }
+  .calendar-undo { left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: auto; flex-wrap: wrap; }
+  /* Full-screen visit: one vertical reading flow, no nested history scroll. */
+  dialog.visit-dialog {
+    width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh;
+    margin: 0; border: 0; border-radius: 0;
+    padding: env(safe-area-inset-top) 14px max(20px, env(safe-area-inset-bottom));
+  }
+  .visit-dialog-title { min-height: 58px; gap: 12px; z-index: 10; }
+  .visit-dialog-title strong { min-width: 0; overflow-wrap: anywhere; }
+  .visit-dialog-title button { flex-shrink: 0; min-width: 44px; min-height: 44px; }
+  .visit-scroll-nav { position: static; margin: 0; padding: 8px 0; justify-content: flex-start; overflow-x: auto; }
+  .visit-scroll-nav button { min-width: 84px; min-height: 44px; }
+  .visit-scroll-nav span { font-size: 11px; }
+  .visit-part { scroll-margin-top: 90px; }
+  .visit-history-intro { flex-direction: column; gap: 6px; }
+  .visit-history-scroll { max-height: none; overflow: visible; padding: 4px 12px 16px; }
+  .visit-dialog .finalize-bar { position: static; flex-direction: column; align-items: stretch; margin: 12px 0 0; }
+  .visit-dialog .finalize-bar button { min-height: 44px; }
+  .visit-dialog .section-mic, .visit-dialog .mse-mic { width: 44px; height: 44px; }
+  .visit-dialog :is(.mse-options button,.mse-review-actions button,.risk-choice-group button,.visit-text-button,.visit-close) { min-height: 44px; }
+  .visit-dialog .visit-inline-fields { display: grid; grid-template-columns: minmax(0,1fr); }
+  .visit-inline-fields label { min-width: 0; max-width: none; }
+  .visit-inline-fields input, .visit-inline-fields select { width: 100%; }
+  .visit-dialog .visit-additional { opacity: 1; }
+  .mse-item summary > small { white-space: normal; }
+  .risk-tree-options { flex-wrap: wrap; }
+  .risk-tree-options label { min-height: 44px; }
+  .intake-shell, .assessment-page, .scan-page { padding: 20px 14px; }
+  .intake-card, .scan-card, .pilot-card { min-width: 0; overflow-wrap: anywhere; }
+  .intake-card button, .intake-card summary, .intake-choice, .assessment-page label,
+  .assessment-page button, .pilot-card button, .pilot-card summary { min-height: 44px; }
+  .intake-actions, .pilot-actions { flex-wrap: wrap; }
+  .intake-fields, .field-grid, .intake-review-fields { grid-template-columns: minmax(0,1fr); }
+  .pilot-page { padding: 24px 14px; }
+  .pilot-card { padding: 24px 18px; }
+  .account-email { overflow-wrap: anywhere; }
+}
+
+@media screen and (max-width: 480px) {
+
+  .review-row-actions { grid-template-columns: minmax(0,1fr); }
+  .calendar-move-comparison { grid-template-columns: minmax(0,1fr); }
+  .calendar-move-arrow { transform: rotate(90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
+}
+
+@media screen and (max-width:760px) {
+ .medication-table-editor { overflow:visible; }
+ .medication-table-editor .medication-lean-table { display:block; min-width:0; width:100%; }
+ .medication-lean-table thead { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
+ .medication-lean-table tbody { display:block; }
+ .medication-lean-table tbody tr { display:block; padding:14px; border-bottom:1px solid #dce5df; }
+ .medication-lean-table tbody tr:last-child { border-bottom:0; }
+ .medication-lean-table tbody th, .medication-lean-table tbody td { display:block; width:auto!important; min-width:0!important; max-width:none!important; padding:7px 0!important; border:0; white-space:normal; overflow-wrap:anywhere; }
+ .medication-lean-table tbody th { font-size:16px!important; }
+ .medication-lean-table td[data-label]::before { content:attr(data-label); display:block; margin-bottom:4px; color:#607568; font-size:12px; font-weight:600; }
+ .medication-lean-table .med-action-pair, .medication-lean-table .med-row-action-links { flex-wrap:wrap; justify-content:flex-start; gap:8px; }
+ .medication-lean-table button { min-width:44px; min-height:44px; }
+ .medication-lean-table input, .medication-lean-table select { width:100%; max-width:100%; }
+ .medication-lean-table .med-inline-dose { display:grid; grid-template-columns:1fr 1fr; }
+ .medication-lean-table .med-inline-effect { min-width:0; width:100%; }
+ .medication-lean-table .med-effect-controls { display:grid; grid-template-columns:minmax(0,1fr); }
+ .medication-lean-table .med-new-date { display:grid; gap:6px; }
+}
+
+@media screen and (max-width:760px) {
+ .calendar-control-bar .calendar-date-input { flex:1 1 160px; min-width:150px!important; }
+ .calendar-control-bar .calendar-view-switch { flex:1 1 100%; margin-left:0; }
+ .calendar-view-switch button { flex:1; }
+ .registry-filters button, .registry-patient strong { font-size:13px; }
+ .registry-patient small, .registry-stats>div { font-size:12px; }
+ .intake-choices button, .intake-multi label { min-height:44px; font-size:14px; }
+ .patient-tabs button, .patient-voice-cta { font-size:13px; }
+ .medication-lean-table tbody td { font-size:14px!important; }
+}
+
+@media screen and (max-width:760px) {
+ .risk-tree-choices button, .risk-tree-note-toggle, .risk-tree-other summary { min-height:44px; }
+ .risk-tree-qhead { flex-wrap:wrap; }
+ .instrument-sheet { height:100dvh; padding:20px 14px; }
+ .instrument-sheet>header { gap:10px; }
+ .instrument-sheet>header h2 { font-size:22px; overflow-wrap:anywhere; }
+ .instrument-sheet>header>button { flex-shrink:0; min-width:44px; min-height:44px; }
+ .instrument-question>strong { font-size:14px; }
+ .instrument-question>div>button { font-size:13px; min-height:52px; }
+ .instrument-sheet>footer { position:static; margin:18px 0 0; padding:14px 0; flex-wrap:wrap; font-size:13px; }
+ .instrument-sheet>header p { font-size:13px; }
+ .library-category-tabs button { min-height:44px; }
+}
+
+@media screen and (max-width:760px) {
+ .intake-launcher-backdrop, .intake-review-backdrop { padding:10px; }
+ .intake-launcher, .assignment-launcher, .intake-review { width:100%; min-width:0; max-width:620px; max-height:calc(100dvh - 20px); padding:22px 16px; overflow:auto; }
+ .intake-launcher-close { width:44px; height:44px; }
+ .intake-launcher footer, .intake-review footer, .intake-footer { flex-wrap:wrap; gap:10px; }
+ .intake-launcher footer button, .intake-review footer button, .save-intake { min-height:44px; }
+ .assignment-subject-modes button { min-height:44px; font-size:13px; }
+ .intake-review footer button { white-space:normal; }
+}
+
+/* A landscape phone is wider than the mobile breakpoint but still short. */
+@media screen and (max-height:600px) {
+ .calendar-move-overlay, .calendar-appointment-popover-backdrop,
+ .entry-modal-backdrop, .voice-command-overlay,
+ .intake-launcher-backdrop, .intake-review-backdrop { padding:8px; overflow-y:auto; }
+ .calendar-appointment-dialog, .calendar-move-dialog, .calendar-appointment-popover,
+ .entry-modal, .voice-command-card, .intake-launcher, .intake-review,
+ .assessment-email-dialog, .dashboard-widget-sheet { max-height:calc(100dvh - 16px); overflow-y:auto; }
+}

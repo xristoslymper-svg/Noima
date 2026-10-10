@@ -378,3 +378,16 @@
 .contentSurface :global(.med-row-action-links button) { font-size:12px; }
 .contentSurface :global(.clinical-lean-table td),.contentSurface :global(.clinical-lean-table th) { font-size:12px; }
 @media(max-width:700px) { .currentRows>div { grid-template-columns:1fr; gap:3px; } .item { grid-template-columns:1fr; gap:5px; } .workspace :global(.generic-patient-page) { padding-top:12px; } }
+
+@media screen and (max-width:760px) {
+ .tabs { flex-wrap:wrap; overflow:visible; gap:4px; }
+ .tabs button { min-height:44px; font-size:13px; padding:8px; }
+ .more { margin-left:0; }
+ .more summary { min-width:44px; min-height:44px; }
+ .more[open] { flex-basis:100%; flex-wrap:wrap; }
+ .link, .filters button { min-height:44px; display:inline-flex; align-items:center; }
+ .contentSurface { min-width:0; padding:18px 12px; }
+ .hero { min-width:0; }
+ .headerNote { overflow-wrap:anywhere; }
+ .grid { grid-template-columns:minmax(0,1fr); }
+}

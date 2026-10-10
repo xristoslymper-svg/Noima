@@ -19,6 +19,7 @@ export function useCalendarPosition({date, view, filter, setDate, setView, setFi
       restoring.current = true;
       setDate(position.date); setView(position.view); setFilter(position.filter);
     }
+    if (!position && window.matchMedia('(max-width: 760px)').matches) setView('day');
     setReady(true);
   }, [setDate, setView, setFilter]);
 

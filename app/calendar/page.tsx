@@ -1,4 +1,5 @@
 "use client";
+import {useMobileNavigation} from '@/components/useMobileNavigation';
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
@@ -173,7 +174,7 @@ function eventDurationMinutes(event: CalendarEvent) {
 }
 
 export default function CalendarPage() {
-  const [mobileNav, setMobileNav] = useState(false);
+  const [mobileNav, setMobileNav] = useMobileNavigation();
   const [view, setView] = useState<"day" | "week">("week");
   const [voice, setVoice] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -466,7 +467,7 @@ export default function CalendarPage() {
 
   return (
     <main className="app-shell secondary-shell">
-      <aside className={mobileNav ? "sidebar mobile-open" : "sidebar"}>
+      <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav ? "sidebar mobile-open" : "sidebar"}>
         <button
           className="mobile-nav-close"
           onClick={() => setMobileNav(false)}
@@ -490,7 +491,7 @@ export default function CalendarPage() {
 
       {mobileNav && (
         <button
-          className="mobile-nav-backdrop"
+          className="mobile-nav-backdrop" tabIndex={-1}
           aria-label="Κλείσιμο μενού"
           onClick={() => setMobileNav(false)}
         />
@@ -499,7 +500,7 @@ export default function CalendarPage() {
       <section className="workspace">
         <header className="topbar">
           <button
-            className="mobile-menu-button"
+            className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation"
             onClick={() => setMobileNav(true)}
             aria-label="Άνοιγμα μενού"
           >

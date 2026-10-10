@@ -18,7 +18,7 @@ export default function ClinicalTextField(p:Props){
  const latest=useRef(p);latest.current=p;
  const recorder=useRef<FieldRecorder|null>(null),request=useRef<AbortController|null>(null),audio=useRef<Blob|null>(null),textarea=useRef<HTMLTextAreaElement>(null),mounted=useRef(false),dock=useRef<HTMLDivElement>(null);
  const key='writing:'+p.section+':'+p.fieldKey,storageKey='noima-writing:'+p.sessionId+':'+p.section+':'+p.fieldKey;
- const busy=writingBusy(snapshot.phase),pending=Boolean(snapshot.pending),floating=['permission','recording','paused','transcribing'].includes(snapshot.phase);
+ const busy=writingBusy(snapshot.phase),pending=Boolean(snapshot.pending),awaitingAudio=Boolean(audio.current),floating=['permission','recording','paused','transcribing'].includes(snapshot.phase);
  useEffect(()=>{machine.sync(p.value)},[machine,p.value]);
  useEffect(()=>{
   mounted.current=true;
@@ -27,9 +27,9 @@ export default function ClinicalTextField(p:Props){
  },[machine,storageKey]);
  useEffect(()=>{if(!p.recovery||machine.snapshot.pending||writingBusy(machine.snapshot.phase))return;machine.recover(p.recovery);p.onRecoveryConsumed?.()},[machine,p.recovery,p.onRecoveryConsumed]);
  useEffect(()=>{try{if(snapshot.pending)sessionStorage.setItem(storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
- useEffect(()=>p.registerFlusher(key,async()=>{try{machine.assertSafe()}catch{textarea.current?.focus();throw new Error('Ολοκληρώστε τον έλεγχο στο πεδίο «'+latest.current.title+'» πριν συνεχίσετε.')}}),[machine,key,p.registerFlusher]);
- useEffect(()=>{latest.current.onDirtyChange(key,pending||busy);latest.current.onPendingChange?.(pending||busy);return()=>{latest.current.onDirtyChange(key,false);latest.current.onPendingChange?.(false)}},[key,pending,busy]);
- useEffect(()=>{if(!pending&&!busy)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending,busy]);
+ useEffect(()=>p.registerFlusher(key,async()=>{try{if(audio.current)throw new Error();machine.assertSafe()}catch{textarea.current?.focus();throw new Error('Ολοκληρώστε τον έλεγχο στο πεδίο «'+latest.current.title+'» πριν συνεχίσετε.')}}),[machine,key,p.registerFlusher]);
+ useEffect(()=>{latest.current.onDirtyChange(key,pending||busy||awaitingAudio);latest.current.onPendingChange?.(pending||busy||awaitingAudio);return()=>{latest.current.onDirtyChange(key,false);latest.current.onPendingChange?.(false)}},[key,pending,busy,awaitingAudio]);
+ useEffect(()=>{if(!pending&&!busy&&!awaitingAudio)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending,busy,awaitingAudio]);
  useEffect(()=>{
   if(!floating)return;
   document.body.classList.add('clinical-recording-active');
@@ -67,13 +67,14 @@ export default function ClinicalTextField(p:Props){
   try{await capture.start()}catch(e){releaseCapture(token);if(mounted.current)machine.fail(id,e instanceof Error?e.message:'Δεν ήταν δυνατή η πρόσβαση στο μικρόφωνο.')}
  }
  async function polish(){
+  if(audio.current)return;
   const base=machine.snapshot.confirmed;if(base.trim().length<2)return;const id=machine.start('ai');if(id===null)return;setUndo(null);const abort=new AbortController();request.current=abort;const timeout=setTimeout(()=>abort.abort(),60000);
   try{const r=await fetch('/api/clinical/polish',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({session_id:p.sessionId,section:p.section,field_key:p.fieldKey,text:base})});const result=await r.json();if(!r.ok)throw new Error(result.error||'Δεν δημιουργήθηκε πρόταση.');if(typeof result.text!=='string'||!result.text.trim())throw new Error('Η πρόταση δεν ήταν έγκυρη.');if(mounted.current){machine.polished(id,base,result.text,result.model);textarea.current?.focus()}}
   catch(e){if(mounted.current)machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:'Η βελτίωση ακυρώθηκε. Το αρχικό κείμενο διατηρείται.')}
   finally{clearTimeout(timeout)}
  }
  async function accept(){
-  if(writingBusy(machine.snapshot.phase))return;
+  if(writingBusy(machine.snapshot.phase)||audio.current)return;
   try{const candidate=machine.assertReview();if(candidate.text.length>(p.maxLength??20000))throw new Error('Το κείμενο υπερβαίνει το επιτρεπόμενο μήκος.');machine.phase('saving');const provenance:WritingProvenance={kind:candidate.kind,original:candidate.base,transcript:candidate.transcript,reviewed_text:candidate.text,model:candidate.model,reviewed_at:new Date().toISOString()};await latest.current.onConfirm(candidate.text,{pending:candidate,provenance,rememberProposal:id=>machine.proposalId(id)});if(!mounted.current)return;machine.accepted(candidate.text);if(candidate.kind==='ai')setUndo({before:candidate.base,after:candidate.text,expires:Date.now()+10000});textarea.current?.focus()}
   catch(e){machine.error(e instanceof Error?e.message:'Δεν αποθηκεύτηκε το κείμενο. Ελέγξτε την καταγραφή και δοκιμάστε ξανά.')}
  }
@@ -81,16 +82,16 @@ export default function ClinicalTextField(p:Props){
  function askCancel(){if(snapshot.phase==='permission'){stop();return}if(snapshot.phase==='recording')recorder.current?.pause();setCancelOpen(true)}
  function focusField(){textarea.current?.scrollIntoView({block:'center',behavior:'smooth'});textarea.current?.focus({preventScroll:true})}
  const id=p.sessionId+'-'+p.section+'-'+p.fieldKey;
- const aiHint=busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':pending?'Επιβεβαιώστε πρώτα το κείμενο.':snapshot.confirmed.trim().length<2?'Γράψτε ή υπαγορεύστε κείμενο πρώτα.':'Βελτίωση διατύπωσης';
- const micHint=floating?'Η υπαγόρευση είναι ενεργή σε αυτό το πεδίο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':snapshot.pending?.kind==='ai'?'Αποδεχτείτε ή απορρίψτε πρώτα την πρόταση AI.':'Υπαγόρευση';
+ const aiHint=awaitingAudio&&!busy?'Μεταγράψτε ή απορρίψτε πρώτα τον αποθηκευμένο ήχο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':pending?'Επιβεβαιώστε πρώτα το κείμενο.':snapshot.confirmed.trim().length<2?'Γράψτε ή υπαγορεύστε κείμενο πρώτα.':'Βελτίωση διατύπωσης';
+ const micHint=awaitingAudio&&!floating?'Μεταγράψτε ή απορρίψτε πρώτα τον αποθηκευμένο ήχο.':floating?'Η υπαγόρευση είναι ενεργή σε αυτό το πεδίο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':snapshot.pending?.kind==='ai'?'Αποδεχτείτε ή απορρίψτε πρώτα την πρόταση AI.':'Υπαγόρευση';
  const status=snapshot.phase==='permission'?'Μικρόφωνο…':snapshot.phase==='transcribing'?'Μεταγραφή…':snapshot.phase==='paused'?'Σε παύση':'Ηχογράφηση';
  return <div className={styles.field} data-capture={floating||undefined}>
   <div className={styles.heading}><label htmlFor={id}>{p.title}</label><div className={styles.tools}>
-   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={floating} className={styles.mic} disabled={busy||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic2 size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
-   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/></button>
+   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={floating} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic2 size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
+   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/></button>
   </div></div>
   <textarea ref={textarea} id={id} className={p.className} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>
-  {pending&&<div className={styles.review}><span>{snapshot.pending?.kind==='ai'?'Πρόταση AI':seconds>=60?'Όριο 1 λεπτού · συνέχεια με το μικρόφωνο':'Μεταγραφή προς έλεγχο'}</span><button type="button" disabled={busy} onClick={()=>void confirm()}><Check size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Αποδοχή':'Επιβεβαίωση'}</button><button type="button" disabled={busy} onClick={()=>{stop();machine.cancel();textarea.current?.focus()}}><RotateCcw size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Διατήρηση αρχικού':'Ακύρωση'}</button></div>}
+  {pending&&<div className={styles.review}><span>{snapshot.pending?.kind==='ai'?'Πρόταση AI':seconds>=60?'Όριο 1 λεπτού · συνέχεια με το μικρόφωνο':'Μεταγραφή προς έλεγχο'}</span><button type="button" disabled={busy||awaitingAudio} onClick={()=>void confirm()}><Check size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Αποδοχή':'Επιβεβαίωση'}</button><button type="button" disabled={busy} onClick={()=>{stop();machine.cancel();textarea.current?.focus()}}><RotateCcw size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Διατήρηση αρχικού':'Ακύρωση'}</button></div>}
   {snapshot.phase==='ai'&&<div role="status" className={styles.review}>Βελτίωση διατύπωσης…<button type="button" onClick={stop}>Ακύρωση</button></div>}
   {snapshot.error&&<div role="alert" className={styles.error}>{snapshot.error}{audio.current&&<button type="button" onClick={retryTranscription}>Νέα προσπάθεια μεταγραφής</button>}<button type="button" onClick={()=>audio.current?askCancel():stop()}>{audio.current?'Απόρριψη ήχου':'Κλείσιμο'}</button>{cancelOpen&&!floating&&<span> Απόρριψη του αποθηκευμένου ήχου; <button type="button" onClick={stop}>Απόρριψη</button><button type="button" onClick={()=>setCancelOpen(false)}>Πίσω</button></span>}</div>}
   {undo&&undo.after===p.value&&<button type="button" className={styles.undo} onClick={()=>{latest.current.onChange(undo.before);machine.sync(undo.before);setUndo(null)}}><RotateCcw size={13} aria-hidden="true"/> Αναίρεση</button>}

@@ -111,8 +111,10 @@ async function handleGET(req:Request){
  const url=new URL(req.url);const tester=url.searchParams.get('tester')||'';const patient=url.searchParams.get('patient_id')||'';
  if(!isClinicalId(tester)||!isClinicalId(patient))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
  try{
- const bundle=await patientBundle(tester,patient);const context=buildSummaryContext(bundle);const hash=await summaryContextHash(bundle,context.day);
- const cached=await readCached(tester,patient);
+ // Both reads remain scoped by withPilot. Always validate the fresh bundle's
+ // hash and policy before using the cache, regardless of completion order.
+ const [bundle,cached]=await Promise.all([patientBundle(tester,patient),readCached(tester,patient)]);
+ const context=buildSummaryContext(bundle);const hash=await summaryContextHash(bundle,context.day);
  if(!cached)return Response.json({error:'Η σύνοψη προετοιμάζεται.',code:'summary_pending'},{status:404});
  if(cached.context_hash!==hash||cached.policy_version!==SUMMARY_POLICY_VERSION)return Response.json({code:'summary_pending'},{status:404});
  return Response.json({...cached,card:buildClinicalCard(bundle,context,cached.findings,true),mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});

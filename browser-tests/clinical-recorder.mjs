@@ -52,7 +52,14 @@ const ai=p=>p.getByRole('button',{name:'Βελτίωση διατύπωσης: '
 const dock=p=>p.getByRole('region',{name:'Υπαγόρευση: '+title,exact:true});
 async function until(fn){let error;for(let n=0;n<60;n++){try{await fn();return}catch(e){error=e}await new Promise(r=>setTimeout(r,100))}throw error}
 async function start(p){await mic(p).click();await dock(p).getByRole('button',{name:'Παύση υπαγόρευσης',exact:true}).waitFor()}
-async function finish(p){await dock(p).getByRole('button',{name:'Ολοκλήρωση υπαγόρευσης',exact:true}).click();await p.getByRole('button',{name:'Επιβεβαίωση',exact:true}).waitFor()}
+async function finish(p){
+ await dock(p).getByRole('button',{name:'Ολοκλήρωση υπαγόρευσης',exact:true}).click();
+ // An earlier segment's review remains visible but disabled during the next transcription.
+ // Wait for this operation to finish, not merely for the pre-existing review button.
+ await dock(p).waitFor({state:'detached'});
+ const confirm=p.getByRole('button',{name:'Επιβεβαίωση',exact:true});await confirm.waitFor();
+ await until(async()=>assert.equal(await confirm.isEnabled(),true));
+}
 async function noOverlap(p){await until(async()=>{const a=await dock(p).boundingBox(),b=await p.getByTestId('footer').boundingBox();assert.ok(a&&b);assert.ok(a.y+a.height<=b.y-8||a.x>=b.x+b.width||a.x+a.width<=b.x,'recorder overlaps footer');const v=p.viewportSize();assert.ok(a.x>=0&&a.x+a.width<=v.width+1&&a.y>=0&&a.y+a.height<=v.height+1,'recorder outside viewport')})}
 async function scenario(name,viewport,run){
  config={};uploads=[];polishes=[];const context=await browser.newContext({viewport,permissions:['microphone']});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());

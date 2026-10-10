@@ -20,7 +20,11 @@ async function handlePOST(request: Request) {
     return Response.json({ error: "Μη έγκυρη ηχογράφηση." }, { status: 400 });
   }
 
-  const file = incoming.get("file");
+  // Calendar/legacy dictation sends `file`; ClinicalTextField sends `audio`.
+  // Keep both upload contracts, including already-open clients after a deploy.
+  // The canonical `file` field wins when both are present; validate either file
+  // identically and always forward it to the provider as `file`.
+  const file = incoming.get("file") ?? incoming.get("audio");
   const purpose = incoming.get("purpose") === "calendar" ? "calendar" : "clinical";
   if (!(file instanceof File) || file.size === 0) {
     return Response.json({ error: "Δεν βρέθηκε αρχείο ήχου." }, { status: 400 });

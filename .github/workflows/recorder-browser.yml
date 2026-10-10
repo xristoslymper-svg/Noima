@@ -5,9 +5,13 @@ on:
   pull_request:
     paths:
       - 'components/dictation/**'
+      - 'app/api/transcribe/**'
+      - 'lib/pilot/route.ts'
       - 'lib/clinical/field-recorder.ts'
       - 'lib/clinical/clinical-writing.ts'
       - 'lib/clinical/recorder-layout.ts'
+      - 'tests/helpers/transcription-route.mjs'
+      - 'tests/transcription-upload.test.mjs'
       - 'browser-tests/**'
       - '.github/workflows/recorder-browser.yml'
 permissions:
@@ -35,6 +39,8 @@ jobs:
         run: node browser-tests/clinical-recorder.mjs
       - name: Verify cached audio prevents unsafe navigation after service failure
         run: node browser-tests/cached-audio-guard.mjs
+      - name: Verify native microphone upload through the real transcription route
+        run: node browser-tests/transcription-contract.mjs
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@v4

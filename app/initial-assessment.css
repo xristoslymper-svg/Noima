@@ -35,6 +35,9 @@
   padding:13px 14px!important;min-height:76px!important;border:1px solid #dae5df;
   border-radius:11px;background:#fff;font-size:14px;line-height:1.55;color:#293e35;
 }
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"],[data-visit-part="history"]) textarea::placeholder {
+  color:#97a59c;font-weight:400;
+}
 .runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"]) .clinical-section-head {
   align-items:center;gap:12px;flex-wrap:wrap;
 }

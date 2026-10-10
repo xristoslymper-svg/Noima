@@ -413,3 +413,12 @@
 .tabs button[data-record-tab="true"][aria-current="page"]{background:#235f4d;color:#fff;border-color:#235f4d;box-shadow:0 2px 8px rgba(35,95,77,.13);}
 .tabs button[data-record-tab="true"]:focus-visible{outline:2px solid #235f4d;outline-offset:2px;}
 @media(max-width:700px){.tabs button[data-record-tab="true"]{padding:8px 10px;}}
+
+/* Secondary, compact patient action: Record tab remains the visual navigation anchor. */
+.hero :global(.patient-voice-cta){min-height:42px!important;padding:8px 13px!important;gap:8px!important;border-radius:11px!important;background:#edf5ef!important;border:1px solid #c9ddcf!important;color:#315f52!important;box-shadow:none!important;}
+.hero :global(.patient-voice-cta:hover){background:#e3f0e7!important;border-color:#b5d3c0!important;}
+.hero :global(.patient-voice-icon){width:26px!important;height:26px!important;border-radius:7px!important;background:#dbeae0!important;color:#315f52!important;}
+.hero :global(.patient-voice-icon svg){width:16px;height:16px;}
+.hero :global(.patient-voice-cta strong){font-size:12px!important;font-weight:650!important;white-space:nowrap;}
+.hero :global(.patient-voice-cta small){font-size:10px!important;color:#718b7d!important;}
+@media(max-width:700px){.hero :global(.patient-voice-cta){min-height:44px!important;}}

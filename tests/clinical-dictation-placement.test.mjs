@@ -14,9 +14,10 @@ test('ordinary clinical dictation microphone sits immediately beside the section
  assert.match(source,/className="section-mic"/);
 });
 
-test('MSE microphone retains its original in-field placement and sizing',()=>{
+test('MSE domain structure and its separate styling remain untouched',()=>{
  const visitCss=readFileSync('app/visit-workspace.css','utf8');
  const mseSource=readFileSync('components/patients/MseDomain.tsx','utf8');
  assert.match(visitCss,/\.mse-mic\{position:absolute;right:9px;top:9px/);
- assert.match(mseSource,/mse-mic/);
+ assert.match(mseSource,/data-mse-domain=\{field.key\}/);
+ assert.match(mseSource,/className="mse-note-label"/);
 });

@@ -1,5 +1,5 @@
 export type DiagnosisCode={code:string;label:string;system:'WHO ICD-10';edition:'2019'};
-export type DocumentField={key:string;label:string;text:string;reference?:{session_id:string;date:string};review?:'unchanged'|'changed'|'not_assessed';codes?:DiagnosisCode[];status?:'provisional'|'under_investigation'|'confirmed'};
+export type DocumentField={key:string;label:string;text:string;writing_provenance?:import('./clinical-writing').WritingProvenance;reference?:{session_id:string;date:string};review?:'unchanged'|'changed'|'not_assessed';codes?:DiagnosisCode[];status?:'provisional'|'under_investigation'|'confirmed'};
 export type VisitDocument={kind:'mse'|'assessment';fields:DocumentField[]};
 export const mseItems=[
  ['appearance','Appearance / Behaviour','εμφάνιση, υγιεινή, στάση, βλεμματική επαφή, ψυχοκινητικότητα, συνεργασιμότητα'],

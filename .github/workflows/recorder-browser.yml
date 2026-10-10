@@ -1,0 +1,50 @@
+name: Synthetic recorder browser checks
+on:
+  push:
+    branches: [refine/inline-clinical-writing-20261010]
+  pull_request:
+    paths:
+      - 'components/dictation/**'
+      - 'app/api/transcribe/**'
+      - 'lib/pilot/route.ts'
+      - 'lib/clinical/field-recorder.ts'
+      - 'lib/clinical/clinical-writing.ts'
+      - 'lib/clinical/recorder-layout.ts'
+      - 'tests/helpers/transcription-route.mjs'
+      - 'tests/transcription-upload.test.mjs'
+      - 'browser-tests/**'
+      - '.github/workflows/recorder-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: recorder-browser-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install isolated browser test tools
+        run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+      - run: npx playwright install --with-deps chromium
+      - name: Install synthetic speech and audio decoder
+        run: sudo apt-get update -qq && sudo apt-get install -y espeak-ng ffmpeg
+      - name: Test real browser recorder with synthetic audio and fixture APIs
+        run: node browser-tests/clinical-recorder.mjs
+      - name: Verify cached audio prevents unsafe navigation after service failure
+        run: node browser-tests/cached-audio-guard.mjs
+      - name: Verify native microphone upload through the real transcription route
+        run: node browser-tests/transcription-contract.mjs
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-recorder-evidence
+          path: test-results/recorder/
+          retention-days: 7

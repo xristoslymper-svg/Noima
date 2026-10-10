@@ -1,4 +1,4 @@
-export type RiskTree={version:1;answers:Record<string,string>;notes:Record<string,string>};
+export type RiskTree={version:1;answers:Record<string,string>;notes:Record<string,string>;writing_provenance?:Record<string,import('./clinical-writing').WritingProvenance>};
 export const riskTreeChoices=[['positive','Ναι'],['negative','Όχι'],['unknown','Άγνωστο'],['not_assessed','Δεν διερευνήθηκε']] as const;
 export const riskTreeQuestions:Record<string,{title:string;hint?:string;choices:ReadonlyArray<readonly [string,string]>}>={
  wish:{title:'Υπάρχει επιθυμία θανάτου ή πρόθεση να πεθάνει;',hint:'Συμπεριλαμβάνεται η παθητική επιθυμία θανάτου.',choices:riskTreeChoices},

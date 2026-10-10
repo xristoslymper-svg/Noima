@@ -16,8 +16,8 @@
 .closure textarea:focus-visible,.closure input:focus-visible{outline:0;border-color:#669580;box-shadow:0 0 0 3px rgba(84,139,113,.12)}
 .visuallyHidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.fields>label:first-child{grid-column:1/-1}
-.fields>label textarea{min-height:85px}
+.fields>div:first-child{grid-column:1/-1}
+.fields>div textarea{min-height:85px}
 .actions,.footerActions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .card>.actions{margin-top:13px}
 .closure button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;font:inherit;font-size:12.5px;font-weight:650;padding:9px 13px;border:1px solid #d5e3db;border-radius:10px;color:#366c57;background:#f8faf8;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
@@ -65,7 +65,7 @@
  .heading{flex-wrap:wrap;align-items:flex-start}
  .card,.appointmentCard{padding:16px;border-radius:14px}
  .fields{grid-template-columns:1fr;gap:13px}
- .fields>label:first-child{grid-column:auto}
+ .fields>div:first-child{grid-column:auto}
  .details{padding:0 14px}
  .footerActions{justify-content:stretch}
  .footerActions button{flex:1}

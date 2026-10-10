@@ -120,5 +120,5 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(!blocked.current)return false;
   try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}));return true}catch{return false}
  }
- return {value,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
+ return {value,currentValue:()=>latest.current,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
 }

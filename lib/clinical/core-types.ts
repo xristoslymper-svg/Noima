@@ -1,6 +1,6 @@
 export type ClinicalProposal = {
  id: string; session_id: string; section_key: string; transcript: string;
- proposal: {clinical_text: string; facts: {label: string; value: string}[]};
+ proposal: {clinical_text: string; facts: {label: string; value: string}[];writing?:{kind:'dictation'|'ai';original:string}};
  status: 'proposal'|'approved'; approved_text: string|null; approved_at: string|null;
  model: string|null; created_at: string;
 };

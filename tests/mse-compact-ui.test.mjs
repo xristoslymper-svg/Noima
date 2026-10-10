@@ -81,7 +81,7 @@ test('the redesigned editor keeps the existing versioned save_document contract 
   './MseDomain':{default:props=>{domains.push(props);return null}},
   '@/lib/clinic-time':{formatClinicDateTime:value=>value},
   '@/lib/patients/demo-client':{demoPost:async payload=>{writes.push(payload);return {section:{document:payload.document,version:8}}}},
-  './useClinicalDraft':{useClinicalDraft:config=>({value:config.initial,change:value=>{next=value},flush:()=>{committed=config.write(next,config.version);return committed},saving:false,error:'',savedAt:''})},
+  './useClinicalDraft':{useClinicalDraft:config=>({value:config.initial,currentValue:()=>next,change:value=>{next=value},flush:()=>{committed=config.write(next,config.version);return committed},saving:false,error:'',savedAt:''})},
  });
  renderToStaticMarkup(React.createElement(Editor,{sessionId:'existing-mse-visit',kind:'mse',followup:false,existing:{document,content:'',version:7},registerFlusher:()=>()=>{},onDirtyChange(){},onSaved:async()=>{}}));
  const mood=domains.find(d=>d.field.key==='mood');

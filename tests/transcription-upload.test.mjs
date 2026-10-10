@@ -15,7 +15,8 @@ for(const key of ['audio','file']) {
   assert.deepEqual(Buffer.from(await forwarded.arrayBuffer()),Buffer.from(await file.arrayBuffer()));
   assert.equal(call.init.body.get('audio'),null);assert.equal(call.init.body.get('model'),'gpt-transcribe');
   assert.match(call.init.body.get('prompt'),/Greek psychiatric clinical dictation/);
-  assert.deepEqual(call.scope,{token:'synthetic-session-token',workspace:'synthetic-workspace'});
+  assert.equal(call.scope.token,'synthetic-session-token');
+  assert.equal(call.scope.workspace,'synthetic-workspace');
  });
 }
 

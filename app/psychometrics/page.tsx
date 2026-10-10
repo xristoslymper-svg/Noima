@@ -1,4 +1,5 @@
 "use client";
+import {useMobileNavigation} from '@/components/useMobileNavigation';
 import PilotProfile from '@/components/PilotProfile';
 import IntakeLauncher from '@/components/intake/IntakeLauncher';
 import Link from "next/link";
@@ -26,11 +27,11 @@ const instruments:Instrument[]=[
 ];
 
 export default function Psychometrics(){
- const [mobileNav,setMobileNav]=useState(false);
+ const [mobileNav,setMobileNav]=useMobileNavigation();
  const [query,setQuery]=useState(""); const [category,setCategory]=useState<string>("Όλα"); const [active,setActive]=useState<Instrument|null>(null); const [answers,setAnswers]=useState<Record<number,number>>({}); const [launcherRequest,setLauncherRequest]=useState<{tools:string[];channel:"tablet"|"email"|"print"}|null>(null); const [historyPreview,setHistoryPreview]=useState(false); const [customOpen,setCustomOpen]=useState(false); const [custom,setCustom]=useState({title:"",area:"",period:"",questions:[""]}); const [customInstruments,setCustomInstruments]=useState<Instrument[]>([]);
  const modalOpen=Boolean(active)||historyPreview||customOpen;
  useEffect(()=>{
-  if(!modalOpen&&!mobileNav)return;
+  if(!modalOpen)return;
   const previousOverflow=document.body.style.overflow;
   if(modalOpen)document.body.style.overflow='hidden';
   const onKeyDown=(event:KeyboardEvent)=>{
@@ -38,11 +39,11 @@ export default function Psychometrics(){
    if(customOpen)setCustomOpen(false);
    else if(historyPreview)setHistoryPreview(false);
    else if(active)setActive(null);
-   else if(mobileNav)setMobileNav(false);
+
   };
   document.addEventListener('keydown',onKeyDown);
   return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',onKeyDown)};
- },[modalOpen,mobileNav,customOpen,historyPreview,active]);
+ },[modalOpen,customOpen,historyPreview,active]);
  const allInstruments=[...instruments,...customInstruments];
  const categoryMatches=(x:Instrument)=>category==="Όλα"||(category==="Άγχος"&&x.area.includes("Άγχος"))||(category==="Κατάθλιψη"&&x.area.includes("Κατάθλιψη"))||x.area===category;
  const categoryInstruments=allInstruments.filter(categoryMatches);
@@ -51,7 +52,7 @@ export default function Psychometrics(){
  const openCustom=()=>{if(category!=="Όλα"&&!custom.area.trim())setCustom(v=>({...v,area:category}));setCustomOpen(true)};
  const clinicalHashtags=(area:string)=>area.split("/").map(value=>"#"+value.trim().replace(/^#+/,"")).join(" ");
  const open=(i:Instrument)=>{setActive(i);setAnswers({})}; const launch=(tools:string[],channel:"tablet"|"email"|"print")=>setLauncherRequest({tools,channel}); const score=Object.values(answers).reduce((a,b)=>a+b,0); const complete=active?Object.keys(answers).length===active.items.length:false;
- return <main className="app-shell secondary-shell"><aside className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button><div className="brand"><div className="brand-mark">Ψ</div><div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>Επισκόπηση</span></Link><Link href="/calendar" className="nav-item"><CalendarDays size={19}/><span>Ημερολόγιο</span></Link><Link href="/patients" className="nav-item"><Users size={19}/><span>Ασθενείς</span></Link><Link href="/psychometrics" className="nav-item active"><BookOpen size={19}/><span>Βιβλιοθήκη</span></Link></nav></aside>{mobileNav&&<button className="mobile-nav-backdrop" aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}<section className="workspace"><header className="topbar"><button className="mobile-menu-button" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button><PilotProfile/></header><div className="secondary-content psy-page"><div className="psy-content library-redesign"><div className="library-heading">
+ return <main className="app-shell secondary-shell"><aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button><div className="brand"><div className="brand-mark">Ψ</div><div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>Επισκόπηση</span></Link><Link href="/calendar" className="nav-item"><CalendarDays size={19}/><span>Ημερολόγιο</span></Link><Link href="/patients" className="nav-item"><Users size={19}/><span>Ασθενείς</span></Link><Link href="/psychometrics" className="nav-item active"><BookOpen size={19}/><span>Βιβλιοθήκη</span></Link></nav></aside>{mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}<section className="workspace"><header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button><PilotProfile/></header><div className="secondary-content psy-page"><div className="psy-content library-redesign"><div className="library-heading">
   <div>
     <h1>Βιβλιοθήκη</h1>
     <p>Ιστορικό και κλινικά εργαλεία για χρήση με τους ασθενείς σου.</p>
@@ -68,7 +69,7 @@ export default function Psychometrics(){
     <div><span>Ιστορικό</span><small>Έντυπα πριν και κατά την πρώτη επίσκεψη</small></div>
   </div>
   <div className="history-tool-grid">
-   <article className="instrument-card library-instrument-card compact-psychometric-card compact-history-card" role="button" tabIndex={0} aria-label="Προεπισκόπηση αρχικού ιστορικού" onClick={()=>setHistoryPreview(true)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setHistoryPreview(true)}}}>
+   <article className="instrument-card library-instrument-card compact-psychometric-card compact-history-card" role="button" tabIndex={0} aria-label="Προεπισκόπηση αρχικού ιστορικού" onClick={()=>setHistoryPreview(true)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setHistoryPreview(true)}}}>
     <div className="instrument-top"><span className="instrument-area-chip">Πρώτη επίσκεψη</span><span className="instrument-time"><Clock3 size={12}/>7–10 λεπτά</span></div>
     <h2>Αρχικό ιστορικό</h2>
     <p>Δομημένο ερωτηματολόγιο πριν από την πρώτη επίσκεψη.</p>
@@ -91,7 +92,7 @@ export default function Psychometrics(){
     </div>
   </div>
   <div className="category-tabs library-category-tabs">{categories.map(cat=><button key={cat} className={category===cat?"active":""} onClick={()=>setCategory(cat)}>{cat}</button>)}</div>
-  {visible.length?<section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card compact-psychometric-card" key={i.code} role="button" tabIndex={0} aria-label={`Προεπισκόπηση ${i.code}`} onClick={()=>open(i)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open(i)}}}>
+  {visible.length?<section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card compact-psychometric-card" key={i.code} role="button" tabIndex={0} aria-label={`Προεπισκόπηση ${i.code}`} onClick={()=>open(i)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(i)}}}>
     <div className="instrument-top"><span className="instrument-area-chip clinical-hashtag">{clinicalHashtags(i.area)}</span><span className="instrument-time"><Clock3 size={12}/>{i.minutes}</span></div>
     <h2>{i.code}</h2>
     <p>{i.title}</p>

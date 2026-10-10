@@ -71,3 +71,13 @@
  .footerActions button{flex:1}
  .cardMeta{font-size:11px}
 }
+
+@media screen and (max-width:760px) {
+ .closure button { min-height:44px; }
+ .closure input, .closure textarea, .closure select { font-size:16px; }
+ .medication { align-items:flex-start; }
+ .medication span { flex-basis:100%; min-width:0; }
+ .actions, .footerActions { flex-wrap:wrap; }
+ .footerActions button { flex-basis:100%; }
+ .appointmentCard :global(.visit-inline-fields label) { max-width:none; width:100%; }
+}

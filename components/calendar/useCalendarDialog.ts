@@ -9,6 +9,8 @@ export function useCalendarDialog(onClose:()=>void,busy=false,active=true){
   if(!active)return;
   const node=ref.current;
   if(!node)return;
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow='hidden';
   const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
   const controls=()=>Array.from(node.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')).filter(e=>e.getClientRects().length);
   (controls()[0]??node).focus();
@@ -23,7 +25,7 @@ export function useCalendarDialog(onClose:()=>void,busy=false,active=true){
    }
   };
   document.addEventListener('keydown',keyboard);
-  return()=>{document.removeEventListener('keydown',keyboard);if(previous?.isConnected)previous.focus();};
+  return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',keyboard);if(previous?.isConnected)previous.focus();};
  },[active]);
  return ref;
 }

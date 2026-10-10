@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./clinical-refinement.css";
 import "./visit-workspace.css";
+import "./mobile.css";
 import AccountSessionBoundary from '@/components/AccountSessionBoundary';
 
 export const metadata: Metadata = {

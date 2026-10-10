@@ -38,6 +38,6 @@ test('existing navigation and modal actions are not removed',()=>{
  assert.match(overview,/setWidgetOpen\("todo"\)/);
  assert.match(overview,/setWidgetOpen\("psychometrics"\)/);
  assert.match(overview,/setWidgetOpen\("payments"\)/);
- assert.match(overview,/className="nav-item active"/);
+ assert.match(overview,/href===?"\/"\?"nav-item active"/);
  assert.match(overview,/overviewState==='ready'\?String\(upcomingToday.length\):'—'/);
 });

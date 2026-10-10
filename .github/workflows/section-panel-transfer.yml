@@ -1,0 +1,56 @@
+name: Verify section panel presentation
+on:
+  push:
+    branches: [fix/clinical-section-panels-20261010]
+    paths: [.github/workflows/section-panel-transfer.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.repository == 'xristoslymper-svg/Noima' && github.ref == 'refs/heads/fix/clinical-section-panels-20261010'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify and apply exact isolated presentation patch
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = a55cb64399ec40794a5cd89e78a03850cf8989f8
+          curl --fail --silent --show-error --retry 2 'https://sb-6q69odkwwkka.vercel.run/panels-a55-20261010/presentation.patch' -o /tmp/section-panels.patch
+          echo '0b0d32769a1fe50774d707911afffb0446ed7c7a07f20fff66440ba6f551223a  /tmp/section-panels.patch' | sha256sum -c -
+          git apply --check /tmp/section-panels.patch
+          git apply /tmp/section-panels.patch
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          allowed={'app/clinical-editor.css','browser-tests/clinical-cleanup.mjs','components/dictation/ClinicalTextField.tsx','components/patients/FollowupClosure.tsx','components/patients/PatientSession.tsx','components/patients/SectionEditor.tsx'}
+          actual=set(subprocess.check_output(['git','diff','--name-only']).decode().splitlines())
+          assert actual == allowed, (actual-allowed,allowed-actual)
+          PY
+      - run: npm ci
+      - name: Quality gate
+        run: npm run typecheck && npm run lint && npm test && npm run build
+      - name: Browser tools
+        run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0 && npx playwright install --with-deps chromium
+      - name: Real clinical composition with synthetic data
+        run: node browser-tests/clinical-cleanup.mjs
+      - name: Preserve tested changes on feature branch only
+        run: |
+          set -euo pipefail
+          git add -- app/clinical-editor.css browser-tests/clinical-cleanup.mjs components/dictation/ClinicalTextField.tsx components/patients/FollowupClosure.tsx components/patients/PatientSession.tsx components/patients/SectionEditor.tsx
+          git -c user.name='NOIMA presentation verification' -c user.email='noima-ui@users.noreply.github.com' commit -m 'Group clinical sections beneath external headings and align history fields'
+          git push origin HEAD:refs/heads/fix/clinical-section-panels-20261010
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: section-panel-evidence
+          path: |
+            test-results/clinical-cleanup/*.png
+            test-results/clinical-cleanup/report.json
+          retention-days: 7

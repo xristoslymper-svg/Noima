@@ -2,11 +2,13 @@
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import type { PatientBundle } from "@/lib/patients/demo-runtime";
 import ClinicalSummary from "@/components/patients/ClinicalSummary";
 import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
+import {createRevalidator} from '@/lib/overview/revalidation';
+import {overviewSelectionState, restoreOverviewSelection} from '@/lib/overview/selection';
 
 import {
   Activity,
@@ -37,6 +39,7 @@ type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_sessio
 type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null;intake_id:string|null;provenance:string|null};
 type OverviewIntake={id:string;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"submitted"|"conflict";submitted_at:string|null;created_at:string};
 type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"ready"|"conflict";when:string;has_history:boolean;psychometrics:string[]};
+type OverviewPayload={events?:OverviewEvent[];tasks?:TodoTask[];psychometrics?:OverviewPsychometric[];intakes?:OverviewIntake[]};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
@@ -70,22 +73,44 @@ export default function Page() {
   const [nowMs,setNowMs]=useState(()=>Date.now());
   const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
   const [overviewRetry,setOverviewRetry]=useState(0);
-  useEffect(()=>{let cancelled=false;const tester=getDemoTesterId();setOverviewState('loading');void (async()=>{
-    const response=await fetch("/api/overview?tester="+encodeURIComponent(tester),{cache:"no-store"});
-    const data=await response.json();if(!response.ok)throw new Error('overview_unavailable');
-    if(cancelled)return;
-    const events=(data.events||[]) as OverviewEvent[];
-    const todayKey=overviewDateKey(new Date());
-    const todayPatientIds=events.filter(event=>overviewDateKey(new Date(event.scheduled_start))===todayKey&&event.status!=="cancelled"&&event.patient_id).map(event=>event.patient_id as string);
-    setSchedule(events);setTasks((data.tasks||[]) as TodoTask[]);setPsychometricsForReview((data.psychometrics||[]) as OverviewPsychometric[]);setIntakesForReview((data.intakes||[]) as OverviewIntake[]);
-    setSelectedPatientId(current=>current&&todayPatientIds.includes(current)?current:todayPatientIds[0]||null);
-    setOverviewState('ready');
-    void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});
-  })().catch(()=>{if(!cancelled)setOverviewState('error')});return()=>{cancelled=true}},[overviewRetry]);
+  const [overviewRefreshError,setOverviewRefreshError]=useState(false);
+  const hasSnapshot=useRef(false),backfillStarted=useRef(false);
+  const revalidator=useRef<ReturnType<typeof createRevalidator<OverviewPayload>>|null>(null);
+  useEffect(()=>{
+    const tester=getDemoTesterId(),entryState=window.history.state;
+    if(!hasSnapshot.current)setOverviewState('loading');
+    const sync=createRevalidator<OverviewPayload>({
+      load:async signal=>{
+        const response=await fetch('/api/overview?tester='+encodeURIComponent(tester),{cache:'no-store',signal});
+        if(!response.ok)throw new Error('overview_unavailable');
+        return await response.json() as OverviewPayload;
+      },
+      apply:data=>{
+        const events=data.events||[],todayKey=overviewDateKey(new Date());
+        const ids=events.filter(e=>overviewDateKey(new Date(e.scheduled_start))===todayKey&&e.status!=='cancelled'&&e.patient_id).map(e=>e.patient_id!);
+        setSchedule(events);setTasks(data.tasks||[]);setPsychometricsForReview(data.psychometrics||[]);setIntakesForReview(data.intakes||[]);
+        setSelectedPatientId(current=>current&&ids.includes(current)?current:restoreOverviewSelection(entryState,tester,todayKey,ids)||ids[0]||null);
+        hasSnapshot.current=true;setOverviewState('ready');setOverviewRefreshError(false);setNowMs(Date.now());setBundleRetry(n=>n+1);
+        if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
+      },
+      error:()=>{if(hasSnapshot.current)setOverviewRefreshError(true);else setOverviewState('error');}
+    });
+    revalidator.current=sync;
+    const refresh=()=>{void sync.refresh();};
+    const visible=()=>{if(document.visibilityState==='visible')refresh();};
+    void sync.refresh();
+    window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',visible);
+    return()=>{sync.dispose();window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible);if(revalidator.current===sync)revalidator.current=null;};
+  },[overviewRetry]);
   useEffect(()=>{if(!selectedPatientId)return;setBundleFailure(null);let cancelled=false;const controller=new AbortController();const load=async()=>{try{const tester=getDemoTesterId();const r=await fetch("/api/patients/demo/runtime?tester="+encodeURIComponent(tester)+"&patient="+encodeURIComponent(selectedPatientId),{cache:"no-store",signal:controller.signal});const d=await r.json();if(!r.ok||!d.bundle)throw new Error('bundle_unavailable');if(!cancelled){setBundles(current=>({...current,[selectedPatientId]:d.bundle as PatientBundle}));setBundleFailure(null)}}catch{if(!cancelled&&!controller.signal.aborted)setBundleFailure(selectedPatientId)}};void load();const refresh=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('focus',refresh);return()=>{cancelled=true;controller.abort();window.removeEventListener('focus',refresh)}},[selectedPatientId,bundleRetry]);
   useEffect(()=>{const timer=window.setInterval(()=>setNowMs(Date.now()),30_000);return()=>window.clearInterval(timer)},[]);
   const today=overviewDateKey(new Date());
   const todaySchedule=schedule.filter(event=>overviewDateKey(new Date(event.scheduled_start))===today&&event.status!=="cancelled");
+
+  function selectPatient(patientId:string){
+    setSelectedPatientId(patientId);
+    window.history.replaceState(overviewSelectionState(window.history.state,{workspace:getDemoTesterId(),day:today,patientId}),'');
+  }
 
   const selectedBundle=selectedPatientId?bundles[selectedPatientId]||null:null;
 
@@ -113,34 +138,34 @@ export default function Page() {
   },[intakesForReview,psychometricsForReview]);
 
   async function markPaymentPaid(event:OverviewEvent){
-    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");revalidator.current?.beginMutation();
     try{
       const response=await fetch("/api/calendar/payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id,status:"paid"})});
       const data=await response.json();
       if(!response.ok||!data.event)throw new Error(data.error||"payment");
       setSchedule(current=>current.map(item=>item.id===event.id?{...item,...data.event}:item));
     }catch(error){setWidgetError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.")}
-    finally{setWidgetBusy(false)}
+    finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
   async function addTask(){
-    const title=taskTitle.trim();if(!title||widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    const title=taskTitle.trim();if(!title||widgetBusy)return;setWidgetBusy(true);setWidgetError("");revalidator.current?.beginMutation();
     try{
       const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"create",title})});
       const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
       setTasks(current=>[data.task as TodoTask,...current]);setTaskTitle("");
     }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν αποθηκεύτηκε.")}
-    finally{setWidgetBusy(false)}
+    finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
   async function completeTask(task:TodoTask){
-    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");
+    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");revalidator.current?.beginMutation();
     try{
       const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"set_status",id:task.id,status:"completed"})});
       const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
       setTasks(current=>current.map(item=>item.id===task.id?data.task as TodoTask:item));
     }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν ενημερώθηκε.")}
-    finally{setWidgetBusy(false)}
+    finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
   return (
@@ -173,6 +198,7 @@ export default function Page() {
             <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>
 
+          {overviewRefreshError&&<div className="record-state error" role="alert">Τα δεδομένα δεν ανανεώθηκαν. Εμφανίζεται η τελευταία διαθέσιμη εικόνα. <button onClick={()=>void revalidator.current?.refresh()}>Δοκιμή ξανά</button></div>}
           {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
             <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':upcomingToday.length?"Προγραμματισμένα για αργότερα":"Δεν υπάρχουν άλλα προγραμματισμένα ραντεβού σήμερα"} tone="sage" />
@@ -198,7 +224,7 @@ export default function Page() {
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>selectable&&setSelectedPatientId(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
+                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>event.patient_id&&selectPatient(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
 
@@ -209,7 +235,7 @@ export default function Page() {
 
             {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
-              <ClinicalSummary compact bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
+              <ClinicalSummary compact overview bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=sessions'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
             </div>}
             {todaySchedule.length>0&&selectedPatientId&&!selectedBundle&&<div className="card ai-brief" role="status">{bundleFailure===selectedPatientId?<><p>Η κλινική εικόνα δεν φορτώθηκε.</p><button onClick={()=>setBundleRetry(n=>n+1)}>Δοκιμή ξανά</button></>:<p>Φόρτωση κλινικής εικόνας…</p>}</div>}
           </section>

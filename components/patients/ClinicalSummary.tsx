@@ -7,9 +7,9 @@ import {requestClinicalSummary,clinicalSummaryRetryDelayMs,CLINICAL_SUMMARY_RETR
 import {buildClinicalCard,type ClinicalCard} from '@/lib/clinical/clinical-card';
 import {buildSummaryContext,summaryContextKey,clinicDay} from '@/lib/clinical/summary-context';
 import ClinicalCardView from './ClinicalCardView';
-type Props={bundle:PatientBundle;compact?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
+type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
 type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null};
-export default function ClinicalSummary({bundle,compact=false}:Props){
+export default function ClinicalSummary({bundle,compact=false,overview=false}:Props){
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
  const handledRefresh=useRef(0);
  const retryAfter=useRef<{key:string;at:number}|null>(null);
@@ -42,7 +42,7 @@ export default function ClinicalSummary({bundle,compact=false}:Props){
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>
   {hasDraft&&<p className="clinical-summary-notice">Υπάρχει πρόχειρη επίσκεψη. Οι σημειώσεις της θα ενσωματωθούν όταν ολοκληρωθεί.</p>}
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}
-  <ClinicalCardView card={card} patientId={bundle.patient.id} compact={compact}/>
+  <ClinicalCardView card={card} patientId={bundle.patient.id} compact={compact} overview={overview}/>
   <footer className="clinical-card-footer"><span role="status">{state==='loading'?'Ενημέρωση…':state==='unavailable'?'Η σύνθεση δεν ανανεώθηκε.':card.synthesized?'Σύνθεση με πηγές':'Καταγραφές φακέλου'}</span><button disabled={state==='loading'} onClick={()=>setRefresh(n=>n+1)}>Ανανέωση</button>{compact&&<Link href={'/patients/demo/'+bundle.patient.id+'?tab=summary'}>Άνοιγμα κλινικής εικόνας →</Link>}</footer>
   <style jsx>{`.clinical-summary-notice{font-size:12px;line-height:1.5;color:#728278;margin:0 0 12px}.clinical-summary-head h2{margin:4px 0 15px;font-size:25px;letter-spacing:-.025em;color:#293e35}.summary-editorial-kicker{font-size:10px;color:#79887e;letter-spacing:.12em}.clinical-card-footer{display:flex;align-items:center;gap:14px;margin-top:12px;font-size:11px;color:#7c897f}.clinical-card-footer span{margin-right:auto}.clinical-card-footer button{border:0;background:none;color:#50745e;cursor:pointer}.clinical-card-footer a{color:#50745e;text-decoration:none}`}</style>
  </section>;

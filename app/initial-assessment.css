@@ -1,0 +1,91 @@
+/* The history section identifies the existing initial-assessment workspace.
+   Never target the MSE section, its descendants, or the dialog dimensions.
+   Follow-up (including its detailed editor) does not have this section. */
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > :is(.session-work-head,.visit-scroll-nav,.finalize-bar,.visit-hint),
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > :is(.visit-part:not([data-visit-part="mse"]),.visit-additional) {
+  width:100%;max-width:800px;box-sizing:border-box;margin-left:auto;margin-right:auto;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .session-work-head {
+  gap:16px;padding:22px 0 14px;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .session-work-head h2 {
+  font-size:clamp(23px,2vw,29px);font-weight:750;letter-spacing:-.027em;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-scroll-nav {
+  padding:12px 6px;margin-bottom:16px;gap:4px;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-scroll-nav button {
+  font-size:11px;line-height:1.4;color:#63766b;min-height:44px;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-scroll-nav button.active {
+  color:#2e6955;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-part:not([data-visit-part="mse"]) {
+  padding:clamp(17px,2vw,25px);margin-bottom:16px;border:1px solid #e1e8e3;
+  border-radius:18px;background:#fff;box-shadow:0 7px 24px rgba(36,65,48,.035);
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-part:not([data-visit-part="mse"]) > header {
+  margin-bottom:14px;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-part:not([data-visit-part="mse"]) > header h3 {
+  font-size:15px;font-weight:750;letter-spacing:-.01em;
+}
+/* Writing controls only; risk, medication, appointments and MSE keep their controls. */
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"],[data-visit-part="history"]) :is(.section-editor,.visit-assessment-field textarea,.history-question textarea) {
+  padding:13px 14px!important;min-height:76px!important;border:1px solid #dae5df;
+  border-radius:11px;background:#fff;font-size:14px;line-height:1.55;color:#293e35;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"],[data-visit-part="history"]) textarea::placeholder {
+  color:#97a59c;font-weight:400;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"]) .clinical-section-head {
+  align-items:center;gap:12px;flex-wrap:wrap;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"]) .section-mic {
+  width:auto;height:auto;min-height:36px;padding:9px 13px;border:1px solid #d5e3db;
+  border-radius:10px;background:#f8faf8;color:#366c57;font-size:12.5px;gap:7px;font-weight:650;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"]) .section-mic:hover:not(:disabled) {
+  background:#eaf3ed;border-color:#b9d4c5;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) [data-visit-part="plan"] .clinical-section + .clinical-section {
+  margin-top:20px;padding-top:16px;border-top:1px solid #edf1ee;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) [data-visit-part="history"] .visit-history-shell {
+  border:0;background:transparent;box-shadow:none;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) [data-visit-part="history"] .visit-history-intro {
+  padding:0 0 12px;gap:8px;flex-wrap:wrap;background:transparent;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) [data-visit-part="history"] .visit-history-scroll {
+  padding:0 8px 0 0;background:transparent;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-additional {
+  padding:0 18px;border:1px solid #e1e8e3;border-radius:15px;background:#fff;opacity:1;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-additional > summary {
+  padding:18px 4px;color:#2e5343;font-size:14px;font-weight:700;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar {
+  gap:10px;justify-content:flex-end;margin-top:16px;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar > button {
+  min-height:43px;padding:11px 20px;font-size:13px;border:1px solid #307662;border-radius:10px;background:#307662;color:#fff;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar > button.finalize-later {
+  border-color:#d5e3db;background:#f8faf8;color:#366c57;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar > button:hover:not(:disabled) {
+  background:#255f4e;border-color:#255f4e;
+}
+.runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar > button.finalize-later:hover:not(:disabled) {
+  background:#eaf3ed;border-color:#b9d4c5;
+}
+@media(max-width:760px) {
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-scroll-nav {justify-content:flex-start;overflow-x:auto;}
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-scroll-nav button {flex:0 0 82px;}
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-part:not([data-visit-part="mse"]) {padding:16px;border-radius:14px;}
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"],[data-visit-part="history"]) :is(.section-editor,.visit-assessment-field textarea,.history-question textarea) {font-size:16px;}
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) :is([data-visit-part="interview"],[data-visit-part="assessment"],[data-visit-part="plan"]) .section-mic {min-height:44px;}
+  .runtime-session:has(> .visit-document > [data-visit-part="history"]) > .finalize-bar {flex-direction:column;align-items:stretch;}
+}

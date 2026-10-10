@@ -1,0 +1,44 @@
+/* Clinical writing only: same warm surface as MSE, labels outside fields. */
+.visit-workspace{--clinical-note-surface:#fffefa;--clinical-note-line:#e1e5de}
+.visit-workspace .runtime-session>.visit-document>.visit-part,
+.visit-workspace .runtime-session:has(> .visit-document > [data-visit-part="history"]) > .visit-document > .visit-part:not([data-visit-part="mse"]),
+.visit-workspace .runtime-session>.visit-document>.visit-part[data-visit-part="mse"]{
+ background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;margin:0 0 28px;max-width:none;
+}
+.visit-workspace .visit-part>header{margin:0 0 14px;padding:0}
+.visit-workspace .visit-part>header h3{font-size:16px;line-height:1.5;font-weight:650;color:#34594d}
+.visit-workspace .clinical-section,.visit-workspace .visit-assessment-field{background:transparent;box-shadow:none}
+.visit-workspace [data-writing-editor="true"],
+.visit-workspace .mse-columns,
+.visit-workspace .mse-columns>.mse-item,
+.visit-workspace .mse-columns>.mse-item>.mse-body,
+.visit-workspace .visit-structured.mse .mse-columns>.mse-item>.mse-body,
+.visit-workspace .visit-assessment-additional,
+.visit-workspace .visit-med-table{
+ background:var(--clinical-note-surface);border-color:var(--clinical-note-line);
+}
+.visit-workspace [data-writing-editor="true"] textarea{background:transparent!important}
+.visit-workspace .mse-columns{border:1px solid var(--clinical-note-line);border-radius:12px;padding:0 12px}
+.visit-workspace .mse-columns>.mse-item:last-child{border-bottom:0!important}
+.visit-workspace .mse-columns .mse-note-label textarea,
+.visit-workspace .visit-history textarea,
+.visit-workspace .visit-assessment-field input,
+.visit-workspace .visit-assessment-field select{background:var(--clinical-note-surface)}
+.visit-workspace .clinical-provenance{margin-top:2px}
+.visit-workspace .clinical-provenance>summary{
+ display:inline-flex;align-items:center;justify-content:center;list-style:none;
+ width:32px;height:32px;padding:0;border-radius:6px;color:#54725f;cursor:pointer;
+}
+.visit-workspace .clinical-provenance>summary::-webkit-details-marker{display:none}
+/* Draw the chevron so it remains visible even without the Unicode arrow glyph. */
+.visit-workspace .clinical-provenance>summary span{display:block;width:8px;height:8px;font-size:0;line-height:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.visit-workspace .clinical-provenance[open]>summary span{transform:rotate(45deg)}
+.visit-workspace .clinical-provenance>summary:focus-visible{outline:2px solid #54725f;outline-offset:2px}
+.visit-workspace .clinical-provenance>summary:hover{background:#edf2ed}
+.visit-workspace .assessment-legacy-note{margin-top:14px;font-size:12px;color:#657166}
+@media(max-width:760px){
+ .visit-workspace .runtime-session>.visit-document>.visit-part{margin-bottom:24px}
+ .visit-workspace .mse-columns{padding:0 8px}
+ .visit-workspace .clinical-provenance>summary{width:44px;height:44px}
+}
+@media(prefers-reduced-motion:reduce){.visit-workspace .clinical-provenance>summary span{transition:none}}

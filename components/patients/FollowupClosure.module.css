@@ -81,3 +81,9 @@
  .footerActions button { flex-basis:100%; }
  .appointmentCard :global(.visit-inline-fields label) { max-width:none; width:100%; }
 }
+
+/* Clinical content surfaces match the full visit editor. */
+.card{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0}
+.details{background:var(--clinical-note-surface,#fffefa);border-color:var(--clinical-note-line,#e1e5de)}
+.closure textarea,.closure input:not([type=checkbox]){background:var(--clinical-note-surface,#fffefa)}
+@media(max-width:740px){.card{padding:0;border-radius:0}}

@@ -27,7 +27,8 @@ test('MSE rows keep every domain, option and note control, using existing Greek 
   const html=renderToStaticMarkup(React.createElement(MseDomain,{field,onChange(){},onBlur(){}}));
   assert.match(html,new RegExp('data-mse-domain="'+field.key+'"'));
   assert.ok(html.includes(presentation.mseDomainLabel(field).replace('&','&amp;')));
-  assert.match(html,/Δεν έχει καταγραφεί/);
+  assert.match(html,/mse-empty">—<\/span>/);
+  assert.doesNotMatch(html,/Οδηγός ενότητας|Δεν αξιολογήθηκε/);
   assert.equal((html.match(/<textarea/g)||[]).length,1);
   for(const axis of options.mseAxes[field.key])for(const option of axis.options)assert.ok(html.includes(option));
   assert.doesNotMatch(html,/ open=""|aria-pressed="true"/);
@@ -38,8 +39,10 @@ test('collapsed previews only show recorded text; negation, uncertainty and pend
  const field={key:'perception',label:'Perception',text:'Δεν αναφέρονται ψευδαισθήσεις.\nΑβέβαιη αναφορά — χρειάζεται επανέλεγχος.'};
  const snapshot=structuredClone(field);
  assert.equal(presentation.mseRecordedPreview(field),'Δεν αναφέρονται ψευδαισθήσεις. Αβέβαιη αναφορά — χρειάζεται επανέλεγχος.');
- const html=renderToStaticMarkup(React.createElement(MseDomain,{field,pending:true,previousField:field,onChange(){},onBlur(){}}));
+ const html=renderToStaticMarkup(React.createElement(MseDomain,{field:{...field,text:''},pending:true,previousField:field,onChange(){},onBlur(){}}));
  assert.match(html,/Προηγούμενη καταγραφή/);
+ assert.match(html,/mse-empty">—<\/span>/);
+ assert.doesNotMatch(html,/aria-pressed="true"/);
  assert.match(html,/Δεν αναφέρονται ψευδαισθήσεις/);
  assert.deepEqual(field,snapshot);
  assert.equal(presentation.mseRecordedPreview({...field,text:''}),'');
@@ -93,5 +96,6 @@ test('the redesigned editor keeps the existing versioned save_document contract 
  assert.equal(saved.version,8);
  const loaded=documents.initialDocument('mse','',JSON.parse(JSON.stringify(saved.value)));
  assert.equal(loaded.fields[2].text,'Υποκειμενικό συναίσθημα: Αγχώδες\nΑκριβής νέα σημείωση');
- assert.deepEqual(loaded.fields.filter(f=>f.key!=='mood'),document.fields.filter(f=>f.key!=='mood'));
+ assert.deepEqual(loaded.fields.filter(f=>f.key!=='mood'),document.fields.filter(f=>f.key!=='mood').map(f=>({...f,review:'not_assessed'})));
+ assert.ok(document.fields.filter(f=>f.key!=='mood').every(f=>f.text===''&&f.review===undefined),'saving must not mutate the source document');
 });

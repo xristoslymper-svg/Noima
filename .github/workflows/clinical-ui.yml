@@ -1,0 +1,35 @@
+name: Clinical editor browser checks
+on:
+  pull_request:
+    paths:
+      - 'components/patients/**'
+      - 'components/dictation/**'
+      - 'app/*.css'
+      - 'app/layout.tsx'
+      - 'browser-tests/clinical-cleanup*'
+      - '.github/workflows/clinical-ui.yml'
+permissions:
+  contents: read
+concurrency:
+  group: clinical-editor-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  visual-and-interaction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+      - run: npx playwright install --with-deps chromium
+      - run: node browser-tests/clinical-cleanup.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clinical-editor-evidence
+          path: test-results/clinical-cleanup
+          retention-days: 7

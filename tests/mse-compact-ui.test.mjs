@@ -27,7 +27,7 @@ test('MSE rows keep every domain, option and note control, using existing Greek 
   const html=renderToStaticMarkup(React.createElement(MseDomain,{field,onChange(){},onBlur(){}}));
   assert.match(html,new RegExp('data-mse-domain="'+field.key+'"'));
   assert.ok(html.includes(presentation.mseDomainLabel(field).replace('&','&amp;')));
-  assert.match(html,/Δεν έχει καταγραφεί/);
+  assert.doesNotMatch(html,/Δεν έχει καταγραφεί|Οδηγός ενότητας|Δεν αξιολογήθηκε/);
   assert.equal((html.match(/<textarea/g)||[]).length,1);
   for(const axis of options.mseAxes[field.key])for(const option of axis.options)assert.ok(html.includes(option));
   assert.doesNotMatch(html,/ open=""|aria-pressed="true"/);
@@ -94,4 +94,23 @@ test('the redesigned editor keeps the existing versioned save_document contract 
  const loaded=documents.initialDocument('mse','',JSON.parse(JSON.stringify(saved.value)));
  assert.equal(loaded.fields[2].text,'Υποκειμενικό συναίσθημα: Αγχώδες\nΑκριβής νέα σημείωση');
  assert.deepEqual(loaded.fields.filter(f=>f.key!=='mood'),document.fields.filter(f=>f.key!=='mood'));
+});
+
+
+test('unassessed domains stay quiet without creating a normal finding or mutating the stored marker',()=>{
+ const field={key:'mood',label:'Mood',text:'Δεν αξιολογήθηκε σήμερα',review:'not_assessed'};
+ const before=structuredClone(field);
+ const html=renderToStaticMarkup(React.createElement(MseDomain,{field,review:field.review,onContinue(){},onSkip(){},onChange(){},onBlur(){}}));
+ assert.doesNotMatch(html,/Οδηγός ενότητας|Δεν αξιολογήθηκε|Δεν έχει καταγραφεί|aria-pressed="true"/);
+ assert.deepEqual(field,before);
+});
+
+test('clearing a visible previous reference is explicit and does not adopt the previous finding',()=>{
+ const previous={key:'mood',label:'Mood',text:'Υποκειμενικό συναίσθημα: Αγχώδες'};
+ let current={key:'mood',label:'Mood',text:''};
+ const node=MseDomain({field:review.visibleMseField(current,previous),previousField:previous,pending:true,onContinue(){},onSkip(){current=review.recordMseField(current,'',previous)},onChange(){},onBlur(){}});
+ const clear=nodes(node).find(n=>n.type==='button'&&n.props['aria-label']?.startsWith('Εκκαθάριση επιλογών:'));
+ assert.ok(clear);assert.equal(current.text,'');clear.props.onClick();
+ assert.equal(current.text,'');assert.equal(current.review,'not_assessed');
+ assert.equal(previous.text,'Υποκειμενικό συναίσθημα: Αγχώδες');
 });

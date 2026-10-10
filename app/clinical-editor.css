@@ -29,7 +29,7 @@
 .visit-workspace .history-question textarea,
 .visit-workspace .visit-history textarea,
 .visit-workspace .visit-structured.mse .mse-body,
-.visit-workspace .visit-medication {
+.visit-workspace .medication-table-editor {
   background:var(--clinical-field-surface)!important;
   border-color:var(--clinical-field-border)!important;
 }
@@ -86,3 +86,8 @@
   .visit-workspace .clinical-provenance>summary,
   .visit-workspace .mse-review-actions .mse-clear {min-width:44px;min-height:44px;}
 }
+
+/* Medication and plain input surfaces share the editor palette, without changing status chips. */
+.visit-workspace .medication-table-editor {border:1px solid var(--clinical-field-border);border-radius:12px;}
+.visit-workspace .medication-table-editor :is(table,tbody,tr,td,th) {background:transparent;}
+.visit-workspace :is(input:not([type=checkbox]):not([type=radio]),select) {background:var(--clinical-field-surface);}

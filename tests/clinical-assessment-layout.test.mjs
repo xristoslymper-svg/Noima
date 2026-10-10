@@ -45,7 +45,7 @@ test('clinical assessment is a single column with diagnosis and impression first
  const impression=html.indexOf('Κλινική εκτίμηση');
  const advanced=html.indexOf('<summary>Διαφορική διάγνωση');
  assert.ok(diagnosis>=0&&diagnosis<impression&&impression<advanced);
- assert.match(html,/Διατύπωση περίπτωσης/);
+ assert.doesNotMatch(html,/Διατύπωση περίπτωσης/);
  assert.match(html,/Διαφορική διάγνωση/);
  assert.match(html,/Βεβαιότητα/);
  assert.match(html,/ICD-10/);

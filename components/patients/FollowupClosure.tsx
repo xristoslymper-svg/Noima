@@ -45,7 +45,7 @@ export default function FollowupClosure(p:Props){
  const activeMedications=bundle.medications.filter(m=>m.status==='active');
  const medicationChanges=bundle.medicationEvents.filter(e=>e.session_id===session.id&&e.event_type==='changed'&&!(bundle.medicationRevisions||[]).some(r=>r.event_id===e.id));
  const timeline=p.contextReady?mseTimeline(bundle,session.id,session.started_at):undefined;
- return <section className={styles.closure}>
+ return <section className={styles.closure} data-clinical-followup="true">
   <header className={styles.heading}><div><span className="kicker">ΕΠΑΝΕΞΕΤΑΣΗ</span><h2>Σημερινή καταγραφή</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Πρόχειρη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
   <section className={styles.card} aria-label="Σημειώσεις επίσκεψης">
    {writingField('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…',4)}

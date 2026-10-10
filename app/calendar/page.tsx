@@ -1172,15 +1172,16 @@ function AppointmentEditor({
             {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setProvisional(null);setPatientPickerOpen(true)}}><X size={14}/></button>}
           </div>
           {patientPickerOpen&&<div className="appointment-patient-results">
+            <div className="appointment-new-patient-actions">
+              <button type="button" className="appointment-create-patient" onClick={openQuickPatient}><UserPlus size={15}/><span>{normalizedPatientSearch?"Νέος ασθενής":"Δημιουργία νέου ασθενή"}</span></button>
+              <Link href="/patients/new" target="_blank" rel="noreferrer" onClick={()=>setPatientPickerOpen(false)}>Πλήρης φάκελος ↗</Link>
+            </div>
             {matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
               <span>{patient.first_name} {patient.last_name}</span>
               {patient.id===patientId&&<Check size={14}/>}
             </button>)}
             {normalizedPatientSearch&&matchingPatients.length===0&&<small>Δεν βρέθηκε ασθενής.</small>}
-            <div className="appointment-new-patient-actions">
-              <button type="button" className="appointment-create-patient" onClick={openQuickPatient}><UserPlus size={15}/><span>{normalizedPatientSearch?"Νέος ασθενής":"Δημιουργία νέου ασθενή"}</span></button>
-              <Link href="/patients/new" target="_blank" rel="noreferrer" onClick={()=>setPatientPickerOpen(false)}>Πλήρης φάκελος ↗</Link>
-            </div>
+
           </div>}
           {quickPatientOpen&&<div className="appointment-quick-patient">
             <div className="appointment-quick-patient-head"><strong>Νέος ασθενής</strong><button type="button" onClick={()=>setQuickPatientOpen(false)} aria-label="Κλείσιμο"><X size={14}/></button></div>

@@ -173,7 +173,7 @@ export default function Page() {
     <main className="app-shell">
       <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
         <div className="brand">
-          <div className="brand-mark">Ψ</div>
+          <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>
           <div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div>
         </div>
 
@@ -202,18 +202,13 @@ export default function Page() {
           {overviewRefreshError&&<div className="record-state error" role="alert">Τα δεδομένα δεν ανανεώθηκαν. Εμφανίζεται η τελευταία διαθέσιμη εικόνα. <button onClick={()=>void revalidator.current?.refresh()}>Δοκιμή ξανά</button></div>}
           {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':upcomingToday.length?"Προγραμματισμένα για αργότερα":"Δεν υπάρχουν άλλα προγραμματισμένα ραντεβού σήμερα"} tone="sage" />
+            <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} tone="sage" />
             <TodoMetric
-              tasks={overviewState==='ready'?openTasks:[]}
               value={overviewState==='ready'?String(openTasks.length):'—'}
-              loading={overviewState==='loading'}
-              error={overviewState==='error'}
-              busy={widgetBusy}
               onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
-              onComplete={completeTask}
             />
-            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':reviewSubmissions.length?'Παραλήφθηκαν':'Καμία υποβολή'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
-            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} note={overviewState==='loading'?'Φόρτωση…':overviewState==='error'?'Δεν φορτώθηκε':'Εκκρεμείς πληρωμές'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
+            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
+            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
           <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
@@ -317,16 +312,14 @@ export default function Page() {
   );
 }
 
-function TodoMetric({tasks,value,loading,error,onOpen}:{tasks:TodoTask[];value:string;loading:boolean;error:boolean;busy:boolean;onOpen:()=>void;onComplete:(task:TodoTask)=>Promise<void>}){
-  const total=tasks.length;
-  const note=loading?'Φόρτωση…':error?'Δεν φορτώθηκε':total?(total===1?'1 εκκρεμότητα':total+' εκκρεμότητες'):'Δεν υπάρχουν ανοιχτές εργασίες';
+function TodoMetric({value,onOpen}:{value:string;onOpen:()=>void}){
   return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα εκκρεμοτήτων">
-    <div className="metric-icon"><ListTodo size={22}/></div><span>Εκκρεμότητες</span><strong>{value}</strong><small>{note}</small>
+    <div className="metric-icon"><ListTodo size={22}/></div><span>Εκκρεμότητες</span><strong>{value}</strong>
   </button>;
 }
 
-function Metric({ icon, label, value, note, tone, onClick }: { icon: React.ReactNode; label: string; value: string; note: string; tone: string; onClick?:()=>void }) {
-  const content=<><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong><small>{note}</small></>;
+function Metric({ icon, label, value, tone, onClick }: { icon: React.ReactNode; label: string; value: string; tone: string; onClick?:()=>void }) {
+  const content=<><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong></>;
   return onClick?<button type="button" className={`metric ${tone} metric-action`} onClick={onClick}>{content}</button>:<div className={`metric ${tone}`}>{content}</div>;
 }
 

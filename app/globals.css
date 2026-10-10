@@ -1174,3 +1174,11 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 .patient-doctor-notes summary span{margin-left:8px;font-size:11px;color:#7f8d84;font-weight:500}
 .patient-doctor-notes .history-editor-grid{margin:16px 0}
 @media(max-width:760px){.patient-reported-answers{grid-template-columns:1fr}.patient-reported-summary,.patient-reported-section,.patient-doctor-notes{padding:18px 16px}}
+
+
+/* The brand symbol is a real, keyboard-accessible shortcut to Overview. */
+.sidebar a.brand-mark{text-decoration:none;flex-shrink:0;cursor:pointer}
+.sidebar a.brand-mark:focus-visible{outline:2px solid #2f6f63;outline-offset:4px}
+/* KPI titles and values stand on their own, without redundant subtitles. */
+.metric-grid .metric{min-height:128px}
+.metric-grid .metric strong{margin:19px 0 0}

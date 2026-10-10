@@ -1,0 +1,41 @@
+name: Recover verified clinical UI branch
+on:
+  push:
+    branches: [recovery/clinical-ui-transfer-20261010]
+permissions:
+  contents: write
+jobs:
+  transfer:
+    if: github.repository == 'xristoslymper-svg/Noima' && github.ref == 'refs/heads/recovery/clinical-ui-transfer-20261010'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch the exact sandbox-tested Git objects and synthetic evidence
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 'https://sb-4oy7wkb4rbj6.vercel.run/clinical-ui-20261010-ae1f3f34/clinical-ui.bundle' -o /tmp/clinical-ui.bundle
+          echo '6441cd785b593eb9a24bcebc2f9c774b87f71b25c2c769c3114b5ae3e27715b4  /tmp/clinical-ui.bundle' | sha256sum -c -
+          curl --fail --silent --show-error --retry 2 'https://sb-4oy7wkb4rbj6.vercel.run/clinical-ui-20261010-ae1f3f34/evidence.zip' -o /tmp/clinical-ui-evidence.zip
+          echo '2205f973f8c0d542bd1f439c217387dbcc48fb66f72bdc4a1a2f1a49797085a9  /tmp/clinical-ui-evidence.zip' | sha256sum -c -
+          git bundle verify /tmp/clinical-ui.bundle
+          git fetch --no-tags /tmp/clinical-ui.bundle HEAD
+          test "$(git rev-parse FETCH_HEAD)" = d2e0f30c35c79b1ac8e178d1dd148f45d19fd408
+          test "$(git rev-parse FETCH_HEAD^)" = 4dc0671e5f308dab36afa8af6f77c8c9293611e8
+          git diff FETCH_HEAD^ FETCH_HEAD --check
+          python3 - <<'PY'
+          import subprocess
+          allowed={'.github/workflows/clinical-editor-browser.yml','app/clinical-editor-surfaces.css','app/layout.tsx','browser-tests/clinical-editor-cleanup-fixture.tsx','browser-tests/clinical-editor-cleanup.mjs','components/patients/FollowupClosure.module.css','components/patients/MseDomain.tsx','components/patients/PatientSession.tsx','components/patients/SectionEditor.tsx','components/patients/StructuredVisitEditor.tsx','lib/clinical/mse-review.ts','tests/clinical-assessment-layout.test.mjs','tests/clinical-editor-cleanup.test.mjs','tests/mse-compact-ui.test.mjs'}
+          actual=set(subprocess.check_output(['git','diff','FETCH_HEAD^','FETCH_HEAD','--name-only']).decode().splitlines())
+          assert actual==allowed, (actual-allowed,allowed-actual)
+          PY
+          # Only the new review branch is written. No main or production update.
+          git push origin FETCH_HEAD:refs/heads/ui/clinical-editor-cleanup-20261010
+          echo 'Published reviewed commit d2e0f30c35c79b1ac8e178d1dd148f45d19fd408'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-clinical-ui-evidence
+          path: /tmp/clinical-ui-evidence.zip
+          retention-days: 7

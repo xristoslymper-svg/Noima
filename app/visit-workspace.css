@@ -22,6 +22,8 @@
 .visit-part>header{margin-bottom:18px}.visit-part>header h3{font-size:17px;letter-spacing:-.015em;font-weight:650;color:#263d35}
 .visit-dialog .clinical-section{padding:0}.visit-dialog .clinical-section-head{margin-bottom:8px}.visit-dialog .clinical-section-head h3{font-size:13px;font-weight:600}.visit-dialog .clinical-section-head span{display:none}
 .visit-dialog .section-mic{width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:#6f857a;font-size:0;display:inline-flex;align-items:center;justify-content:center}.visit-dialog .section-mic:hover{background:#eef3ef;color:#2f705b}
+.clinical-section-head .section-mic--icon{width:36px;min-width:36px;height:36px;min-height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;gap:0;border-radius:10px;font-size:0}
+@media(max-width:760px){.clinical-section-head .section-mic--icon{width:44px;min-width:44px;height:44px;min-height:44px}}
 .visit-dialog .section-editor,.visit-dialog textarea{background:rgba(255,255,255,.62);border:1px solid #e0e6e2;border-radius:10px;box-shadow:none;transition:border-color .15s,background .15s,box-shadow .15s}.visit-dialog textarea:focus{background:#fff;border-color:#83aa9a;box-shadow:0 0 0 3px rgba(80,130,108,.07);outline:0}
 .visit-dialog .clinical-section>div[role=status]{min-height:0;font-size:10px;color:#93a099}.visit-dialog .clinical-section>div[role=status]:empty{display:none}
 .visit-structured.mse{display:block}.visit-structured.mse>.visit-hint{margin:0 0 10px}

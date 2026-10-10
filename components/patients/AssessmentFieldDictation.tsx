@@ -18,8 +18,8 @@ export default function AssessmentFieldDictation({fieldKey,title,onInsert,regist
  useEffect(()=>()=>onDirtyChange(key,false),[key,onDirtyChange]);
  function close(){pending.current=false;setOpen(false);onDirtyChange(key,false)}
  return <>
-  <button type="button" className={styles.microphone} aria-label={'Υπαγόρευση: '+title} onClick={()=>{pending.current=true;setOpen(true);onDirtyChange(key,true)}}>
-   <Mic2 size={15} aria-hidden="true"/> Υπαγόρευση
+  <button type="button" className={styles.microphone} aria-label={'Υπαγόρευση: '+title} title={'Υπαγόρευση: '+title} onClick={()=>{pending.current=true;setOpen(true);onDirtyChange(key,true)}}>
+   <Mic2 size={15} aria-hidden="true"/>
   </button>
   {open&&<SectionDictation title={title} onClose={close} onInsert={text=>{onInsert(text);close()}}/>}
  </>;

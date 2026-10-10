@@ -30,8 +30,9 @@
  width:32px;height:32px;padding:0;border-radius:6px;color:#54725f;cursor:pointer;
 }
 .visit-workspace .clinical-provenance>summary::-webkit-details-marker{display:none}
-.visit-workspace .clinical-provenance>summary span{font-size:18px;line-height:1;transition:transform .15s}
-.visit-workspace .clinical-provenance[open]>summary span{transform:rotate(180deg)}
+/* Draw the chevron so it remains visible even without the Unicode arrow glyph. */
+.visit-workspace .clinical-provenance>summary span{display:block;width:8px;height:8px;font-size:0;line-height:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.visit-workspace .clinical-provenance[open]>summary span{transform:rotate(45deg)}
 .visit-workspace .clinical-provenance>summary:focus-visible{outline:2px solid #54725f;outline-offset:2px}
 .visit-workspace .clinical-provenance>summary:hover{background:#edf2ed}
 .visit-workspace .assessment-legacy-note{margin-top:14px;font-size:12px;color:#657166}

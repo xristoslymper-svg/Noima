@@ -47,6 +47,8 @@ test('each field opens the existing dictation dialog; navigation is blocked unti
  const button=tree.props.children[0];
  assert.equal(button.type,'button');assert.equal(button.props.type,'button');
  assert.equal(button.props['aria-label'],'Υπαγόρευση: Κλινική εκτίμηση');
+ assert.equal(button.props.title,'Υπαγόρευση: Κλινική εκτίμηση');
+ assert.equal(button.props.children.filter(child=>typeof child==='string').length,0,'Clinical assessment dictation must show only the microphone icon');
  button.props.onClick();tree=h.render();
  const dialog=tree.props.children[1];assert.equal(dialog.type,h.Dialog);
  assert.equal(dialog.props.title,'Κλινική εκτίμηση');

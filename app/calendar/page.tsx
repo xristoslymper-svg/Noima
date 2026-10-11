@@ -659,6 +659,9 @@ export default function CalendarPage() {
                           const duration = part.end-part.start;
                           const top = ((startMinute - weekWindow.start) / 60) * weekHourHeight;
                           const height = Math.max(38, (duration / 60) * weekHourHeight);
+                          // Compact appointments retain readable time and patient within their actual duration.
+                          const compactEvent = height < 60;
+                          const roomyEvent = height >= 66;
                           const outsideRange = startMinute < weekWindow.start || startMinute >= weekWindow.end;
                           const historyPlacement=cancelledHistoryPlacement(event,items);
                           const lane=lanes.get(event.id);
@@ -675,6 +678,7 @@ export default function CalendarPage() {
                                 (draggingEventId === event.id ? " dragging" : "") +
                                 (event.readiness === "waiting" ? " waiting" : "") +
                                 (historyPlacement?.paired ? " paired-cancelled-history" : "") +
+                                (compactEvent ? " compact" : roomyEvent ? " roomy" : "") +
                                 (event.appointment_type === "initial_assessment" ? " initial" : " follow-up") + " status-" + event.status
                               }
                               key={event.id}
@@ -682,7 +686,7 @@ export default function CalendarPage() {
                               role="button" tabIndex={0}
                               aria-label={event.patient_name + " · " + timeLabel(event.scheduled_start) + " · " + statusLabel(event)}
                               onKeyDown={key=>{if(key.key==="Enter"||key.key===" "){key.preventDefault();setQuickError("");setSelectedEvent(event)}}}
-                              title={event.patient_name + " · " + appointmentType(event.appointment_type)}
+                              title={event.patient_name + " · " + timeLabel(event.scheduled_start) + " · " + statusLabel(event)}
                               style={{ top, height, left:position.left, right:"auto", width:position.width }}
                               onDragStart={dragEvent => {
                                 setDraggingEventId(event.id);
@@ -700,8 +704,13 @@ export default function CalendarPage() {
                               }}
                             >
                               <div className="week-event-grip" aria-hidden="true">⋮⋮</div>
-                              <span>{event.series_id ? "↻ " : ""}{event.patient_name}</span>
-                              <strong>{timeLabel(event.scheduled_start)} · {event.status === "scheduled" && !isPastScheduled(event) ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
+                              {compactEvent ? <>
+                                <strong className="week-event-time">{event.status === "cancelled" ? "× " : ""}{timeLabel(event.scheduled_start)}</strong>
+                                <span className="week-event-name">{event.series_id ? "↻ " : ""}{event.patient_name}</span>
+                              </> : <>
+                                <span className="week-event-name">{event.series_id ? "↻ " : ""}{event.patient_name}</span>
+                                <strong className="week-event-time">{timeLabel(event.scheduled_start)} · {event.status === "scheduled" && !isPastScheduled(event) ? appointmentType(event.appointment_type) : statusLabel(event)}</strong>
+                              </>}
                             </div>
                           );
                         })}
@@ -906,6 +915,16 @@ export default function CalendarPage() {
 
         .week-event span{display:block;font-size:12px!important;font-weight:750!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .week-event strong{display:block;margin-top:3px;font-size:10px!important;font-weight:600!important;color:#71847a!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        /* Short appointments: time and name occupy only two compact lines. */
+        .week-event.draggable{box-sizing:border-box;min-width:0;display:flex!important;flex-direction:column;justify-content:center;gap:1px!important}
+        .week-event.draggable .week-event-name{display:block;min-width:0;max-width:100%;line-height:1.22!important}
+        .week-event.draggable .week-event-time{display:block;margin-top:0!important;line-height:1.2!important;font-variant-numeric:tabular-nums}
+        .week-event.draggable.compact{padding:3px 7px!important;gap:0!important}
+        .week-event.draggable.compact .week-event-time,.week-event.draggable.compact .week-event-name{font-size:10px!important;line-height:1.3!important}
+        .week-event.draggable.compact .week-event-time{font-weight:750!important}
+        .week-event.draggable.roomy .week-event-name{display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal!important;overflow:hidden!important}
+        .week-event.status-cancelled .week-event-name{text-decoration:none!important;color:#745150!important}
+        .week-event.status-cancelled.paired-cancelled-history.compact .week-event-name{font-size:9px!important}
         .week-time-column{cursor:crosshair}
         .calendar-appointment-popover-backdrop{position:fixed;inset:0;z-index:90;background:rgba(36,50,44,.12);display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
         .calendar-appointment-popover{position:relative;width:min(430px,92vw);padding:26px 28px 24px;border:1px solid #e2e8e4;border-radius:18px;background:#fffefa;box-shadow:0 24px 80px rgba(38,58,49,.18)}

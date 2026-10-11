@@ -47,13 +47,12 @@ try{
  });
  await check('follow-up retains its editor, structured MSE and no global unassessed shortcut',{width:1280,height:1000},'/?followup=1',async p=>{
   await p.locator('[data-clinical-followup]').waitFor();
-  const adherence=p.locator('[data-followup-adherence-group="true"]');
-  await adherence.waitFor();
-  assert.equal(await adherence.locator('textarea').count(),1,'adherence editor stays inside its ivory group');
-  assert.equal(await adherence.getByRole('button',{name:'Κανονική λήψη'}).count(),1,'quick choices stay with the editor');
-  const appearance=await adherence.evaluate(el=>({bg:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth,padding:getComputedStyle(el).paddingLeft}));
-  const clinical=await p.locator('[data-clinical-followup] .visit-part-surface').first().evaluate(el=>({bg:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth,padding:getComputedStyle(el).paddingLeft}));
-  assert.deepEqual(appearance,clinical,'adherence shares the clinical panel background/border/inset');
+  const plan=p.locator('[data-followup-plan-group="true"]');
+  await plan.waitFor();
+  assert.equal(await plan.locator('textarea').count(),2,'two saved fields inside one treatment/review group');
+  assert.equal(await p.locator('[data-followup-adherence-group="true"]').count(),0);
+  assert.equal(await p.getByText('Σημερινή ανασκόπηση λήψης',{exact:true}).count(),0);
+  assert.equal(await p.getByText('Τι αξίζει να θυμόμαστε',{exact:true}).count(),0);
   assert.equal(await p.getByRole('button',{name:'Δεν αξιολογήθηκε σήμερα',exact:true}).count(),0);assert.equal(await p.getByText('Οδηγός ενότητας',{exact:true}).count(),0);await p.getByRole('button',{name:'Καταγραφή αλλαγής σε ενότητα MSE',exact:true}).click();assert.equal(await mse(p).locator('[data-mse-domain]').count(),12);await p.screenshot({path:resolve(out,'followup.png')});
  });
 

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {CalendarDays,ChevronRight} from 'lucide-react';
+import {CalendarDays,ChevronRight,Pencil} from 'lucide-react';
 import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {emptyContinuity,type ContinuityDraft} from '@/lib/clinical/continuity';
 import {mseTimeline,previousMseReference,finalizationBlocker} from '@/lib/clinical/visit-workspace-state';
@@ -14,6 +14,7 @@ import VisitScores from './VisitScores';
 import VisitNextAppointment from './VisitNextAppointment';
 import {formatClinicDate,formatClinicDateTime} from '@/lib/clinic-time';
 import {continuityContexts} from '@/lib/clinical/continuity-context';
+import {readMedicationResponse,updateMedicationResponse,type MedicationResponse} from '@/lib/clinical/medication-response-note';
 import StableDetails from './StableDetails';
 import styles from './FollowupClosure.module.css';
 
@@ -31,6 +32,14 @@ export default function FollowupClosure(p:Props){
  const [med,setMed]=useState<{mode:'start'|'change'|'stop'|'side_effect';id?:string}|null>(null);
  useEffect(()=>registerFlusher('closure-medication',async()=>{if(med)throw new Error('Ολοκληρώστε πρώτα την καταχώρηση αγωγής.')}),[registerFlusher,med]);
  function change(key:keyof ContinuityDraft,value:string){const latest=currentDraft.current;latest.change({...latest.currentValue(),[key]:value})}
+ function selectMedicationResponse(medication:PatientBundle['medications'][number],response:MedicationResponse){
+  const value=currentDraft.current.currentValue();
+  const selected=readMedicationResponse(value.clinical_state_summary,medication);
+  const updated=updateMedicationResponse(value.clinical_state_summary,medication,selected===response?null:response);
+  if(updated.length>20000){setError('Η κλινική εικόνα έφτασε το μέγιστο μήκος. Συντομεύστε το κείμενο για να καταγράψετε ανταπόκριση.');return}
+  setError('');
+  change('clinical_state_summary',updated);
+ }
  function writingField(key:'transcript'|'clinical_state_summary'|'treatment_decision'|'next_review_focus'|'adherence'|'pinned_context',title:string,placeholder='',rows=2){return <ClinicalTextField sessionId={session.id} section="closure" fieldKey={key} title={title} placeholder={placeholder} rows={rows} maxLength={key==='pinned_context'?2000:20000} value={draft.value[key]} onPendingChange={pending=>setWriting(v=>v[key]===pending?v:{...v,[key]:pending})} onChange={text=>change(key,text)} onBlur={()=>void draft.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onConfirm={async(text,{provenance})=>{
   await currentDraft.current.flush();const latest=currentDraft.current;
   const value=latest.currentValue();if(value[key]!==provenance.original)throw new Error('Η αρχική καταγραφή άλλαξε. Ελέγξτε τη νεότερη έκδοση.');
@@ -50,16 +59,51 @@ export default function FollowupClosure(p:Props){
   <section className={styles.card} aria-label="Σημειώσεις επίσκεψης">
    {writingField('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…',4)}
   </section>
-  <section className={styles.card}><div className={styles.cardHeading}><h3>Κλινική καταγραφή</h3></div><div className={styles.fields+" visit-part-surface"}>{([['clinical_state_summary','Κλινική εικόνα'],['treatment_decision','Θεραπευτική απόφαση'],['next_review_focus','Στην επόμενη επίσκεψη']] as const).map(([k,label])=><div key={k}>{writingField(k,label,{clinical_state_summary:'Συμπτώματα, λειτουργικότητα, μεταβολές…',treatment_decision:'Αγωγή, παρεμβάσεις ή αλλαγές στο πλάνο…',next_review_focus:'Τι χρειάζεται να επανεκτιμηθεί…'}[k])}{!draft.value[k].trim()&&k==='treatment_decision'&&<button type="button" disabled={writing.treatment_decision} onClick={()=>change('treatment_decision','Δεν ελήφθη νέα θεραπευτική απόφαση στη σημερινή επίσκεψη.')}>Δεν ελήφθη νέα απόφαση</button>}{!draft.value[k].trim()&&k==='next_review_focus'&&<button type="button" disabled={writing.next_review_focus} onClick={()=>change('next_review_focus','Δεν ορίστηκε συγκεκριμένος επόμενος έλεγχος στη σημερινή επίσκεψη.')}>Δεν ορίστηκε επόμενος έλεγχος</button>}</div>)}</div></section>
-  {p.contextReady?(activeMedications.length>0||draft.value.adherence.trim()?<section className={styles.card}><div className="visit-part-surface" data-followup-adherence-group="true">{!draft.value.adherence&&<div className={styles.actions}>{['Κανονική λήψη','Υπήρξε θέμα','Δεν αξιολογήθηκε'].map(label=><button type="button" disabled={writing.adherence} key={label} onClick={()=>change('adherence',label)}>{label}</button>)}</div>}{writingField('adherence','Σημερινή ανασκόπηση λήψης')}</div></section>:null):<p role="status">Φόρτωση αγωγής…</p>}
-  <section className={styles.card}><h3>Τρέχουσα αγωγή</h3><div className="visit-part-surface">{p.contextReady&&activeMedications.length>1&&<button type="button" disabled={writing.treatment_decision} onClick={()=>change('treatment_decision','Συνέχιση της καταχωρισμένης αγωγής χωρίς αλλαγή: '+activeMedications.map(m=>m.medication_name+' '+m.dose+' '+m.unit+' · '+m.frequency).join('; ')+'.')}>Χωρίς αλλαγή στην καταχωρισμένη αγωγή</button>}{medicationChanges.map(e=><p key={e.id}>Αλλαγή: {String(e.new_state?.medication_name||'Αγωγή')} · {String(e.previous_state?.dose??'—')} {String(e.previous_state?.unit||'')} → {String(e.new_state?.dose??'—')} {String(e.new_state?.unit||'')} · Ισχύει από {formatClinicDate(e.effective_on)}</p>)}{p.contextReady?<>{activeMedications.map(m=><div className={styles.medication} key={m.id}><span>{m.medication_name} · {m.dose} {m.unit} · {m.frequency}</span><button type="button" disabled={writing.treatment_decision} onClick={()=>change('treatment_decision','Συνέχιση '+m.medication_name+' '+m.dose+' '+m.unit+' · '+m.frequency+' χωρίς αλλαγή.')}>Χωρίς αλλαγή</button><button type="button" onClick={()=>setMed({mode:'change',id:m.id})}>Αλλαγή</button><button type="button" onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button></div>)}<button type="button" onClick={()=>setMed({mode:'start'})}>Προσθήκη αγωγής</button></>:<p role="status">Φόρτωση αγωγής…</p>}</div></section>
+  <section className={styles.card} data-followup-clinical-group="true">
+   <div className={styles.cardHeading}><h3>Κλινική καταγραφή</h3></div>
+   <div className={styles.fields+" visit-part-surface"}>
+    <div>{writingField('clinical_state_summary','Κλινική εικόνα','Συμπτώματα, λειτουργικότητα, μεταβολές…')}</div>
+    <div className={styles.planGroup} data-followup-plan-group="true">
+     <h4>Θεραπευτική απόφαση & επανέλεγχος</h4>
+     <div className={styles.planFields}>
+      <div>{writingField('treatment_decision','Απόφαση / παρεμβάσεις','Αγωγή, παρεμβάσεις ή αλλαγές στο πλάνο…')}</div>
+      <div>{writingField('next_review_focus','Τι θα επανεκτιμηθεί','Συμπτώματα, ανταπόκριση ή στόχοι επόμενης επίσκεψης…')}</div>
+     </div>
+    </div>
+   </div>
+  </section>
+  <section className={styles.card} data-followup-medication-group="true">
+   <h3>Τρέχουσα αγωγή</h3>
+   <div className="visit-part-surface">
+    {medicationChanges.map(e=><p key={e.id}>Αλλαγή: {String(e.new_state?.medication_name||'Αγωγή')} · {String(e.previous_state?.dose??'—')} {String(e.previous_state?.unit||'')} → {String(e.new_state?.dose??'—')} {String(e.new_state?.unit||'')} · Ισχύει από {formatClinicDate(e.effective_on)}</p>)}
+    {p.contextReady?<>{activeMedications.map(m=>{
+     const selectedResponse=readMedicationResponse(draft.value.clinical_state_summary,m);
+     const hasRecordedSideEffect=bundle.medicationSideEffects.some(e=>e.medication_id===m.id&&e.session_id===session.id);
+     return <div className={styles.medication} key={m.id} data-medication-response={m.id}>
+      <span className={styles.medicationName}>{m.medication_name} · {m.dose} {m.unit} · {m.frequency}</span>
+      <button type="button" className={styles.medicationEdit} title="Αλλαγή δόσης ή συχνότητας" aria-label={'Αλλαγή δόσης ή συχνότητας για '+m.medication_name} onClick={()=>setMed({mode:'change',id:m.id})}><Pencil size={16} aria-hidden="true"/></button>
+      <div className={styles.responseOptions} role="group" aria-label={'Ανταπόκριση στην αγωγή '+m.medication_name}>
+       <span className={styles.responseLabel}>Ανταπόκριση</span>
+       <button type="button" aria-pressed={selectedResponse==='good'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'good')}>Καλή</button>
+       <button type="button" aria-pressed={selectedResponse==='neutral'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'neutral')}>Ουδέτερη</button>
+       <button type="button" aria-pressed={hasRecordedSideEffect} onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button>
+      </div>
+     </div>;
+    })}
+    <button type="button" onClick={()=>setMed({mode:'start'})}>Προσθήκη αγωγής</button></>:<p role="status">Φόρτωση αγωγής…</p>}
+    {draft.value.adherence.trim()&&<details className={styles.legacyNote}><summary>Προϋπάρχουσα καταγραφή λήψης</summary><p>{draft.value.adherence}</p></details>}
+   </div>
+  </section>
   <StableDetails key={session.id+':mse'} className={styles.details} initialOpen={!mse?.content.trim()}><summary>MSE · {mse?.content.trim()?'Καταγεγραμμένο — έλεγχος':'Χρειάζεται σημερινή ανασκόπηση'}</summary><div className="visit-part-content">{p.contextReady?<StructuredVisitEditor sessionId={session.id} kind="mse" compact existing={mse} followup baseline={reference?.section} timeline={timeline} onSaved={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p>Φόρτωση προηγούμενου MSE…</p>}</div></StableDetails>
   <StableDetails key={session.id+':risk'} className={styles.details} initialOpen={!risk||risk.suicidal_ideation==='not_assessed'||risk.suicidal_ideation==='positive'}><summary>Κίνδυνος · {risk&&risk.suicidal_ideation!=='not_assessed'?'Σημερινή καταγραφή':'Χρειάζεται σημερινή εκτίμηση'}</summary><div className="visit-part-surface"><RiskEditor sessionId={session.id} existing={risk} onSaved={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div></StableDetails>
   <details className={styles.details}><summary>Ψυχομετρικές μετρήσεις</summary><div className="visit-part-surface">{p.contextReady&&<VisitScores bundle={bundle} sessionId={session.id} reload={p.reloadContext}/>}</div></details>
-  <details className={styles.details}><summary>Σημαντικά θέματα για τη συνέχεια{contextItems.length?' · '+contextItems.length:''}</summary><div className="visit-part-surface">
+  {(contextItems.length>0||draft.value.pinned_context.trim())&&<details className={styles.details}>
+   <summary>Σημαντικά θέματα προηγούμενων καταγραφών{contextItems.length?' · '+contextItems.length:''}</summary>
+   <div className="visit-part-surface">
     {contextItems.map(item=><p className={styles.contextItem} key={item.id}>{item.content}</p>)}
-    {writingField('pinned_context','Τι αξίζει να θυμόμαστε','Π.χ. σημαντικό γεγονός, εκκρεμότητα ή προσωπικό θέμα που επηρεάζει την πορεία…')}
-  </div></details>
+    {draft.value.pinned_context.trim()&&<p className={styles.contextItem}><strong>Προϋπάρχουσα σημείωση προχείρου:</strong> {draft.value.pinned_context}</p>}
+   </div>
+  </details>}
   {p.contextReady&&<section className={styles.appointmentCard} aria-label="Επόμενο ραντεβού"><div className={styles.appointmentHeading}><CalendarDays size={21} aria-hidden="true"/><h3>Επόμενο ραντεβού</h3></div><div className="visit-part-surface"><VisitNextAppointment bundle={bundle} reload={p.reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div></section>}
   <p role="status">{draft.saving?'Αποθήκευση προχείρου…':draft.error||(draft.savedAt?'Πρόχειρο αποθηκευμένο · '+draft.savedAt:'')}</p>
   {draft.error&&<button type="button" disabled={Object.values(writing).some(Boolean)} onClick={()=>void p.reload().then(b=>{const s=(b as PatientBundle).sessions.find(s=>s.id===session.id);if(s){draft.acceptServer(s.closure_draft||emptyContinuity,s.closure_version||0)}}).catch(e=>setError(e.message))}>Φόρτωση αποθηκευμένου προχείρου</button>}

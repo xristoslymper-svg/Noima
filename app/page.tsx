@@ -193,8 +193,8 @@ export default function Page() {
           <div className="page-heading">
             <div>
               <p className="eyebrow">{overviewDayLabel()}</p>
-              <h1>Η ημέρα σας, οργανωμένη</h1>
-              <p>Όλα όσα χρειάζεστε για μια όμορφη και παραγωγική ημέρα.</p>
+              <h1>Η ημέρα σας, με μια ματιά</h1>
+              <p>Ραντεβού, ασθενείς και εκκρεμότητες σε ένα μέρος.</p>
             </div>
             <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>

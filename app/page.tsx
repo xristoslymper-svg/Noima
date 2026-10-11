@@ -196,7 +196,6 @@ export default function Page() {
               <h1>Η ημέρα σας, με μια ματιά</h1>
               <p>Ραντεβού, ασθενείς και εκκρεμότητες σε ένα μέρος.</p>
             </div>
-            <button className="primary ghost" onClick={()=>setCalendarOpen(true)}><CalendarDays size={18} /> Πρόγραμμα ημέρας</button>
           </div>
 
           {overviewRefreshError&&<div className="record-state error" role="alert">Τα δεδομένα δεν ανανεώθηκαν. Εμφανίζεται η τελευταία διαθέσιμη εικόνα. <button onClick={()=>void revalidator.current?.refresh()}>Δοκιμή ξανά</button></div>}

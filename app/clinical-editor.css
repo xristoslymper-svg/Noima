@@ -102,22 +102,7 @@
 .med-frequency-times button:disabled{opacity:.5;cursor:default}
 .med-frequency-times button:focus-visible{outline:2px solid #326751;outline-offset:2px}
 .med-frequency-reset{font-size:11px;text-align:left;color:#476955;text-decoration:underline}
-.medication-table-editor{container-type:inline-size;container-name:medication-editor}
-@container medication-editor (max-width:880px){
- .medication-lean-table{display:block;width:100%;min-width:0!important}
- .medication-lean-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
- .medication-lean-table tbody{display:block}
- .medication-lean-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 18px;padding:16px 0;border-bottom:1px solid #dce5df}
- .medication-lean-table tbody th,.medication-lean-table tbody td{display:block;width:auto!important;min-width:0!important;max-width:none;padding:0!important;border:0;white-space:normal;overflow-wrap:anywhere}
- .medication-lean-table tbody th,.medication-lean-table td[colspan],.medication-lean-table td[data-label="Παρενέργειες"],.medication-lean-table td[data-label="Ενέργειες"]{grid-column:1/-1}
- .medication-lean-table td[data-label]::before{content:attr(data-label);display:block;margin-bottom:6px;color:#607568;font-size:12px;font-weight:600}
- .medication-lean-table input,.medication-lean-table select{max-width:100%;width:100%}
- .medication-lean-table .med-inline-dose{display:grid;grid-template-columns:1fr 1fr}
- .medication-lean-table .med-row-action-links{justify-content:flex-start}
-}
 @media(max-width:600px){.visit-related-fields{grid-template-columns:minmax(0,1fr)}.med-frequency-times button{min-height:44px}}
-@container medication-editor (max-width:440px){.medication-lean-table tbody tr{grid-template-columns:minmax(0,1fr)}}
-
 /* Medication and plain input surfaces share the editor palette, without changing status chips. */
 .visit-workspace .medication-table-editor {border:1px solid var(--clinical-field-border);border-radius:12px;}
 .visit-workspace .medication-table-editor :is(table,tbody,tr,td,th) {background:transparent;}

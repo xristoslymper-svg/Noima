@@ -147,15 +147,6 @@
 }
 
 @media screen and (max-width:760px) {
- .medication-table-editor { overflow:visible; }
- .medication-table-editor .medication-lean-table { display:block; min-width:0; width:100%; }
- .medication-lean-table thead { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
- .medication-lean-table tbody { display:block; }
- .medication-lean-table tbody tr { display:block; padding:14px; border-bottom:1px solid #dce5df; }
- .medication-lean-table tbody tr:last-child { border-bottom:0; }
- .medication-lean-table tbody th, .medication-lean-table tbody td { display:block; width:auto!important; min-width:0!important; max-width:none!important; padding:7px 0!important; border:0; white-space:normal; overflow-wrap:anywhere; }
- .medication-lean-table tbody th { font-size:16px!important; }
- .medication-lean-table td[data-label]::before { content:attr(data-label); display:block; margin-bottom:4px; color:#607568; font-size:12px; font-weight:600; }
  .medication-lean-table .med-action-pair, .medication-lean-table .med-row-action-links { flex-wrap:wrap; justify-content:flex-start; gap:8px; }
  .medication-lean-table button { min-width:44px; min-height:44px; }
  .medication-lean-table input, .medication-lean-table select { width:100%; max-width:100%; }

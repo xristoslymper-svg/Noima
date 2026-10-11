@@ -119,6 +119,12 @@
 .card[data-followup-medication-group] > :global(.visit-part-surface){display:grid;gap:18px}
 .card[data-followup-medication-group] > :global(.visit-part-surface) > button{justify-self:start;margin:0;font-size:13px}
 .card[data-followup-medication-group] > :global(.visit-part-surface) > p{margin:0;font-size:13px;line-height:1.6}
+.card[data-followup-medication-group] :global(.medication-lean-table){min-width:1080px;table-layout:auto;font-size:13px;line-height:1.5}
+.card[data-followup-medication-group] :global(.medication-lean-table) :is(th,td){width:auto;vertical-align:top;padding:14px 12px}
+.card[data-followup-medication-group] :global(.medication-lean-table) th:first-child{min-width:170px}
+.card[data-followup-medication-group] .responseOptions,.card[data-followup-medication-group] .tolerabilityOptions{gap:6px;min-width:130px}
+.card[data-followup-medication-group] :global(.med-row-actions) button,
+.card[data-followup-medication-group] :global(.med-add-row){border:0;background:transparent;padding:4px 0;box-shadow:none;white-space:nowrap;font-size:13px}
 .legacyNote{border-top:1px solid #e6ece6;margin-top:15px;padding-top:10px;color:#5a7265;font-size:12px}
 .legacyNote summary{cursor:pointer;font-weight:600;padding:6px 0}
 .legacyNote p{margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}

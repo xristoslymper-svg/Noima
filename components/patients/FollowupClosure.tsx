@@ -66,25 +66,23 @@ export default function FollowupClosure(p:Props){
    <h3>Τρέχουσα αγωγή</h3>
    <div className="visit-part-surface">
     {medicationChanges.map(e=><p key={e.id}>Αλλαγή: {String(e.new_state?.medication_name||'Αγωγή')} · {String(e.previous_state?.dose??'—')} {String(e.previous_state?.unit||'')} → {String(e.new_state?.dose??'—')} {String(e.new_state?.unit||'')} · Ισχύει από {formatClinicDate(e.effective_on)}</p>)}
-    {p.contextReady?<>{activeMedications.map(m=>{
+    {p.contextReady?<div className="clinical-table-wrap medication-table-editor"><table className="clinical-lean-table medication-lean-table"><caption className="sr-only">Αγωγή</caption><thead><tr><th>Φάρμακο</th><th>Δόση</th><th>Συχνότητα</th><th>Περίοδος</th><th>Κατάσταση</th><th>Ανταπόκριση</th><th>Παρενέργειες</th><th>Ενέργειες</th></tr></thead><tbody>{activeMedications.map(m=>{
      const selectedResponse=readMedicationResponse(draft.value.clinical_state_summary,m);
      const hasRecordedSideEffect=bundle.medicationSideEffects.some(e=>e.medication_id===m.id&&e.session_id===session.id);
-     return <div className={styles.medication} key={m.id} data-medication-response={m.id}>
-      <span className={styles.medicationName}>{m.medication_name} · {m.dose} {m.unit} · {m.frequency}</span>
-      <button type="button" className={styles.medicationEdit} title="Αλλαγή δόσης ή συχνότητας" aria-label={'Αλλαγή δόσης ή συχνότητας για '+m.medication_name} onClick={()=>setMed({mode:'change',id:m.id})}><Pencil size={16} aria-hidden="true"/></button>
-      <div className={styles.responseOptions} role="group" aria-label={'Ανταπόκριση στην αγωγή '+m.medication_name}>
-       <span className={styles.responseLabel}>Ανταπόκριση</span>
+     return <tr key={m.id} data-medication-response={m.id}>
+      <th scope="row">{m.medication_name}</th><td><span className="med-dose-display">{m.dose}<b>{m.unit}</b></span></td><td>{m.frequency}</td><td>{formatClinicDate(m.started_at)}</td><td><span className="med-status active">Λαμβάνει</span></td>
+      <td><div className={styles.responseOptions} role="group" aria-label={'Ανταπόκριση στην αγωγή '+m.medication_name}>
        <button type="button" aria-pressed={selectedResponse==='good'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'good')}>Καλή</button>
        <button type="button" aria-pressed={selectedResponse==='neutral'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'neutral')}>Ουδέτερη</button>
-      </div>
-      <div className={styles.tolerabilityOptions} role="group" aria-label={'Ανοχή αγωγής '+m.medication_name}>
-       <span className={styles.responseLabel}>Ανοχή</span>
+      </div></td>
+      <td><div className={styles.tolerabilityOptions} role="group" aria-label={'Ανοχή αγωγής '+m.medication_name}>
        <button type="button" onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button>
        {hasRecordedSideEffect&&<span className={styles.recordedEffect}>Υπάρχει σημερινή καταγραφή</span>}
-      </div>
-     </div>;
+      </div></td>
+      <td className="med-row-actions"><button type="button" title="Αλλαγή δόσης ή συχνότητας" aria-label={'Αλλαγή δόσης ή συχνότητας για '+m.medication_name} onClick={()=>setMed({mode:'change',id:m.id})}><Pencil size={16} aria-hidden="true"/>Τροποποίηση</button></td>
+     </tr>;
     })}
-    <button type="button" onClick={()=>setMed({mode:'start'})}>Προσθήκη αγωγής</button></>:<p role="status">Φόρτωση αγωγής…</p>}
+    <tr><td colSpan={8}><button type="button" className="med-add-row" onClick={()=>setMed({mode:'start'})}>+ Προσθήκη αγωγής</button></td></tr></tbody></table></div>:<p role="status">Φόρτωση αγωγής…</p>}
     {writingField('adherence','Λήψη αγωγής','Παραλείψεις, δυσκολίες ή αλλαγές στη λήψη…')}
    </div>
   </section>

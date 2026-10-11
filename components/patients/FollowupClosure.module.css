@@ -20,6 +20,9 @@
 .fields>div textarea{min-height:85px}
 .actions,.footerActions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .card>.actions{margin-top:13px}
+/* Keep the adherence quick choices and its existing editor in the same ivory body. */
+.card :global([data-followup-adherence-group]) > .actions{margin:0 0 14px}
+
 .closure button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;font:inherit;font-size:12.5px;font-weight:650;padding:9px 13px;border:1px solid #d5e3db;border-radius:10px;color:#366c57;background:#f8faf8;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
 .closure button:hover:not(:disabled){background:#eaf3ed;border-color:#b9d4c5}
 .closure button:focus-visible{outline:3px solid #9fc8af;outline-offset:2px}

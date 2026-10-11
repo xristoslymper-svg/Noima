@@ -46,7 +46,15 @@ try{
   await recorder.getByRole('button',{name:'Παύση υπαγόρευσης',exact:true}).click();await recorder.getByRole('button',{name:'Συνέχιση υπαγόρευσης',exact:true}).click();await p.waitForTimeout(500);await recorder.getByRole('button',{name:'Ολοκλήρωση υπαγόρευσης',exact:true}).click();await p.getByRole('button',{name:'Επιβεβαίωση',exact:true}).waitFor();assert.ok((await interview(p).inputValue()).endsWith('Συνθετική προσθήκη για έλεγχο.'));assert.equal(await p.getByRole('dialog').count(),0);await p.getByRole('button',{name:'Ακύρωση',exact:true}).click();assert.ok(!(await interview(p).inputValue()).includes('Συνθετική προσθήκη'));
  });
  await check('follow-up retains its editor, structured MSE and no global unassessed shortcut',{width:1280,height:1000},'/?followup=1',async p=>{
-  await p.locator('[data-clinical-followup]').waitFor();assert.equal(await p.getByRole('button',{name:'Δεν αξιολογήθηκε σήμερα',exact:true}).count(),0);assert.equal(await p.getByText('Οδηγός ενότητας',{exact:true}).count(),0);await p.getByRole('button',{name:'Καταγραφή αλλαγής σε ενότητα MSE',exact:true}).click();assert.equal(await mse(p).locator('[data-mse-domain]').count(),12);await p.screenshot({path:resolve(out,'followup.png')});
+  await p.locator('[data-clinical-followup]').waitFor();
+  const adherence=p.locator('[data-followup-adherence-group="true"]');
+  await adherence.waitFor();
+  assert.equal(await adherence.locator('textarea').count(),1,'adherence editor stays inside its ivory group');
+  assert.equal(await adherence.getByRole('button',{name:'Κανονική λήψη'}).count(),1,'quick choices stay with the editor');
+  const appearance=await adherence.evaluate(el=>({bg:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth,padding:getComputedStyle(el).paddingLeft}));
+  const clinical=await p.locator('[data-clinical-followup] .visit-part-surface').first().evaluate(el=>({bg:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth,padding:getComputedStyle(el).paddingLeft}));
+  assert.deepEqual(appearance,clinical,'adherence shares the clinical panel background/border/inset');
+  assert.equal(await p.getByRole('button',{name:'Δεν αξιολογήθηκε σήμερα',exact:true}).count(),0);assert.equal(await p.getByText('Οδηγός ενότητας',{exact:true}).count(),0);await p.getByRole('button',{name:'Καταγραφή αλλαγής σε ενότητα MSE',exact:true}).click();assert.equal(await mse(p).locator('[data-mse-domain]').count(),12);await p.screenshot({path:resolve(out,'followup.png')});
  });
 
  async function assertGroupedSections(p,{history=true}={}){

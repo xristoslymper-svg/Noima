@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import type { PatientBundle } from "@/lib/patients/demo-runtime";
 import ClinicalSummary from "@/components/patients/ClinicalSummary";
+import DailyAgenda from "@/components/overview/DailyAgenda";
+import "./overview-stitch.css";
 import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
 import {createRevalidator} from '@/lib/overview/revalidation';
 import {overviewSelectionState, restoreOverviewSelection} from '@/lib/overview/selection';
@@ -170,7 +172,7 @@ export default function Page() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell overview-stitch-shell">
       <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
         <div className="brand">
           <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>
@@ -189,7 +191,7 @@ export default function Page() {
           <PilotProfile/>
         </header>
 
-        <div className="content">
+        <div className="content overview-stitch">
           <div className="page-heading">
             <div>
               <p className="eyebrow">{overviewDayLabel()}</p>
@@ -210,22 +212,9 @@ export default function Page() {
             <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
-          <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
-            <div className="card sessions">
-              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
-              {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
-                const selectable=Boolean(event.patient_id);
-                return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
-                  <div className="time">{overviewTime(event.scheduled_start)}</div>
-                  <div className="patient-avatar">{event.patient_name[0]}</div>
-                  <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>event.patient_id&&selectPatient(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
-                    <span>{event.detail||event.readiness_label}</span>
-                  </div>
-
-                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
-                </div>
-              }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
+          <section className="main-grid overview-stitch-grid">
+            <div className="card sessions overview-stitch-sessions">
+              <DailyAgenda events={todaySchedule} selectedPatientId={selectedPatientId} state={overviewState} onSelectPatient={selectPatient}/>
             </div>
 
             {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
@@ -233,6 +222,14 @@ export default function Page() {
               <ClinicalSummary compact overview bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=record'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
             </div>}
             {todaySchedule.length>0&&selectedPatientId&&!selectedBundle&&<div className="card ai-brief" role="status">{bundleFailure===selectedPatientId?<><p>Η κλινική εικόνα δεν φορτώθηκε.</p><button onClick={()=>setBundleRetry(n=>n+1)}>Δοκιμή ξανά</button></>:<p>Φόρτωση κλινικής εικόνας…</p>}</div>}
+            {(!todaySchedule.length||!selectedPatientId)&&<div className="card ai-brief overview-stitch-brief-empty">
+              <div className="overview-empty-brief-kicker">ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ</div>
+              <h2>Σύντομη κλινική εικόνα</h2>
+              <div className="overview-empty-brief-body">
+                <CalendarDays size={22} aria-hidden="true"/>
+                <p>{overviewState==='loading'?'Η κλινική εικόνα θα εμφανιστεί μόλις φορτωθεί το πρόγραμμα.':overviewState==='error'?'Η κλινική εικόνα δεν είναι προσωρινά διαθέσιμη.':'Όταν επιλέξετε ραντεβού, θα εμφανιστούν εδώ τα καταγεγραμμένα στοιχεία του ασθενούς.'}</p>
+              </div>
+            </div>}
           </section>
 
         </div>

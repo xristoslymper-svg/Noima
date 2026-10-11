@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const page=readFileSync(new URL('../app/calendar/page.tsx',import.meta.url),'utf8');
 const home=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');
+const agenda=readFileSync(new URL('../components/overview/DailyAgenda.tsx',import.meta.url),'utf8');
 
 test('calendar density preserves original position and height while displaying time and patient',()=>{
  assert.match(page,/const top = \(\(startMinute - weekWindow\.start\) \/ 60\) \* weekHourHeight/);
@@ -22,7 +23,8 @@ test('short cards fit and cancelled names remain legible',()=>{
 
 test('overview removes redundant program header shortcut, preserving schedule and agreed copy',()=>{
  assert.doesNotMatch(home,/Πρόγραμμα ημέρας<\/button>/);
- assert.match(home,/sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ/);
+ assert.match(agenda,/sessions-title\">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ/);
+ assert.match(home,/<DailyAgenda events=\{todaySchedule\}/);
  assert.match(home,/<h1>Η ημέρα σας, με μια ματιά<\/h1>/);
  assert.match(home,/Ραντεβού, ασθενείς και εκκρεμότητες σε ένα μέρος/);
 });

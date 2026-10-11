@@ -1,0 +1,253 @@
+/* NOIMA — Patients registry visual refinement.
+   SCOPED: only /patients; no record/editor or other route styles.
+   Existing fetch, filters, sorting, counters, links and data are unchanged. */
+
+.patients-screen { background:#fcfdfc; }
+.patients-screen .workspace { min-width:0; background:#fcfdfc; }
+.patients-screen .topbar { background:#fff; border-bottom-color:#e9eeeb; }
+.patients-screen .topbar .profile {
+  display:flex;align-items:center;gap:10px;padding:7px 12px 7px 8px;
+  border:1px solid #e6eee9;border-radius:999px;background:#fff;
+  box-shadow:0 3px 12px rgba(29,52,40,.04);
+}
+.patients-screen .topbar .profile .avatar { flex-shrink:0;background:#dfece5;color:#315a4b; }
+.patients-screen .sidebar { background:#fff;border-right-color:#edf0ed; }
+.patients-screen .sidebar .nav-item.active {
+  background:#e7f1eb;color:#245745;border-radius:14px;
+}
+
+.patients-screen .registry-page {
+  min-height:calc(100vh - 72px);background:#fcfdfc;color:#253b32;
+}
+.patients-screen .registry-wrap {
+  width:min(100%,1190px);max-width:none;box-sizing:border-box;
+  padding:44px clamp(24px,3.1vw,46px) 80px;
+  margin:0 auto;
+}
+.patients-screen .registry-heading {
+  gap:22px;margin-bottom:17px;align-items:center;min-width:0;
+}
+.patients-screen .registry-heading>div { min-width:0; }
+.patients-screen .registry-heading .kicker {
+  display:block;margin:0 0 7px;color:#517165;letter-spacing:.13em;
+  font-size:10px;font-weight:760;
+}
+.patients-screen .registry-heading h1 {
+  font-family:Georgia,"Times New Roman",serif;
+  color:#192f3d;font-size:clamp(35px,3.2vw,45px);
+  line-height:1.1;letter-spacing:-.045em;font-weight:760;
+  margin:0 0 6px;
+}
+.patients-screen .registry-heading p {
+  color:#7d90a1;font-size:13px;line-height:1.55;
+}
+.patients-screen .registry-heading .record {
+  display:inline-flex;gap:9px;align-items:center;justify-content:center;
+  min-height:43px;white-space:nowrap;flex-shrink:0;
+  padding:10px 16px;border-radius:12px;
+  background:#174b3c;color:#fff;border:1px solid #174b3c;
+  font-size:12px;font-weight:730;text-decoration:none;
+  box-shadow:0 2px 8px rgba(18,67,51,.08);
+}
+.patients-screen .registry-heading .record:hover { background:#225b49; }
+.patients-screen .registry-heading .record:focus-visible {
+  outline:3px solid #70a88e;outline-offset:2px;
+}
+.patients-screen .registry-heading .record svg { width:17px;height:17px; }
+
+.patients-screen .registry-stats {
+  display:flex;flex-wrap:wrap;gap:10px;margin:0 0 30px;
+}
+.patients-screen .registry-stats>div {
+  min-height:33px;padding:7px 12px;border:1px solid #e7ede9;
+  border-radius:999px;background:#fff;
+  color:#567062;font-size:11px;line-height:1.2;font-weight:530;
+  box-shadow:0 1px 3px rgba(31,58,45,.025);
+}
+.patients-screen .registry-stats svg { width:15px;height:15px;color:#547769; }
+.patients-screen .registry-stats strong { color:#263a32;font-size:12px;font-weight:760; }
+
+.patients-screen .registry-tools {
+  display:flex;justify-content:space-between;align-items:center;
+  gap:16px;margin:0 0 18px;min-width:0;
+}
+.patients-screen .registry-search {
+  width:min(380px,100%);min-width:220px;min-height:42px;box-sizing:border-box;
+  gap:10px;background:#f7faf8;border:1px solid #e5ece7;
+  border-radius:13px;padding:0 13px;
+  color:#8394a7;transition:border-color .15s,box-shadow .15s;
+}
+.patients-screen .registry-search:focus-within {
+  border-color:#79ad96;box-shadow:0 0 0 3px rgba(95,156,126,.12);
+}
+.patients-screen .registry-search svg { width:17px;height:17px;flex-shrink:0; }
+.patients-screen .registry-search input {
+  min-width:0;padding:11px 0;font-size:12px;
+  color:#2c483b;line-height:1.5;
+}
+.patients-screen .registry-search input::placeholder { color:#96a9ba;opacity:1; }
+.patients-screen .registry-search input:focus-visible { outline:none;box-shadow:none; }
+
+.patients-screen .registry-filters {
+  display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0;
+}
+.patients-screen .registry-filters button {
+  min-height:36px;padding:8px 12px;
+  font-size:11px;font-weight:610;color:#647b71;
+  border-radius:10px;white-space:nowrap;cursor:pointer;
+  transition:background-color .14s,color .14s;
+}
+.patients-screen .registry-filters button:hover:not(.active) {background:#eef5f1;color:#345b4b}
+.patients-screen .registry-filters button.active {
+  background:#fff;color:#255846;box-shadow:0 2px 6px rgba(37,60,44,.065);
+  font-weight:760;
+}
+.patients-screen .registry-filters {
+  /* Segmented buttons share a soft-grey background; the sort select remains separate. */
+  position:relative;
+}
+.patients-screen .registry-filters button:first-child { margin-left:5px; }
+.patients-screen .registry-filters button:nth-child(3) { margin-right:10px; }
+.patients-screen .registry-filters:before {
+  content:"";position:absolute;z-index:0;left:0;top:0;bottom:0;
+  width:calc(100% - 184px);border-radius:12px;background:#eff4f1;
+  pointer-events:none;
+}
+.patients-screen .registry-filters button,.patients-screen .registry-filters select {
+  position:relative;z-index:1;
+}
+.patients-screen .registry-filters select {
+  min-height:40px;max-width:208px;padding:8px 29px 8px 12px;
+  font-size:11px;color:#345a4d;border:1px solid #e1ebe5;border-radius:12px;
+  background:#fff;font-weight:610;
+}
+.patients-screen .registry-filters button:focus-visible,
+.patients-screen .registry-filters select:focus-visible {
+  outline:2px solid #548c73;outline-offset:2px;
+}
+
+.patients-screen .patient-registry {
+  border:1px solid #e6ebe8;border-radius:20px;background:#fff;
+  overflow:hidden;box-shadow:0 7px 28px rgba(29,55,42,.035);
+  min-width:0;
+}
+.patients-screen .registry-row {
+  display:grid;grid-template-columns:43px minmax(210px,2.8fr) minmax(116px,1.15fr) 73px 73px 74px 20px;
+  align-items:center;gap:12px;min-width:0;
+  min-height:81px;padding:14px 22px;
+  border-bottom:1px solid #eef2f0;color:#62798c;font-size:11px;
+  line-height:1.4;
+}
+.patients-screen .registry-row:last-child { border-bottom:0; }
+.patients-screen .registry-row:not(.registry-labels):hover { background:#f8fbf9; }
+.patients-screen .registry-labels {
+  min-height:51px;padding-top:13px;padding-bottom:13px;
+  color:#8ea1b7;background:#f9fbfa;
+  font-size:9.5px;letter-spacing:.055em;font-weight:780;
+  text-transform:uppercase;line-height:1.25;
+}
+.patients-screen .registry-labels span { min-width:0; }
+.patients-screen .registry-number {
+  color:#849ab0;font-size:11px;font-weight:730;
+}
+.patients-screen .registry-patient-link {
+  display:flex;align-items:center;gap:13px;min-width:0;text-decoration:none;
+  border-radius:9px;padding:4px 0;
+}
+.patients-screen .registry-patient-link:focus-visible,
+.patients-screen .registry-appointment:focus-visible,
+.patients-screen .registry-open:focus-visible {
+  outline:2px solid #4a9273;outline-offset:3px;
+}
+.patients-screen .registry-avatar {
+  flex-shrink:0;width:39px;height:39px;
+  background:#e4efea;color:#315d4b;border-radius:12px;
+  font-size:13px;font-weight:750;
+}
+.patients-screen .registry-patient div { min-width:0;gap:4px; }
+.patients-screen .registry-patient strong {
+  display:block;font-size:13px;font-weight:730;color:#213749;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.patients-screen .registry-patient small {
+  font-size:10px;line-height:1.45;color:#8b9eb2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;display:block;
+}
+.patients-screen .registry-diagnosis { min-width:0;gap:3px; }
+.patients-screen .registry-diagnosis strong {color:#263c4d;font-size:11px;font-weight:740}
+.patients-screen .registry-diagnosis small {
+  font-size:10px;line-height:1.35;color:#8a9db0;
+  white-space:normal;overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+}
+.patients-screen .registry-appointment {
+  display:inline-flex;min-height:32px;font-size:10px;font-weight:700;
+  color:#386b57;background:#f3f8f4;border:1px solid #dfece4;
+  border-radius:9px;padding:6px 9px;
+}
+.patients-screen .registry-appointment:hover {background:#e9f5ed}
+.patients-screen .registry-open {
+  min-width:28px;min-height:32px;color:#8ea69a;border-radius:8px;
+}
+.patients-screen .registry-open:hover {background:#edf5ef;color:#376c55}
+
+/* Keep the exact same record links, quick appointment action, filter and sort behavior. */
+@media (max-width:1360px) {
+  .patients-screen .registry-row {
+    grid-template-columns:37px minmax(170px,2.6fr) minmax(92px,1fr) 65px 65px 66px 18px;
+    gap:10px;padding-left:16px;padding-right:16px;
+  }
+  .patients-screen .registry-wrap { padding-left:24px;padding-right:24px; }
+  .patients-screen .registry-tools {flex-wrap:wrap}
+  .patients-screen .registry-search {flex:1 1 300px}
+  .patients-screen .registry-filters { flex:0 0 auto; }
+}
+@media (max-width:1110px) {
+  /* Hide only the NEXT-date column, never links/actions. */
+  .patients-screen .registry-row {grid-template-columns:38px minmax(190px,2.6fr) minmax(90px,1fr) 72px 66px 18px;}
+  .patients-screen .registry-row>:nth-child(5) {display:none}
+}
+@media (max-width:800px) {
+  .patients-screen .registry-heading {align-items:flex-start;}
+  .patients-screen .registry-heading h1 {font-size:38px}
+  .patients-screen .registry-wrap { padding:26px 19px 55px; }
+  .patients-screen .registry-tools {align-items:stretch;flex-direction:column;gap:12px;}
+  .patients-screen .registry-search {flex:none;width:100%;min-width:0}
+  .patients-screen .registry-filters {justify-content:flex-start;flex-wrap:wrap;gap:7px}
+  .patients-screen .registry-filters:before {display:none}
+  .patients-screen .registry-filters button:first-child {margin-left:0}
+  .patients-screen .registry-filters button:nth-child(3){margin-right:0}
+  .patients-screen .registry-filters button {background:#eef4f0}
+  .patients-screen .registry-filters select{max-width:240px}
+  .patients-screen .registry-row:not(.registry-labels) {
+    display:grid;grid-template-columns:38px minmax(0,1fr) auto 23px;
+    gap:10px;min-height:78px;padding:12px 15px;
+  }
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(3),
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(4),
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(5) {display:none}
+  .patients-screen .registry-avatar {display:grid;}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(6){display:inline-flex;grid-column:3}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7){display:grid;grid-column:4}
+  .patients-screen .registry-labels{display:none}
+}
+@media (max-width:520px) {
+  .patients-screen .registry-heading {gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .patients-screen .registry-heading h1 {font-size:35px}
+  .patients-screen .registry-heading .record {min-height:39px;padding:8px 12px;font-size:11px}
+  .patients-screen .registry-stats {margin-bottom:22px;gap:7px}
+  .patients-screen .registry-stats>div {padding:7px 9px;font-size:10px;gap:6px}
+  .patients-screen .registry-row:not(.registry-labels) {
+    grid-template-columns:minmax(0,1fr) 60px 22px;gap:8px;padding:11px 12px;
+  }
+  .patients-screen .registry-row:not(.registry-labels)>.registry-number {display:none}
+  .patients-screen .registry-patient strong {font-size:12px}
+  .patients-screen .registry-avatar {width:34px;height:34px;border-radius:10px}
+  .patients-screen .registry-patient-link {gap:9px}
+  .patients-screen .registry-filters select {width:100%;max-width:100%}
+  .patients-screen .registry-row:not(.registry-labels)>.registry-patient-link {grid-column:1;grid-row:1;min-width:0;align-items:center;}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(6) {grid-column:2;grid-row:1}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7) {grid-column:3;grid-row:1}
+}
+

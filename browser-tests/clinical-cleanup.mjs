@@ -15,7 +15,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.
 const browser=await chromium.launch({headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',`--use-file-for-fake-audio-capture=${resolve(out,'synthetic.wav')}`]});
 const report={commit:process.env.GITHUB_SHA||'local',scope:'Actual PatientSession and clinical components with real CSS. Synthetic fixture patient, persistence and transcription/AI responses. Not live-provider or Supabase verification.',tests:[]};
 async function check(name,viewport,path,run){const context=await browser.newContext({viewport,permissions:['microphone']});const page=await context.newPage();page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('BROWSER',e.stack)});page.on('dialog',d=>d.accept());await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());try{await page.goto(origin+path);await page.locator('.visit-workspace').waitFor();await run(page);assert.deepEqual(errors,[]);report.tests.push({name,status:'passed'})}catch(e){report.tests.push({name,status:'failed',error:String(e.stack||e),errors});await page.screenshot({path:resolve(out,`failure-${report.tests.length}.png`),fullPage:true});}finally{await context.close()}}
-const interview=p=>p.locator('[data-visit-part="interview"] textarea');
+const interview=p=>p.getByRole('textbox',{name:'Λόγος προσέλευσης & παρούσα εικόνα *',exact:true});
 const mse=p=>p.locator('.mse-columns');
 try{
  await check('desktop: outside headings, ivory editors, quiet MSE, accessible provenance',{width:1280,height:1000},'/',async p=>{
@@ -42,7 +42,7 @@ try{
  await check('mobile: usable widths and same-editor recorder pause/resume/transcription',{width:390,height:844},'/',async p=>{
   await interview(p).waitFor();await p.screenshot({path:resolve(out,'mobile-overview.png')});
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-  await p.locator('[data-visit-part="interview"]').getByRole('button',{name:/^Υπαγόρευση:/}).click();const recorder=p.locator('[data-writing-recorder="inline"]');await recorder.getByRole('button',{name:'Παύση υπαγόρευσης',exact:true}).waitFor();await p.waitForTimeout(1300);await p.screenshot({path:resolve(out,'mobile-recording.png')});
+  await p.locator('[data-visit-part="interview"]').getByRole('button',{name:'Υπαγόρευση: Λόγος προσέλευσης & παρούσα εικόνα *',exact:true}).click();const recorder=p.locator('[data-writing-recorder="inline"]');await recorder.getByRole('button',{name:'Παύση υπαγόρευσης',exact:true}).waitFor();await p.waitForTimeout(1300);await p.screenshot({path:resolve(out,'mobile-recording.png')});
   await recorder.getByRole('button',{name:'Παύση υπαγόρευσης',exact:true}).click();await recorder.getByRole('button',{name:'Συνέχιση υπαγόρευσης',exact:true}).click();await p.waitForTimeout(500);await recorder.getByRole('button',{name:'Ολοκλήρωση υπαγόρευσης',exact:true}).click();await p.getByRole('button',{name:'Επιβεβαίωση',exact:true}).waitFor();assert.ok((await interview(p).inputValue()).endsWith('Συνθετική προσθήκη για έλεγχο.'));assert.equal(await p.getByRole('dialog').count(),0);await p.getByRole('button',{name:'Ακύρωση',exact:true}).click();assert.ok(!(await interview(p).inputValue()).includes('Συνθετική προσθήκη'));
  });
  await check('follow-up retains its editor, structured MSE and no global unassessed shortcut',{width:1280,height:1000},'/?followup=1',async p=>{

@@ -44,10 +44,10 @@ export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onD
  </FollowupContext.Provider>;
 }
 
-export function FollowupField({field,title,placeholder='',rows=2,onPendingChange}:{field:keyof Omit<ContinuityDraft,'source'|'writing_provenance'>;title:string;placeholder?:string;rows?:number;onPendingChange?:(pending:boolean)=>void}){
+export function FollowupField({field,title,placeholder='',rows=2,onPendingChange,sectionHeading=false}:{sectionHeading?:boolean;field:keyof Omit<ContinuityDraft,'source'|'writing_provenance'>;title:string;placeholder?:string;rows?:number;onPendingChange?:(pending:boolean)=>void}){
  const {draft,sessionId,registerFlusher,onDirtyChange}=useFollowupDraft();
  const current=useRef(draft);current.current=draft;
- return <ClinicalTextField sessionId={sessionId} section="closure" fieldKey={field} title={title} placeholder={placeholder} rows={rows} maxLength={field==='pinned_context'?2000:20000} value={draft.value[field]} onChange={text=>current.current.change({...current.current.currentValue(),[field]:text})} onBlur={()=>void current.current.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={onPendingChange} onConfirm={async(text,{provenance})=>{
+ return <ClinicalTextField sessionId={sessionId} section="closure" fieldKey={field} sectionHeading={sectionHeading} title={title} placeholder={placeholder} rows={rows} maxLength={field==='pinned_context'?2000:20000} value={draft.value[field]} onChange={text=>current.current.change({...current.current.currentValue(),[field]:text})} onBlur={()=>void current.current.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={onPendingChange} onConfirm={async(text,{provenance})=>{
   await current.current.flush();const latest=current.current,value=latest.currentValue();
   if(value[field]!==provenance.original)throw new Error('Η αρχική καταγραφή άλλαξε. Ελέγξτε τη νεότερη έκδοση.');
   latest.change({...value,[field]:text,source:provenance.kind==='ai'?'ai_assisted':value.source,writing_provenance:{...value.writing_provenance,[field]:provenance}});

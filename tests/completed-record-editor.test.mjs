@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as document from '../lib/clinical/visit-document.ts';
 import * as corrections from '../lib/clinical/corrections.ts';
+import * as msePresentation from '../lib/clinical/mse-presentation.ts';
 import * as jsx from 'react/jsx-runtime';
 const source=ts.transpileModule(await readFile('components/patients/CompletedRecordEditor.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 // Preserve hook state over canonical prop updates, including the initial partial
@@ -13,7 +14,7 @@ function mount(){
  const cells=[];let cursor=0;const writes=[];
  const hooks={useMemo:f=>f(),useEffect:()=>{},useState(initial){const index=cursor++;if(!(index in cells))cells[index]=initial;return [cells[index],value=>{cells[index]=typeof value==='function'?value(cells[index]):value}]},useRef(initial){const index=cursor++;if(!(index in cells))cells[index]={current:initial};return cells[index]}};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,crypto,console,require:id=>id==='react'?hooks:id==='react/jsx-runtime'?jsx:id.includes('visit-document')?document:id.includes('corrections')?corrections:id.includes('demo-client')?{demoPost:async input=>writes.push(input)}:id.includes('clinic-time')?{formatClinicDateTime:()=>''}:{default:()=>null}});
+ vm.runInNewContext(source,{module,exports:module.exports,crypto,console,require:id=>id==='react'?hooks:id==='react/jsx-runtime'?jsx:id.includes('visit-document')?document:id.includes('mse-presentation')?msePresentation:id.includes('corrections')?corrections:id.includes('demo-client')?{demoPost:async input=>writes.push(input)}:id.includes('clinic-time')?{formatClinicDateTime:()=>''}:{default:()=>null}});
  return {writes,render(props){cursor=0;return module.exports.default(props)}};
 }
 function nodes(tree){if(!tree)return [];if(Array.isArray(tree))return tree.flatMap(nodes);return typeof tree==='object'&&tree.props?[tree,...nodes(tree.props.children)]:[]}

@@ -84,3 +84,40 @@
  .footerActions button { flex-basis:100%; }
  .appointmentCard :global(.visit-inline-fields label) { max-width:none; width:100%; }
 }
+
+/* Follow-up: one clinically grouped decision/review section, retaining the two saved keys. */
+.fields{grid-template-columns:minmax(0,1fr);gap:16px}
+.fields>div:first-child{grid-column:auto}
+.planGroup{
+ min-width:0;grid-column:1/-1;border-top:1px solid #e5eae4;
+ padding-top:19px;display:grid;gap:13px;
+}
+.planGroup h4{margin:0;color:#3d6050;font-size:14px;line-height:1.5;font-weight:730}
+.planFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.planFields>div{min-width:0}
+.planFields textarea{min-height:104px}
+
+/* Treatment response is different from changing a prescription or assessing adherence. */
+.medication{
+ display:grid;grid-template-columns:minmax(0,1fr) 40px;
+ align-items:center;gap:9px 12px;padding:15px 0;
+}
+.medicationName{min-width:0!important;overflow-wrap:anywhere;font-size:13px;font-weight:600;color:#294c3d}
+.medicationEdit{width:40px;min-width:40px;min-height:40px!important;padding:8px!important;grid-column:2;grid-row:1}
+.responseOptions{
+ grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:7px;min-width:0;
+}
+.responseLabel{flex:0 0 auto;min-width:0!important;color:#687f72!important;font-size:12px!important;font-weight:600}
+.responseOptions button{padding:7px 11px!important;min-height:35px!important;font-size:12px!important}
+.responseOptions button[aria-pressed="true"]{background:#dfede3;color:#205b45;border-color:#81b69a;box-shadow:inset 0 0 0 1px #a1cbb3}
+.responseOptions button[aria-pressed="true"]:hover:not(:disabled){background:#d2e6db;border-color:#6ba98c}
+.legacyNote{border-top:1px solid #e6ece6;margin-top:15px;padding-top:10px;color:#5a7265;font-size:12px}
+.legacyNote summary{cursor:pointer;font-weight:600;padding:6px 0}
+.legacyNote p{margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+@media(max-width:740px){
+ .planFields{grid-template-columns:minmax(0,1fr);gap:15px}
+ .planGroup{padding-top:15px}
+ .medication{grid-template-columns:minmax(0,1fr) 44px}
+ .medicationEdit{min-width:44px;min-height:44px!important;width:44px}
+ .responseOptions button{min-height:44px!important}
+}

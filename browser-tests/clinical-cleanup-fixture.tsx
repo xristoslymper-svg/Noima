@@ -10,6 +10,7 @@ import '../app/visit-workspace.css';
 import '../app/mobile.css';
 import '../app/initial-assessment.css';
 import '../app/clinical-editor.css';
+import '../app/noima-ui.css';
 
 const documentText=(document:{fields:{label:string;text:string}[]})=>document.fields.filter(f=>f.text.trim()).map(f=>f.label+': '+f.text).join('\n');
 const q=new URLSearchParams(location.search),followup=q.has('followup'),legacy=q.has('legacy');

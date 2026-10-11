@@ -7,6 +7,8 @@ on:
       - 'app/*.css'
       - 'app/layout.tsx'
       - 'browser-tests/clinical-cleanup*'
+      - 'browser-tests/warm-patient-workspace*'
+      - 'browser-tests/fixtures/warm-patient.json'
       - '.github/workflows/clinical-ui.yml'
 permissions:
   contents: read
@@ -27,9 +29,12 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
       - run: node browser-tests/clinical-cleanup.mjs
+      - run: node browser-tests/warm-patient-workspace.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: clinical-editor-evidence
-          path: test-results/clinical-cleanup
+          path: |
+            test-results/clinical-cleanup
+            test-results/warm-patient-workspace
           retention-days: 7

@@ -1,0 +1,70 @@
+/* Visual treatment from the supplied references. No workflow or state changes. */
+:root{--noima-canvas:#f6f9f8;--noima-paper:#fff;--noima-ink:#203749;--noima-muted:#6d8193;--noima-line:#e4ebee;--noima-accent:#205b50}
+html,body{background:var(--noima-canvas);color:var(--noima-ink)}
+.app-shell .sidebar{background:#fff;border-right-color:var(--noima-line);box-shadow:none}
+.app-shell .brand-mark{border-radius:50%;background:#1d5148;box-shadow:none}
+.app-shell .brand-sub{color:#536b7c;line-height:1.5}
+.app-shell .nav-item{border-radius:8px;color:#536a7a;font-size:14px;font-weight:500;min-height:44px}
+.app-shell .nav-item.active{background:#e9f3ef;color:#205b50;font-weight:650}
+.app-shell .nav-item:not(.active):hover{background:#f4f7f8}
+.app-shell .topbar{background:var(--noima-canvas);box-shadow:none}
+.fictional-pilot-notice{background:#f1f6f5;color:#73879b;border-bottom:1px solid #edf1f2;font-size:11px;letter-spacing:.01em}
+
+/* Recording: a white card for each clinical section, with one quiet heading. */
+.visit-workspace{--clinical-field-surface:#fff;--clinical-field-border:#dce5ed;--visit-canvas:#f6f9f8;--visit-surface:#fff;--visit-line:#e4ebee;--visit-muted:#718596;--visit-sage-ink:#205b50;color:var(--noima-ink);font-family:inherit}
+.visit-workspace .runtime-session > .visit-document > .visit-part,
+.visit-workspace [data-clinical-followup] > section{
+ background:#fff!important;border:1px solid var(--noima-line)!important;
+ border-radius:12px!important;padding:22px 24px!important;margin-bottom:20px!important;
+ box-shadow:0 1px 2px rgba(27,51,64,.025)!important;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part > header{
+ margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid #f0f3f5;
+}
+.visit-workspace .runtime-session > .visit-document > .visit-part > header h3,
+.visit-workspace .clinical-field-section-title,
+.visit-workspace [data-clinical-followup] h3{color:#294353;font-size:14px;line-height:1.5;font-weight:650;letter-spacing:0}
+.visit-workspace .visit-part-surface{padding:0;border:0;border-radius:0;background:#fff;box-shadow:none}
+.visit-workspace [data-writing-editor="true"]{border-color:#dce5ed;border-radius:7px;background:#fff!important;box-shadow:none}
+.visit-workspace textarea{color:#304a5b;font-size:14px;line-height:1.65}
+.visit-workspace textarea::placeholder{color:#8999aa;font-size:13px}
+.visit-workspace :is(input:not([type=checkbox]):not([type=radio]),select){background:#fff;border-color:#dce5ed;border-radius:7px}
+.visit-workspace :is(textarea,input,select):focus-visible{outline:2px solid #8db8aa;outline-offset:2px}
+.visit-workspace .visit-hint,.visit-workspace .visit-context-status{color:#718596;font-size:12px;line-height:1.6}
+.visit-workspace .clinical-section > [role=status]{font-size:11px;color:#7b8f9e;margin-top:7px;text-align:right}
+.visit-workspace .mse-columns{border:0!important;border-radius:0;background:#fff!important;box-shadow:none}
+.visit-workspace .visit-structured.mse .mse-columns > .mse-item{border-bottom-color:#edf1f4!important}
+.visit-workspace .visit-structured.mse .mse-item > summary > .mse-domain-preview{color:#708596}
+.visit-workspace [data-clinical-followup] > details{
+ padding:20px 24px;border:1px solid var(--noima-line);border-radius:12px;background:#fff;box-shadow:none;
+}
+.visit-workspace [data-clinical-followup] > details > summary{font-size:14px;font-weight:650;color:#294353}
+.visit-workspace .session-work-head{background:#fff;border:1px solid var(--noima-line);border-radius:12px 12px 0 0;padding:20px 24px!important;margin-bottom:0}
+.visit-workspace .session-work-head h2{font-size:24px;font-weight:650;letter-spacing:-.025em;color:#203749}
+.visit-workspace .session-work-head p{font-size:12px;color:#718596}
+.visit-workspace .visit-scroll-nav{background:#fff;border:1px solid var(--noima-line);border-top:0;border-radius:0 0 12px 12px;padding:12px 8px;margin-bottom:20px;box-shadow:none}
+.visit-workspace .visit-scroll-nav button{color:#718596;font-size:11px}
+.visit-workspace .visit-scroll-nav button.active{color:#205b50}
+.visit-workspace .visit-additional{background:#fff;border:1px solid var(--noima-line);border-radius:12px;padding:18px 24px}
+.visit-workspace .finalize-bar{border-color:var(--noima-line);background:#fff;border-radius:10px;padding:14px 18px}
+
+/* Medication rows stay tables at every width, with scrolling inside the frame. */
+.medication-table-editor{max-width:100%;min-width:0;border:1px solid #e0e8ed;border-radius:9px;box-shadow:none;overflow-x:auto}
+.medication-table-editor .medication-lean-table{border-collapse:collapse;font-size:13px;line-height:1.5;background:#fff}
+.medication-table-editor .medication-lean-table thead{background:#f5f8fb}
+.medication-table-editor .medication-lean-table thead th{padding:12px;color:#607789;font-size:12px;font-weight:650;border-bottom:1px solid #e4ebf0}
+.medication-table-editor .medication-lean-table tbody :is(td,th){padding:14px 12px;border-bottom:1px solid #e9eef1;vertical-align:top}
+.medication-table-editor .medication-lean-table tbody th{color:#294353;font-weight:600}
+.visit-workspace .visit-part-surface .medication-table-editor{border:1px solid #e0e8ed!important;border-radius:9px;background:#fff!important}
+.medication-table-editor .med-frequency-times{display:flex;flex-wrap:nowrap;gap:4px}
+.medication-table-editor .med-frequency-times button{padding:6px 8px;font-size:12px;white-space:nowrap;border-radius:6px}
+.medication-table-editor .med-frequency{min-width:210px}
+.medication-table-editor .med-inline-input{margin-top:5px}
+@media(max-width:760px){
+ .visit-workspace .runtime-session > .visit-document > .visit-part,
+ .visit-workspace [data-clinical-followup] > section{padding:16px!important;margin-bottom:14px!important}
+ .visit-workspace [data-clinical-followup] > details{padding:16px}
+ .visit-workspace .session-work-head{padding:16px!important}
+ .visit-workspace textarea{font-size:16px}
+ .medication-table-editor .med-frequency-times button{min-height:44px}
+}

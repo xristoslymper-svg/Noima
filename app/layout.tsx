@@ -5,6 +5,7 @@ import "./visit-workspace.css";
 import "./mobile.css";
 import "./initial-assessment.css";
 import "./clinical-editor.css";
+import "./noima-ui.css";
 import AccountSessionBoundary from '@/components/AccountSessionBoundary';
 
 export const metadata: Metadata = {

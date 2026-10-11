@@ -28,7 +28,7 @@ export default function PrevisitBriefingView({card,brief,patientId}:{card:Clinic
   <ul className={styles.facts} aria-label="Διάγνωση, διαφορική και αγωγή">
    {row('ICD-10 / διάγνωση',brief.diagnoses,'Δεν έχει καταγραφεί.')}
    {row('Διαφορική',brief.differential,'Δεν έχει καταγραφεί.')}
-   {row('Αγωγή',brief.medications,'Δεν υπάρχει καταχωρισμένη ενεργή αγωγή.')}
+   {row('Αγωγή',brief.medications,card.alerts.some(f=>f.key==='medication-refresh')?'Χρειάζεται ανανέωση των στοιχείων αγωγής.':'Δεν υπάρχει καταχωρισμένη ενεργή αγωγή.')}
   </ul>
   {reading('Καταγεγραμμένα στοιχεία & πορεία',brief.narrative,70)}
   {brief.narrativeSynthesized&&<p className={styles.meta}>Σύνθεση AI με πηγές · όχι επιβεβαιωμένο κλινικό συμπέρασμα.</p>}

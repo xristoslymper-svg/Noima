@@ -4,6 +4,7 @@ import {createPortal} from 'react-dom';
 import {Ban,Check,Pencil,Plus,Search,X} from 'lucide-react';
 import type {DemoMedication,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
+import MedicationFrequency from './MedicationFrequency';
 import {formatClinicDate} from '@/lib/clinic-time';
 import {placeMedicationMenu,type MedicationMenuPlacement} from '@/lib/clinical/medication-menu-placement';
 
@@ -61,7 +62,7 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
  return <tr className={editing?'med-row-editing':''}>
   <th scope="row">{m.medication_name}{error&&<span className="med-inline-error" role="alert">{error}</span>}</th>
   <td data-label="Δόση">{editing?<div className="med-inline-dose"><input aria-label={'Δόση '+m.medication_name} inputMode="decimal" value={dose} disabled={saving} onChange={e=>setDose(e.target.value.replace(',','.'))}/><input aria-label={'Μονάδα '+m.medication_name} value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div>:<span className="med-dose-display">{m.dose}<b>{m.unit}</b></span>}</td>
-  <td data-label="Συχνότητα">{editing?<input className="med-inline-input" aria-label={'Συχνότητα '+m.medication_name} value={frequency} disabled={saving} onChange={e=>setFrequency(e.target.value)}/>:m.frequency}</td>
+  <td data-label="Συχνότητα">{editing?<MedicationFrequency label={'Συχνότητα '+m.medication_name} value={frequency} disabled={saving} onChange={setFrequency}/>:m.frequency}</td>
   <td data-label="Περίοδος / διάρκεια"><span>{formatClinicDate(start)}{end?' – '+formatClinicDate(end):''}</span><small>{m.status==='planned'?'Προγραμματισμένη έναρξη':durationLabel(start,end)}</small></td>
   <td data-label="Κατάσταση"><span className={'med-status '+m.status}>{m.status==='active'?'Λαμβάνει':m.status==='stopped'?'Διακοπείσα':'Προγραμματισμένη'}</span></td>
   <td data-label="Παρενέργειες"><MedicationEffects medication={m} bundle={bundle} sessionId={sessionId} today={today} reload={reload} editableEffects={editableEffects} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></td>
@@ -102,7 +103,7 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
  return <tr ref={newRowRef} className="med-new-row">
   <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}{needsAction&&<span className="med-inline-error" role="status">Αποθηκεύστε ή ακυρώστε εδώ για να συνεχίσετε.</span>}</th>
   <td data-label="Δόση"><div className="med-inline-dose"><input aria-label="Δόση" inputMode="decimal" placeholder="*" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setError('')}}/><input aria-label="Μονάδα" value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
-  <td data-label="Συχνότητα"><input className="med-inline-input" aria-label="Συχνότητα" placeholder="*" value={frequency} disabled={saving} onChange={e=>{setFrequency(e.target.value);setError('')}}/></td>
+  <td data-label="Συχνότητα"><MedicationFrequency value={frequency} disabled={saving} onChange={value=>{setFrequency(value);setError('')}}/></td>
   <td data-label="Περίοδος / διάρκεια"><label className="med-new-date">Έναρξη *<input type="date" value={start} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='history'&&<label className="med-new-date">Διακοπή *<input type="date" value={stop} disabled={saving} min={start} max={today} onChange={e=>setStop(e.target.value)}/></label>}</td>
   <td data-label="Κατάσταση"><select className="med-inline-status" aria-label="Κατάσταση νέας αγωγής" value={mode} disabled={saving} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει / προγραμματισμένη</option><option value="history">Προηγούμενη · διακοπείσα</option></select></td>
   <td data-label="Παρενέργειες"><span className="med-empty-cell">—</span></td>

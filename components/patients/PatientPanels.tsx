@@ -5,6 +5,7 @@ import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
 import MedicationTimeline from './MedicationTimeline';
 import MedicationTable from './MedicationTable';
+import MedicationFrequency from './MedicationFrequency';
 import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
 
@@ -163,7 +164,7 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
   {(mode==='start'||mode==='history')&&<label>Κατάσταση λήψης<select value={mode} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">Λαμβάνει τώρα / προγραμματισμένη έναρξη</option><option value="history">Έχει διακοπεί · προηγούμενη αγωγή</option></select></label>}
   {(mode==='start'||mode==='history')&&<label>Φάρμακο<input value={name} onChange={e=>setName(e.target.value)} placeholder="π.χ. Sertraline"/></label>}
 
-  {(mode==='start'||mode==='history'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>Συχνότητα<input value={frequency} onChange={e=>setFrequency(e.target.value)} placeholder="π.χ. 1× πρωί"/></label><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}
+  {(mode==='start'||mode==='history'||mode==='change')&&<div className="med-form-grid"><label>{mode==='change'?'Νέα δόση':'Δόση'}<input inputMode="decimal" value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>Μονάδα<input value={unit} onChange={e=>setUnit(e.target.value)}/></label><div><span>Συχνότητα</span><MedicationFrequency value={frequency} onChange={setFrequency}/></div><label>Έναρξη<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label></div>}
   {mode==='history'&&<label>Έχει διακοπεί από<input type="date" value={stopped} onChange={e=>setStopped(e.target.value)} max={athensToday}/></label>}
   {mode==='stop'&&<label>Ημερομηνία διακοπής<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label>}
   {mode==='side_effect'&&<><label>Παρενέργεια<input value={effect} onChange={e=>setEffect(e.target.value)} placeholder="π.χ. μειωμένη libido"/></label><div className="med-form-grid side-effect-grid"><label>Βαρύτητα<select value={severity} onChange={e=>setSeverity(e.target.value as 'mild'|'moderate'|'severe')}><option value="mild">Ήπια</option><option value="moderate">Μέτρια</option><option value="severe">Σοβαρή</option></select></label><label>Ημερομηνία<input type="date" value={effective} onChange={e=>setEffective(e.target.value)}/></label><label className="span-two">Επίδραση στη λειτουργικότητα<input value={impact} onChange={e=>setImpact(e.target.value)} placeholder="Προαιρετικό"/></label></div></>}

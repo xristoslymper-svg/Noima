@@ -4,9 +4,7 @@ import {CalendarDays,ChevronRight,Pencil} from 'lucide-react';
 import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {emptyContinuity,type ContinuityDraft} from '@/lib/clinical/continuity';
 import {mseTimeline,previousMseReference,finalizationBlocker} from '@/lib/clinical/visit-workspace-state';
-import {demoPost} from '@/lib/patients/demo-client';
-import {useClinicalDraft} from './useClinicalDraft';
-import ClinicalTextField from '@/components/dictation/ClinicalTextField';
+import {useFollowupDraft,FollowupField} from './FollowupDraft';
 import RiskEditor from './RiskTreeEditor';
 import StructuredVisitEditor from './StructuredVisitEditor';
 import {MedicationModal} from './PatientPanels';
@@ -21,10 +19,7 @@ import styles from './FollowupClosure.module.css';
 type Props={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;reloadContext:()=>Promise<unknown>;contextReady:boolean;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;flushAll:(requireRefresh?:boolean)=>Promise<unknown>;onDetailed:()=>void;onFinalize:(version:number)=>Promise<void>;onFinishLater?:()=>Promise<void>;finalizing:boolean;finalizeError:string};
 export default function FollowupClosure(p:Props){
  const {bundle,session,registerFlusher,onDirtyChange}=p;
- const text=(key:string)=>bundle.sections.find(s=>s.session_id===session.id&&s.section_key===key)?.content||'';
- const initial:ContinuityDraft=session.closure_draft||{...emptyContinuity,clinical_state_summary:text('interview'),treatment_decision:text('plan'),next_review_focus:text('review'),adherence:text('adherence')};
- const draft=useClinicalDraft<ContinuityDraft>({storageKey:session.id+':closure',initial,version:session.closure_version||0,write:async(value,version)=>{const result=await demoPost({action:'save_closure',session_id:session.id,value,expected_version:version});return {value:result.session.closure_draft,version:result.session.closure_version}},onSaved:p.reload,onDirty:dirty=>onDirtyChange('closure',dirty)});
- useEffect(()=>registerFlusher('closure',draft.flush),[registerFlusher,draft.flush]);
+ const {draft,checkConsistency}=useFollowupDraft();
  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [writing,setWriting]=useState<Record<string,boolean>>({});
  const currentDraft=useRef(draft);currentDraft.current=draft;
@@ -40,13 +35,8 @@ export default function FollowupClosure(p:Props){
   setError('');
   change('clinical_state_summary',updated);
  }
- function writingField(key:'transcript'|'clinical_state_summary'|'treatment_decision'|'next_review_focus'|'adherence'|'pinned_context',title:string,placeholder='',rows=2){return <ClinicalTextField sessionId={session.id} section="closure" fieldKey={key} title={title} placeholder={placeholder} rows={rows} maxLength={key==='pinned_context'?2000:20000} value={draft.value[key]} onPendingChange={pending=>setWriting(v=>v[key]===pending?v:{...v,[key]:pending})} onChange={text=>change(key,text)} onBlur={()=>void draft.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onConfirm={async(text,{provenance})=>{
-  await currentDraft.current.flush();const latest=currentDraft.current;
-  const value=latest.currentValue();if(value[key]!==provenance.original)throw new Error('Η αρχική καταγραφή άλλαξε. Ελέγξτε τη νεότερη έκδοση.');
-  latest.change({...value,[key]:text,source:provenance.kind==='ai'?'ai_assisted':value.source,writing_provenance:{...value.writing_provenance,[key]:provenance}});
-  await latest.flush().catch(()=>{});
- }}/>}
- async function finalize(){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=finalizationBlocker([...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))],fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)});if(blocker)throw new Error(blocker.message);await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
+ function writingField(key:'transcript'|'clinical_state_summary'|'treatment_decision'|'next_review_focus'|'adherence'|'pinned_context',title:string,placeholder='',rows=2){return <FollowupField field={key} title={title} placeholder={placeholder} rows={rows} onPendingChange={pending=>setWriting(v=>v[key]===pending?v:{...v,[key]:pending})}/>}
+ async function finalize(){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;checkConsistency(fresh);const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=finalizationBlocker([...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))],fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)});if(blocker)throw new Error(blocker.message);await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
  const risk=bundle.risks.find(r=>r.session_id===session.id);
  const mse=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse');
  const reference=previousMseReference(bundle,session.id,session.started_at);
@@ -95,7 +85,7 @@ export default function FollowupClosure(p:Props){
      </div>;
     })}
     <button type="button" onClick={()=>setMed({mode:'start'})}>Προσθήκη αγωγής</button></>:<p role="status">Φόρτωση αγωγής…</p>}
-    {draft.value.adherence.trim()&&<details className={styles.legacyNote}><summary>Προϋπάρχουσα καταγραφή λήψης</summary><p>{draft.value.adherence}</p></details>}
+    {writingField('adherence','Λήψη αγωγής','Παραλείψεις, δυσκολίες ή αλλαγές στη λήψη…')}
    </div>
   </section>
   <StableDetails key={session.id+':mse'} className={styles.details} initialOpen={!mse?.content.trim()}><summary>MSE · {mse?.content.trim()?'Καταγεγραμμένο — έλεγχος':'Χρειάζεται σημερινή ανασκόπηση'}</summary><div className="visit-part-content">{p.contextReady?<StructuredVisitEditor sessionId={session.id} kind="mse" compact existing={mse} followup baseline={reference?.section} timeline={timeline} onSaved={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p>Φόρτωση προηγούμενου MSE…</p>}</div></StableDetails>

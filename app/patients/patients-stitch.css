@@ -39,7 +39,7 @@
   margin:0 0 6px;
 }
 .patients-screen .registry-heading p {
-  color:#7d90a1;font-size:13px;line-height:1.55;
+  color:#5c7064;font-size:13px;line-height:1.55;
 }
 .patients-screen .registry-heading .record {
   display:inline-flex;gap:9px;align-items:center;justify-content:center;
@@ -82,10 +82,10 @@
 }
 .patients-screen .registry-search svg { width:17px;height:17px;flex-shrink:0; }
 .patients-screen .registry-search input {
-  min-width:0;padding:11px 0;font-size:12px;
+  min-width:0;padding:11px 0;font-size:14px;
   color:#2c483b;line-height:1.5;
 }
-.patients-screen .registry-search input::placeholder { color:#96a9ba;opacity:1; }
+.patients-screen .registry-search input::placeholder { color:#63776c;opacity:1; }
 .patients-screen .registry-search input:focus-visible { outline:none;box-shadow:none; }
 
 .patients-screen .registry-filters {
@@ -142,13 +142,13 @@
 .patients-screen .registry-row:not(.registry-labels):hover { background:#f8fbf9; }
 .patients-screen .registry-labels {
   min-height:51px;padding-top:13px;padding-bottom:13px;
-  color:#8ea1b7;background:#f9fbfa;
-  font-size:9.5px;letter-spacing:.055em;font-weight:780;
+  color:#5c7064;background:#f9fbfa;
+  font-size:11px;letter-spacing:.035em;font-weight:700;
   text-transform:uppercase;line-height:1.25;
 }
 .patients-screen .registry-labels span { min-width:0; }
 .patients-screen .registry-number {
-  color:#849ab0;font-size:11px;font-weight:730;
+  color:#5c7064;font-size:12px;font-weight:650;
 }
 .patients-screen .registry-patient-link {
   display:flex;align-items:center;gap:13px;min-width:0;text-decoration:none;
@@ -170,14 +170,14 @@
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .patients-screen .registry-patient small {
-  font-size:10px;line-height:1.45;color:#8b9eb2;
+  font-size:12px;line-height:1.5;color:#5c7064;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:100%;display:block;
 }
 .patients-screen .registry-diagnosis { min-width:0;gap:3px; }
 .patients-screen .registry-diagnosis strong {color:#263c4d;font-size:11px;font-weight:740}
 .patients-screen .registry-diagnosis small {
-  font-size:10px;line-height:1.35;color:#8a9db0;
+  font-size:12px;line-height:1.4;color:#5c7064;
   white-space:normal;overflow:hidden;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
 }
@@ -191,6 +191,17 @@
   min-width:28px;min-height:32px;color:#8ea69a;border-radius:8px;
 }
 .patients-screen .registry-open:hover {background:#edf5ef;color:#376c55}
+.patients-screen .registry-draft {
+  display:inline-block;width:fit-content;padding:2px 6px;
+  border-radius:5px;background:#edf3ed;color:#315f4d;
+  font-size:11px;font-weight:600;line-height:1.5;
+}
+.patients-screen .registry-reset {
+  padding:9px 12px;border:1px solid #c9ddcf;border-radius:9px;
+  background:#edf5ef;color:#315f52;font:inherit;cursor:pointer;
+}
+.patients-screen .registry-reset:focus-visible {outline:2px solid #548c73;outline-offset:3px}
+.patients-screen .registry-state p {margin:0 0 12px}
 
 /* Keep the exact same record links, quick appointment action, filter and sort behavior. */
 @media (max-width:1360px) {
@@ -231,18 +242,24 @@
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(6){display:inline-flex;grid-column:3}
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(7){display:grid;grid-column:4}
   .patients-screen .registry-labels{display:none}
+  .patients-screen .registry-search input{font-size:16px}
+  .patients-screen .registry-filters button,.patients-screen .registry-filters select,
+  .patients-screen .registry-heading .record,.patients-screen .registry-appointment,
+  .patients-screen .registry-open,.patients-screen .registry-reset{min-height:44px}
+  .patients-screen .registry-open{min-width:44px}
+  .patients-screen .registry-row:not(.registry-labels){grid-template-columns:38px minmax(0,1fr) auto 44px}
 }
 @media (max-width:520px) {
   .patients-screen .registry-heading {gap:12px;flex-wrap:wrap;margin-bottom:16px}
   .patients-screen .registry-heading h1 {font-size:35px}
-  .patients-screen .registry-heading .record {min-height:39px;padding:8px 12px;font-size:11px}
+  .patients-screen .registry-heading .record {min-height:44px;padding:8px 12px;font-size:12px}
   .patients-screen .registry-stats {margin-bottom:22px;gap:7px}
   .patients-screen .registry-stats>div {padding:7px 9px;font-size:10px;gap:6px}
   .patients-screen .registry-row:not(.registry-labels) {
-    grid-template-columns:minmax(0,1fr) 60px 22px;gap:8px;padding:11px 12px;
+    grid-template-columns:minmax(0,1fr) 60px 44px;gap:6px;padding:11px 12px;
   }
   .patients-screen .registry-row:not(.registry-labels)>.registry-number {display:none}
-  .patients-screen .registry-patient strong {font-size:12px}
+  .patients-screen .registry-patient strong {font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .patients-screen .registry-avatar {width:34px;height:34px;border-radius:10px}
   .patients-screen .registry-patient-link {gap:9px}
   .patients-screen .registry-filters select {width:100%;max-width:100%}

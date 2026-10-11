@@ -65,8 +65,8 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    </div>}
   </section>
   <details className="patient-doctor-notes">
-   <summary>Κλινικές σημειώσεις ιστορικού <span>Προαιρετικά</span></summary>
-   <p className="patient-reported-muted">Προσθέστε ή διορθώστε στοιχεία μόνο αν το χρειάζεστε. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
+   <summary>Κλινικές σημειώσεις ιστορικού <span>{historyFields.some(([key])=>values[key]?.trim())?'Υπάρχει καταγραφή':'Προαιρετικά'}</span></summary>
+   <p className="patient-reported-muted">Οι ίδιες κλινικές σημειώσεις είναι διαθέσιμες και στην καταγραφή επίσκεψης. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
    {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
    {draft.olderRecovery&&<details className="patient-older-notes">
     <summary>Υπάρχει παλαιότερο μη αποθηκευμένο πρόχειρο</summary>

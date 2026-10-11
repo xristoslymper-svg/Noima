@@ -86,7 +86,11 @@ export default function FollowupClosure(p:Props){
        <span className={styles.responseLabel}>Ανταπόκριση</span>
        <button type="button" aria-pressed={selectedResponse==='good'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'good')}>Καλή</button>
        <button type="button" aria-pressed={selectedResponse==='neutral'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'neutral')}>Ουδέτερη</button>
-       <button type="button" aria-pressed={hasRecordedSideEffect} onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button>
+      </div>
+      <div className={styles.tolerabilityOptions} role="group" aria-label={'Ανοχή αγωγής '+m.medication_name}>
+       <span className={styles.responseLabel}>Ανοχή</span>
+       <button type="button" onClick={()=>setMed({mode:'side_effect',id:m.id})}>Παρενέργεια</button>
+       {hasRecordedSideEffect&&<span className={styles.recordedEffect}>Υπάρχει σημερινή καταγραφή</span>}
       </div>
      </div>;
     })}

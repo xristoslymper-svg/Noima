@@ -1,10 +1,11 @@
+import {buildPrevisitBriefing,type PrevisitBriefing} from './previsit-briefing.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 import type {SummaryContext,Finding,Evidence} from './summary-context';
 import {mseFieldSentence,mseChangeSentences} from './mse-language.ts';
 
 export type CardItem={text:string;source_ids:string[];role?:'course'|'plan'};
-export type ClinicalCard={date:string|null;diagnoses:CardItem[];medications:CardItem[];mse:CardItem[];changes:CardItem[];changeLabels:string[];changeSummary:CardItem[];context:CardItem[];notes:CardItem[];alerts:Finding[];corrections:Finding[];sources:Evidence[];synthesized:boolean};
+export type ClinicalCard={briefing?:PrevisitBriefing;date:string|null;diagnoses:CardItem[];medications:CardItem[];mse:CardItem[];changes:CardItem[];changeLabels:string[];changeSummary:CardItem[];context:CardItem[];notes:CardItem[];alerts:Finding[];corrections:Finding[];sources:Evidence[];synthesized:boolean};
 // Never cut a clinical sentence. Keep the primary fact visible even when long.
 export function clinicalCardPreview(items:CardItem[],limit:number){
  const preview:CardItem[]=[],rest:CardItem[]=[];let words=0;
@@ -57,5 +58,5 @@ export function buildClinicalCard(bundle:PatientBundle,context:SummaryContext,fi
  const nextStep:CardItem[]=plan.length?[{text:plan.map(i=>i.text).join(' '),source_ids:[...new Set(plan.flatMap(i=>i.source_ids))],role:'plan'}]:[];
  const openContext:CardItem[]=context.findings.filter(f=>f.key.startsWith('context:')).map(f=>({text:f.text,source_ids:f.source_ids}));
  const notes:CardItem[]=[...(synthesized?findings.filter(f=>f.origin==='synthesis'&&(f.theme!=='plan'||!plan.length)).map(f=>({text:f.text,source_ids:f.source_ids,role:'course' as const})):recorded.filter(i=>i.role==='course')),...nextStep];
- return {date:latest?time(latest.id):null,diagnoses,medications,mse:mseItems,changes,changeLabels,changeSummary,context:openContext,notes,alerts:context.findings.filter(f=>f.attention),corrections:context.findings.filter(f=>f.key.startsWith('correction:')&&!f.attention),sources:context.sources,synthesized};
+ return {briefing:buildPrevisitBriefing(bundle,context,medications,findings,synthesized),date:latest?time(latest.id):null,diagnoses,medications,mse:mseItems,changes,changeLabels,changeSummary,context:openContext,notes,alerts:context.findings.filter(f=>f.attention),corrections:context.findings.filter(f=>f.key.startsWith('correction:')&&!f.attention),sources:context.sources,synthesized};
 }

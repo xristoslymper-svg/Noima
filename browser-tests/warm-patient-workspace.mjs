@@ -30,7 +30,7 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
  for(const tab of ['summary','timeline','treatment','history','record']){
   await page.goto(`${origin}/patients/warm-patient?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.getByRole('heading',{name:'Ira Pira',exact:true}).waitFor();if(tab==='record')await page.locator('.visit-workspace').waitFor();
   const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
-  assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
+  assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,tab==='record'?'rgb(248, 246, 241)':'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
  }
  await context.close();

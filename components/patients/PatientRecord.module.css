@@ -79,6 +79,10 @@
   background:var(--patient-surface);
   box-shadow:0 16px 50px rgba(31,49,40,.05);
 }
+.contentSurface[data-record-workspace] {
+  background:#f8f6f1;
+  border-color:#9ca99e;
+}
 .contentSurface :global(.panel-heading) {
   margin-bottom:18px;
   padding-bottom:16px;

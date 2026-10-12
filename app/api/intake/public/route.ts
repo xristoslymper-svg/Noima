@@ -3,6 +3,8 @@ export const dynamic='force-dynamic';
 const hex=/^[a-f0-9]{64}$/;
 function sameOrigin(req:Request){const origin=req.headers.get('origin');const site=req.headers.get('sec-fetch-site');return (!origin||origin===new URL(req.url).origin)&&site!=='cross-site'}
 export async function POST(request:Request){
+ const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
+ if(mode&&!['demo','synthetic'].includes(mode))return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.',code:'clinical_data_disabled'},{status:403,headers:{'Cache-Control':'private, no-store'}});
  if(!sameOrigin(request))return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});
  const b=await request.json().catch(()=>({}));
  try{

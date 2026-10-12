@@ -1,4 +1,5 @@
 'use client';
+import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import {Check,Mic,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
 import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type WritingProvenance,type WritingSnapshot} from '@/lib/clinical/clinical-writing';
@@ -22,11 +23,11 @@ export default function ClinicalTextField(p:Props){
  useEffect(()=>{machine.sync(p.value)},[machine,p.value]);
  useEffect(()=>{
   mounted.current=true;
-  try{const stored=sessionStorage.getItem(storageKey);const recovered=stored&&recoverWriting(JSON.parse(stored));if(recovered)machine.recover(recovered)}catch{}
+  try{const stored=readRecovery(sessionStorage,storageKey);const recovered=stored&&recoverWriting(JSON.parse(stored));if(recovered)machine.recover(recovered)}catch{}
   return()=>{mounted.current=false;request.current?.abort();recorder.current?.cancel();if(activeCapture===lease.current)activeCapture=null;machine.stop()};
  },[machine,storageKey]);
  useEffect(()=>{if(!p.recovery||machine.snapshot.pending||writingBusy(machine.snapshot.phase))return;machine.recover(p.recovery);p.onRecoveryConsumed?.()},[machine,p.recovery,p.onRecoveryConsumed]);
- useEffect(()=>{try{if(snapshot.pending)sessionStorage.setItem(storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
+ useEffect(()=>{try{if(snapshot.pending)writeRecovery(sessionStorage,storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
  useEffect(()=>p.registerFlusher(key,async()=>{try{if(audio.current)throw new Error();machine.assertSafe()}catch{textarea.current?.focus();revealControls();throw new Error('Ολοκληρώστε τον έλεγχο στο πεδίο «'+latest.current.title+'» πριν συνεχίσετε.')}}),[machine,key,p.registerFlusher]);
  useEffect(()=>{latest.current.onDirtyChange(key,pending||busy||awaitingAudio);latest.current.onPendingChange?.(pending||busy||awaitingAudio);return()=>{latest.current.onDirtyChange(key,false);latest.current.onPendingChange?.(false)}},[key,pending,busy,awaitingAudio]);
  useEffect(()=>{if(!pending&&!busy&&!awaitingAudio)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending,busy,awaitingAudio]);

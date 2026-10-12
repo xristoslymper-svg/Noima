@@ -1,4 +1,5 @@
 'use client';
+import {readRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import ClinicalTextField,{type WritingCommit} from '@/components/dictation/ClinicalTextField';
 import {narrativeWritingRecovery,type WritingPending} from '@/lib/clinical/clinical-writing';
@@ -14,7 +15,7 @@ export default function SectionEditor({sessionId,definition,existing,proposals,o
  const draft=useClinicalDraft({storageKey:sessionId+':'+key,initial:existing?.content||'',version:existing?.version??null,write:async(content,version)=>{const d=await demoPost({action:'save_section',session_id:sessionId,section_key:definition.key,content,source:'manual',expected_version:version});return {value:d.section.content as string,version:d.section.version as number}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
  const current=useRef(draft);current.current=draft;
  useEffect(()=>registerFlusher(key,draft.flush),[key,registerFlusher,draft.flush]);
- useEffect(()=>{try{setRecoverable(sessionStorage.getItem(sessionId+':transcript:'+definition.key)||'')}catch{}},[sessionId,definition.key]);
+ useEffect(()=>{try{setRecoverable(readRecovery(sessionStorage,sessionId+':transcript:'+definition.key)||'')}catch{}},[sessionId,definition.key]);
  async function confirm(text:string,{pending,rememberProposal}:WritingCommit){
   await current.current.flush();const latest=current.current;
   if(latest.currentValue()!==pending.base)throw new Error('Η αρχική καταγραφή άλλαξε. Ελέγξτε τη νεότερη έκδοση.');
@@ -28,7 +29,7 @@ export default function SectionEditor({sessionId,definition,existing,proposals,o
  function recover(proposal?:ClinicalProposal){
   // Legacy proposals are rendered inline; recovering one never launches AI.
   let legacy;
-  if(!proposal){try{const old=JSON.parse(sessionStorage.getItem(`noima-proposal:${sessionId}:${definition.key}`)||'null');if(old&&typeof old.text==='string')legacy={text:old.text,manual:Boolean(old.manual),mode:old.mode||'append'}}catch{}}
+  if(!proposal){try{const old=JSON.parse(readRecovery(sessionStorage,`noima-proposal:${sessionId}:${definition.key}`)||'null');if(old&&typeof old.text==='string')legacy={text:old.text,manual:Boolean(old.manual),mode:old.mode||'append'}}catch{}}
   setRecovery(narrativeWritingRecovery(current.current.currentValue(),proposal,recoverable,legacy));
  }
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}

@@ -11,7 +11,7 @@ for(const key of ['audio','file']) {
   assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');
   assert.match((await response.json()).text,/Συνθετική δοκιμή/);assert.equal(route.calls.length,1);
   const call=route.calls[0],forwarded=call.init.body.get('file');
-  assert.ok(forwarded instanceof File);assert.equal(forwarded.name,file.name);assert.equal(forwarded.type,file.type);
+  assert.ok(forwarded instanceof File);assert.equal(forwarded.name,"dictation.webm");assert.equal(forwarded.type,file.type);
   assert.deepEqual(Buffer.from(await forwarded.arrayBuffer()),Buffer.from(await file.arrayBuffer()));
   assert.equal(call.init.body.get('audio'),null);assert.equal(call.init.body.get('model'),'gpt-transcribe');
   assert.match(call.init.body.get('prompt'),/Greek psychiatric clinical dictation/);
@@ -32,7 +32,7 @@ test('reproduces the old file-only parser error using the clinical client multip
 test('file takes precedence; an invalid canonical file cannot be bypassed with an audio alias',async()=>{
  const route=transcriptionRoute();
  const good=uploadRequest({key:'file',extra:form=>form.set('audio',new File(['different'],'other.webm'))});
- assert.equal((await route.POST(good)).status,200);assert.equal(route.calls[0].init.body.get('file').name,'synthetic.webm');
+ assert.equal((await route.POST(good)).status,200);assert.equal(route.calls[0].init.body.get('file').name,'dictation.webm');
  const invalid=transcriptionRoute();const response=await invalid.POST(uploadRequest({extra:form=>form.set('file','not-a-file')}));
  assert.equal(response.status,400);assert.equal(invalid.calls.length,0);
 });

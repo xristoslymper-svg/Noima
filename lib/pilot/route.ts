@@ -3,7 +3,16 @@ import { pilotScope } from './request-scope';
 
 // Verify the cookie with Auth; never authorize from a supplied tester ID.
 export function withPilot(handler:(request:Request)=>Promise<Response>, publicAssessment=false) {
-  return async (request:Request):Promise<Response> => {
+  const protectedHandler=async (request:Request):Promise<Response> => {
+    const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
+    if(mode&&!['demo','synthetic'].includes(mode))
+      return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.',code:'clinical_data_disabled'},{status:403});
+    const path=new URL(request.url).pathname;
+    if(process.env.EXTERNAL_AI_ENABLED==='false' && (path==='/api/transcribe'||path==='/api/intake/scan'||path==='/api/calendar/command/parse'||(/^\/api\/clinical\/(extract|polish|closure|summary)(\/|$)/.test(path)&&request.method!=='GET')))
+      return Response.json({error:'Η εξωτερική υπηρεσία AI είναι απενεργοποιημένη.',code:'external_ai_disabled'},{status:503});
+    return authenticatedHandler(request);
+  };
+  const authenticatedHandler=async (request:Request):Promise<Response> => {
     if(request.method!=='GET') {
       const origin=request.headers.get('origin');
       const fetchSite=request.headers.get('sec-fetch-site');
@@ -30,6 +39,12 @@ export function withPilot(handler:(request:Request)=>Promise<Response>, publicAs
     });
     const response=await pilotScope.run({token:session.access_token,workspace:identity.workspace_id},()=>handler(scoped));
     response.headers.set('Cache-Control','private, no-store');
+    return response;
+  };
+  return async(request:Request):Promise<Response>=>{
+    const response=await protectedHandler(request);
+    response.headers.set('Cache-Control','private, no-store');
+    response.headers.set('Referrer-Policy','no-referrer');
     return response;
   };
 }

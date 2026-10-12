@@ -31,8 +31,8 @@ async function handlePOST(request:Request){
      body:JSON.stringify({patient_id:patient.id}),
     });
     if(!response.ok)console.error('clinical_summary_backfill_failed',{status:response.status});
-   }catch(error){
-    console.error('clinical_summary_backfill_failed',{error:error instanceof Error?error.message:'unknown'});
+   }catch{
+    console.error('clinical_summary_backfill_failed',{code:'background_request_failed'});
    }
   }
  });

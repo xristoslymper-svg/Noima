@@ -34,7 +34,9 @@ async function handlePOST(request: Request) {
   }
 
   const body = new FormData();
-  body.append("file", file, file.name || "dictation.webm");
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  const safeExtension = extension && ["flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"].includes(extension) ? extension : "webm";
+  body.append("file", file, `dictation.${safeExtension}`);
   body.append("model", "gpt-transcribe");
   body.append(
     "prompt",

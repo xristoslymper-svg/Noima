@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {activeVisitPart,finalizationBlocker,hasCompletedClinicalHistory,previousMseReference,riskChoices,sessionClinicalTime,visitSteps,workspaceHeroAction,workspaceLocation,workspaceTransitionSearch,workspaceMeasurementSearch,workspaceSelectedAssessment} from '../lib/clinical/visit-workspace-state.ts';
-import {initialDocument} from '../lib/clinical/visit-document.ts';
+import {firstAssessmentDocument,initialDocument} from '../lib/clinical/visit-document.ts';
 
 test('completed follow-up history keeps established patients out of initial entry; drafts do not',()=>{
  assert.equal(hasCompletedClinicalHistory({sessions:[]}),false);
@@ -142,4 +142,17 @@ test('legacy timeline visit links open Record while new timeline URLs retain bac
  assert.deepEqual(workspaceLocation(search),{tab:'timeline',sessionId:'exact'});
  assert.equal(new URLSearchParams(search).get('record_session'),'exact');
  assert.deepEqual(workspaceLocation(workspaceTransitionSearch(search,'record')),{tab:'record',sessionId:'exact'});
+});
+
+test('first assessment needs one plan but retains risk and follow-up review safeguards',()=>{
+ const sections=['interview','mse','assessment','plan'].map(section_key=>({section_key,content:'Recorded'}));
+ assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'},undefined,true),null);
+ assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'}).anchor,'plan');
+ assert.equal(finalizationBlocker(sections,undefined,undefined,true).anchor,'risk');
+});
+test('first assessment adds empty slots while preserving legacy diagnoses and certainty',()=>{
+ const original={kind:'assessment',fields:[{key:'legacy',label:'Legacy',text:'Original narrative'},{key:'diagnosis',label:'Diagnosis',text:'Prior description',status:'provisional',codes:[]}]};
+ const before=JSON.stringify(original),next=firstAssessmentDocument('',original);
+ assert.equal(JSON.stringify(original),before);assert.deepEqual(next.fields[1],original.fields[1]);
+ assert.equal(next.fields.find(f=>f.key==='impression').text,'');assert.equal(firstAssessmentDocument('',next),next);
 });

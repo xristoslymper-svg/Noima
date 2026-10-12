@@ -101,7 +101,7 @@ export function hasCompletedClinicalHistory(bundle:Pick<PatientBundle,'sessions'
 }
 export const riskChoices=[['not_assessed','Δεν διερευνήθηκε','—'],['unknown','Άγνωστο','Άγνωστο'],['negative','Αρνητικό','Όχι'],['positive','Θετικό','Ναι']] as const;
 export const visitSteps={
- initial_assessment:[['interview','Λόγος'],['mse','MSE'],['risk','Κίνδυνος'],['history','Ιστορικό'],['assessment','Αξιολόγηση'],['medication','Αγωγή'],['plan','Πλάνο']],
+ initial_assessment:[['interview','Λόγος'],['mse','MSE'],['risk','Κίνδυνος'],['history','Ιστορικό'],['assessment','Κλινική εκτίμηση'],['diagnosis','Διάγνωση'],['medication','Αγωγή'],['plan','Πλάνο']],
  follow_up:[['interview','Συμπτώματα'],['adherence','Παρενέργειες / λήψη'],['mse','MSE αλλαγές'],['risk','Κίνδυνος'],['psychometrics','Μετρήσεις'],['medication','Αγωγή'],['assessment','Εκτίμηση'],['plan','Επανεκτίμηση']],
 } as const;
 // Use all measured section positions, including long sections spanning the viewport.
@@ -109,7 +109,7 @@ export function activeVisitPart(parts:{key:string;top:number}[],readingLine:numb
  return parts.filter(p=>p.top<=readingLine+1).at(-1)?.key||parts[0]?.key||'interview';
 }
 const requiredSections=[['interview','Ψυχιατρική συνέντευξη'],['mse','MSE'],['assessment','Κλινική αξιολόγηση'],['plan','Θεραπευτικό πλάνο'],['review','Επανεκτίμηση']] as const;
-export function finalizationBlocker(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null){
+export function finalizationBlocker(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null,firstAssessment=false){
  if(!risk||risk.suicidal_ideation==='not_assessed')return {anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'};
  if(risk.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))return {anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'};
  const currentMse=sections.find(s=>s.section_key==='mse');
@@ -117,7 +117,7 @@ export function finalizationBlocker(sections:{section_key:string;content:string;
   const pending=previousMse.fields.filter(old=>old.key!=='legacy'&&old.text.trim()&&!currentMse.document?.fields.some(f=>f.key===old.key&&(f.review||f.text.trim())));
   if(pending.length)return {anchor:'mse',message:`Υπάρχουν ${pending.length} ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα. Διατηρήστε, αλλάξτε ή σημειώστε «Δεν αξιολογήθηκε σήμερα».`};
  }
- const missing=requiredSections.find(([key])=>!sections.some(s=>s.section_key===key&&s.content.trim()));
+ const missing=requiredSections.find(([key])=>(!firstAssessment||key!=='review')&&!sections.some(s=>s.section_key===key&&s.content.trim()));
  return missing?{anchor:missing[0]==='review'?'plan':missing[0],message:'Χρειάζεται καταγραφή: '+missing[1]+'.'}:null;
 }
 export function sessionClinicalTime(bundle:Pick<PatientBundle,'appointments'>,session:{id:string;started_at:string}){

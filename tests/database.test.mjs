@@ -894,3 +894,43 @@ test('confirmed context revisions are owner scoped, conflict safe, idempotent an
  await assert.rejects(sql('update private.demo_context_revisions set content=$1 where id=$2',['overwrite',r.id]),/context_revision_immutable/);
  assert.equal((await sql("select has_function_privilege('anon','demo_context_revise(uuid,uuid,uuid,text,text,integer)','EXECUTE') allowed"))[0].allowed,false);
 });
+
+test('initial assessment single plan finalizes without ICD10 or review; old review survives',async()=>{
+ const t='76500000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql("select * from demo_patient_create_v2($1,'QA First assessment')",[t]);
+ const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ for(const key of ['interview','mse','plan'])await sql("select demo_session_save_section($1,$2,$3,'Synthetic recorded finding','manual',null)",[t,s.id,key]);
+ const document={kind:'assessment',fields:[{key:'impression',label:'Clinical Assessment / Impression',text:'Synthetic assessment without diagnostic coding'},{key:'diagnosis',label:'Diagnosis',text:'',codes:[]}]};
+ await sql("select demo_session_save_document($1,$2,'assessment',$3,null)",[t,s.id,JSON.stringify(document)]);
+ await assert.rejects(sql('select demo_session_finalize($1,$2,(select version from demo_sessions where id=$2))',[t,s.id]),/risk/);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ const [done]=await sql('select * from demo_session_finalize($1,$2,(select version from demo_sessions where id=$2))',[t,s.id]);assert.equal(done.status,'completed');
+ assert.deepEqual((await sql("select document from demo_session_sections where session_id=$1 and section_key='assessment'",[s.id]))[0].document,document);
+ const [pLegacy]=await sql("select * from demo_patient_create_v2($1,'QA Legacy assessment')",[t]);
+ const [legacy]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,pLegacy.id]);
+ for(const key of ['review','adherence','effects'])await sql("select demo_session_save_section($1,$2,$3,'Preserved old '||$3,'manual',null)",[t,legacy.id,key]);
+ await sql("select demo_session_save_section($1,$2,'plan','Unified new plan','manual',null)",[t,legacy.id]);
+ for(const key of ['review','adherence','effects'])assert.equal((await sql("select content from demo_session_sections where session_id=$1 and section_key=$2",[legacy.id,key]))[0].content,'Preserved old '+key);
+ const [f]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p.id]);
+ for(const key of ['interview','mse','assessment','plan'])await sql("select demo_session_save_section($1,$2,$3,'Synthetic followup','manual',null)",[t,f.id,key]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,f.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ await assert.rejects(sql('select demo_session_finalize($1,$2,(select version from demo_sessions where id=$2))',[t,f.id]),/missing_sections/);
+});
+test('inline side effect edit preserves history and rejects stale or closed sessions',async()=>{
+ const t='76500000-0000-4000-8000-000000000002';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [p]=await sql("select * from demo_patient_create_v2($1,'QA Effect history')",[t]);const [s]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p.id]);
+ const [m]=await sql("select * from demo_medication_start($1,$2,$3,'Synthetic medication',10,'mg','daily',current_date,'')",[t,p.id,s.id]);
+ const [e]=await sql("select * from demo_medication_side_effect_add($1,$2,$3,'Original effect','mild','',current_date,'Original note')",[t,m.id,s.id]);
+ const [edited]=await sql("select * from demo_initial_side_effect_edit($1,$2,$3,'Reviewed effect',$4)",[t,s.id,e.id,e.updated_at]);
+ assert.equal(edited.effect_text,'Reviewed effect');assert.match(edited.note,/Original effect/);assert.match(edited.note,/Original note/);
+ assert.equal(edited.medication_id,m.id);assert.equal(edited.severity,e.severity);assert.equal(edited.noted_on.toISOString(),e.noted_on.toISOString());
+ await assert.rejects(sql("select demo_initial_side_effect_edit($1,$2,$3,'Stale edit',$4)",[t,s.id,e.id,e.updated_at]),/stale_side_effect/);
+ const [p2]=await sql("select * from demo_patient_create_v2($1,'QA Other effect visit')",[t]);
+ const [other]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,p2.id]);
+ await assert.rejects(sql("select demo_initial_side_effect_edit($1,$2,$3,'Wrong visit',$4)",[t,other.id,e.id,edited.updated_at]),/session_unavailable/);
+ await assert.rejects(asUser(b,()=>sql("select demo_initial_side_effect_edit($1,$2,$3,'Unauthorized',$4)",[t,s.id,e.id,edited.updated_at])));
+ for(const key of ['interview','mse','assessment','plan'])await sql("select demo_session_save_section($1,$2,$3,'Synthetic documented finding','manual',null)",[t,s.id,key]);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'negative'})]);
+ await sql('select demo_session_finalize($1,$2,(select version from demo_sessions where id=$2))',[t,s.id]);
+ await assert.rejects(sql("select demo_initial_side_effect_edit($1,$2,$3,'Closed visit',$4)",[t,s.id,e.id,edited.updated_at]),/session_unavailable/);
+});

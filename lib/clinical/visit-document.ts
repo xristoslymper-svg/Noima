@@ -22,3 +22,10 @@ export function initialDocument(kind:VisitDocument['kind'],content='',document?:
  if(content.trim())fields.push({key:'legacy',label:'Προϋπάρχουσα αφηγηματική καταγραφή',text:content});
  return {kind,fields};
 }
+
+// Add slots without rewriting legacy narrative, codes or certainty.
+export function firstAssessmentDocument(content='',document?:VisitDocument|null):VisitDocument{
+ const original=initialDocument('assessment',content,document);
+ const missing=initialDocument('assessment').fields.filter(f=>['diagnosis','impression'].includes(f.key)&&!original.fields.some(existing=>existing.key===f.key));
+ return missing.length?{...original,fields:[...original.fields,...missing]}:original;
+}

@@ -70,3 +70,15 @@ test('pre-visit clinical card shows active confirmed context even without AI, ne
  assert.deepEqual(buildClinicalCard(b,buildSummaryContext(b)).context,[]);
 });
 
+
+test('first assessment summary keeps structured impression, codes, legacy review and medication effects with sources',()=>{
+ const b=fixture();b.sections[0].document.fields.push({key:'impression',label:'Clinical Assessment / Impression',text:'Synthetic clinical conclusion'},{key:'legacy',label:'Legacy',text:'Historical reasoning'});
+ b.sections[0].content=b.sections[0].document.fields.map(f=>f.label+': '+f.text+' '+(f.codes||[]).map(c=>c.code+' '+c.label).join('; ')).join('\n');
+ b.sections.push({id:'plan',session_id:'s',section_key:'plan',content:'Unified next steps and reassessment'},{id:'review',session_id:'s',section_key:'review',content:'Older separate review'},{id:'effects',session_id:'s',section_key:'effects',content:'Older tolerance narrative'},{id:'adherence',session_id:'s',section_key:'adherence',content:'Older adherence narrative'});
+ b.medicationSideEffects.push({id:'effect',medication_id:'active',session_id:'s',noted_on:'2026-10-07',effect_text:'Recorded inline effect',severity:'mild',note:'Previous effect text'});
+ const context=buildSummaryContext(b),sources=JSON.stringify(context.sources);
+ for(const text of ['Synthetic clinical conclusion','Historical reasoning','F41.1','Older separate review','Older tolerance narrative','Older adherence narrative','Recorded inline effect','Previous effect text'])assert.ok(sources.includes(text),text);
+ assert.equal(context.sources.filter(s=>s.id==='section:plan').length,1);
+ assert.ok(context.sources.some(s=>s.id==='side_effect:effect'));
+ assert.match(JSON.stringify(buildClinicalCard(b,context)),/Unified next steps and reassessment/);
+});

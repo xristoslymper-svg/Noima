@@ -39,7 +39,7 @@ test('signposting is by field placeholder instead of long doctor-facing explanat
 });
 
 test('detailed visit also separates clinical plan from calendar scheduling',()=>{
- assert.match(detailed,/title="Αποφάσεις & επόμενος έλεγχος"/);
+ assert.ok(detailed.includes("title={draft.session_type==='initial_assessment'?'Πλάνο & επανεκτίμηση':'Αποφάσεις & επόμενος έλεγχος'}"));
  assert.match(detailed,/title="Επόμενο ραντεβού"/);
  const appointment=readFileSync('components/patients/VisitNextAppointment.tsx','utf8');
  assert.match(appointment,/showHeading=true/);

@@ -29,7 +29,12 @@ async function snapshot(patientId){
  const [p]=await query('select * from demo_patients where id=$1 and tester_id=$2',[patientId,tenant]);
  const [history]=await table('demo_patient_history');
  const [{result:assessments}]=await query('select demo_assessment_list($1,$2) result',[tenant,patientId]);
- return wire({patient:p,clinical_day:clinicDay(),sessions:await table('demo_sessions'),sections:await table('demo_session_sections'),risks:await table('demo_risk_assessments'),history:history||null,medications:await query('select * from demo_medications_at($1,$2,current_date)',[tenant,patientId]),medicationEvents:await table('demo_medication_events'),medicationSideEffects:await table('demo_medication_side_effects'),medicationRevisions:[],proposals:[],addenda:[],corrections:[],contextRevisions:[],assessments,appointments:await table('demo_calendar_events')});
+ // PostgREST unwraps scalar JSONB RPC results; direct SQL returns a named column.
+ // Preserve the actual wire shape instead of treating that column as a medication.
+ const [{result:medications}]=await query('select demo_medications_at($1,$2,$3::date) result',[tenant,patientId,clinicDay()]);
+ assert.ok(Array.isArray(medications),'medication RPC must produce an array, not a SQL wrapper row');
+ assert.ok(medications.every(row=>typeof row.medication_name==='string'),'every medication must retain its identity');
+ return wire({patient:p,clinical_day:clinicDay(),sessions:await table('demo_sessions'),sections:await table('demo_session_sections'),risks:await table('demo_risk_assessments'),history:history||null,medications,medicationEvents:await table('demo_medication_events'),medicationSideEffects:await table('demo_medication_side_effects'),medicationRevisions:[],proposals:[],addenda:[],corrections:[],contextRevisions:[],assessments,appointments:await table('demo_calendar_events')});
 }
 async function ready(id){
  for(const [key,text] of Object.entries({interview:'QA SYNTHETIC: recorded today; no previous notes copied.',mse:'QA SYNTHETIC: observed assessment, not inherited.',assessment:'QA SYNTHETIC: diagnostic assessment remains under investigation.',plan:'QA SYNTHETIC: agreed reassessment and next steps.',review:'QA SYNTHETIC: follow-up in two weeks.'}))await query('select * from demo_session_save_section($1,$2,$3,$4,$5,null)',[tenant,id,key,text,'manual']);
@@ -38,7 +43,7 @@ async function ready(id){
 
 test('RPC completion preserves failed drafts and updates timeline and grounded summary only after commit',async()=>{
  const p=await patient(),s=await session(p.id);
- const before=await snapshot(p.id);assert.equal(patientRecord(before).completed.length,0);
+ const before=await snapshot(p.id);assert.equal(patientRecord(before).completed.length,0);assert.deepEqual(before.medications,[]);
  await assert.rejects(query('select demo_session_finalize($1,$2,$3)',[tenant,s.id,s.version]),/missing|required|risk/i);
  assert.equal((await snapshot(p.id)).sessions.find(row=>row.id===s.id).status,'draft');
  await ready(s.id);

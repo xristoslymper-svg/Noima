@@ -32,3 +32,8 @@
  .recordStatus{font-size:11px}
  .field .editor>textarea.textarea{font-size:16px}
 }
+/* First Assessment: keep dictation inside the writing surface. */
+:global(.first-assessment) .field .editor{padding-bottom:52px}
+:global(.first-assessment) .field .tools .mic{position:absolute;right:12px;bottom:10px;z-index:1;width:36px;height:36px;padding:8px;font-size:0;border-radius:50%;background:var(--sage-wash,#edf2ed);border-color:var(--line,#dce5dc)}
+:global(.first-assessment) .field .tools .mic svg{width:18px;height:18px;flex-shrink:0}
+@media(max-width:600px){:global(.first-assessment) .field .editor{padding-bottom:60px}:global(.first-assessment) .field .tools .mic{width:44px;height:44px}}

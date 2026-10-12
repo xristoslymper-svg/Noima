@@ -26,6 +26,6 @@ export function initialDocument(kind:VisitDocument['kind'],content='',document?:
 // Add slots without rewriting legacy narrative, codes or certainty.
 export function firstAssessmentDocument(content='',document?:VisitDocument|null):VisitDocument{
  const original=initialDocument('assessment',content,document);
- const missing=initialDocument('assessment').fields.filter(f=>['diagnosis','impression'].includes(f.key)&&!original.fields.some(existing=>existing.key===f.key));
+ const missing=initialDocument('assessment').fields.filter(f=>['diagnosis','impression','differential-1'].includes(f.key)&&!original.fields.some(existing=>f.key==='differential-1'?existing.key.startsWith('differential-'):existing.key===f.key)).map(f=>f.key==='differential-1'?{...f,status:undefined}:f);
  return missing.length?{...original,fields:[...original.fields,...missing]}:original;
 }

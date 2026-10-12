@@ -177,3 +177,16 @@
 .first-assessment-impression h3,.first-assessment-diagnosis h3 { margin-bottom:12px; }
 .first-assessment .visit-code-picker { max-width:100%; }
 .first-assessment .visit-code-values span { white-space:normal; }
+/* Medication is a distinct First Assessment section, outside diagnosis. */
+.visit-workspace .runtime-session > .visit-document.first-assessment > .visit-part[data-visit-part="medication"] {
+ background:var(--clinical-field-surface)!important;
+ border:1px solid var(--clinical-field-border)!important;
+ border-radius:12px!important;
+ padding:20px!important;
+ margin-top:32px!important;
+}
+.visit-workspace .first-assessment [data-visit-part="medication"] > header {
+ padding-bottom:12px;
+ border-bottom:1px solid var(--clinical-field-border);
+ margin-bottom:16px;
+}

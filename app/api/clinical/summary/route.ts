@@ -116,6 +116,7 @@ async function precomputeClinicalSummary(tester:string,patient:string,force=fals
  return persisted;
 }
 async function handleGET(req:Request){
+ if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
  const url=new URL(req.url);const tester=url.searchParams.get('tester')||'';const patient=url.searchParams.get('patient_id')||'';
  if(!isClinicalId(tester)||!isClinicalId(patient))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
  try{

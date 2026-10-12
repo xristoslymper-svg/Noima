@@ -27,6 +27,11 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 const withPresentation=data=>data&&Array.isArray(data.findings)?{...data,findings:data.findings.map(f=>({...f,group_label:f.group_label||'Γενική εικόνα',theme:f.theme||'general'}))}:data;
+test('real-data mode blocks cached summary reads before loading any chart',async()=>{
+ const handler=route(new Error('must_not_read'),()=>{throw Error('must_not_call_provider')},{CLINICAL_DATA_MODE:'real'});
+ const response=await handler.GET(new Request('http://localhost/api/clinical/summary?patient_id=61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1&tester=668a6cc0-1692-4c17-a807-c84d09e9f02e'));
+ assert.equal(response.status,403);
+});
 const response=data=>Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(withPresentation(data))}]}]});
 test('provider failure and unsupported claims return canonical facts, never obsolete narrative',async()=>{
  for(const f of [async()=>{throw Error('network')},async()=>new Response('',{status:503}),async()=>Response.json({output:[{content:[{type:'output_text',text:'invalid JSON'}]}]}),async()=>Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({findings:[{label:'Ψυχομετρικά',text:'Item 9 reviewed',source_ids:['assessment:p'],attention:false}]})}]}]})]){

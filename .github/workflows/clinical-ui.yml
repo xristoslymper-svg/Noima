@@ -6,8 +6,10 @@ on:
       - 'components/dictation/**'
       - 'app/*.css'
       - 'app/layout.tsx'
+      - 'lib/clinical/**'
       - 'browser-tests/clinical-cleanup*'
       - 'browser-tests/warm-patient-workspace*'
+      - 'browser-tests/clinical-reliability*'
       - 'browser-tests/fixtures/warm-patient.json'
       - '.github/workflows/clinical-ui.yml'
 permissions:
@@ -18,9 +20,27 @@ concurrency:
 jobs:
   visual-and-interaction:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record exact reviewed source and clean worktree
+        run: |
+          git status --short
+          git diff --exit-code
+          git log -3 --oneline
+          git ls-files '*AGENTS.md' '*CONTRIBUTING*' '*instructions*'
+          git bundle create /tmp/noima-reviewed-source.bundle HEAD
+          git rev-parse HEAD > /tmp/noima-reviewed-sha.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clinical-reviewed-source
+          path: |
+            /tmp/noima-reviewed-source.bundle
+            /tmp/noima-reviewed-sha.txt
+          retention-days: 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,6 +50,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node browser-tests/clinical-cleanup.mjs
       - run: node browser-tests/warm-patient-workspace.mjs
+        if: ${{ !cancelled() }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -37,4 +58,5 @@ jobs:
           path: |
             test-results/clinical-cleanup
             test-results/warm-patient-workspace
+            test-results/clinical-reliability
           retention-days: 7

@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, Pencil, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
 import MedicationTimeline from './MedicationTimeline';
@@ -17,7 +17,8 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const dirty=useRef(false);
  const draft=useClinicalDraft<Record<string,string>>({storageKey:bundle.patient.id+':history',initial,version:bundle.history?.version??0,quietRecovery:true,write:async(history,version)=>{const d=await demoPost({action:'save_history',patient_id:bundle.patient.id,history,expected_version:version});return {value:Object.fromEntries(historyFields.map(([key])=>[key,d.history[key]||''])),version:d.history.version}},onSaved:reload,onDirty:d=>{dirty.current=d}});
  const values=draft.value,saving=draft.saving,state=draft.error||(draft.savedAt?'Αποθηκεύτηκε '+draft.savedAt+' · Αθήνα':'');
- const [patientOpen,setPatientOpen]=useState(false);
+ const [editingPatientField,setEditingPatientField]=useState<keyof ReturnType<typeof patientInitial>|null>(null);
+ const patientFields=[['first_name','Όνομα'],['last_name','Επώνυμο'],['age','Ηλικία'],['phone','Κινητό'],['landline','Σταθερό'],['contact_phone','Επιπλέον τηλ. επικοινωνίας'],['amka','ΑΜΚΑ'],['address','Διεύθυνση'],['email','Email'],['chief_complaint','Λόγος προσέλευσης']] as const;
  const [patientValues,setPatientValues]=useState(patientInitial);
  const [patientSaving,setPatientSaving]=useState(false);
  const [patientState,setPatientState]=useState('');
@@ -32,12 +33,13 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    setPatientSaving(true);setPatientState('');
    let committed=false;
    try{
-    const age=patientValues.age.trim()===''?null:Number(patientValues.age);
-    await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:patientValues.first_name,last_name:patientValues.last_name,age,phone:patientValues.phone,landline:patientValues.landline,contact_phone:patientValues.contact_phone,amka:patientValues.amka,address:patientValues.address,email:patientValues.email,chief_complaint:patientValues.chief_complaint,expected_updated_at:bundle.patient.updated_at});
+    const current={...patientInitial(),...(editingPatientField?{[editingPatientField]:patientValues[editingPatientField]}:{})};
+    const age=current.age.trim()===''?null:Number(current.age);
+    await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:current.first_name,last_name:current.last_name,age,phone:current.phone,landline:current.landline,contact_phone:current.contact_phone,amka:current.amka,address:current.address,email:current.email,chief_complaint:current.chief_complaint,expected_updated_at:bundle.patient.updated_at});
     committed=true;patientDirty.current=false;setPatientState('Αποθηκεύτηκε');
     const refreshed=await reload();
     if(!refreshed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
-    setPatientOpen(false);
+    setEditingPatientField(null);
    }catch(cause){
     if(committed){setPatientState('Τα στοιχεία αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε.');return}
     const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν τα στοιχεία ασθενή';setPatientState(message);
@@ -51,19 +53,25 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  flushRef.current=async()=>{if(!draft.preserveConflictForNavigation())await draft.flush();if(patientDirty.current)await savePatient()};
  useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
- const missingPatientFields=[['Ηλικία',bundle.patient.reported_age],['Κινητό',bundle.patient.phone],['ΑΜΚΑ',bundle.patient.amka],['Διεύθυνση',bundle.patient.address],['Email',bundle.patient.email],['Λόγος προσέλευσης στα στοιχεία φακέλου',bundle.patient.chief_complaint]].filter(([,value])=>value==null||value==='').map(([label])=>label).join(' · ');
  return <section className="panel-stack">
   <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
   <PatientReportedHistory patientId={bundle.patient.id}/>
 
-  <section className={incomplete?'patient-details-card incomplete':'patient-details-card'}>
-   <div className="patient-details-head"><div><strong>Στοιχεία ασθενή</strong><span>{incomplete?'Υπάρχουν βασικά στοιχεία που δεν έχουν ακόμη συμπληρωθεί.':'Τα βασικά στοιχεία του φακέλου είναι συμπληρωμένα.'}</span></div><button onClick={()=>{if(patientOpen&&patientDirty.current){void savePatient().catch(()=>{});return}setPatientOpen(open=>!open);setPatientState('')}}>{patientOpen?'Κλείσιμο':'Επεξεργασία στοιχείων'}</button></div>
-   {!patientOpen&&<div className="record-contact-strip">{bundle.patient.reported_age!=null&&<span>{bundle.patient.reported_age} ετών</span>}{bundle.patient.phone&&<span>{bundle.patient.phone}</span>}{bundle.patient.amka&&<span>ΑΜΚΑ {bundle.patient.amka}</span>}{bundle.patient.address&&<span>{bundle.patient.address}</span>}{bundle.patient.email&&<span>{bundle.patient.email}</span>}{bundle.patient.chief_complaint&&<span>{bundle.patient.chief_complaint}</span>}<p className="patient-missing-fields">{missingPatientFields&&<>Δεν έχουν συμπληρωθεί: { missingPatientFields}.</>}</p></div>}
-   {patientOpen&&<div className="patient-details-form">
-    <div className="patient-details-grid"><label>Όνομα<input disabled={patientSaving} value={patientValues.first_name} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,first_name:e.target.value}))}}/></label><label>Επώνυμο<input disabled={patientSaving} value={patientValues.last_name} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,last_name:e.target.value}))}}/></label><label>Ηλικία<input disabled={patientSaving} inputMode="numeric" value={patientValues.age} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,age:e.target.value.replace(/\D/g,'')}))}}/></label><label>Κινητό<input disabled={patientSaving} value={patientValues.phone} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,phone:e.target.value}))}}/></label><label>Σταθερό<input disabled={patientSaving} value={patientValues.landline} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,landline:e.target.value}))}}/></label><label>Επιπλέον τηλ. επικοινωνίας<input disabled={patientSaving} value={patientValues.contact_phone} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,contact_phone:e.target.value}))}}/></label><label>ΑΜΚΑ<input disabled={patientSaving} inputMode="numeric" value={patientValues.amka} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,amka:e.target.value.replace(/\D/g,'').slice(0,11)}))}}/></label><label className="span-two">Διεύθυνση<input disabled={patientSaving} value={patientValues.address} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,address:e.target.value}))}}/></label><label>Email<input disabled={patientSaving} type="email" value={patientValues.email} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,email:e.target.value}))}}/></label><label className="span-two">Λόγος προσέλευσης<textarea disabled={patientSaving} rows={2} value={patientValues.chief_complaint} onChange={e=>{patientDirty.current=true;setPatientValues(v=>({...v,chief_complaint:e.target.value}))}}/></label></div>
-    {patientState&&<div className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{patientState}</div>}
-    <button className="record compact" disabled={patientSaving||!patientValues.first_name.trim()} onClick={()=>void savePatient().catch(()=>{})}>{patientSaving?'Αποθήκευση…':'Αποθήκευση στοιχείων'}</button>
-   </div>}
+  <section className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>
+   <div className="patient-details-head"><div><strong>Στοιχεία ασθενή</strong><span>{incomplete?'Υπάρχουν βασικά στοιχεία που δεν έχουν ακόμη συμπληρωθεί.':'Τα βασικά στοιχεία του φακέλου είναι συμπληρωμένα.'}</span></div></div>
+   <dl className="patient-demographics-list">{patientFields.map(([key,label])=>{
+    const editing=editingPatientField===key,value=patientInitial()[key];
+    const change=(value:string)=>{patientDirty.current=true;setPatientValues(v=>({...v,[key]:key==='age'?value.replace(/\D/g,''):key==='amka'?value.replace(/\D/g,'').slice(0,11):value}))};
+    const cancel=()=>{patientDirty.current=false;setPatientValues(patientInitial());setEditingPatientField(null);setPatientState('')};
+    return <div className="patient-demographics-row" key={key}>
+     <dt><label htmlFor={editing?'patient-detail-'+key:undefined}>{label}</label></dt>
+     <dd>{editing?<form className="patient-demographics-editor" onSubmit={event=>{event.preventDefault();void savePatient().catch(()=>{})}} onKeyDown={event=>{if(event.key==='Escape'&&!patientSaving){event.preventDefault();cancel()}}}>
+      {key==='chief_complaint'?<textarea id={'patient-detail-'+key} autoFocus disabled={patientSaving} rows={2} value={patientValues[key]} onChange={event=>change(event.target.value)}/>:<input id={'patient-detail-'+key} autoFocus disabled={patientSaving} required={key==='first_name'} type={key==='email'?'email':'text'} inputMode={key==='age'||key==='amka'?'numeric':key==='phone'||key==='landline'||key==='contact_phone'?'tel':undefined} value={patientValues[key]} onChange={event=>change(event.target.value)}/>}
+      <div className="patient-demographics-actions"><button type="submit" disabled={patientSaving} aria-label={'Αποθήκευση: '+label} title="Αποθήκευση"><Check size={17}/></button><button type="button" disabled={patientSaving} onClick={cancel} aria-label={'Ακύρωση: '+label} title="Ακύρωση"><X size={17}/></button></div>
+     </form>:<><span className={value?'patient-demographics-value':'patient-demographics-empty'}>{value?(key==='age'?value+' ετών':value):'Δεν έχει καταγραφεί'}</span><button type="button" className="patient-demographics-pencil" disabled={editingPatientField!==null||patientSaving} aria-label={'Επεξεργασία: '+label} title={'Επεξεργασία: '+label} onClick={()=>{setPatientValues(patientInitial());setEditingPatientField(key);setPatientState('')}}><Pencil size={15}/></button></>}</dd>
+    </div>
+   })}</dl>
+   {patientState&&<div role={patientState==='Αποθηκεύτηκε'?'status':'alert'} className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{patientState}</div>}
   </section>
   <details className="patient-doctor-notes">
    <summary>Κλινικές σημειώσεις ιστορικού <span>{historyFields.some(([key])=>values[key]?.trim())?'Υπάρχει καταγραφή':'Προαιρετικά'}</span></summary>

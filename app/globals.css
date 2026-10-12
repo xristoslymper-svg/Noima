@@ -1182,3 +1182,20 @@ a{text-decoration:none;color:inherit}.link-button{text-decoration:none}.clinical
 /* KPI titles and values stand on their own, without redundant subtitles. */
 .metric-grid .metric{min-height:128px}
 .metric-grid .metric strong{margin:19px 0 0}
+
+/* Quiet patient rows in the existing sage palette. */
+.patient-demographics-list { margin: 8px 0 0; }
+.patient-demographics-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; padding: 13px 0; border-bottom: 1px solid #e3e9e5; align-items: baseline; }
+.patient-demographics-row:last-child { border-bottom: 0; }
+.patient-demographics-row dt { color: #54725f; font-size: 13px; font-weight: 500; }
+.patient-demographics-row dd { margin: 0; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.patient-demographics-value { flex: 1; color: #30483e; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.patient-demographics-empty { flex: 1; color: #87958e; font-size: 13px; }
+.patient-demographics-row button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #54725f; cursor: pointer; flex-shrink: 0; }
+.patient-demographics-row button:hover { background: #edf3ef; color: #30483e; }
+.patient-demographics-row button:focus-visible { outline: 2px solid #54725f; outline-offset: 2px; }
+.patient-demographics-row button:disabled { opacity: .3; cursor: default; }
+.patient-demographics-editor { display: flex; align-items: center; gap: 8px; width: 100%; }
+.patient-demographics-editor input, .patient-demographics-editor textarea { min-width: 0; width: 100%; border: 1px solid #b8cbc0; border-radius: 6px; background: #fff; padding: 8px 10px; color: #30483e; font: inherit; font-size: 14px; }
+.patient-demographics-actions { display: flex; flex-shrink: 0; }
+@media (max-width: 600px) { .patient-demographics-row { grid-template-columns: 110px minmax(0, 1fr); gap: 12px; } .patient-demographics-editor { flex-wrap: wrap; } .patient-demographics-actions { margin-left: auto; } }

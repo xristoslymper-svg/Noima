@@ -7,7 +7,7 @@ export default function ClinicalOrientationView({card,patientId}:{card:ClinicalC
  function bullets(items:CardItem[]){
   return <ul className="orientation-list">{items.flatMap((item,i)=>item.text.split(/\n+/u).filter(line=>line.trim()).map((line,j)=>{
    const match=line.match(/^(\d{4}-\d{2}-\d{2}) · (.*)$/u);
-   const text=(match?match[2]:line).replace(/^Συνθετική κλινική εκτίμηση:\s*/u,'Κλινική εκτίμηση: ').replace(/^Συνθετικό πλάνο:\s*/u,'Πλάνο: ');
+   const text=(match?match[2]:line).replace(/^Συνθετική κλινική εκτίμηση:\s*/u,'Κλινική εκτίμηση: ').replace(/^Συνθετικό πλάνο(?=:| επανελέγχου)/u,'Πλάνο');
    const colon=text.indexOf(':');
    return <li key={i+'-'+j}><span>{colon>0&&colon<65?<><strong>{text.slice(0,colon+1)}</strong>{text.slice(colon+1)}</>:text}</span>{match&&<time dateTime={match[1]}>{match[1].split('-').reverse().join('/')}</time>}</li>;
   }))}</ul>;

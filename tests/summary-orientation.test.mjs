@@ -37,6 +37,7 @@ test('provider minimisation removes nested direct identifiers while preserving c
 test('review window anchors explicit weeks to visit date and distinguishes elapsed time from an outstanding appointment',()=>{
  const text='Επανεκτίμηση σε 4–6 εβδομάδες.';
  assert.match(reviewWindow(text,'2026-10-05','2026-10-12'),/02\/11\/2026–16\/11\/2026/);
+ assert.match(reviewWindow('Συνθετικό πλάνο επανελέγχου σε 4–6 εβδομάδες: συμπτώματα.','2026-10-05','2026-10-12'),/02\/11\/2026/);
  assert.match(reviewWindow(text,'2026-10-05','2026-12-01'),/έχει παρέλθει/);
  assert.match(reviewWindow(text,'2026-10-05','2026-11-05'),/Εντός/);
  assert.equal(reviewWindow('Επανεκτίμηση σε 4–6 εβδομάδες αν χρειαστεί.','2026-10-05','2026-10-12'),'');

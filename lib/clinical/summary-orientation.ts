@@ -7,7 +7,7 @@ const refs=(s:Evidence,context:SummaryContext)=>[...new Set([s.id,...(s.required
 const dated=(s:Evidence,context:SummaryContext):CardItem=>({text:(s.date?s.date.slice(0,10)+' · ':'')+String(s.content),source_ids:refs(s,context)});
 // Interpret only an explicit numeric review interval; preserve the original instruction.
 export function reviewWindow(text:string,visitDate:string,day:string):string{
- const matches=[...text.matchAll(/(?:επανεκτίμηση|επανεξέταση)\s+σε\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\s+εβδομάδες/giu)];
+ const matches=[...text.matchAll(/(?:επανεκτίμηση|επανεξέταση|πλάνο επανελέγχου)\s+σε\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\s+εβδομάδες/giu)];
  if(matches.length!==1||/(?:^|\s)(?:αν|εφόσον|ανάλογα|ίσως)(?:\s|$)/iu.test(text))return '';
  const low=Number(matches[0][1]),high=Number(matches[0][2]||low);
  const start=Date.parse(visitDate.slice(0,10)+'T12:00:00Z'),now=Date.parse(day+'T12:00:00Z');

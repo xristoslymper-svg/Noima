@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Check,Mic2,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
+import {Check,Mic,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
 import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type WritingProvenance,type WritingSnapshot} from '@/lib/clinical/clinical-writing';
 import {FieldRecorder} from '@/lib/clinical/field-recorder';
 import styles from './ClinicalTextField.module.css';
@@ -84,7 +84,7 @@ export default function ClinicalTextField(p:Props){
  const status=snapshot.phase==='permission'?'Μικρόφωνο…':snapshot.phase==='transcribing'?'Μεταγραφή…':snapshot.phase==='paused'?'Σε παύση':'Ηχογράφηση';
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
-   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic2 size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
+   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
    <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">

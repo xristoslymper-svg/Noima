@@ -47,6 +47,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+      - name: Archive public dependencies for isolated synthetic reproduction
+        if: github.head_ref == 'codex/deployed-workflow-fixes-20261012'
+        run: tar -czf /tmp/noima-test-toolchain.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        if: github.head_ref == 'codex/deployed-workflow-fixes-20261012'
+        with:
+          name: clinical-test-toolchain
+          path: /tmp/noima-test-toolchain.tar.gz
+          compression-level: 0
+          retention-days: 1
       - run: npx playwright install --with-deps chromium
       - run: node browser-tests/clinical-cleanup.mjs
       - run: node browser-tests/warm-patient-workspace.mjs

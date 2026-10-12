@@ -3,7 +3,7 @@ import {continuityContexts} from './continuity-context.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=23;
+export const SUMMARY_POLICY_VERSION=24;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {previsitFixture} from './fixtures/previsit-briefing.ts';
 import {buildClinicalCard} from '../lib/clinical/clinical-card.ts';
 import {buildSummaryContext,validateNarrative} from '../lib/clinical/summary-context.ts';
-import {medicationTiming} from '../lib/clinical/summary-orientation.ts';
+import {medicationTiming,reviewWindow} from '../lib/clinical/summary-orientation.ts';
 import {providerEvidence} from '../lib/clinical/provider-evidence.ts';
 
 test('orientation keeps older evidence and distinguishes historical plans from latest instructions',()=>{
@@ -32,4 +32,13 @@ test('prescribing duration distinguishes original start from current regimen wit
 test('provider minimisation removes nested direct identifiers while preserving citations, clinical content and correction links',()=>{
  const value={patient_id:'patient',tester_id:'doctor',sources:[{id:'section:1',session_id:'s',required_correction_ids:['fix'],content:{patient_id:'patient',email:'private',dose:50,patch:{review:{after:'Επανεξέταση.'}}}}]};
  const result=providerEvidence(value);assert.equal(result.patient_id,undefined);assert.equal(result.sources[0].content.email,undefined);assert.deepEqual(result.sources[0].required_correction_ids,['fix']);assert.equal(result.sources[0].content.dose,50);assert.equal(value.sources[0].content.email,'private');
+});
+
+test('review window anchors explicit weeks to visit date and distinguishes elapsed time from an outstanding appointment',()=>{
+ const text='Επανεκτίμηση σε 4–6 εβδομάδες.';
+ assert.match(reviewWindow(text,'2026-10-05','2026-10-12'),/02\/11\/2026–16\/11\/2026/);
+ assert.match(reviewWindow(text,'2026-10-05','2026-12-01'),/έχει παρέλθει/);
+ assert.match(reviewWindow(text,'2026-10-05','2026-11-05'),/Εντός/);
+ assert.equal(reviewWindow('Επανεκτίμηση σε 4–6 εβδομάδες αν χρειαστεί.','2026-10-05','2026-10-12'),'');
+ assert.equal(reviewWindow(text,'invalid','2026-10-12'),'');
 });

@@ -15,6 +15,7 @@ Write a longitudinal Greek clinical orientation for the treating psychiatrist be
 CONTENT AND STRUCTURE
 Return 1–8 complete findings, at most 260 Greek words total and 800 characters per finding. Never fill a quota when evidence is sparse. Read ALL completed encounters, from first to last. Preserve important older personal events, prior treatment response and clinically meaningful turning points even when later visits do not repeat them. Use explicit dates for historical facts; a later omission does not prove resolution. Compare initial symptoms/functioning with documented changes and the last recorded state, citing both ends of each comparison.
 Use theme course for longitudinal symptoms/functioning, medication for documented treatment response, tolerability, adherence and psychotherapy, context for important personal events and protective factors, risk for explicitly dated risk context, and psychometrics for documented measurement trajectories. Diagnosis/differential and exact active prescribing/start dates are rendered deterministically; do not invent or duplicate their inventories. The complete latest recorded plan/review is displayed separately, and older plans remain accessible as historical instructions. Never infer that an old task remains pending or was completed. Do not generate new advice. For unresolved explicitly documented uncertainty, preserve the clinician's wording.
+Do not produce a medication finding that merely repeats the active prescription. When useful, describe dated past changes and documented response instead. A template asking for comparison is not evidence of impairment or change; a blank or generic field is not a clinical conclusion. Do not infer that medication changes caused improvement. If the notes offer no patient-specific treatment response, omit that narrative finding.
 
 CONFIRMED LONGITUDINAL CONTEXT
 Sources with kind confirmed_context represent clinician-approved longitudinal issues. Read content.status strictly: active means unresolved, resolved means a historical issue explicitly closed. A blank subsequent visit does not resolve an active issue. Never describe resolved context as still pending. For an updated context use content.current, not the original statement; keep date/provenance. Active confirmed issues appear separately; use them to preserve current versus historical context. Older free-text notes do not supersede an explicit confirmed context revision.
@@ -46,7 +47,12 @@ async function verifyGrounding(narrative:Finding[],context:ReturnType<typeof bui
  if(!output||!Array.isArray(output.checks)||output.checks.length!==narrative.length)throw new Error('grounding_not_verified');
  for(const finding of narrative){
   const checks=output.checks.filter((c:{key?:unknown})=>c?.key===finding.key);
-  if(checks.length!==1||checks[0].supported!==true||checks[0].issue!=='none')throw new Error('grounding_not_verified');
+  if(checks.length!==1||checks[0].supported!==true||checks[0].issue!=='none'){
+   // Fixed local key and enumerated issue only; never log patient evidence or candidate prose.
+   const issue=verificationSchema.properties.checks.items.properties.issue.enum.includes(checks[0]?.issue)?checks[0].issue:'invalid_verdict';
+   console.error('clinical_summary_grounding_rejected',{key:finding.key,issue});
+   throw new Error('grounding_not_verified');
+  }
  }
 }
 async function generateAttempt(context:ReturnType<typeof buildSummaryContext>,repairReason=''){

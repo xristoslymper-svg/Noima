@@ -24,7 +24,7 @@ test('risk preview states passive ideation and explicit intent/plan, uncertainty
  assert.match(risk.text,/παθητικές σκέψεις.*Πρόθεση: αρνητικό.*Σχέδιο: αρνητικό/);assert.match(risk.text,/Δεν υποκαθιστά σημερινή/);
  b.risks[0].suicidal_ideation='negative';b.risks[0].attempt_history='unknown';
  const text=buildSummaryContext(b).findings.find(f=>f.key==='risk').text;
- assert.ok(text.indexOf('Δεν έχουν αποσαφηνιστεί')<text.indexOf('Δεν καταγράφηκαν'));
+ assert.ok(text.indexOf('Δεν έχουν αποσαφηνιστεί')<text.indexOf('Αρνητική καταγραφή για'));
 });
 test('durable safety facts and old corrections survive six visits without canonical promotion',()=>{
  const b=fixture();visit(b,1,'Προηγούμενη απόπειρα. Αλλεργία στη Lamotrigine.');b.risks.push({session_id:1,attempt_history:'positive'});for(let i=2;i<=6;i++)visit(b,i,'Σταθερή εικόνα.');b.addenda.push({id:'a',session_id:1,kind:'correction',content:'Αλλεργία στην Carbamazepine, όχι Lamotrigine.',created_at:'2026-10-02'});

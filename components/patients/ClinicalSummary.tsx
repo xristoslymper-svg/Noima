@@ -36,7 +36,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
  },[key,retry,refresh,bundle.patient.id]);
  const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
  const reason=result?.key===key?result.data.reason:null;
- const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':null;
+ const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>

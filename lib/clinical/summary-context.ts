@@ -3,7 +3,7 @@ import {continuityContexts} from './continuity-context.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=21;
+export const SUMMARY_POLICY_VERSION=22;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -145,7 +145,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
  const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
  const durable=sources.filter(s=>s.kind==='history'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
- const recentIds=new Set(completed.slice(0,4).map(s=>s.id));
+ const recentIds=new Set(completed.map(s=>s.id));
  const trajectory=sources.filter(s=>s.kind==='session_section'&&recentIds.has(s.session_id!));
  const canonical=sources.filter(s=>!['session_section','addendum','structured_correction'].includes(s.kind));
  const correctedParents=new Set([...bundle.addenda.filter(a=>a.kind==='correction').map(a=>a.session_id),...(bundle.corrections||[]).map(c=>c.session_id)]);
@@ -255,7 +255,7 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
  return list.map((f:unknown,index)=>{
   if(!f||typeof f!=='object')throw new Error('invalid_finding');
   const item=f as {text:string;source_ids:string[];group_label?:string;theme?:SummaryTheme};
-  if(typeof item.text!=='string'||item.text.trim().length<12||item.text.length>360||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>5)throw new Error('invalid_finding');
+  if(typeof item.text!=='string'||item.text.trim().length<12||item.text.length>800||!Array.isArray(item.source_ids)||!item.source_ids.length||item.source_ids.length>12)throw new Error('invalid_finding');
   const group_label=typeof item.group_label==='string'&&item.group_label.trim().length>=2&&item.group_label.trim().length<=32?item.group_label.trim():'Γενική εικόνα';
   const theme=summaryThemes.includes(item.theme as SummaryTheme)?item.theme as SummaryTheme:'general';
   if(!/[.!?;…»”)]$/u.test(item.text.trim()))throw new Error('invalid_finding');

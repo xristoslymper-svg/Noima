@@ -16,7 +16,7 @@ test('the combined plan retains two independent saved continuity fields',()=>{
  assert.match(followup,/writingField\('next_review_focus'/);
  assert.doesNotMatch(followup,/>Δεν ελήφθη νέα απόφαση<\/button>/);
  assert.doesNotMatch(followup,/>Δεν ορίστηκε επόμενος έλεγχος<\/button>/);
- assert.match(summary,/notes\?\.review/);
+ assert.match(readFileSync(new URL('../lib/clinical/summary-orientation.ts',import.meta.url),'utf8'),/\['plan','review'\]/);
  assert.match(continuity,/treatment_decision:string/);
  assert.match(continuity,/next_review_focus:string/);
  assert.match(exportFile,/next_review_focus|treatment_decision/);

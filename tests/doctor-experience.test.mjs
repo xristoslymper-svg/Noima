@@ -61,11 +61,11 @@ test('successful save collapses only after refresh; failed refresh cannot resubm
 });
 
 const summaryModule={exports:{}};
-const summaryMocks={'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':()=>null,'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
+const summaryMocks={'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':()=>React.createElement('section',{},'ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'),'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
 new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))(name=>name in summaryMocks?summaryMocks[name]:require(name),summaryModule,summaryModule.exports);
 function renderSummary(bundle){return renderToStaticMarkup(React.createElement(summaryModule.exports.default,{bundle,reload:async()=>{},onVisit:()=>{},onMeasurements:()=>{},onTreatment:()=>{},onHistory:()=>{}}))}
 test('real summary presentation places existing active issues first and current information before self-report',()=>{
  const bundle=fixture();bundle.medicationSideEffects=[{id:'effect',medication_id:'med',effect_text:'Υποθετική παρενέργεια',noted_on:'2026-01-01'}];
- const html=renderSummary(bundle);assert.ok(html.indexOf('ΑΝΟΙΧΤΑ ΘΕΜΑΤΑ')<html.indexOf('ΚΑΤΑΓΡΑΦΗ ΤΕΛΕΥΤΑΙΑΣ'));assert.ok(html.indexOf('ΤΕΛΕΥΤΑΙΑ ΚΑΤΑΓΕΓΡΑΜΜΕΝΗ')<html.indexOf('ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'));assert.match(html,/Υποθετική παρενέργεια/);assert.doesNotMatch(html,/Δεν υπάρχουν καταγεγραμμένα ανοιχτά/);
+ const html=renderSummary(bundle);assert.ok(html.indexOf('ΑΝΟΙΧΤΑ ΘΕΜΑΤΑ')<html.indexOf('ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'));assert.ok(html.indexOf('ΤΕΛΕΥΤΑΙΑ ΚΑΤΑΓΕΓΡΑΜΜΕΝΗ')<html.indexOf('ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'));assert.match(html,/Υποθετική παρενέργεια/);assert.doesNotMatch(html,/Δεν υπάρχουν καταγεγραμμένα ανοιχτά/);
 });
 test('empty summary does not invent issues or hide access to self-report',()=>{const html=renderSummary(fixture());assert.doesNotMatch(html,/aria-label="Ανοιχτά θέματα"/);assert.match(html,/Δεν υπάρχουν καταγεγραμμένα ανοιχτά κλινικά θέματα/);assert.match(html,/ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ/)});

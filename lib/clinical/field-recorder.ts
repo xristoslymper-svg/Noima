@@ -5,11 +5,18 @@ export class FieldRecorder {
  private report:(state:'recording'|'paused',seconds:number)=>void;private complete:(blob:Blob)=>void;private failed:(message:string)=>void;
  constructor(report:(state:'recording'|'paused',seconds:number)=>void,complete:(blob:Blob)=>void,failed:(message:string)=>void){this.report=report;this.complete=complete;this.failed=failed}
  async start(){
+  if(this.cancelled)return;
   if(owner)throw new Error('Ολοκληρώστε την ενεργή υπαγόρευση πριν ανοίξετε άλλο μικρόφωνο.');
   // This identity is a global microphone lease, rather than a callback alias.
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   owner=this;
   try{if(typeof MediaRecorder==='undefined'||!navigator.mediaDevices?.getUserMedia)throw new Error('Η υπαγόρευση δεν υποστηρίζεται σε αυτό το πρόγραμμα περιήγησης.');
+   // Querying permission never asks for access. A denied permission needs a
+   // browser setting change, not another acquisition attempt on every click.
+   let permission:PermissionState|undefined;
+   try{if(navigator.permissions)permission=(await navigator.permissions.query({name:'microphone' as PermissionName})).state}catch{/* Not supported by every browser. */}
+   if(this.cancelled)return;
+   if(permission==='denied')throw new Error('Η πρόσβαση στο μικρόφωνο έχει αποκλειστεί. Επιτρέψτε τη στις ρυθμίσεις αυτού του ιστοτόπου στον browser.');
    const stream=await navigator.mediaDevices.getUserMedia({audio:true});if(this.cancelled){stream.getTracks().forEach(t=>t.stop());return}this.stream=stream;
    const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(v=>MediaRecorder.isTypeSupported(v));
    const recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);this.recorder=recorder;

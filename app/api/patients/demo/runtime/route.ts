@@ -1,3 +1,4 @@
+import {confirmedCompletion} from '@/lib/clinical/finalization';
 import { after } from 'next/server';
 import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
@@ -77,8 +78,8 @@ async function handlePOST(request:Request){
    }
    case 'revise_context': return Response.json({revision:first(await rpc('demo_context_revise',{p_tester:tester,p_session:body.source_session_id,p_request:body.request_id,p_action:body.context_action,p_content:body.content||'',p_expected_revision:body.expected_revision}))});
    case 'save_closure': {const session=first(await rpc('demo_closure_save',{p_tester:tester,p_session:body.session_id,p_value:body.value,p_expected_version:body.expected_version}));return Response.json({session})}
-   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));queueSummary(request,session.patient_id);return Response.json({session})}
-   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }
  }catch(error){return failure(error)}

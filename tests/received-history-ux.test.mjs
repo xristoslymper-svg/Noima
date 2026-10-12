@@ -38,7 +38,7 @@ test('history screen avoids the extra eight-field intake approval and exposes cl
  assert.match(history,/<PatientReportedHistory patientId=/);
  assert.match(history,/<details className="patient-doctor-notes"/);
  assert.doesNotMatch(history,/reviewIntake|Έλεγχος & ενσωμάτωση|Σύγκριση εκδόσεων/);
- assert.match(workspace,/label="Ιστορικό"/);
+ assert.match(workspace,/label="Στοιχεία & ιστορικό"/);
  assert.match(overview,/<PatientReportedHistory patientId=/);
 });
 

@@ -278,6 +278,7 @@ export default function CalendarVoiceCommand({
     });
   }
 
+  const creationRequest=useRef<{signature:string;id:string}|null>(null);
   async function confirm() {
     if (!proposal || proposal.command.action === 'clarify' || proposal.command.action === 'find_availability') return;
 
@@ -285,6 +286,8 @@ export default function CalendarVoiceCommand({
     setError('');
     try {
       const command = proposal.command;
+      const signature=JSON.stringify(command);
+      if(!creationRequest.current||creationRequest.current.signature!==signature)creationRequest.current={signature,id:crypto.randomUUID()};
       const response = await fetch('/api/calendar/command/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,6 +302,7 @@ export default function CalendarVoiceCommand({
           appointment_type: command.appointment_type,
           patient_id: command.patient_id || null,
           create_new_patient: Boolean(command.new_patient),
+          request_id:creationRequest.current.id,
         }),
       });
 

@@ -33,6 +33,8 @@ jobs:
       - run: node browser-tests/clinical-cleanup.mjs
       - run: node browser-tests/warm-patient-workspace.mjs
         if: ${{ !cancelled() }}
+      - run: node browser-tests/clinical-reliability.mjs
+        if: ${{ !cancelled() }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

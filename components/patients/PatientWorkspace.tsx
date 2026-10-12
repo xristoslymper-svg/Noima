@@ -15,6 +15,8 @@ import { BookOpen, CalendarDays, FileText, History as HistoryIcon, Home, Menu, P
 import { getDemoTesterId } from '@/lib/demo-tester';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
+import {assertRecordIdentity,reconcileRecord} from '@/lib/clinical/record-reconciliation';
+import {confirmedCompletion} from '@/lib/clinical/finalization';
 import { HistoryPanel } from '@/components/patients/PatientPanels';
 import { formatClinicAppointment } from '@/lib/clinic-time';
 
@@ -32,12 +34,31 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
  const startingRef=useRef(false);
  const shellLoadSequence=useRef(0);const fullLoadSequence=useRef(0);
  const activePatientRef=useRef(patientRef);activePatientRef.current=patientRef;
- const [contextReady,setContextReady]=useState(false); const [visitId,setVisitId]=useState<string|null>(null); const [visitType,setVisitType]=useState<'initial_assessment'|'follow_up'>('initial_assessment'); const [bundle,setBundle]=useState<PatientBundle|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [tab,setTabState]=useState<Tab>('summary'); const [mobileNav,setMobileNav]=useMobileNavigation(); const [starting,setStarting]=useState(false);
+ const [contextReady,setContextReady]=useState(false); const [visitId,setVisitId]=useState<string|null>(null); const [visitType,setVisitType]=useState<'initial_assessment'|'follow_up'>('initial_assessment'); const [bundle,setBundleState]=useState<PatientBundle|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [tab,setTabState]=useState<Tab>('summary'); const [mobileNav,setMobileNav]=useMobileNavigation(); const [starting,setStarting]=useState(false);
+ const bundleRef=useRef<PatientBundle|null>(null);
+ function setBundle(value:PatientBundle|null|((current:PatientBundle|null)=>PatientBundle|null)){const next=typeof value==='function'?value(bundleRef.current):value;bundleRef.current=next;setBundleState(next)}
  const [measurementsOpen,setMeasurementsOpen]=useState(false);
  const [selectedAssessmentId,setSelectedAssessmentId]=useState<string|null>(null);
  const [recordNotice,setRecordNotice]=useState(''); const [appointmentChoices,setAppointmentChoices]=useState<PatientBundle['appointments']>([]);
- async function loadShell(){const requestedPatient=patientRef;const sequence=++shellLoadSequence.current;try{const r=await fetch(`/api/patients/demo/visit?tester=${getDemoTesterId()}&patient=${encodeURIComponent(requestedPatient)}`,{cache:'no-store'});const d=await r.json();if(activePatientRef.current!==requestedPatient||sequence!==shellLoadSequence.current)return null;if(!r.ok)throw new Error(d.error);setBundle(current=>current?{...current,patient:d.bundle.patient,sessions:d.bundle.sessions.map((row:PatientBundle['sessions'][number])=>{const prior=current.sessions.find(s=>s.id===row.id);return prior&&prior.version>row.version?prior:row}),appointments:d.bundle.appointments}:d.bundle);setLoading(false);return d.bundle as PatientBundle}catch(cause){if(activePatientRef.current===requestedPatient&&sequence===shellLoadSequence.current)setError(cause instanceof Error?cause.message:'Δεν φορτώθηκε ο φάκελος.');return null}}
- async function load(){const requestedPatient=patientRef;const sequence=++fullLoadSequence.current;try{const tester=getDemoTesterId();const response=await fetch(`/api/patients/demo/runtime?tester=${tester}&patient=${encodeURIComponent(requestedPatient)}`,{cache:'no-store'});const data=await response.json();if(activePatientRef.current!==requestedPatient||sequence!==fullLoadSequence.current)return null;if(!response.ok)throw new Error(data.error);setBundle(data.bundle);setContextReady(true);setError('');return data.bundle as PatientBundle}catch(cause){if(activePatientRef.current===requestedPatient&&sequence===fullLoadSequence.current)setError(cause instanceof Error?cause.message:'Δεν φορτώθηκε η καρτέλα.');return null}finally{if(activePatientRef.current===requestedPatient&&sequence===fullLoadSequence.current)setLoading(false)}}
+ async function loadShell(){
+  const requestedPatient=patientRef,sequence=++shellLoadSequence.current;
+  try{
+   const response=await fetch('/api/patients/demo/visit?tester='+getDemoTesterId()+'&patient='+encodeURIComponent(requestedPatient),{cache:'no-store'});
+   const data=await response.json();if(activePatientRef.current!==requestedPatient||sequence!==shellLoadSequence.current)return null;
+   if(!response.ok)throw new Error(data.error||'Δεν φορτώθηκε ο φάκελος.');
+   assertRecordIdentity(data.bundle,requestedPatient);const fresh=reconcileRecord(bundleRef.current,data.bundle,'shell');setBundle(fresh);setLoading(false);return fresh;
+  }catch(cause){if(activePatientRef.current===requestedPatient&&sequence===shellLoadSequence.current)setError(cause instanceof Error?cause.message:'Δεν φορτώθηκε ο φάκελος.');return null}
+ }
+ async function load(){
+  const requestedPatient=patientRef,sequence=++fullLoadSequence.current;
+  try{
+   const response=await fetch('/api/patients/demo/runtime?tester='+getDemoTesterId()+'&patient='+encodeURIComponent(requestedPatient),{cache:'no-store'});
+   const data=await response.json();if(activePatientRef.current!==requestedPatient||sequence!==fullLoadSequence.current)return null;
+   if(!response.ok)throw new Error(data.error||'Δεν φορτώθηκε ο φάκελος.');
+   assertRecordIdentity(data.bundle,requestedPatient);const fresh=reconcileRecord(bundleRef.current,data.bundle);setBundle(fresh);setContextReady(true);setError('');return fresh;
+  }catch(cause){if(activePatientRef.current===requestedPatient&&sequence===fullLoadSequence.current)setError(cause instanceof Error?cause.message:'Δεν φορτώθηκε η καρτέλα.');return null}
+  finally{if(activePatientRef.current===requestedPatient&&sequence===fullLoadSequence.current)setLoading(false)}
+ }
  function applyLocation(search:string){const location=workspaceLocation(search);setMeasurementsOpen(workspaceMeasurementsRequested(search));setSelectedAssessmentId(workspaceSelectedAssessment(search));setPendingStart(null);setAppointmentChoices([]);setTabState(location.tab);setVisitId(location.sessionId)}
  function applyTab(next:Tab,sessionId?:string|null,options:{clearAppointment?:boolean}={}){setMeasurementsOpen(false);setSelectedAssessmentId(null);setError('');setPendingStart(null);setAppointmentChoices([]);const selected=sessionId===undefined?visitId:sessionId;setVisitId(selected||null);setTabState(next);const search=workspaceTransitionSearch(window.location.search,next,selected,options);const target=window.location.pathname+search+window.location.hash;const current=window.location.pathname+window.location.search+window.location.hash;if(target!==current){historyIndex.current++;window.history.pushState({...window.history.state,noimaPatientIndex:historyIndex.current},'',target)}currentUrl.current=window.location.href}
  historyRead.current=async()=>{if(restoringHistory.current){restoringHistory.current=false;return}const targetIndex=window.history.state?.noimaPatientIndex;const sequence=++navigationSequence.current;const target=window.location.href;try{await beforeNavigate.current?.();if(sequence!==navigationSequence.current)return;const targetSearch=new URL(target).search;if(sequence!==navigationSequence.current)return;applyLocation(targetSearch);if(typeof targetIndex==='number')historyIndex.current=targetIndex;currentUrl.current=target}catch(cause){if(sequence!==navigationSequence.current)return;setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η πρόχειρη καταγραφή.');if(typeof targetIndex==='number'&&targetIndex!==historyIndex.current){restoringHistory.current=true;window.history.go(historyIndex.current-targetIndex)}else window.history.replaceState({...window.history.state,noimaPatientIndex:historyIndex.current},'',currentUrl.current)}};
@@ -69,9 +90,19 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
    const result=await demoPost({action:'start_session',patient_id:activeBundle.patient.id,session_type:appointment?.appointment_type||type,appointment_id:appointment?.id||null}) as {session?:{id?:string}};
    fullLoadSequence.current++;
    setAppointmentChoices([]);const id=result.session?.id;if(!id)throw new Error('Δεν επιστράφηκε συνεδρία.');
-   const shell=await loadShell();if(!shell)throw new Error('Η καταγραφή δημιουργήθηκε αλλά ο φάκελος δεν ανανεώθηκε.');const refreshed=bundle?{...bundle,patient:shell.patient,sessions:shell.sessions,appointments:shell.appointments}:shell;setBundle(refreshed);navigationSequence.current++;applyTab('record',id,{clearAppointment:true});void load();
+   const shell=await loadShell();if(!shell)throw new Error('Η καταγραφή δημιουργήθηκε αλλά ο φάκελος δεν ανανεώθηκε.');navigationSequence.current++;applyTab('record',id,{clearAppointment:true});void load();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν δημιουργήθηκε η καταγραφή.')}
   finally{startingRef.current=false;setStarting(false)}
+ }
+ async function handleFinalized(session:PatientBundle['sessions'][number]){
+  const current=bundleRef.current;
+  if(!current||current.patient.id!==activePatientRef.current)throw new Error('Ο φάκελος άλλαξε κατά την οριστικοποίηση.');
+  confirmedCompletion(session,session.id,current.patient.id);
+  shellLoadSequence.current++;fullLoadSequence.current++;navigationSequence.current++;setRecordNotice('');
+  setBundle(reconcileRecord(current,{...current,sessions:current.sessions.map(row=>row.id===session.id?session:row)}));
+  const fresh=await load();if(!fresh)throw new Error('Η καταγραφή οριστικοποιήθηκε, αλλά ο φάκελος δεν ανανεώθηκε.');
+  confirmedCompletion(fresh.sessions.find(row=>row.id===session.id),session.id,current.patient.id);
+  applyTab('record',session.id,{clearAppointment:true});setRecordNotice('Η καταγραφή οριστικοποιήθηκε.');
  }
  if(loading)return <main className="clinical-page"><div className="record-state">Φόρτωση κλινικού φακέλου…</div></main>; if(error&&!bundle)return <main className="clinical-page"><Link href="/patients" className="back">← Ασθενείς</Link><div className="record-state error" role="alert">{error}</div></main>; if(!bundle)return null;
  async function exportTechnicalRecord(){try{const r=await fetch('/api/patients/demo/export?tester='+getDemoTesterId()+'&patient='+bundle!.patient.id);if(!r.ok)throw new Error('Δεν έγινε εξαγωγή.');const url=URL.createObjectURL(await r.blob());const link=document.createElement('a');link.href=url;link.download='noima-patient-'+bundle!.patient.id+'.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(cause){setError(cause instanceof Error?cause.message:'Δεν έγινε εξαγωγή.')}}
@@ -87,7 +118,7 @@ export default function PatientWorkspace({patientRef}:{patientRef:string}){
     {tab==='treatment'&&<PatientTreatment bundle={bundle} reload={load} beforeNavigate={sectionBeforeNavigate} measurementsOpen={measurementsOpen} selectedAssessmentId={selectedAssessmentId}/>}
     {tab==='history'&&<HistoryPanel bundle={bundle} reload={load} beforeNavigate={sectionBeforeNavigate}/>}
     {tab==='record'&&!visitId&&<section className="record-entry"><h2>Καταγραφή</h2>{intended?.session_id?<button onClick={()=>void setTab('record',intended.session_id)}>Άνοιγμα καταγραφής · {formatClinicAppointment(intended.scheduled_start)}</button>:drafts.length>0?<><p>Συνέχιση πρόχειρης καταγραφής</p>{drafts.map(s=><button key={s.id} onClick={()=>void setTab('record',s.id)}>{s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'} · {formatClinicAppointment(s.started_at)}</button>)}</>:<button disabled={starting} onClick={()=>void startSession(intended?.id,isEstablished?'follow_up':'initial_assessment')}>{isEstablished?'Νέα επανεξέταση':'Νέα αρχική αξιολόγηση'}</button>}</section>}
-   </>}<div hidden={tab!=='record'}> {visitId&&<VisitWorkspace beforeNavigate={visitBeforeNavigate} key={visitId} sessionId={visitId} patientId={p.id} context={contextReady?bundle:null} reloadContext={load} onDeferred={async(_,reason)=>{navigationSequence.current++;setRecordNotice('Η καταγραφή αποθηκεύτηκε ως πρόχειρη και προστέθηκε στις εκκρεμότητές σας.'+(reason?' '+reason:''));applyTab('summary',visitId,{clearAppointment:true})}} onFinalized={async session=>{shellLoadSequence.current++;fullLoadSequence.current++;navigationSequence.current++;setRecordNotice('');const destination='record';const selectedId=session.id;const optimistic=bundle?{...bundle,sessions:bundle.sessions.map(s=>s.id===session.id?session:s),appointments:bundle.appointments.map(a=>a.session_id===session.id?{...a,status:'completed'}:a)}:null;if(optimistic){setBundle(optimistic);applyTab(destination,selectedId,{clearAppointment:true})}else applyTab(destination,selectedId,{clearAppointment:true});const shell=await loadShell();if(shell){const refreshed=optimistic?{...optimistic,patient:shell.patient,sessions:shell.sessions,appointments:shell.appointments}:shell;setBundle(refreshed);applyTab(destination,selectedId,{clearAppointment:true})}const fresh=await load();if(!fresh)throw new Error('Δεν ανανεώθηκε ο φάκελος.')}} onSelect={(id)=>void setTab('record',id)}/>}
+   </>}<div hidden={tab!=='record'}> {visitId&&<VisitWorkspace beforeNavigate={visitBeforeNavigate} key={visitId} sessionId={visitId} patientId={p.id} context={contextReady?bundle:null} reloadContext={load} onDeferred={async(_,reason)=>{navigationSequence.current++;setRecordNotice('Η καταγραφή αποθηκεύτηκε ως πρόχειρη και προστέθηκε στις εκκρεμότητές σας.'+(reason?' '+reason:''));applyTab('summary',visitId,{clearAppointment:true})}} onFinalized={handleFinalized} onSelect={(id)=>void setTab('record',id)}/>}
 </div></div></div>
  </div></section>
  {pendingStart&&<AppointmentStartConfirmation scheduledStart={pendingStart.appointment.scheduled_start} onCancel={()=>setPendingStart(null)} onConfirm={()=>{const pending=pendingStart;setPendingStart(null);void startSession(pending.appointment.id,pending.type,true)}}/>}

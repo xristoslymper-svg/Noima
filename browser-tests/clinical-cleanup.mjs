@@ -34,7 +34,7 @@ try{
   await p.waitForTimeout(1000);const writes=await p.evaluate(()=>window.clinicalQA.writes);assert.ok(writes.some(w=>w.action==='save_document'&&w.section_key==='mse'));const doc=writes.filter(w=>w.section_key==='mse').at(-1).document;assert.equal(doc.fields.find(f=>f.key==='mood').text,'');assert.equal(doc.fields.find(f=>f.key==='mood').review,'not_assessed');assert.ok(doc.fields.every(f=>!f.text.trim()));
  });
  await check('legacy formulation and narrative MSE remain recoverable without alternative editors',{width:1280,height:1000},'/?legacy=1',async p=>{
-  const legacy=p.locator('.assessment-legacy-notes');await legacy.locator('summary').click();await legacy.getByRole('textbox').waitFor();assert.equal(await legacy.getByRole('textbox').inputValue(),'Προϋπάρχουσα κλινική σημείωση — να διατηρηθεί αυτούσια.');
+  const legacy=p.locator('.assessment-legacy-notes');await legacy.locator('summary').click();await legacy.getByText('Προϋπάρχουσα κλινική σημείωση — να διατηρηθεί αυτούσια.',{exact:true}).waitFor();assert.equal(await legacy.getByRole('textbox').count(),0,'legacy first-assessment text is preserved, not a second editable clinical source');
   assert.equal(await p.locator('.visit-assessment-additional').getByText('Διατύπωση περίπτωσης',{exact:true}).count(),0);
   const oldMse=p.locator('[data-mse-domain="legacy"]');await oldMse.locator(':scope>summary').click();assert.equal(await oldMse.locator('textarea').inputValue(),'Παλαιότερη αφηγηματική παρατήρηση.');
   assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0);await legacy.scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'legacy-notes.png')});
@@ -57,7 +57,9 @@ try{
  });
 
  async function assertGroupedSections(p,{history=true}={}){
-  const keys=['risk',...(history?['history']:[]),'assessment','medication','plan','appointment'];
+  const firstAssessment=await p.locator('.first-assessment').count()>0;
+  const keys=['risk',...(history?['history']:[]),...(firstAssessment?[]:['assessment']),'medication','plan','appointment'];
+  if(firstAssessment){const impression=p.locator('[data-visit-part="assessment"]');assert.equal(await impression.getByRole('textbox').count(),1,'one clinical impression editor');assert.equal(await impression.locator('[data-writing-editor]').count(),1,'one impression surface');assert.equal(await impression.getByRole('button',{name:/Βελτίωση διατύπωσης/}).count(),1)}
   const sample=await p.locator('.mse-columns').boundingBox();assert.ok(sample);
   const mseStyle=await p.locator('.mse-columns').evaluate(e=>{const s=getComputedStyle(e);return {background:s.backgroundColor,border:s.borderTopColor,radius:s.borderTopLeftRadius}});
   for(const key of keys){

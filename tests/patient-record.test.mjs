@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {patientRecord} from '../lib/clinical/patient-record.ts';
+import {patientRecord,visitTimelineContext} from '../lib/clinical/patient-record.ts';
 
 const now=new Date('2026-10-08T09:00:00Z');
 function bundle(overrides={}){return {clinical_day:'2026-10-08',patient:{id:'p'},sessions:[],appointments:[],medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],assessments:[],risks:[],history:null,...overrides}}
@@ -61,4 +61,31 @@ test('start-today overrides an old or future appointment and since-then excludes
 test('same-day treatment mutations appear since the completed encounter only with later recorded evidence',()=>{
  const input=bundle({sessions:[{id:'visit',status:'completed',started_at:'2026-10-08T07:00:00Z',completed_at:'2026-10-08T08:00:00Z'}],medicationEvents:[{id:'new',event_type:'changed',effective_on:'2026-10-08',created_at:'2026-10-08T08:30:00Z'},{id:'during',event_type:'started',effective_on:'2026-10-08',created_at:'2026-10-08T07:30:00Z'},{id:'scheduled',event_type:'changed',effective_on:'2026-10-09',created_at:'2026-10-08T08:30:00Z'}],medicationSideEffects:[{id:'new',medication_id:'med',effect_text:'Reported effect',noted_on:'2026-10-08',created_at:'2026-10-08T08:31:00Z',resolved_on:null}]});
  assert.deepEqual(new Set(patientRecord(input,now).sinceLatest.map(e=>e.id)),new Set(['med-new','effect-new']));
+});
+
+test('visit context requires explicit patient and visit links and respects medication revisions',()=>{
+ const input=bundle({sessions:[{id:'visit',patient_id:'p',status:'completed',started_at:'2026-10-07'},{id:'draft',patient_id:'p',status:'draft',started_at:'2026-10-07'}],medicationEvents:[
+ {id:'valid',patient_id:'p',session_id:'visit',event_type:'changed',effective_on:'2026-10-09',previous_state:{dose:50,unit:'mg'},new_state:{medication_name:'Drug',dose:100,unit:'mg'}},
+ {id:'old',patient_id:'p',session_id:'visit',event_type:'changed',effective_on:'2026-10-07'},
+ {id:'unlinked',patient_id:'p',session_id:null,event_type:'started',effective_on:'2026-10-07'},
+ {id:'draft',patient_id:'p',session_id:'draft',event_type:'started',effective_on:'2026-10-07'},
+ {id:'foreign',patient_id:'other',session_id:'visit',event_type:'started',effective_on:'2026-10-07'}],medicationRevisions:[{event_id:'old'}]});
+ const original=JSON.stringify(input),context=visitTimelineContext(input,now);
+ assert.deepEqual(context.get('visit').treatment.map(e=>e.id),['med-valid']);
+ assert.equal(context.get('visit').treatment[0].detail,'Drug · 50 mg → 100 mg');
+ assert.equal(context.get('visit').treatment[0].scheduled,true);
+ assert.equal(context.has('draft'),false);assert.equal(JSON.stringify(input),original);
+});
+test('linked completed measurements compare strictly earlier results of the same instrument and version',()=>{
+ const assessment=(id,date,score,extra={})=>({id,patient_id:'p',instrument:'PHQ-9',instrument_version:'v1',status:'completed',completed_at:date,score,...extra});
+ const input=bundle({sessions:[{id:'visit',patient_id:'p',status:'completed',started_at:'2026-10-07'}],appointments:[{id:'appointment',session_id:'visit'}],assessments:[
+ assessment('current','2026-10-07T12:00:00Z',8,{appointment_id:'appointment',item9_review:true}),
+ assessment('previous','2026-10-01T12:00:00Z',12),
+ assessment('wrong-version','2026-10-06T12:00:00Z',3,{instrument_version:'v2'}),
+ assessment('wrong-scale','2026-10-06T13:00:00Z',5,{instrument:'GAD-7'}),
+ assessment('unlinked','2026-10-07T13:00:00Z',7),
+ assessment('future','2026-10-09T12:00:00Z',2,{session_id:'visit'}),
+ assessment('pending',null,null,{session_id:'visit',status:'assigned'})]});
+ const rows=visitTimelineContext(input,now).get('visit').measurements;
+ assert.deepEqual(rows.map(m=>m.current.id),['current']);assert.equal(rows[0].previous.id,'previous');assert.equal(rows[0].current.item9_review,true);
 });

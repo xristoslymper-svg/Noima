@@ -50,3 +50,28 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
  const nextAppointment=upcomingAppointments(bundle,now)[0]||null;
  return {today,completed,latestVisit,risk,safetyAlerts,nextAppointment,latestScores,activeEffects,events,sinceLatest,activeMedications:bundle.medications.filter(m=>m.status==='active'),pendingSafety:measured.filter(a=>day(a.completed_at!)<=today&&a.item9_review&&!a.item9_reviewed_at)};
 }
+
+/** Explicit source links only: dates alone never attribute an event to a visit. */
+export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
+ const record=patientRecord(bundle,now);
+ const context=new Map<string,{treatment:RecordEvent[];measurements:{current:PatientBundle['assessments'][number];previous:PatientBundle['assessments'][number]|null}[]}>();
+ for(const visit of record.completed)context.set(visit.id,{treatment:[],measurements:[]});
+ const revised=new Set(bundle.medicationRevisions.map(r=>r.event_id));
+ const stateText=(state:Record<string,unknown>|null)=>state?[state.dose!==undefined?String(state.dose):'',state.unit?String(state.unit):'',state.frequency?String(state.frequency):''].filter(Boolean).join(' '):'';
+ for(const event of bundle.medicationEvents){
+  if(!event.session_id||event.patient_id!==bundle.patient.id||revised.has(event.id)||!eventLabels[event.event_type])continue;
+  const target=context.get(event.session_id);if(!target)continue;
+  const before=stateText(event.previous_state),after=stateText(event.new_state);
+  const name=String(event.new_state?.medication_name||event.previous_state?.medication_name||bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή');
+  const detail=[name,event.event_type==='changed'&&before&&after?before+' → '+after:event.event_type==='stopped'?before:after].filter(Boolean).join(' · ');
+  target.treatment.push({id:'med-'+event.id,kind:'treatment',date:event.effective_on,title:eventLabels[event.event_type],detail,scheduled:event.effective_on>record.today,sessionId:event.session_id});
+ }
+ const measured=completedMeasurements(bundle,now).filter(a=>a.patient_id===bundle.patient.id);
+ for(const current of measured){
+  const session=assessmentLink(bundle,current).session;const target=session?context.get(session.id):undefined;if(!target)continue;
+  const previous=measured.find(a=>a.instrument===current.instrument&&a.instrument_version===current.instrument_version&&Date.parse(a.completed_at!)<Date.parse(current.completed_at!))||null;
+  target.measurements.push({current,previous});
+ }
+ for(const entry of context.values())entry.treatment.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+ return context;
+}

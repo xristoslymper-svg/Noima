@@ -410,3 +410,15 @@
   .workspace :global(.med-frequency-times button){min-height:44px}
   .workspace :global(.visit-workspace textarea){font-size:16px}
 }
+
+.enrichedVisit { grid-template-columns:118px minmax(160px,1fr) minmax(220px,1fr); }
+.visitContext { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:18px; min-width:0; }
+.contextLabel { display:block; color:#87938d; font-size:10px; letter-spacing:.04em; margin-bottom:7px; }
+.contextEntry { display:block; width:100%; text-align:left; border:0; border-radius:0; background:transparent; color:#547264; padding:0; margin:0 0 10px; cursor:pointer; }
+.contextEntry span { display:block; font-size:11px; }
+.visitContext .contextEntry strong { font-size:12px; font-weight:500; line-height:1.5; overflow-wrap:anywhere; }
+.contextEntry small { display:block; font-size:10px; color:#87938d; line-height:1.5; }
+.contextEntry:hover strong { text-decoration:underline; }
+.contextEntry:focus-visible { outline:2px solid #719685; outline-offset:4px; }
+@media(max-width:1000px){ .enrichedVisit { grid-template-columns:100px minmax(0,1fr); } .visitContext { grid-column:2; } }
+@media(max-width:700px){ .enrichedVisit { grid-template-columns:1fr; } .visitContext { grid-column:1; margin-top:10px; } }

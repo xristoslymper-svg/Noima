@@ -31,7 +31,8 @@ jobs:
           test -z "$(git status --porcelain)"
           git diff --exit-code
           git merge-base --is-ancestor ef17836756ec50d00d8415f9d318a838bfd2a47a HEAD
-          cat README.md docs/security-readiness.txt
+          cat README.md
+          test -s docs/security-readiness.txt
           git ls-files '*AGENTS.md' '*CONTRIBUTING*'
           git log -5 --oneline
       - run: node scripts/clinical-repair-handoff.mjs && node scripts/clinical-repair-additional.mjs
@@ -39,13 +40,16 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - name: Run all regression tests
+        run: |
+          mkdir -p test-results
+          if npm test >test-results/unit.log 2>&1; then tail -n 10 test-results/unit.log; else grep -A 55 '^not ok' test-results/unit.log; tail -n 10 test-results/unit.log; exit 1; fi
       - run: npm run build
       - name: Append reviewed changes only to the existing draft PR
         run: |
           git diff --exit-code ef17836756ec50d00d8415f9d318a838bfd2a47a HEAD -- lib/clinical/browser-recovery.ts lib/pilot/route.ts next.config.mjs
           rm scripts/clinical-repair-handoff.mjs scripts/clinical-repair-additional.mjs .github/workflows/clinical-repair-handoff.yml
-          git add components/patients/PatientWorkspace.tsx components/patients/VisitWorkspace.tsx components/patients/PatientPanels.tsx lib/clinical/visit-workspace-state.ts tests/finalization.test.mjs browser-tests/clinical-cleanup.mjs browser-tests/warm-patient-workspace-fixture.tsx scripts/clinical-repair-handoff.mjs scripts/clinical-repair-additional.mjs .github/workflows/clinical-repair-handoff.yml
+          git add components/patients/PatientWorkspace.tsx components/patients/VisitWorkspace.tsx components/patients/PatientPanels.tsx lib/clinical/visit-workspace-state.ts tests/finalization.test.mjs tests/patient-record-tab.test.mjs browser-tests/clinical-cleanup.mjs browser-tests/warm-patient-workspace-fixture.tsx scripts/clinical-repair-handoff.mjs scripts/clinical-repair-additional.mjs .github/workflows/clinical-repair-handoff.yml
           git -c user.name='NOIMA workflow review' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Prevent stale clinical reloads, preserve draft identity and verify completion before success'
           git push origin HEAD:refs/heads/codex/deployed-workflow-fixes-20261012
       - name: Synthetic browser dependencies

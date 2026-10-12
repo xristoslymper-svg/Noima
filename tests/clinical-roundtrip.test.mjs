@@ -46,9 +46,15 @@ test('RPC completion preserves failed drafts and updates timeline and grounded s
  assert.ok(!buildSummaryContext(draft).sources.some(source=>source.kind==='session_section'&&source.session_id===s.id));
  await assert.rejects(query('select demo_session_finalize($1,$2,$3)',[tenant,s.id,v-1]),/stale_session/);
  assert.equal((await snapshot(p.id)).sections.length,draft.sections.length);
- const order=[];let calls=0;
- await finalizeAndVerify({patientId:p.id,sessionId:s.id,read:()=>snapshot(p.id),write:async body=>{calls++;assert.equal(body.expected_version,v);const [value]=await query('select * from demo_session_finalize($1,$2,$3)',[tenant,s.id,body.expected_version]);return wire({session:value})},onCommitted:()=>order.push('committed'),onVerified:(completed,bundle)=>{order.push('verified');assert.equal(completed.status,'completed');assert.ok(patientRecord(bundle).events.some(event=>event.kind==='visits'&&event.sessionId===s.id));assert.ok(buildSummaryContext(bundle).sources.some(source=>source.kind==='session_section'&&source.session_id===s.id));assert.notEqual(summaryContextKey(bundle),summaryContextKey(draft))}});
- assert.deepEqual(order,['committed','verified']);assert.equal(calls,1);
+ const order=[];let calls=0,verified;
+ await finalizeAndVerify({patientId:p.id,sessionId:s.id,read:()=>snapshot(p.id),write:async body=>{calls++;assert.equal(body.expected_version,v);const [value]=await query('select * from demo_session_finalize($1,$2,$3)',[tenant,s.id,body.expected_version]);return wire({session:value})},onCommitted:()=>order.push('committed'),onVerified:(completed,bundle)=>{order.push('verified');verified={completed,bundle}}});
+ // Projection assertions are outside the UI error boundary so their exact cause
+ // is visible in CI instead of becoming a generic refresh-error message.
+ assert.deepEqual(order,['committed','verified']);assert.equal(calls,1);assert.ok(verified);
+ assert.equal(verified.completed.status,'completed');
+ assert.ok(patientRecord(verified.bundle).events.some(event=>event.kind==='visits'&&event.sessionId===s.id),'completed encounter must enter the timeline');
+ assert.ok(buildSummaryContext(verified.bundle).sources.some(source=>source.kind==='session_section'&&source.session_id===s.id),'completed narrative must enter grounded source context');
+ assert.notEqual(summaryContextKey(verified.bundle),summaryContextKey(draft),'completion must invalidate the draft summary key');
  await finalizeAndVerify({patientId:p.id,sessionId:s.id,read:()=>snapshot(p.id),write:async()=>{throw Error('duplicate completion RPC')},onCommitted:()=>{},onVerified:()=>{}});
  await assert.rejects(query("select demo_session_save_section($1,$2,'interview','overwrite completed','manual',1)",[tenant,s.id]),/session_unavailable|completed/);
 });

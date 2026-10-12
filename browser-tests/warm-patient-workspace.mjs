@@ -14,12 +14,17 @@ await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bu
 let writes=0;
 const server=createServer(async(req,res)=>{
  const url=new URL(req.url,'http://localhost');
- if(url.pathname.startsWith('/api/')){res.setHeader('content-type','application/json');if(req.method!=='GET'){
-  // Mounting the current Record editor may normalize and autosave the synthetic draft.
-  // Return fixture-only acknowledgements; nothing reaches a database or live API.
-  writes++;let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw||'{}');const session=bundle.sessions.find(s=>s.id===body.session_id);
-  return res.end(JSON.stringify({session,section:{id:'fixture-section',session_id:body.session_id,section_key:body.section_key,document:body.document,content:body.content||'',version:1,updated_at:session?.updated_at}}));
- }const sid=url.searchParams.get('session');return res.end(JSON.stringify({bundle:sid?{...bundle,sessions:bundle.sessions.filter(s=>s.id===sid)}:bundle}));}
+ if(url.pathname.startsWith('/api/')){
+  res.setHeader('content-type','application/json');res.setHeader('cache-control','no-store');
+  // These are different endpoint contracts, not interchangeable patient bundles.
+  if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
+  if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
+  if(req.method!=='GET'){
+   writes++;let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw||'{}');const session=bundle.sessions.find(s=>s.id===body.session_id);
+   return res.end(JSON.stringify({session,section:{id:'fixture-section',patient_id:bundle.patient.id,session_id:body.session_id,section_key:body.section_key,document:body.document,content:body.content||'',version:1,updated_at:session?.updated_at}}));
+  }
+  const sid=url.searchParams.get('session');return res.end(JSON.stringify({bundle:sid?{...bundle,sessions:bundle.sessions.filter(s=>s.id===sid)}:bundle}));
+ }
  if(url.pathname==='/fixture.js'||url.pathname==='/fixture.css'){res.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'text/javascript');return res.end(readFileSync(resolve(out,url.pathname.slice(1))));}
  res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="el"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/fixture.css"><div id="root"></div><script src="/fixture.js"></script></html>');
 });
@@ -28,8 +33,9 @@ const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANN
 try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
  const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  for(const tab of ['summary','timeline','treatment','history','record']){
-  await page.goto(`${origin}/patients/warm-patient?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.getByRole('heading',{name:'Ira Pira',exact:true}).waitFor();if(tab==='record')await page.locator('.visit-workspace').waitFor();
-  const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
+  await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.getByRole('heading',{name:'Ira Pira',exact:true}).waitFor();await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor();if(tab==='record')await page.locator('.visit-workspace').waitFor();
+  assert.deepEqual(errors,[],'workspace must remain mounted without browser exceptions');
+  const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');if(!w||!nav||!nav.nextElementSibling)throw new Error('Expected patient workspace is missing');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
  }

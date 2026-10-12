@@ -47,15 +47,11 @@ try{
  });
  await check('follow-up retains its editor, structured MSE and no global unassessed shortcut',{width:1280,height:1000},'/?followup=1',async p=>{
   await p.locator('[data-clinical-followup]').waitFor();
-  const plan=p.locator('[data-followup-plan-group="true"]');
-  await plan.waitFor();
+  const plan=p.locator('[data-followup-plan-group="true"]');await plan.waitFor();
   assert.equal(await plan.locator('textarea').count(),2,'two saved fields inside one treatment/review group');
-  assert.equal(await p.locator('[data-followup-adherence-group="true"]').count(),0);
-  assert.equal(await p.getByText('Σημερινή ανασκόπηση λήψης',{exact:true}).count(),0);
-  assert.equal(await p.getByText('Τι αξίζει να θυμόμαστε',{exact:true}).count(),0);
+  assert.equal(await p.locator('[data-followup-adherence-group="true"]').count(),0);assert.equal(await p.getByText('Σημερινή ανασκόπηση λήψης',{exact:true}).count(),0);assert.equal(await p.getByText('Τι αξίζει να θυμόμαστε',{exact:true}).count(),0);
   assert.equal(await p.getByRole('button',{name:'Δεν αξιολογήθηκε σήμερα',exact:true}).count(),0);assert.equal(await p.getByText('Οδηγός ενότητας',{exact:true}).count(),0);await p.getByRole('button',{name:'Καταγραφή αλλαγής σε ενότητα MSE',exact:true}).click();assert.equal(await mse(p).locator('[data-mse-domain]').count(),12);await p.screenshot({path:resolve(out,'followup.png')});
  });
-
  async function assertGroupedSections(p,{history=true}={}){
   const firstAssessment=await p.locator('.first-assessment').count()>0;
   const keys=['risk',...(history?['history']:[]),...(firstAssessment?[]:['assessment']),'medication','plan','appointment'];
@@ -65,47 +61,40 @@ try{
   for(const key of keys){
    const section=p.locator('[data-visit-part="'+key+'"]');const body=section.locator(':scope > .visit-part-surface');assert.equal(await body.count(),1,key+' needs a single grouped body');
    const header=section.locator(':scope > header');assert.equal(await header.count(),1,key+' external header');
-   const box=await body.boundingBox(),heading=await header.boundingBox();assert.ok(box&&heading);
-   assert.ok(heading.y+heading.height<=box.y+1,key+' heading must be outside');
-   assert.ok(Math.abs(box.x-sample.x)<=1,key+' left edge');assert.ok(Math.abs(box.width-sample.width)<=1,key+' width');
+   const box=await body.boundingBox(),heading=await header.boundingBox();assert.ok(box&&heading);assert.ok(heading.y+heading.height<=box.y+1,key+' heading must be outside');
+   // First-assessment inline medication rows intentionally use their own width.
+   // Keep containment/readability checks, not the superseded narrow MSE width.
+   if(firstAssessment&&key==='medication'){
+    const parent=await section.boundingBox();assert.ok(parent);assert.ok(box.x>=parent.x-1&&box.x+box.width<=parent.x+parent.width+1,'medication body stays within its section');assert.ok(box.x>=0&&box.x+box.width<=p.viewportSize().width+1,'medication editor fits viewport');assert.ok(box.width>200,'medication editor remains readable');
+   }else{assert.ok(Math.abs(box.x-sample.x)<=1,key+' left edge');assert.ok(Math.abs(box.width-sample.width)<=1,key+' width')}
    const style=await body.evaluate(e=>{const s=getComputedStyle(e);return {background:s.backgroundColor,border:s.borderTopColor,radius:s.borderTopLeftRadius,width:s.borderTopWidth}});
    assert.equal(style.background,mseStyle.background,key+' same cream');assert.equal(style.border,mseStyle.border,key+' same border');assert.equal(style.radius,mseStyle.radius,key+' same radius');assert.equal(style.width,'1px',key+' visible group border');
   }
  }
  await check('single interview heading keeps named field and inline mic/AI, with no duplicate label',{width:1440,height:1000},'/',async p=>{
   const section=p.locator('[data-visit-part="interview"]');const name='Λόγος προσέλευσης & παρούσα εικόνα *';
-  assert.equal(await section.getByRole('heading').count(),1);await section.getByRole('heading',{name,exact:true}).waitFor();
-  assert.equal(await section.getByText('Αναφορά ασθενούς & συμπτώματα *',{exact:true}).count(),0);
-  assert.equal(await section.getByRole('textbox',{name,exact:true}).count(),1);
-  assert.equal(await section.getByRole('button',{name:'Υπαγόρευση: '+name,exact:true}).count(),1);
-  assert.equal(await section.getByRole('button',{name:'Βελτίωση διατύπωσης: '+name,exact:true}).count(),1);
+  assert.equal(await section.getByRole('heading').count(),1);await section.getByRole('heading',{name,exact:true}).waitFor();assert.equal(await section.getByText('Αναφορά ασθενούς & συμπτώματα *',{exact:true}).count(),0);
+  assert.equal(await section.getByRole('textbox',{name,exact:true}).count(),1);assert.equal(await section.getByRole('button',{name:'Υπαγόρευση: '+name,exact:true}).count(),1);assert.equal(await section.getByRole('button',{name:'Βελτίωση διατύπωσης: '+name,exact:true}).count(),1);
   assert.equal(await section.locator('.visit-part-surface').count(),0,'no outer box around the single editor');
   const before=await interview(p).inputValue();await interview(p).fill(before+' Χειροκίνητη προσθήκη.');await interview(p).blur();await p.waitForTimeout(1000);
-  const write=await p.evaluate(()=>window.clinicalQA.writes.find(w=>w.action==='save_section'&&w.section_key==='interview'));
-  assert.ok(write);assert.equal(write.expected_version,1);assert.equal(write.content,before+' Χειροκίνητη προσθήκη.');
+  const write=await p.evaluate(()=>window.clinicalQA.writes.find(w=>w.action==='save_section'&&w.section_key==='interview'));assert.ok(write);assert.equal(write.expected_version,1);assert.equal(write.content,before+' Χειροκίνητη προσθήκη.');
   await p.evaluate(()=>scrollTo(0,0));await p.screenshot({path:resolve(out,'sections-desktop.png')});
  });
- await check('desktop: every complex section matches MSE panel and history row alignment',{width:1440,height:1000},'/',async p=>{
-  await assertGroupedSections(p);
-  const fields=p.locator('[data-visit-part="history"] .history-question textarea');assert.equal(await fields.count(),8);
+ await check('desktop: grouped sections and responsive medication retain clinical panel styling',{width:1440,height:1000},'/',async p=>{
+  await assertGroupedSections(p);const fields=p.locator('[data-visit-part="history"] .history-question textarea');assert.equal(await fields.count(),8);
   for(let i=0;i<8;i+=2){const a=await fields.nth(i).boundingBox(),b=await fields.nth(i+1).boundingBox();assert.ok(a&&b);assert.ok(Math.abs(a.y-b.y)<=1,'same history row baseline');assert.ok(Math.abs(a.width-b.width)<=1,'equal history columns');}
   for(const key of ['mse','risk','history','assessment','plan']){await p.locator('[data-visit-part="'+key+'"]').scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'sections-'+key+'.png')});}
   assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0,'layout must not create clinical writes');
  });
  await check('mobile: grouped risk/history/assessment fit and retain external headings',{width:390,height:844},'/',async p=>{
-  await assertGroupedSections(p);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-  const fields=p.locator('[data-visit-part="history"] .history-question textarea');for(let i=0;i<8;i++){const b=await fields.nth(i).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=390,'history input on screen');}
-  await p.locator('[data-visit-part="risk"]').scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'sections-mobile-risk.png')});
-  await p.locator('[data-visit-part="history"]').scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'sections-mobile-history.png')});
+  await assertGroupedSections(p);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));const fields=p.locator('[data-visit-part="history"] .history-question textarea');for(let i=0;i<8;i++){const b=await fields.nth(i).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=390,'history input on screen');}
+  await p.locator('[data-visit-part="risk"]').scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'sections-mobile-risk.png')});await p.locator('[data-visit-part="history"]').scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'sections-mobile-history.png')});
  });
  await check('follow-up: compact grouped panels and detailed session keep common layout',{width:1280,height:1000},'/?followup=1',async p=>{
-  const closure=p.locator('[data-clinical-followup]');await closure.waitFor();
-  const risk=closure.locator('details').filter({has: p.locator('summary').filter({hasText:/^Κίνδυνος ·/})}).first();
+  const closure=p.locator('[data-clinical-followup]');await closure.waitFor();const risk=closure.locator('details').filter({has:p.locator('summary').filter({hasText:/^Κίνδυνος ·/})}).first();
   const panel=risk.locator(':scope > .visit-part-surface');assert.equal(await panel.count(),1);assert.equal(await panel.evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
-  const summary=await risk.locator(':scope>summary').boundingBox(),body=await panel.boundingBox();assert.ok(summary&&body&&summary.y+summary.height<=body.y+1);
-  await p.screenshot({path:resolve(out,'sections-followup.png')});
-  await p.getByRole('button',{name:/^Αναλυτική καταγραφή/}).click();await p.getByRole('heading',{name:'Επανεξέταση',exact:true}).waitFor();
-  await assertGroupedSections(p,{history:false});assert.equal(await p.locator('[data-visit-part="interview"]').getByRole('heading').count(),1);
+  const summary=await risk.locator(':scope>summary').boundingBox(),body=await panel.boundingBox();assert.ok(summary&&body&&summary.y+summary.height<=body.y+1);await p.screenshot({path:resolve(out,'sections-followup.png')});
+  await p.getByRole('button',{name:/^Αναλυτική καταγραφή/}).click();await p.getByRole('heading',{name:'Επανεξέταση',exact:true}).waitFor();await assertGroupedSections(p,{history:false});assert.equal(await p.locator('[data-visit-part="interview"]').getByRole('heading').count(),1);
  });
 }finally{await browser.close();await new Promise(r=>server.close(r));writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));}
 if(report.tests.some(t=>t.status!=='passed'))process.exitCode=1;

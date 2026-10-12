@@ -807,8 +807,11 @@ export default function CalendarPage() {
           onClose={() => setAppointmentEditor(null)}
           onSaved={async (event) => {
             setAppointmentEditor(null);
+            if (event?.scheduled_start) {
+              setSavedAppointment(event);
+              setFocusDate(dateKey(new Date(event.scheduled_start)));
+            }
             await refreshEvents();
-            if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
           }}
           onOpenSession={openAppointmentSession}
         />

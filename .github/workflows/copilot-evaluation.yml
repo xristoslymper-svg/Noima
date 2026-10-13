@@ -1,0 +1,30 @@
+name: Copilot synthetic evaluation
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deterministic and adversarial provider-boundary evaluation
+        run: node --experimental-strip-types --test tests/copilot.test.mjs
+      - name: Live synthetic provider evaluation or explicit not-run report
+        env:
+          COPILOT_EVAL_APPROVED: ${{ vars.COPILOT_EVAL_APPROVED }}
+          OPENAI_API_KEY: ${{ secrets.COPILOT_EVAL_API_KEY }}
+          OPENAI_COPILOT_MODEL: ${{ vars.COPILOT_EVAL_MODEL }}
+        run: node --experimental-strip-types tests/support/copilot-live-eval.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: copilot-synthetic-evaluation
+          path: evaluation/

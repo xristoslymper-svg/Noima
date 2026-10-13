@@ -957,3 +957,58 @@ test('failed appointment insert rolls back its newly created patient and history
  assert.equal((await sql("select count(*)::int n from demo_patients where tester_id=$1 and first_name='Rollback Synthetic'",[t]))[0].n,0);
  }finally{await db.exec('drop trigger workflow_fail_event on demo_calendar_events;drop function public.workflow_fail_event();')}
 });
+
+test('copilot confirmed calendar execution is owned, atomic, expiring and retry safe',async()=>{
+ const owner='90000000-0000-4000-8000-000000000011';
+ await sql('insert into auth.users(id) values($1)',[owner]);
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Copilot synthetic QA')",[owner]);
+ const [{identity}]=await asUser(owner,()=>sql('select pilot_identity() identity'));
+ const workspace=identity.workspace_id;
+ await asUser(owner,()=>sql('select demo_tester_bootstrap($1)',[workspace]));
+ const [patient]=await asUser(owner,()=>sql("select * from demo_patient_create_v2($1,'Copilot Fictional')",[workspace]));
+ const id='90000000-0000-4000-8000-000000000021';
+ const payload={action:'create',patient_id:patient.id,scope:'one',scheduled_start:'2035-01-20T10:00:00Z',scheduled_end:'2035-01-20T10:45:00Z',appointment_type:'follow_up'};
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'calendar',$4)",[workspace,id,patient.id,JSON.stringify(payload)]));
+ assert.equal((await sql('select count(*)::int n from demo_calendar_events where patient_id=$1',[patient.id]))[0].n,0);
+ await rejected(owner,'select copilot_execute($1,$2,false)',[workspace,id],/confirmation_required/);
+ await rejected(b,'select copilot_execute($1,$2,true)',[workspace,id],/confirmation_required/);
+ const [first]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
+ const [again]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
+ assert.deepEqual(first.result,again.result);
+ assert.equal((await sql('select count(*)::int n from demo_calendar_events where patient_id=$1',[patient.id]))[0].n,1);
+ const [event]=await sql('select * from demo_calendar_events where id=$1',[first.result.event_id]);
+ const moveId='90000000-0000-4000-8000-000000000022';
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'calendar',$4)",[workspace,moveId,patient.id,JSON.stringify({...payload,action:'move',event_id:event.id,expected_updated_at:event.updated_at,scheduled_start:'2035-01-20T12:00:00Z',scheduled_end:'2035-01-20T12:45:00Z'})]));
+ const [moved]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,moveId]));
+ assert.equal(new Date(moved.result.scheduled_start).toISOString(),'2035-01-20T12:00:00.000Z');
+ const staleId='90000000-0000-4000-8000-000000000023';
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'calendar',$4)",[workspace,staleId,patient.id,JSON.stringify({...payload,action:'cancel',event_id:event.id,expected_updated_at:event.updated_at})]));
+ await rejected(owner,'select copilot_execute($1,$2,true)',[workspace,staleId],/stale_calendar/);
+ const expiredId='90000000-0000-4000-8000-000000000024';
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'calendar',$4)",[workspace,expiredId,patient.id,JSON.stringify({...payload,scheduled_start:'2035-01-21T10:00:00Z',scheduled_end:'2035-01-21T10:45:00Z'})]));
+ await sql("update private.copilot_actions set expires_at=now()-interval '1 second' where id=$1",[expiredId]);
+ await rejected(owner,'select copilot_execute($1,$2,true)',[workspace,expiredId],/proposal_expired/);
+ await rejected(b,'select copilot_action_get($1,$2)',[workspace,id],/not_authorized/);
+});
+test('copilot questionnaire confirmation preserves tokens and prevents duplicate invitations',async()=>{
+ const owner='90000000-0000-4000-8000-000000000011';
+ const [{identity}]=await asUser(owner,()=>sql('select pilot_identity() identity'));const workspace=identity.workspace_id;
+ const [patient]=await asUser(owner,()=>sql("select * from demo_patient_create_v2($1,'Questionnaire Fictional')",[workspace]));
+ await sql("update demo_patients set email='fictional@example.invalid' where id=$1",[patient.id]);
+ const id='90000000-0000-4000-8000-000000000031',assessment='90000000-0000-4000-8000-000000000032';
+ const payload={recipient:'fictional@example.invalid',appointment_id:null,invitations:[{id:assessment,instrument:'PHQ-9',token:'b3'.repeat(32)}]};
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'questionnaires',$4)",[workspace,id,patient.id,JSON.stringify(payload)]));
+ assert.equal((await sql('select count(*)::int n from private.demo_assessments where patient_id=$1',[patient.id]))[0].n,0);
+ const [first]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
+ const [again]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
+ assert.deepEqual(first.result,again.result);
+ assert.equal((await sql('select count(*)::int n from private.demo_assessments where patient_id=$1',[patient.id]))[0].n,1);
+ const duplicate='90000000-0000-4000-8000-000000000033';
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'questionnaires',$4)",[workspace,duplicate,patient.id,JSON.stringify({...payload,invitations:[{id:'90000000-0000-4000-8000-000000000034',instrument:'PHQ-9',token:'b4'.repeat(32)}]})]));
+ await rejected(owner,'select copilot_execute($1,$2,true)',[workspace,duplicate],/pending_invitation_exists/);
+ const [claim]=await asUser(owner,()=>sql('select pilot_mail_claim($1,$2,$3) status',[assessment,'b3'.repeat(32),'fictional@example.invalid']));
+ assert.equal(claim.status,'new');
+ await asUser(owner,()=>sql("select pilot_mail_finish($1,'accepted','SYNTHETIC_PROVIDER_ACCEPTANCE')",[assessment]));
+ const [accepted]=await asUser(owner,()=>sql('select pilot_mail_claim($1,$2,$3) status',[assessment,'b3'.repeat(32),'fictional@example.invalid']));
+ assert.equal(accepted.status,'accepted');
+});

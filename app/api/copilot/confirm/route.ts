@@ -7,13 +7,15 @@ export const dynamic='force-dynamic';
 export const maxDuration=120;
 type Receipt={kind:string;event_id?:string;status?:string;recipient?:string;invitations?:{id:string;token:string;instrument:string}[]};
 async function post(req:Request){
+ if(!['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||''))return Response.json({error:'Δεν έχει ενεργοποιηθεί πρόσβαση πραγματικών δεδομένων.'},{status:403});
  const b=await req.json().catch(()=>null);
  if(!b||b.confirm!==true||!isClinicalId(b.proposal_id))return Response.json({error:'Απαιτείται ρητή επιβεβαίωση συγκεκριμένης πρότασης.'},{status:400});
  try{
   const proposal=await rpc('copilot_action_get',{p_tester:b.tester,p_id:b.proposal_id}) as {patient:string;kind:string};
-  await patientBundle(b.tester,proposal.patient);
+  const bundle=await patientBundle(b.tester,proposal.patient);
   const result=await rpc('copilot_execute',{p_tester:b.tester,p_id:b.proposal_id,p_confirm:true}) as Receipt;
   if(result.kind==='calendar')return Response.json({answer:'Η αλλαγή αποθηκεύτηκε και επαληθεύτηκε στη βάση.',sources:[{label:'Ραντεβού',href:'/patients/demo/'+proposal.patient+'?appointment='+result.event_id}],status:'verified'});
+  if(bundle.patient.email!==result.recipient)throw new Error('recipient_changed');
   const deliveries=[];
   for(const invitation of result.invitations||[]){
    const link=new URL('/assessment',process.env.NOIMA_APP_ORIGIN||req.url).href+'#'+invitation.token;

@@ -1,0 +1,5 @@
+test-results/
+browser-tests/
+docs/workflow-validation/
+tests/support/workflow-server.mjs
+tests/support/workflow-api.mjs

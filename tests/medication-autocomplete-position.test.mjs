@@ -28,7 +28,7 @@ test('dropdown is portaled outside the horizontally scrolling medication table',
  const component=readFileSync('components/patients/MedicationTable.tsx','utf8');
  const css=readFileSync('app/globals.css','utf8');
  assert.match(component,/createPortal\(<div ref=\{menuRef\}/);
- assert.match(component,/,document\.body\)/);
+ assert.match(component,/,inputRef\.current\?\.closest\('dialog'\)\|\|document\.body\)/);
  assert.match(component,/window\.addEventListener\('scroll',update,true\)/);
  assert.match(component,/aria-expanded=\{showMenu\}/);
  assert.match(css,/\.medication-search-menu\{position:fixed/);

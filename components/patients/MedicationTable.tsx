@@ -137,7 +137,7 @@ function MedicationSearchInput({value,onChange,disabled}:{value:string;onChange:
  },[value]);
  // The table scrolls horizontally, so rendering the dropdown inside the
  // table forces overflow-y:auto and cuts off search results. Portaling into
- // document.body keeps the menu fully visible without changing table scroll.
+ // the active dialog (or document.body) keeps results above the modal and outside table overflow.
  useEffect(()=>{
   if(!open||disabled){setPlacement(null);return}
   const update=()=>{
@@ -158,11 +158,11 @@ function MedicationSearchInput({value,onChange,disabled}:{value:string;onChange:
  return <>
   <div className="medication-search">
    <Search size={14} aria-hidden="true"/>
-   <input ref={inputRef} role="combobox" aria-label="Φάρμακο" aria-autocomplete="list" aria-expanded={showMenu} aria-controls={showMenu?menuId:undefined} autoComplete="off" placeholder="Αναζήτηση φαρμάκου *" value={value} disabled={disabled} onFocus={()=>{if(value.trim())setOpen(true)}} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(!open||!items.length)return;if(e.key==='ArrowDown'){e.preventDefault();setActive(v=>Math.min(items.length-1,v+1))}else if(e.key==='ArrowUp'){e.preventDefault();setActive(v=>Math.max(0,v-1))}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')setOpen(false)}} onBlur={()=>setTimeout(()=>setOpen(false),120)}/>
+   <input ref={inputRef} role="combobox" aria-label="Φάρμακο" aria-autocomplete="list" aria-expanded={showMenu} aria-controls={showMenu?menuId:undefined} autoComplete="off" placeholder="Αναζήτηση φαρμάκου *" value={value} disabled={disabled} onFocus={()=>{if(value.trim())setOpen(true)}} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(!open||!items.length)return;if(e.key==='ArrowDown'){e.preventDefault();setActive(v=>Math.min(items.length-1,v+1))}else if(e.key==='ArrowUp'){e.preventDefault();setActive(v=>Math.max(0,v-1))}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setOpen(false)}}} onBlur={()=>setTimeout(()=>setOpen(false),120)}/>
   </div>
   {showMenu&&createPortal(<div ref={menuRef} id={menuId} className="medication-search-menu" role="listbox" aria-label="Επιλογές φαρμάκων" style={{left:placement.left,top:placement.top,width:placement.width,maxHeight:placement.maxHeight}}>
    {loading&&!items.length?<div className="medication-search-loading">Αναζήτηση…</div>:items.map((item,index)=><button type="button" key={item.id} className={active===index?'active':''} role="option" aria-selected={active===index} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(item)}><strong>{item.brand}</strong><span>{item.active}</span>{item.form&&<i>{item.form}</i>}</button>)}
-  </div>,document.body)}
+  </div>,inputRef.current?.closest('dialog')||document.body)}
  </>;
 }
 

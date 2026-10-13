@@ -1,4 +1,7 @@
 "use client";
+import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
+import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
+import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import {useMobileNavigation} from '@/components/useMobileNavigation';
 import PilotProfile from '@/components/PilotProfile';
 
@@ -171,7 +174,7 @@ export default function Page() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="overview"/>
       <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
         <div className="brand">
           <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>

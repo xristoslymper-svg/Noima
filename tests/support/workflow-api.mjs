@@ -1,0 +1,43 @@
+// Requires workflow-server.mjs and Next at localhost:3100. Never sends email.
+import assert from 'node:assert/strict';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {writeFile} from 'node:fs/promises';
+import {buildSummaryContext} from '../../lib/clinical/summary-context.ts';
+const base='http://localhost:3100';let cookie='';
+async function call(path,body,status=200){
+ const r=await fetch(base+path,{method:body?'POST':'GET',headers:{Origin:base,'Content-Type':'application/json',Cookie:cookie},...(body?{body:JSON.stringify(body)}:{})});
+ const cookies=r.headers.getSetCookie();if(cookies.length)cookie=cookies.map(c=>c.split(';')[0]).join('; ');
+ const d=await r.json();assert.equal(r.status,status,JSON.stringify(d));return d;
+}
+await call('/api/pilot',{action:'login',email:'workflow@example.invalid',password:'synthetic-local-only'});
+const post=(body,status)=>call('/api/patients/demo/runtime',body,status);
+const start=new Date(Date.UTC(2035,0,1)+Math.floor(Math.random()*3000)*86400000).toISOString(),end=new Date(Date.parse(start)+3000000).toISOString();
+const appointment={action:'create',create_new_patient:true,request_id:randomUUID(),patient_name:'Συνθετικός Έλεγχος',provisional_phone:'6900000000',provisional_email:'synthetic@example.invalid',start_iso:start,end_iso:end,appointment_type:'initial_assessment',sms_reminder_enabled:false};
+const created=await call('/api/calendar/command/apply',appointment);
+const retry=await call('/api/calendar/command/apply',appointment);assert.equal(retry.patient_id,created.patient_id);assert.equal(retry.event.id,created.event.id);
+const patient=created.patient_id;assert.ok(patient);
+const bundle=async()=> (await call('/api/patients/demo/runtime?patient='+patient)).bundle;
+const {session}=await post({action:'start_session',patient_id:patient,session_type:'initial_assessment'});
+await post({action:'save_section',session_id:session.id,section_key:'interview',content:'Συνθετική αναφορά ασθενούς για έλεγχο ροής.',source:'manual',expected_version:null});
+let b=await bundle();const before=buildSummaryContext(b);
+await post({action:'finalize_session',session_id:session.id,expected_version:b.sessions[0].version},422);
+b=await bundle();assert.equal(b.sessions[0].status,'draft');assert.match(b.sections[0].content,/Συνθετική/);
+for(const key of ['mse','assessment','plan'])await post({action:'save_section',session_id:session.id,section_key:key,content:'Συνθετική καταγραφή '+key,source:'manual',expected_version:null});
+await post({action:'save_risk',session_id:session.id,risk:{suicidal_ideation:'negative'},expected_version:null});
+b=await bundle();const version=b.sessions[0].version;
+await post({action:'finalize_session',session_id:session.id,expected_version:1},409);
+const done=await post({action:'finalize_session',session_id:session.id,expected_version:version});assert.equal(done.session.status,'completed');
+const repeated=await post({action:'finalize_session',session_id:session.id,expected_version:version});assert.equal(done.session.completed_at,repeated.session.completed_at);
+b=await bundle();assert.equal(b.sessions[0].status,'completed');assert.notDeepEqual(buildSummaryContext(b),before);
+const visit=(await call('/api/patients/demo/visit?patient='+patient+'&session='+session.id)).bundle;assert.equal(visit.sessions[0].status,'completed');
+const followup=(await post({action:'start_session',patient_id:patient,session_type:'follow_up'})).session;
+const token=randomBytes(32).toString('hex'),assessment=randomUUID();
+await call('/api/psychometrics',{action:'assign',id:assessment,token,patient_id:patient,instrument:'PHQ-9',session_id:followup.id});
+await call('/api/psychometrics',{action:'submit',token,answers:[1,1,1,1,1,1,1,1,1]});
+b=await bundle();const result=b.assessments.find(a=>a.id===assessment);assert.equal(result.score,9);assert.equal(result.session_id,followup.id);assert.equal(result.patient_id,patient);assert.equal(result.reviewed_at,null);assert.equal(result.answers.length,9);assert.ok(result.completed_at);
+const unreviewed=buildSummaryContext(b);await bundle();assert.equal((await bundle()).assessments.find(a=>a.id===assessment).reviewed_at,null);
+await call('/api/psychometrics',{action:'review',id:assessment});b=await bundle();assert.ok(b.assessments.find(a=>a.id===assessment).reviewed_at);assert.notDeepEqual(buildSummaryContext(b),unreviewed);
+const secondToken=randomBytes(32).toString('hex'),secondAssessment=randomUUID();await call('/api/psychometrics',{action:'assign',id:secondAssessment,token:secondToken,patient_id:patient,instrument:'GAD-7'});await call('/api/psychometrics',{action:'submit',token:secondToken,answers:[2,2,2,2,2,2,2]});
+const overview=await call('/api/overview');assert.ok(overview.psychometrics.some(a=>a.id===secondAssessment));
+await writeFile('workflow-fixture.json',JSON.stringify({patient,session:session.id,assessment:secondAssessment,appointment:created.event.id},null,2));
+console.log('PASS: real Next routes → owner-scoped SQL → reload; completion safeguards/retry, patient appointment retry, server scores, explicit review and summary context changes. No email or AI calls.');

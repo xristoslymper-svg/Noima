@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseUrl, supabaseKey } from './lib/pilot/config';
+import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
   let response=NextResponse.next({request});
@@ -17,7 +18,7 @@ export async function middleware(request:NextRequest) {
     const {data:identity}=await client.rpc('pilot_identity');
     if(identity) {
       response.cookies.set('noima-workspace-id',identity.workspace_id,{sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/'});
-      if(path==='/login'||path==='/pilot'||path==='/forgot-password') destination='/';
+      if(path==='/login'||path==='/pilot'||path==='/forgot-password') destination=mobileV2Enabled?'/calendar':'/';
     } else if(path!=='/pilot'&&path!=='/login'&&path!=='/account'&&path!=='/reset-password') destination='/pilot';
   }
   if(destination){const redirect=NextResponse.redirect(new URL(destination,request.url));response.cookies.getAll().forEach(c=>redirect.cookies.set(c));response=redirect;}

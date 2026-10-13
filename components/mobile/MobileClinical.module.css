@@ -1,0 +1,473 @@
+/* Opt-in presentation; every visual rule is limited to the existing 760px boundary. */
+.bottomNav,.shortcuts,.saveDraft,.scope .followup .saveDraft{display:none}
+@media screen and (max-width:760px){
+ .navigationPage :global(.workspace){padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+ .navigationPage:has([role=dialog]) .bottomNav,.navigationPage:has(dialog[open]) .bottomNav{display:none}
+ .scope{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mobile-canvas:#f8f5ef;--mobile-ink:#293e35;--mobile-muted:#5c6f63;--mobile-line:#dedfd4;--mobile-surface:#fffefa}
+ .scope :global(.workspace){background:var(--mobile-canvas)}
+ .scope :global(.generic-patient-page),.scope :global(.calendar-page-content){padding:16px 14px calc(96px + env(safe-area-inset-bottom))!important}
+ .scope :global(.topbar){background:var(--mobile-canvas);padding:10px 14px;min-height:56px}
+ .bottomNav{position:fixed;z-index:35;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid #dedfd4;background:#fffefa}
+ .bottomNav a{min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:11px;color:#5c6f63;text-decoration:none;border-radius:12px}
+ .bottomNav a[aria-current=page]{background:#e8efe7;color:#315f54;font-weight:700}
+ .summary>section{background:var(--mobile-surface);border:1px solid var(--mobile-line);border-radius:18px;padding:16px!important;margin-bottom:12px}
+ .summary p{font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+ .summary button{min-height:44px;font-size:14px}
+ .scope :global(.calendar-page-heading){gap:10px;margin-bottom:18px}
+ .scope :global(.calendar-page-heading) h1{font-size:30px;color:var(--mobile-ink)}
+ .scope :global(.calendar-control-bar){gap:10px;flex-wrap:wrap}
+ .scope :global(.calendar-day-card){background:transparent;border:0;box-shadow:none;padding:0}
+ .scope :global(.clinical-agenda-row){grid-template-columns:52px 3px minmax(0,1fr)!important;gap:8px!important;background:var(--mobile-surface)!important;border:1px solid var(--mobile-line)!important;border-radius:18px!important;margin-bottom:12px;padding:12px 10px!important}
+ .scope :global(.clinical-agenda-row.status-cancelled){background:#f4edeb!important}
+ .scope :global(.clinical-event-time){width:auto!important}
+ .scope :global(.clinical-event-time) strong{font-size:15px}
+ .scope :global(.agenda-patient-name){font-size:16px;line-height:1.4;min-height:44px;overflow-wrap:anywhere}
+ .scope :global(.agenda-patient)>span{font-size:13px;line-height:1.5;color:var(--mobile-muted)}
+ .scope :global(.agenda-actions){grid-column:3;flex-wrap:wrap}
+ .scope :global(.agenda-actions) button{min-height:44px!important;font-size:13px!important}
+ .scope :global(.calendar-quick-panel){max-height:calc(100dvh - 24px);overflow-y:auto;border-radius:20px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+ .scope :global(.calendar-page-content) button{min-height:44px}
+ .scope :global(.calendar-page-actions){flex-wrap:wrap}
+ .scope :global(.calendar-time-grid){/* Week remains available as a local scroller. */contain:inline-size}
+ .followup{gap:20px!important;color:#293e35}
+ .scope .followup>header{gap:10px;padding-bottom:0}
+ .scope .followup>header>div>p{margin:6px 0 0}
+ .scope .followup>header h2{font-family:inherit}
+ .scope .followup>section[data-mobile-section=notes]{border:0;background:transparent;box-shadow:none;padding:0!important}
+ .scope .followup label{font-size:15px}
+ .scope .followup{padding:8px 0!important}
+ .scope .followup h2{font-size:24px}
+ .scope .followup h3{font-size:16px}
+ .scope .followup>section{padding:16px!important;border:1px solid #dedfd4;border-radius:18px!important;background:#fffefa}
+ .scope .followup>details{padding:0!important;border:0!important;background:transparent!important;scroll-margin-top:110px}
+ .scope .followup>details>summary{min-height:48px;font-size:15px!important;line-height:1.5;padding:12px 0}
+ .scope .followup>section{scroll-margin-top:110px}
+ .scope .followup :global(.visit-part-surface),.scope .followup :global(.visit-part-content){min-width:0}
+ .scope .followup :global(.clinical-writing-field){min-width:0}
+ .scope .followup :global([data-writing-editor]){background:#fffefa;border:1px solid #dce0d5;border-radius:15px}
+ .scope .followup textarea{font-size:16px!important;line-height:1.65;scroll-margin-block:110px 40px}
+ .scope .followup button{min-height:44px!important;white-space:normal}
+ .scope .followup p{font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+ .shortcuts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+ .shortcuts label{width:100%;font-size:14px;font-weight:600}
+ .shortcuts select{width:100%;min-height:44px;border:1px solid #dedfd4;border-radius:12px;padding:10px;background:#fffefa;color:#315f54}
+ .scope .followup .saveDraft{display:inline-flex;align-items:center;justify-content:center}
+ .scope :is(button,a,summary,input,select,textarea):focus-visible,.scope .followup :is(button,select,textarea):focus-visible{outline:2px solid #315f54;outline-offset:3px}
+}
+@media screen and (max-width:760px) and (max-height:520px){
+ .scope .followup>details,.scope .followup>section{scroll-margin-top:16px}
+ .scope .followup textarea{scroll-margin-block:16px 100px}
+}
+@media screen and (max-width:760px) and (prefers-reduced-motion:reduce){.scope *,.scope .followup *{scroll-behavior:auto}}
+
+@media screen and (max-width:760px){
+ .scope :global(.workspace) :global(.topbar){background:#f8f5ef}
+ .scope .followup :global([data-writing-editor]){background:#fffefa!important}
+}
+
+@media screen and (max-width:760px){
+ .scope :global(.patient-hero){position:static!important;padding:8px 0 16px!important;gap:12px;align-items:stretch}
+ .scope :global(.patient-hero) h1{font-family:inherit!important;font-size:23px!important;line-height:1.25!important;overflow-wrap:anywhere}
+ .scope :global(.patient-voice-cta){min-width:0;width:100%;min-height:48px}
+ .scope :global(.patient-voice-cta) strong{white-space:normal;font-size:14px}
+ .scope :global(.patient-record-context){font-size:13px}
+ .scope:has(dialog[open]) .bottomNav{display:none}
+ .scope dialog[aria-labelledby="record-dialog-title"]{width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;margin:0;border-radius:0;padding:14px 14px max(24px,env(safe-area-inset-bottom))}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header{position:sticky;top:-14px;z-index:25;background:#f8f5ef;padding:14px 0 12px;margin-bottom:16px}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header h2{font-size:18px}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header p{font-size:13px;overflow-wrap:anywhere}
+ .scope .followup>header{flex-wrap:wrap}
+}
+@media screen and (max-width:760px) and (max-height:520px){
+ .scope dialog[aria-labelledby="record-dialog-title"]>header{position:static}
+}
+
+/* Mobile visual pass. Opt-in roots + viewport boundary protect every desktop rule. */
+@media screen and (max-width:760px){
+ :is(.scope,.navigationPage){
+  --mobile-font:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mobile-canvas:#f8f7f3;--mobile-surface:#fff;--mobile-ink:#263d33;
+  --mobile-muted:#586d62;--mobile-line:#dfe6e0;
+  font-family:var(--mobile-font);font-size:15px;line-height:1.55;color:var(--mobile-ink);
+ }
+ :is(.scope,.navigationPage) :global(.workspace){background:var(--mobile-canvas)!important;font-family:var(--mobile-font)}
+ :is(.scope,.navigationPage) :global(.topbar){height:64px!important;min-height:64px;padding:10px 16px!important;background:var(--mobile-canvas)!important;border-bottom:1px solid var(--mobile-line);box-shadow:none!important}
+ :is(.scope,.navigationPage) :global(.topbar .profile){padding:4px 8px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+ :is(.scope,.navigationPage) :global(.mobile-menu-button){border:1px solid var(--mobile-line);border-radius:12px;background:#fff;box-shadow:none!important}
+ :is(.scope,.navigationPage) :global(.content),
+ .navigationPage :global(.secondary-content .registry-wrap),
+ .navigationPage :global(.secondary-content .psy-content){padding:22px 16px 24px!important}
+ :is(.scope,.navigationPage) :global(h1){font-family:var(--mobile-font)!important;font-size:26px!important;line-height:1.2!important;letter-spacing:-.035em!important;font-weight:750!important;margin:0 0 10px}
+ :is(.scope,.navigationPage) :global(h2){font-family:var(--mobile-font)!important;font-size:20px!important;line-height:1.3!important;letter-spacing:-.02em!important}
+ :is(.scope,.navigationPage) :global(h3){font-family:var(--mobile-font)!important;font-size:17px!important;line-height:1.4!important}
+ :is(.scope,.navigationPage) :global(.kicker),.navigationPage :global(.eyebrow){font-size:11px!important;line-height:1.4;letter-spacing:.07em!important;font-weight:700!important;color:var(--mobile-muted)}
+ :is(.scope,.navigationPage) :global(button){font-family:var(--mobile-font);min-height:44px;font-size:14px;line-height:1.4;touch-action:manipulation}
+ :is(.scope,.navigationPage) :global(input:not([type=checkbox]):not([type=radio])),
+ :is(.scope,.navigationPage) :global(select),:is(.scope,.navigationPage) :global(textarea){font-family:var(--mobile-font);font-size:16px!important;line-height:1.5;min-width:0;border-radius:12px}
+ :is(.scope,.navigationPage) :global(input::placeholder),:is(.scope,.navigationPage) :global(textarea::placeholder){color:#708177;opacity:1}
+ :is(.scope,.navigationPage) :global(.page-heading),:is(.scope,.navigationPage) :global(.registry-heading),
+ :is(.scope,.navigationPage) :global(.library-heading),:is(.scope,.navigationPage) :global(.calendar-page-heading){gap:16px!important;margin-bottom:22px!important}
+ :is(.scope,.navigationPage) :global(.page-heading p:not(.eyebrow)),:is(.scope,.navigationPage) :global(.registry-heading p),
+ :is(.scope,.navigationPage) :global(.library-heading p){font-size:14px!important;line-height:1.6!important;color:var(--mobile-muted);margin:0}
+ :is(.scope,.navigationPage) :global(.sidebar.mobile-open){font-family:var(--mobile-font);box-shadow:12px 0 36px rgba(28,49,38,.12)}
+ :is(.scope,.navigationPage) :global(.nav-item){font-size:15px!important}
+ .bottomNav{padding:6px 10px calc(6px + env(safe-area-inset-bottom));background:#fff;border-color:var(--mobile-line,#dfe6e0);box-shadow:0 -3px 16px rgba(31,53,40,.04)}
+ .bottomNav a{min-height:54px;gap:4px;font-size:12px;line-height:1.2;border-radius:12px;color:#576c60}
+ .bottomNav a[aria-current=page]{background:#eaf2ed;color:#245c47}
+ .bottomNav svg{width:21px;height:21px;stroke-width:1.8}
+
+ /* Overview: clear hierarchy, generous but compact cards. */
+ .navigationPage :global(.metric-grid){gap:10px;margin-bottom:20px}
+ .navigationPage :global(.metric){padding:14px!important;border-radius:16px!important;min-height:112px!important;border:1px solid var(--mobile-line)!important;box-shadow:none!important}
+ .navigationPage :global(.metric span){font-size:13px!important;line-height:1.4!important}
+ .navigationPage :global(.metric strong){font-size:28px!important;line-height:1.2!important;font-weight:750!important}
+ .navigationPage :global(.metric small){font-size:12px!important}
+ .navigationPage :global(.card){padding:16px!important;border:1px solid var(--mobile-line)!important;border-radius:16px!important;box-shadow:0 2px 8px rgba(31,53,40,.025)!important}
+ .navigationPage :global(.main-grid){gap:16px!important}
+ .navigationPage :global(.session-row){display:grid!important;grid-template-columns:52px minmax(0,1fr) 44px!important;gap:10px!important;padding:14px!important;align-items:start}
+ .navigationPage :global(.session-row .patient-avatar){display:none!important}
+ .navigationPage :global(.session-row .time){grid-area:1/1;line-height:1.5!important}
+ .navigationPage :global(.session-row .session-info){grid-area:1/2}
+ .navigationPage :global(.session-row .folder-icon-button){grid-area:1/3;align-self:center}
+ .navigationPage :global(.patient-name-line){align-items:flex-start;gap:6px}
+ .navigationPage :global(.session-info .patient-name){font-size:15px!important;font-weight:700!important;line-height:1.4!important;text-align:left}
+ .navigationPage :global(.session-info>span){font-size:13px!important;line-height:1.5!important;color:var(--mobile-muted)}
+ .navigationPage :global(.time){font-size:13px!important;font-weight:650!important}
+ .navigationPage :global(.visit-type-badge){font-size:11px!important;padding:4px 7px!important}
+ .navigationPage :global(.folder-icon-button){min-width:44px;min-height:44px;border-radius:12px}
+
+ /* Registry: readable names, quiet metadata, easy controls. */
+ .navigationPage :global(.registry-heading .record){min-height:48px;font-size:14px!important;padding:12px 16px!important;border-radius:12px!important;box-shadow:none!important}
+ .navigationPage :global(.registry-stats){gap:8px!important;margin:0 0 18px!important}
+ .navigationPage :global(.registry-stats>div){font-size:13px!important;padding:8px 10px!important;border-radius:10px!important}
+ .navigationPage :global(.registry-stats strong){font-size:14px!important}
+ .navigationPage :global(.registry-tools){gap:10px!important;margin-bottom:16px!important}
+ .navigationPage :global(.registry-search){min-height:48px!important;border-radius:12px!important;background:#fff!important;border:1px solid var(--mobile-line)!important;box-shadow:none!important}
+ .navigationPage :global(.registry-filters){gap:6px!important}
+ .navigationPage :global(.registry-filters button){font-size:13px!important;padding:10px 12px!important;border-radius:10px!important;box-shadow:none!important}
+ .navigationPage :global(.registry-filters select){min-height:48px;padding:10px 12px!important;background:#fff!important;border:1px solid var(--mobile-line)!important}
+ .navigationPage :global(.patient-registry){border:1px solid var(--mobile-line)!important;border-radius:16px!important;box-shadow:none!important;overflow:hidden}
+ .navigationPage :global(.registry-row:not(.registry-labels)){padding:16px 12px!important;gap:10px!important}
+ .navigationPage :global(.registry-patient){gap:10px!important;min-height:44px}
+ .navigationPage :global(.registry-patient strong){font-size:15px!important;line-height:1.4!important;font-weight:700!important}
+ .navigationPage :global(.registry-patient small){font-size:13px!important;line-height:1.5!important;margin-top:5px!important;color:var(--mobile-muted)!important}
+ .navigationPage :global(.registry-draft){font-size:11px!important;line-height:1.5!important;padding:3px 6px!important;margin-top:5px;border-radius:5px}
+ .navigationPage :global(.registry-avatar){display:none!important}
+ .navigationPage :global(.registry-appointment){min-width:48px;min-height:44px;font-size:13px!important;padding:8px!important;border-radius:10px!important}
+ .navigationPage :global(.registry-open){min-width:44px;min-height:44px;border-radius:10px!important}
+
+ /* Library: mobile text sizes instead of shrinking desktop cards. */
+ .navigationPage :global(.library-utility),.navigationPage :global(.library-new-test){min-height:44px;height:auto!important;padding:10px 12px!important;font-size:13px!important;border-radius:11px!important}
+ .navigationPage :global(.library-searchbar){width:100%;min-height:48px;height:auto!important;margin-bottom:24px!important;border-radius:12px!important;border-color:var(--mobile-line)!important}
+ .navigationPage :global(.library-family){margin-bottom:26px!important}
+ .navigationPage :global(.library-family-heading>div){align-items:flex-start!important;flex-direction:column;gap:4px!important}
+ .navigationPage :global(.library-family-heading>div>span){font-size:18px!important;font-weight:750!important}
+ .navigationPage :global(.library-family-heading small){font-size:13px!important;line-height:1.5!important;color:var(--mobile-muted)!important;white-space:normal!important}
+ .navigationPage :global(.library-category-tabs){gap:6px!important;margin-bottom:16px!important;flex-wrap:wrap!important}
+ .navigationPage :global(.library-category-tabs button){font-size:13px!important;min-height:44px!important;padding:10px 12px!important;border-radius:10px!important}
+ .navigationPage :global(.history-tool-grid),.navigationPage :global(.psy-grid){gap:14px!important}
+ .navigationPage :global(.library-instrument-card){padding:16px!important;border:1px solid var(--mobile-line)!important;border-radius:16px!important;box-shadow:0 2px 8px rgba(31,53,40,.025)!important;transform:none!important}
+ .navigationPage :global(.library-instrument-card h2){font-size:19px!important;margin:12px 0 8px!important}
+ .navigationPage :global(.library-instrument-card>p){font-size:14px!important;line-height:1.6!important;min-height:0!important;color:var(--mobile-muted)!important}
+ .navigationPage :global(.instrument-area-chip),.navigationPage :global(.instrument-code){font-size:12px!important;padding:5px 8px!important;letter-spacing:0!important}
+ .navigationPage :global(.instrument-time),.navigationPage :global(.instrument-meta),.navigationPage :global(.instrument-meta span){font-size:12px!important;line-height:1.5!important;color:var(--mobile-muted)!important}
+ .navigationPage :global(.library-card-actions){margin-top:14px!important;gap:8px!important}
+ .navigationPage :global(.library-card-actions button){min-height:44px!important;min-width:44px!important;border-radius:10px!important}
+ .navigationPage :global(.library-card-actions svg){width:18px;height:18px}
+
+ /* Calendar: separate event cards, no surrounding second card. */
+ .scope :global(.calendar-page-content){padding:22px 16px calc(96px + env(safe-area-inset-bottom))!important}
+ .scope :global(.calendar-page-actions){gap:8px!important}
+ .scope :global(.calendar-page-actions button){font-size:14px!important;min-height:46px!important;border-radius:12px!important;padding:10px 12px!important}
+ .scope :global(.calendar-control-bar){padding:12px!important;gap:10px!important;border:1px solid var(--mobile-line)!important;border-radius:16px!important;box-shadow:none!important;background:#fff!important}
+ .scope :global(.calendar-date-nav strong){font-size:15px!important;line-height:1.5!important}
+ .scope :global(.calendar-control-bar select){width:100%!important;max-width:none!important;background:#fff!important;border:1px solid var(--mobile-line)!important;padding:10px 12px!important}
+ .scope :global(.calendar-date-nav),.scope :global(.calendar-filter){width:100%!important}
+ .scope :global(.calendar-view-switch button){font-size:14px!important;font-weight:650!important}
+ .scope :global(.calendar-day-card){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
+ .scope :global(.clinical-agenda-row){padding:16px 12px!important;gap:10px!important;border-radius:16px!important;margin-bottom:12px!important;box-shadow:0 2px 8px rgba(31,53,40,.025)!important}
+ .scope :global(.clinical-event-time) strong{font-size:15px!important}
+ .scope :global(.clinical-event-time) span{font-size:12px!important;color:var(--mobile-muted)!important}
+ .scope :global(.agenda-patient-name){font-size:16px!important;font-weight:700!important;line-height:1.4!important;text-align:left}
+ .scope :global(.agenda-patient)>span{font-size:13px!important;line-height:1.5!important;color:var(--mobile-muted)!important}
+ .scope :global(.agenda-actions) button{font-size:14px!important;min-height:44px!important;border-radius:10px!important}
+
+ /* Patient folder: flatter framing, clearer tabs and source-based reading. */
+ .scope :global(.generic-patient-page){padding:22px 16px calc(96px + env(safe-area-inset-bottom))!important}
+ .scope :global(.patient-hero){padding:0 0 18px!important;margin-bottom:16px!important;gap:14px!important}
+ .scope :global(.patient-hero h1){font-size:24px!important;margin:8px 0 10px!important;line-height:1.25!important}
+ .scope :global(.patient-hero p){font-size:13px!important;line-height:1.6!important;color:var(--mobile-muted)!important;margin:4px 0!important}
+ .scope.scope :global(.patient-voice-cta){padding:12px 14px!important;min-height:56px!important;border-radius:12px!important;box-shadow:none!important}
+ .scope.scope :global(.patient-voice-cta strong){font-size:15px!important;line-height:1.4!important;font-weight:700!important}
+ .scope.scope :global(.patient-voice-cta small){font-size:12px!important;line-height:1.5!important;color:var(--mobile-muted)!important}
+ .scope.scope :global(.patient-voice-icon){width:32px!important;height:32px!important;border-radius:9px!important}
+ .scope :global(.patient-workspace-shell){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]){display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;gap:6px!important;padding:0!important;margin-bottom:18px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button){min-width:0;min-height:48px;font-size:13px!important;line-height:1.3!important;padding:8px!important;white-space:normal;border-radius:10px!important;margin:0!important;justify-content:flex-start}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button:nth-of-type(1)){grid-area:1/1}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button:nth-of-type(2)){grid-area:1/2}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button:nth-of-type(3)){grid-area:2/1}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button:nth-of-type(4)){grid-area:2/2}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button svg){width:16px;flex-shrink:0}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button[aria-current=page]){background:#eaf2ed!important;box-shadow:none!important;color:#245c47!important}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>details){grid-area:1/3/3/4;align-self:start;display:block!important;margin:0!important;min-width:0}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>details>summary){min-height:48px;min-width:44px;background:#fff;border:1px solid var(--mobile-line);border-radius:10px}
+ .scope :global(.patient-workspace-content){padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+ .summary{display:grid;gap:14px;background:transparent!important;border:0!important;padding:0!important}
+ .summary>section{padding:16px!important;margin:0!important;border:1px solid var(--mobile-line)!important;border-radius:16px!important;background:#fff!important;box-shadow:0 2px 8px rgba(31,53,40,.025)!important}
+ .scope :global(.clinical-summary-head){padding:0!important;margin:0 0 16px!important}
+ :is(.scope,.navigationPage) :global(.clinical-summary){font-size:15px!important;line-height:1.65!important}
+ :is(.scope,.navigationPage) :global(.clinical-summary p),:is(.scope,.navigationPage) :global(.clinical-summary dd){font-size:14px!important;line-height:1.65!important}
+ :is(.scope,.navigationPage) :global(.clinical-summary dt){font-size:14px!important;font-weight:700!important}
+ :is(.scope,.navigationPage) :global(.clinical-summary details>summary){min-height:44px;font-size:13px!important;line-height:1.4;display:flex;align-items:center;gap:6px}
+ :is(.scope,.navigationPage) :global(.clinical-card-footer){font-size:12px!important;line-height:1.5!important;gap:10px;flex-wrap:wrap}
+ .scope :global(.patient-workspace-content h2){font-size:20px!important;margin-top:0}
+ .scope :global(.patient-workspace-content p){font-size:14px!important;line-height:1.65!important}
+ .scope :global(.patient-workspace-content time){font-size:13px!important;line-height:1.5;color:var(--mobile-muted)}
+ .scope :global(.patient-workspace-content button){font-size:14px!important;min-height:44px}
+ .scope :global(.patient-workspace-content ol>li){padding:16px!important;border:1px solid var(--mobile-line)!important;border-radius:16px!important;background:#fff!important;box-shadow:none!important}
+ .scope :global(.patient-workspace-content [aria-label="Φίλτρα πορείας"]){gap:6px;flex-wrap:wrap;margin-bottom:16px}
+ .scope :global(.patient-workspace-content [aria-label="Φίλτρα πορείας"] button){font-size:13px!important;padding:10px!important}
+ .scope :global(.patient-details-card){border-radius:16px!important;padding:16px!important;box-shadow:none!important}
+ .scope :global(.clinical-lean-table td),.scope :global(.clinical-lean-table th){font-size:14px!important;line-height:1.5!important}
+
+ /* Forms and dialogs: the same editors with mobile reading/touch dimensions. */
+ :is(.scope,.navigationPage) :global(.dashboard-widget-sheet),.scope :global(.calendar-quick-panel),
+ .scope :global(.calendar-appointment-dialog),.scope :global(.entry-modal),
+ .navigationPage :global(.instrument-sheet),.navigationPage :global(.library-history-preview){padding:20px 16px!important;border-radius:18px!important;max-width:calc(100vw - 20px)!important;max-height:calc(100dvh - 20px)!important;overflow-y:auto;box-sizing:border-box;box-shadow:0 16px 48px rgba(28,49,38,.16)!important}
+ :is(.scope,.navigationPage) :global(.dashboard-widget-sheet p),.scope :global(.calendar-quick-panel p),
+ .navigationPage :global(.instrument-sheet p),.navigationPage :global(.library-history-preview>p){font-size:14px!important;line-height:1.6!important}
+ .scope :global(.calendar-quick-panel button),.navigationPage :global(.instrument-sheet button),
+ .navigationPage :global(.library-history-preview button){font-size:14px!important;min-height:44px!important}
+ :is(.scope,.navigationPage) :global(:is(.entry-close,.instrument-floating-close,.history-preview-close,.calendar-popover-close,.calendar-move-close,.voice-command-close,.calendar-close)){min-width:44px!important;min-height:44px!important;padding:0!important}
+ :is(.scope,.navigationPage) :global(:is(.entry-close,.instrument-floating-close,.history-preview-close,.calendar-popover-close,.calendar-move-close,.voice-command-close,.calendar-close) svg){width:20px!important;height:20px!important}
+ .scope dialog :global(.entry-modal-backdrop){z-index:100!important}
+ .scope :global(.medication-runtime-modal>label),.scope :global(.medication-runtime-modal .med-form-grid>label){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;gap:8px;font-size:14px!important}
+ .scope :global(.medication-runtime-modal .med-form-grid){grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:16px 12px!important}
+ .scope :global(.medication-runtime-modal .med-form-grid>div),.scope :global(.medication-runtime-modal .med-form-grid>label:has(input[type=date])){grid-column:1/-1}
+ .scope :global(.medication-runtime-modal .current-dose){font-size:13px!important;line-height:1.5!important;gap:6px;flex-wrap:wrap}
+ .scope :global(.medication-runtime-modal footer){display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .scope :global(.medication-runtime-modal footer button){min-height:48px!important}
+ .navigationPage :global(.history-questionnaire-preview>section){padding:16px!important;border-radius:14px!important}
+ .navigationPage :global(.history-preview-section-head strong){font-size:15px!important;line-height:1.4!important}
+ .navigationPage :global(.history-preview-section-head small),.navigationPage :global(.history-preview-textarea){font-size:13px!important;line-height:1.5!important}
+ .navigationPage :global(.history-preview-question>strong){font-size:14px!important;line-height:1.5!important}
+ .navigationPage :global(.history-preview-choice){font-size:13px!important;line-height:1.4!important;padding:8px 10px!important}
+ .navigationPage :global(.instrument-question>strong){font-size:15px!important;line-height:1.5!important}
+ .navigationPage :global(.instrument-question button){font-size:14px!important;line-height:1.45!important;padding:12px!important}
+ .scope dialog[aria-labelledby="record-dialog-title"]{background:var(--mobile-canvas)!important;padding:16px 16px max(24px,env(safe-area-inset-bottom))!important}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header{top:-16px;background:var(--mobile-canvas)!important;padding:16px 0 12px!important;gap:12px;margin-bottom:20px!important}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header>div{min-width:0}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header h2{font-size:18px!important;line-height:1.3!important}
+ .scope dialog[aria-labelledby="record-dialog-title"]>header p{font-size:12px!important;line-height:1.4!important;margin-top:5px}
+ .scope .followup{gap:18px!important}
+ .scope .followup>section,.scope .followup>details{border:1px solid var(--mobile-line)!important;border-radius:16px!important;background:#fff!important;box-shadow:none!important;padding:16px!important}
+ .scope .followup>section[data-mobile-section=notes]{padding:0!important;border:0!important;background:transparent!important}
+ .scope .followup>details>summary{padding:0!important;min-height:48px;font-size:15px!important}
+ .scope .followup>details[open]>summary{padding-bottom:12px!important;margin-bottom:14px!important}
+ .scope .followup :global(.clinical-writing-field){gap:10px}
+ .scope .followup :global(.visit-part-surface){padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+ .scope .followup :global([data-writing-editor]){border:1px solid var(--mobile-line)!important;border-radius:12px!important;box-shadow:none!important}
+ .scope .followup textarea{padding:12px!important;font-size:16px!important;line-height:1.6!important;color:var(--mobile-ink)!important}
+ .scope .followup textarea::placeholder{color:#697d70!important}
+ .scope .followup button{font-size:14px!important;border-radius:10px!important}
+ .scope .followup>header>button{width:100%;justify-content:space-between}
+ .scope .followup>div:has(>button){display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+ .scope .followup>div:has(>button)>button{min-height:48px;width:100%}
+ .shortcuts{padding:0;margin:0 0 2px;gap:6px}
+ .shortcuts label{font-size:13px!important;color:var(--mobile-muted)}
+ .shortcuts select{min-height:48px;border-radius:12px;padding:10px 12px;font-size:16px!important}
+ .scope :global(.visit-part){padding:16px!important;border-radius:16px!important;box-shadow:none!important}
+ .scope :global(.visit-part>.visit-part-surface){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+ .scope :global(.visit-part>header h3){font-size:17px!important}
+ .scope :global(.visit-hint),.scope :global(.save-state){font-size:13px!important;line-height:1.55!important}
+ .scope :global(.visit-part-tabs){gap:6px!important}
+ .scope :global(.visit-part-tabs button){min-height:44px;font-size:13px!important;padding:10px!important}
+ .scope :global(.visit-scroll-nav button){min-height:56px!important;min-width:76px;padding:10px 6px!important;font-size:13px!important}
+ .scope :global(.visit-scroll-nav button span){font-size:13px!important;line-height:1.4!important}
+ .scope :global(.finalize-bar){padding:14px 0!important;gap:10px!important}
+ .scope :global(.finalize-bar>button){min-height:48px;font-size:15px!important;width:100%;border-radius:12px!important}
+
+ /* Existing follow-up medication rows become labelled mobile cards. */
+ .scope .followup :global(.medication-table-editor){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+ .scope .followup :global(.medication-lean-table){display:block;width:100%!important;min-width:0!important;background:transparent!important}
+ .scope .followup :global(.medication-lean-table thead){position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%)}
+ .scope .followup :global(.medication-lean-table tbody){display:block;width:100%}
+ .scope .followup :global(.medication-lean-table tr){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 12px;padding:16px 0!important;border-bottom:1px solid var(--mobile-line);background:transparent!important}
+ .scope .followup :global(.medication-lean-table td),.scope .followup :global(.medication-lean-table th[scope=row]){display:block;min-width:0;width:auto!important;border:0!important;padding:0!important;background:transparent!important;overflow-wrap:anywhere;white-space:normal!important;text-align:left}
+ .scope .followup :global(.medication-lean-table th[scope=row]){grid-column:1/-1;font-size:16px!important;font-weight:700!important}
+ .scope .followup :global(.med-status){font-size:12px!important;line-height:1.4;padding:4px 8px!important}
+ .scope .followup :global(.medication-lean-table td:nth-child(n+6)),.scope .followup :global(.medication-lean-table td[colspan]){grid-column:1/-1}
+ .scope .followup :global(.medication-lean-table td:nth-child(2)::before){content:'Δόση'}
+ .scope .followup :global(.medication-lean-table td:nth-child(3)::before){content:'Συχνότητα'}
+ .scope .followup :global(.medication-lean-table td:nth-child(4)::before){content:'Περίοδος'}
+ .scope .followup :global(.medication-lean-table td:nth-child(5)::before){content:'Κατάσταση'}
+ .scope .followup :global(.medication-lean-table td:nth-child(6)::before){content:'Ανταπόκριση'}
+ .scope .followup :global(.medication-lean-table td:nth-child(7)::before){content:'Παρενέργειες'}
+ .scope .followup :global(.medication-lean-table td::before){display:block;font-size:12px;font-weight:600;color:var(--mobile-muted);line-height:1.5;margin-bottom:5px}
+ .scope .followup :global(.medication-lean-table .med-row-actions button),.scope .followup :global(.medication-lean-table .med-add-row){width:100%;min-height:44px}
+ .scope .followup :global(.medication-lean-table tr:has(td[colspan])){padding:12px 0 16px!important;border:0}
+}
+@media screen and (max-width:360px){
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button svg){display:none}
+ .bottomNav a{font-size:11px}
+}
+
+/* Restore the warm peach / cream identity without changing mobile geometry. */
+@media screen and (max-width:760px){
+ :is(.scope,.navigationPage){--mobile-canvas:#f8f5ef;--mobile-surface:#fffdf8;--mobile-field:#fffefa;--mobile-peach:#f3e5d9;--mobile-line:#dde3d9;--mobile-green:#245c47;--mobile-sage:#edf4ef;--mobile-ink:#263d33;--mobile-muted:#586d62;background:var(--mobile-canvas)}
+ .navigationPage :global(.secondary-content),.navigationPage :global(.registry-wrap),.navigationPage :global(.library-redesign){background:transparent!important}
+ .bottomNav{background:#fffdf8;border-color:#dde3d9}
+ :is(.scope,.navigationPage) :global(.mobile-menu-button),
+ .navigationPage :global(.card),.navigationPage :global(.patient-registry),
+ .navigationPage :global(.library-instrument-card),.scope :global(.calendar-control-bar),
+ .scope :global(.clinical-agenda-row),.scope :global(.patient-workspace-content ol>li),
+ .scope :global(.patient-details-card),.summary>section,
+ .scope .followup>section:not([data-mobile-section=notes]),.scope .followup>details{background:var(--mobile-surface)!important;border-color:var(--mobile-line)!important}
+ .navigationPage :global(.metric.rose){background:var(--mobile-peach)!important;border-color:#e7d8ca!important}
+ .navigationPage :global(.registry-row),.navigationPage :global(.library-instrument-card .instrument-meta){border-color:var(--mobile-line)!important}
+ .scope :global(.clinical-agenda-row.next){background:linear-gradient(110deg,#edf4eb,var(--mobile-surface))!important}
+ :is(.scope,.navigationPage) :global(input:not([type=checkbox]):not([type=radio])),
+ :is(.scope,.navigationPage) :global(select),:is(.scope,.navigationPage) :global(textarea),
+ .navigationPage :global(.registry-search),.navigationPage :global(.library-searchbar),
+ .scope .followup :global([data-writing-editor]){background:var(--mobile-field)!important;border-color:var(--mobile-line)!important}
+ :is(.scope,.navigationPage) :global(.dashboard-widget-sheet),
+ .scope :global(.calendar-quick-panel),.scope :global(.calendar-appointment-dialog),
+ .scope :global(.entry-modal),.scope :global(.visit-part),
+ .navigationPage :global(.instrument-sheet),.navigationPage :global(.library-history-preview){background:var(--mobile-surface)!important;border-color:var(--mobile-line)!important}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>details>summary){background:var(--mobile-surface);border-color:var(--mobile-line)}
+}
+
+/* Calendar is a working time canvas on mobile, with optional controls. */
+@media screen and (max-width:760px){
+ .scope:has(:global(.calendar-page-content)){min-height:calc(100dvh - 24px)!important}
+ .scope.scope :global(.workspace:has(.calendar-page-content)){min-height:calc(100dvh - 24px)!important}
+ .scope.scope :global(.calendar-page-content){height:calc(100dvh - 156px - env(safe-area-inset-bottom));min-height:0;display:flex;flex-direction:column;padding:12px 12px 10px!important;max-width:none!important}
+ .scope.scope :global(.calendar-page-heading){display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center!important;gap:8px!important;margin:0 0 10px!important;flex-shrink:0}
+ .scope.scope :global(.calendar-page-heading h1){font-size:22px!important;margin:0!important}
+ .scope.scope :global(.calendar-page-actions){width:auto!important;gap:6px!important;flex-wrap:nowrap!important}
+ .scope.scope :global(.calendar-page-actions button){min-height:44px!important;padding:8px 12px!important}
+ .scope.scope :global(.voice-calendar-button){font-size:0!important;width:44px;padding:0!important;gap:0!important}
+ .scope.scope :global(.voice-calendar-button svg){width:20px;height:20px}
+ .scope.scope :global(.calendar-page-grid){display:flex;flex:1;min-height:0;gap:0;margin:0!important}
+ .scope.scope :global(.calendar-week-card.interactive-week){height:100%!important;min-height:0!important;width:100%;padding:0!important;max-height:none!important;border:1px solid #d6e3db!important;border-radius:14px!important;background:#fcfdfb!important;box-shadow:none!important;scrollbar-gutter:auto}
+ .scope.scope :global(.calendar-time-grid){grid-template-columns:42px repeat(7,minmax(132px,1fr))!important;min-width:966px!important;contain:none}
+ .scope.scope :global(.calendar-time-grid.mobile-day-grid){grid-template-columns:42px minmax(0,1fr)!important;min-width:0!important;width:100%}
+ .scope.scope :global(.week-time-axis){position:sticky;left:0;z-index:5;background:#f1f6f2!important;border-right:1px solid #d6e3db}
+ .scope.scope :global(.week-time-axis>span){font-size:11px!important;color:var(--mobile-muted)!important}
+ .scope.scope :global(.week-time-corner){position:sticky;left:0;z-index:7;background:#edf4ef!important}
+ .scope.scope :global(.week-day-head.time-grid-head){padding:8px!important;background:#edf4ef!important;border-radius:0!important;min-height:52px!important}
+ .scope.scope :global(.week-day-head span){font-size:12px!important}
+ .scope.scope :global(.week-day-head strong){font-size:14px!important}
+ .scope.scope :global(.week-day-head small){font-size:11px!important}
+ .scope.scope :global(.mobile-day-grid .week-day-head){display:flex;align-items:center;gap:8px;min-height:40px!important;padding:6px 12px!important}
+ .scope.scope :global(.week-time-column){background-color:#fcfdfb!important}
+ .scope.scope :global(.week-time-column.today){background-color:#f8fbf8!important}
+ .scope.scope :global(.week-event){border-radius:10px!important;padding:8px 10px!important;box-shadow:0 1px 4px rgba(31,53,40,.045)!important;min-width:0}
+ .scope.scope :global(.week-event-name){font-size:12px!important;line-height:1.35!important;white-space:normal!important;overflow-wrap:anywhere}
+ .scope.scope :global(.week-event-time){font-size:11px!important;line-height:1.4!important}
+ .scope.scope :global(.mobile-day-grid .week-event-name){font-size:15px!important;font-weight:700!important;line-height:1.35!important}
+ .scope.scope :global(.mobile-day-grid .week-event-time){font-size:12px!important;font-weight:600!important}
+ .scope.scope :global(.calendar-now-line span){font-size:11px!important}
+ .scope.scope :global(.calendar-empty-state){font-size:14px!important}
+ .scope.scope :global(.calendar-quiet-attention){display:none}
+ .calendarControls{flex-shrink:0;position:relative;z-index:10;margin-bottom:10px}
+ .calendarDateRow{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:6px}
+ .calendarDateRow>button{display:grid;place-items:center;border:1px solid #d6e3db;background:#edf4ef;color:#245c47;border-radius:10px;min-height:44px}
+ .calendarOptions{min-width:0}
+ .calendarOptions>summary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;list-style:none;cursor:pointer;font-size:15px;color:var(--mobile-ink)}
+ .calendarOptions>summary::-webkit-details-marker{display:none}
+ .calendarOptions>summary strong{font-size:15px;font-weight:700;white-space:nowrap}
+ .calendarOptionsPanel{position:absolute;top:48px;left:0;right:0;padding:16px;border:1px solid var(--mobile-line);border-radius:14px;background:var(--mobile-surface);box-shadow:0 10px 28px rgba(40,49,33,.15);display:grid;gap:14px;max-height:65dvh;overflow:auto}
+ .calendarOptionsPanel label{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--mobile-muted)}
+ .calendarOptionsPanel input,.calendarOptionsPanel select{width:100%;max-width:100%;min-height:44px;padding:10px;border:1px solid var(--mobile-line);background:var(--mobile-field);border-radius:10px;color:var(--mobile-ink)}
+ .calendarOptionsPanel>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .calendarOptionsPanel>div>button:last-child{grid-column:1/-1}
+ .calendarOptionsPanel button,.calendarViewRow>button{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--mobile-line);background:var(--mobile-field);color:var(--mobile-ink);border-radius:10px;padding:8px 12px}
+ .calendarViewRow{display:flex;align-items:center;gap:8px;margin-top:6px}
+ .calendarViewRow>div{display:grid;grid-template-columns:1fr 1fr;flex:1;background:#e7efe9;border-radius:10px;padding:3px}
+ .calendarViewRow>div button{border:0;background:transparent;min-height:38px;border-radius:8px;font-size:13px;color:var(--mobile-muted);font-weight:600}
+ .calendarViewRow>div button[aria-pressed=true]{background:#245c47;color:#fffaf3;box-shadow:0 1px 3px rgba(31,65,48,.12)}
+ .calendarDayStrip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(44px,1fr);gap:3px;overflow-x:auto;margin-top:8px;scrollbar-width:thin}
+ .calendarDayStrip button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:48px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--mobile-muted);padding:4px}
+ .calendarDayStrip button span{font-size:11px;line-height:1.3}
+ .calendarDayStrip button strong{font-size:15px;line-height:1.4}
+ .calendarDayStrip button[aria-pressed=true]{background:#245c47;color:#fffaf3;border-color:#245c47}
+}
+@media screen and (max-width:760px) and (max-height:520px){
+ .scope.scope :global(.calendar-page-content){height:auto;min-height:calc(100dvh - 156px)}
+ .scope.scope :global(.calendar-week-card.interactive-week){height:300px!important}
+}
+
+/* One mobile palette: warm canvas, quiet ivory surfaces, green interaction hierarchy. */
+@media screen and (max-width:760px){
+ :is(.scope,.navigationPage) :global(h1),:is(.scope,.navigationPage) :global(h2),:is(.scope,.navigationPage) :global(h3){color:var(--mobile-ink)}
+ :is(.scope,.navigationPage) :global(.mobile-menu-button){color:var(--mobile-green)!important;background:var(--mobile-sage)!important;border-color:var(--mobile-line)!important}
+ .bottomNav a[aria-current=page]{background:#e7efe9;color:#245c47}
+ .navigationPage :global(.metric.sage),.navigationPage :global(.metric.blue){background:var(--mobile-sage)!important;border-color:#d6e3db!important}
+ .navigationPage :global(.metric.gold){background:#f5efe3!important;border-color:#e6dfd1!important}
+ .navigationPage :global(.metric strong){color:var(--mobile-green)!important}
+ .navigationPage :global(.metric span),.navigationPage :global(.metric small){color:var(--mobile-muted)!important}
+ .navigationPage :global(.registry-stats>div),.navigationPage :global(.instrument-area-chip),.navigationPage :global(.instrument-code){background:var(--mobile-sage)!important;color:var(--mobile-green)!important;border-color:#d6e3db!important}
+ .navigationPage :global(.registry-filters button),.navigationPage :global(.library-category-tabs button){background:var(--mobile-sage)!important;color:var(--mobile-green)!important}
+ .navigationPage :global(.registry-filters button.active),.navigationPage :global(.library-category-tabs button.active){background:var(--mobile-green)!important;color:var(--mobile-surface)!important;box-shadow:none!important}
+ .navigationPage :global(.registry-heading .record),.scope.scope :global(.patient-hero .patient-voice-cta){background:var(--mobile-green)!important;border-color:var(--mobile-green)!important;color:var(--mobile-surface)!important}
+ .scope.scope :global(.patient-hero .patient-voice-cta small){color:#e1eee9!important}
+ .navigationPage :global(.registry-open),.navigationPage :global(.folder-icon-button){background:var(--mobile-sage)!important;color:var(--mobile-green)!important;border-color:#d6e3db!important}
+ .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button[aria-current=page]){background:var(--mobile-green)!important;color:var(--mobile-surface)!important}
+ .scope .followup :global(.visit-scroll-nav button.active),.scope .followup :global(.visit-part-tabs button.active){background:var(--mobile-green)!important;color:var(--mobile-surface)!important;border-color:var(--mobile-green)!important}
+ :is(.scope,.navigationPage) :global(.registry-search),:is(.scope,.navigationPage) :global(.library-searchbar){background:var(--mobile-field)!important;border-color:var(--mobile-line)!important}
+ :is(.scope,.navigationPage) :is(button,a,summary,input,select,textarea):focus-visible{outline-color:var(--mobile-green)}
+}
+
+/* Approved calendar reference: neutral shell and white time canvas, mobile only. */
+@media screen and (max-width:760px){
+ .scope:has(:global(.calendar-page-content)){--mobile-canvas:#faf8f5;--mobile-line:#ebe9e3;--mobile-green:#214c3c;--mobile-surface:#fff;--mobile-field:#fff}
+ .scope:has(:global(.calendar-page-content)) :global(.mobile-menu-button){display:none!important}
+ .scope:has(:global(.calendar-page-content)) :global(.topbar){justify-content:flex-end!important;border-bottom-color:transparent!important}
+ .scope:has(:global(.calendar-page-content)) .bottomNav{background:#faf8f5;border-color:#ece9e3;box-shadow:none}
+ .scope:has(:global(.calendar-page-content)) .bottomNav a[aria-current=page]{background:#e4eee7;color:#214c3c}
+ .scope.scope :global(.calendar-page-content){padding-left:16px!important;padding-right:16px!important}
+ .scope.scope :global(.calendar-week-card.interactive-week){border-color:#e9ece8!important;background:#fff!important;border-radius:18px!important;box-shadow:0 1px 2px rgba(31,53,40,.025)!important}
+ .scope.scope :global(.week-time-axis){background:#fff!important;border-right-color:#f2f3f1}
+ .scope.scope :global(.week-time-corner),.scope.scope :global(.week-day-head.time-grid-head){background:#f2f6f3!important}
+ .scope.scope :global(.week-time-column),.scope.scope :global(.week-time-column.today){background-color:#fff!important}
+ .scope.scope :global(.week-time-axis>span){color:#89948e!important}
+ .scope.scope :global(.mobile-day-grid .week-event){border-radius:14px!important;box-shadow:none!important}
+ .calendarDateRow>button{background:#f1efe9;border-color:transparent;color:#343e37;border-radius:14px}
+ .calendarViewRow>div{background:#eae6dc;border-radius:14px;padding:4px}
+ .calendarViewRow>div button[aria-pressed=true],.calendarDayStrip button[aria-pressed=true]{background:#214c3c;color:#fff;border-color:#214c3c}
+ .calendarDayStrip{padding-bottom:10px;border-bottom:1px solid #ece9e3}
+ .calendarDayStrip button[aria-pressed=true]{border-radius:14px}
+}
+@media screen and (max-width:760px){
+ .scope:has(:global(.calendar-page-content)){--mobile-green:#224837;--mobile-line:#e8e4dc}
+ .scope.scope :global(.calendar-page-heading h1){font-size:24px!important;color:#1c1917!important}
+ .scope.scope :global(.calendar-page-actions>button:not(.voice-calendar-button)){border-radius:999px!important;background:#e8efe8!important;color:#1b3d2f!important}
+ .scope.scope :global(.week-time-corner),.scope.scope :global(.week-day-head.time-grid-head){background:#f3f6f3!important}
+ .calendarViewRow>div{background:#eae5db}
+ .calendarViewRow>div button[aria-pressed=true],.calendarDayStrip button[aria-pressed=true]{background:#224837;border-color:#224837}
+ .scope:has(:global(.calendar-page-content)) .bottomNav a[aria-current=page]{background:transparent;color:#1b3d2f}
+ .scope:has(:global(.calendar-page-content)) .bottomNav a[aria-current=page]>svg{box-sizing:content-box;padding:4px 18px;background:#e4ece4;border-radius:16px}
+}
+
+/* Recover redundant mobile calendar chrome for the working timeline. */
+@media screen and (max-width:760px){
+ .scope:has(:global(.calendar-page-content)) :global(.topbar){display:none!important}
+ .scope.scope :global(.calendar-page-content){height:calc(100dvh - 92px - env(safe-area-inset-bottom))}
+ .scope.scope :global(.mobile-day-grid){grid-template-rows:0 auto}
+ .scope.scope :global(.mobile-day-grid>.week-time-corner),.scope.scope :global(.mobile-day-grid>.week-day-head){display:none!important}
+}
+@media screen and (max-width:760px) and (max-height:520px){
+ .scope.scope :global(.calendar-page-content){height:auto;min-height:calc(100dvh - 92px)}
+}
+@media screen and (max-width:760px){
+ .calendarDateRow>button.calendarNewAppointment{background:#224837;color:#fff;border-color:#224837;font-size:15px;font-weight:700;border-radius:12px;min-height:48px}
+ .calendarViewRow{position:relative}
+ .calendarViewRow .calendarOptions>summary{min-width:44px;padding:0 6px;border:1px solid #e8e4dc;border-radius:10px;background:#f1efe9;gap:3px}
+ .calendarViewRow .calendarOptionsPanel{top:52px}
+ .scope.scope :global(.calendar-page-actions .profile){display:flex;align-items:center;gap:6px;text-decoration:none;padding:0;background:transparent}
+ .scope.scope :global(.calendar-page-actions .profile-copy){display:none!important}
+ .scope.scope :global(.calendar-page-actions .profile .avatar){width:36px;height:36px;font-size:12px;background:#e5ede5;color:#1b3d2f;border:1px solid #d5e3d5}
+ .scope.scope :global(.calendar-page-actions .pilot-badge){font-size:10px;background:#efece6;border-color:#dfdad0;color:#586d62}
+}

@@ -1,5 +1,10 @@
 "use client";
 import {useMobileNavigation} from '@/components/useMobileNavigation';
+import MobileCalendarControls from '@/components/mobile/MobileCalendarControls';
+import {useMobileCalendarLayout} from '@/components/mobile/useMobileCalendarLayout';
+import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
+import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
+import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
@@ -175,6 +180,7 @@ function eventDurationMinutes(event: CalendarEvent) {
 
 export default function CalendarPage() {
   const [mobileNav, setMobileNav] = useMobileNavigation();
+  const mobileCalendar=useMobileCalendarLayout();
   const [view, setView] = useState<"day" | "week">("week");
   const [voice, setVoice] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -331,6 +337,8 @@ export default function CalendarPage() {
 
 
   const days = useMemo(() => weekKeys(focusDate), [focusDate]);
+  const gridDays=useMemo(()=>mobileCalendar&&view==='day'?days.filter(day=>day.key===focusDate):days,[mobileCalendar,view,days,focusDate]);
+  const mobileFocus=(value:string)=>{setFocusDate(value);weekScrollerRef.current?.scrollTo({top:0,left:0,behavior:'instant'})};
 
   const shiftFocus = useCallback((daysToMove: number) => {
     const [year, month, day] = focusDate.split("-").map(Number);
@@ -343,14 +351,14 @@ export default function CalendarPage() {
   const currentDay=dateKey(new Date(nowMs));
   const currentMinute=athensMinutes(new Date(nowMs).toISOString());
   const weekWindow = useMemo(() => {
-    const base=calendarWindow(visibleEvents,days.map(day=>day.key));
-    if(!days.some(day=>day.key===currentDay))return base;
+    const base=calendarWindow(visibleEvents,gridDays.map(day=>day.key));
+    if(!gridDays.some(day=>day.key===currentDay))return base;
     const aroundStart=Math.max(0,Math.floor((currentMinute-90)/60)*60);
     const aroundEnd=Math.min(1440,Math.ceil((currentMinute+90)/60)*60);
     return {start:Math.min(base.start,aroundStart),end:Math.max(base.end,aroundEnd)};
-  }, [days, visibleEvents,currentDay,currentMinute]);
+  }, [gridDays, visibleEvents,currentDay,currentMinute]);
   const [savedAppointment,setSavedAppointment]=useState<CalendarEvent|null>(null);
-  const weekHourHeight = 68;
+  const weekHourHeight = mobileCalendar ? 88 : 68;
   const weekTotalHeight = ((weekWindow.end - weekWindow.start) / 60) * weekHourHeight;
   const weekHours = Array.from(
     { length: (weekWindow.end - weekWindow.start) / 60 + 1 },
@@ -358,7 +366,7 @@ export default function CalendarPage() {
   );
 
   useEffect(() => {
-    if (view !== "week" || !positionReady || restoringPosition.current) return;
+    if ((!mobileCalendar && view !== "week") || !positionReady || restoringPosition.current) return;
     const scroller = weekScrollerRef.current;
     if (!scroller) return;
     const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${focusDate}"]`);
@@ -367,11 +375,11 @@ export default function CalendarPage() {
       const left = target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2;
       scroller.scrollTo({ left: Math.max(0, left), behavior: "instant" });
     });
-  }, [view, days, focusDate, positionReady, restoringPosition]);
+  }, [mobileCalendar,view, gridDays, focusDate, positionReady, restoringPosition]);
   useEffect(()=>{
     if(!positionReady)return;
     if(restoringPosition.current){centeredTodayRef.current=currentDay;return}
-    if(view!=="week"||focusDate!==currentDay){centeredTodayRef.current=null;return}
+    if((!mobileCalendar&&view!=="week")||focusDate!==currentDay){centeredTodayRef.current=null;return}
     if(loading||savedAppointment||centeredTodayRef.current===currentDay)return;
     const frame=requestAnimationFrame(()=>{
       const scroller=weekScrollerRef.current;
@@ -385,16 +393,16 @@ export default function CalendarPage() {
       scroller.scrollTo({top:Math.max(0,markerTop-headerHeight-visibleHours*.4),behavior:"instant"});
     });
     return()=>cancelAnimationFrame(frame);
-  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition,savedAppointment]);
+  },[mobileCalendar,view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition,savedAppointment]);
 
   useEffect(()=>{
-    if(!savedAppointment||!events.some(e=>e.id===savedAppointment.id&&e.scheduled_start===savedAppointment.scheduled_start)||loading||view!=="week"||focusDate!==dateKey(new Date(savedAppointment.scheduled_start)))return;
+    if(!savedAppointment||!events.some(e=>e.id===savedAppointment.id&&e.scheduled_start===savedAppointment.scheduled_start)||loading||(!mobileCalendar&&view!=="week")||focusDate!==dateKey(new Date(savedAppointment.scheduled_start)))return;
     const frame=requestAnimationFrame(()=>{const scroller=weekScrollerRef.current;if(!scroller)return;
       const top=(athensMinutes(savedAppointment.scheduled_start)-weekWindow.start)/60*weekHourHeight;
       scroller.scrollTo({top:Math.max(0,top-scroller.clientHeight*.25),behavior:'instant'});
       centeredTodayRef.current=currentDay;setSavedAppointment(null);
     });return()=>cancelAnimationFrame(frame);
-  },[savedAppointment,events,loading,view,focusDate,weekWindow.start,currentDay]);
+  },[mobileCalendar,savedAppointment,events,loading,view,focusDate,weekWindow.start,currentDay]);
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     const raw = weekWindow.start + ((clientY - rect.top) / rect.height) * (weekWindow.end - weekWindow.start);
@@ -475,7 +483,7 @@ export default function CalendarPage() {
   }, [moveSaving, pendingMove, refreshEvents]);
 
   return (
-    <main className="app-shell secondary-shell">
+    <main className={`app-shell secondary-shell${mobileV2Enabled?` ${mobileStyles.scope}`:``}`}><MobileClinicalNav active="calendar"/>
       <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav ? "sidebar mobile-open" : "sidebar"}>
         <button
           className="mobile-nav-close"
@@ -525,14 +533,16 @@ export default function CalendarPage() {
               <h1>Ημερολόγιο</h1>
             </div>
             <div className="calendar-page-actions">
+              {mobileCalendar?<PilotProfile/>:<>
               <button className="voice-calendar-button" onClick={() => setVoice(true)}>
                 <Mic2 size={16} /> Φωνητική εντολή
               </button>
-              <button className="add-appointment" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button>
+              <button className="add-appointment" aria-label={mobileCalendar?"Νέο ραντεβού":undefined} onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>{mobileCalendar?"+ Νέο":"+ Νέο ραντεβού"}</button>
+              </>}
             </div>
           </div>
 
-          <div className="calendar-summary calendar-control-bar">
+          {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-nav">
               <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
               <strong>{focusTitle(focusDate)}</strong>
@@ -544,7 +554,7 @@ export default function CalendarPage() {
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
             </div>
-          </div>
+          </div>}
 
           {calendarError && (
             <div className="calendar-runtime-error">
@@ -554,7 +564,7 @@ export default function CalendarPage() {
           )}
 
           <div className="calendar-page-grid">
-            {view === "day" ? (
+            {view === "day" && !mobileCalendar ? (
               <section className="calendar-day-card">
                 {loading ? (
                   <div className="calendar-empty-state">Φόρτωση ημερολογίου…</div>
@@ -589,9 +599,9 @@ export default function CalendarPage() {
               </section>
             ) : (
               <section ref={weekScrollerRef} onScroll={rememberPosition} className="calendar-week-card interactive-week">
-                <div className="calendar-time-grid">
+                <div className={"calendar-time-grid"+(mobileCalendar&&view==="day"?" mobile-day-grid":"")}>
                   <div className="week-time-corner" />
-                  {days.map(day => {
+                  {gridDays.map(day => {
                     const count = visibleEvents.filter(event => segment(event,day.key)).length;
                     return <button data-calendar-day={day.key} className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
                       <span>{day.day}</span>
@@ -611,7 +621,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
 
-                  {days.map(day => {
+                  {gridDays.map(day => {
                     const items = visibleEvents.filter(event => segment(event,day.key));
                     const lanes=calendarLanes(items,day.key);
                     const previewMinute = dragPreview?.dayKey === day.key ? dragPreview.minute : null;

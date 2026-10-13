@@ -61,7 +61,7 @@ test('successful save collapses only after refresh; failed refresh cannot resubm
 });
 
 const summaryModule={exports:{}};
-const summaryMocks={'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':()=>React.createElement('section',{},'ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'),'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
+const summaryMocks={'@/components/mobile/mobile-v2':{mobileV2Enabled:false},'@/components/mobile/MobileClinical.module.css':{},'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':()=>React.createElement('section',{},'ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'),'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
 new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))(name=>name in summaryMocks?summaryMocks[name]:require(name),summaryModule,summaryModule.exports);
 function renderSummary(bundle){return renderToStaticMarkup(React.createElement(summaryModule.exports.default,{bundle,reload:async()=>{},onVisit:()=>{},onMeasurements:()=>{},onTreatment:()=>{},onHistory:()=>{}}))}
 test('real summary presentation places existing active issues first and current information before self-report',()=>{

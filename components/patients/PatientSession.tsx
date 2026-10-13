@@ -136,13 +136,16 @@ export default function PatientSession({
   const root=documentRef.current;if(!root)return;
   const sections=[...root.querySelectorAll<HTMLElement>('[data-visit-part]')];
   let frame=0;
-  const update=()=>{frame=0;const top=0;setActivePart(activeVisitPart(sections.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
+  const dialog=root.closest('dialog');
+  const navigationKeys=new Set<string>(visitSteps[draft?.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key])=>key));
+  const navigable=sections.filter(section=>navigationKeys.has(section.dataset.visitPart||''));
+  const update=()=>{frame=0;const top=dialog?.getBoundingClientRect().top||0;const atBottom=dialog&&dialog.scrollTop>0&&dialog.scrollTop+dialog.clientHeight>=dialog.scrollHeight-2;setActivePart(atBottom&&navigable.length?navigable[navigable.length-1].dataset.visitPart!:activeVisitPart(navigable.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
-  const target=window;
+  const target=dialog||window;
   target.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
   const observer=new ResizeObserver(schedule);sections.forEach(section=>observer.observe(section));update();
   return()=>{target.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);observer.disconnect();if(frame)cancelAnimationFrame(frame)};
- },[draft?.id]);
+ },[draft?.id,detailed]);
  function goToPart(key:string){documentRef.current?.querySelector<HTMLElement>('[data-visit-part="'+key+'"]')?.scrollIntoView({behavior:'smooth',block:'start'})}
 
  async function finishLater(){

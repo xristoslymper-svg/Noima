@@ -267,4 +267,3 @@
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(6) {grid-column:2;grid-row:1}
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(7) {grid-column:3;grid-row:1}
 }
-

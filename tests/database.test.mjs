@@ -934,3 +934,26 @@ test('inline side effect edit preserves history and rejects stale or closed sess
  await sql('select demo_session_finalize($1,$2,(select version from demo_sessions where id=$2))',[t,s.id]);
  await assert.rejects(sql("select demo_initial_side_effect_edit($1,$2,$3,'Closed visit',$4)",[t,s.id,e.id,edited.updated_at]),/session_unavailable/);
 });
+
+test('calendar new patient and appointment commit once, retry once, reject changed and foreign requests',async()=>{
+ const [{identity}]=await asUser(a,()=>sql('select pilot_identity() identity'));
+ const t=identity.workspace_id,id='88100000-0000-4000-8000-000000000001';
+ const query='select demo_calendar_create_patient_retry($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) result';
+ const args=[t,id,'Synthetic Retry','Patient','6900000000','synthetic@example.invalid','2035-01-12T15:00:00Z','2035-01-12T15:50:00Z','initial_assessment',false];
+ const first=(await asUser(a,()=>sql(query,args)))[0].result;
+ const retry=(await asUser(a,()=>sql(query,args)))[0].result;
+ assert.equal(first.patient.id,retry.patient.id);assert.equal(first.event.id,id);assert.equal(first.event.patient_id,first.patient.id);assert.equal(first.patient.phone,args[4]);assert.equal(first.event.sms_reminder_enabled,false);
+ assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1 and first_name=$2',[t,args[2]]))[0].n,1);
+ await rejected(b,query,args,/pilot_not_authorized/);
+ await rejected(a,query,args.map((v,i)=>i===2?'Changed':v),/request_conflict/);
+ await rejected(a,query,args.map((v,i)=>i===1?'88100000-0000-4000-8000-000000000002':v),/calendar_conflict/);
+ assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1 and first_name=$2',[t,args[2]]))[0].n,1);
+});
+
+test('failed appointment insert rolls back its newly created patient and history',async()=>{
+ const t='88100000-0000-4000-8000-000000000003';await sql('select demo_tester_bootstrap($1)',[t]);
+ await db.exec(`create function public.workflow_fail_event() returns trigger language plpgsql as $$begin if new.id='88100000-0000-4000-8000-000000000004' then raise exception 'synthetic_insert_failure'; end if; return new; end$$;create trigger workflow_fail_event before insert on demo_calendar_events for each row execute function public.workflow_fail_event();`);
+ try{await assert.rejects(sql("select demo_calendar_create_patient_retry($1,'88100000-0000-4000-8000-000000000004','Rollback Synthetic','','','','2035-02-01T10:00Z','2035-02-01T11:00Z','initial_assessment',false)",[t]),/synthetic_insert_failure/);
+ assert.equal((await sql("select count(*)::int n from demo_patients where tester_id=$1 and first_name='Rollback Synthetic'",[t]))[0].n,0);
+ }finally{await db.exec('drop trigger workflow_fail_event on demo_calendar_events;drop function public.workflow_fail_event();')}
+});

@@ -1,4 +1,5 @@
 'use client';
+import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import {Check,Mic,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
 import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type WritingProvenance,type WritingSnapshot} from '@/lib/clinical/clinical-writing';
@@ -22,11 +23,12 @@ export default function ClinicalTextField(p:Props){
  useEffect(()=>{machine.sync(p.value)},[machine,p.value]);
  useEffect(()=>{
   mounted.current=true;
-  try{const stored=sessionStorage.getItem(storageKey);const recovered=stored&&recoverWriting(JSON.parse(stored));if(recovered)machine.recover(recovered)}catch{}
-  return()=>{mounted.current=false;request.current?.abort();recorder.current?.cancel();if(activeCapture===lease.current)activeCapture=null;machine.stop()};
+  const leave=()=>{recorder.current?.cancel();if(activeCapture===lease.current)activeCapture=null;machine.stop()};window.addEventListener('pagehide',leave);
+  try{const stored=readRecovery(sessionStorage,storageKey);const recovered=stored&&recoverWriting(JSON.parse(stored));if(recovered)machine.recover(recovered)}catch{}
+  return()=>{window.removeEventListener('pagehide',leave);mounted.current=false;request.current?.abort();recorder.current?.cancel();if(activeCapture===lease.current)activeCapture=null;machine.stop()};
  },[machine,storageKey]);
  useEffect(()=>{if(!p.recovery||machine.snapshot.pending||writingBusy(machine.snapshot.phase))return;machine.recover(p.recovery);p.onRecoveryConsumed?.()},[machine,p.recovery,p.onRecoveryConsumed]);
- useEffect(()=>{try{if(snapshot.pending)sessionStorage.setItem(storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
+ useEffect(()=>{try{if(snapshot.pending)writeRecovery(sessionStorage,storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
  useEffect(()=>p.registerFlusher(key,async()=>{try{if(audio.current)throw new Error();machine.assertSafe()}catch{textarea.current?.focus();revealControls();throw new Error('Ολοκληρώστε τον έλεγχο στο πεδίο «'+latest.current.title+'» πριν συνεχίσετε.')}}),[machine,key,p.registerFlusher]);
  useEffect(()=>{latest.current.onDirtyChange(key,pending||busy||awaitingAudio);latest.current.onPendingChange?.(pending||busy||awaitingAudio);return()=>{latest.current.onDirtyChange(key,false);latest.current.onPendingChange?.(false)}},[key,pending,busy,awaitingAudio]);
  useEffect(()=>{if(!pending&&!busy&&!awaitingAudio)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending,busy,awaitingAudio]);
@@ -85,7 +87,7 @@ export default function ClinicalTextField(p:Props){
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
    <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
-   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/></button>
+   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>Διατύπωση AI</span></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>

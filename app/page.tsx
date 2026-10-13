@@ -39,7 +39,7 @@ type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appoi
 type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
 type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null;intake_id:string|null;provenance:string|null};
 type OverviewIntake={id:string;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"submitted"|"conflict";submitted_at:string|null;created_at:string};
-type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"ready"|"conflict";when:string;has_history:boolean;psychometrics:string[]};
+type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"ready"|"conflict";when:string;has_history:boolean;psychometrics:string[];assessmentIds:{id:string;instrument:string}[]};
 type OverviewPayload={events?:OverviewEvent[];tasks?:TodoTask[];psychometrics?:OverviewPsychometric[];intakes?:OverviewIntake[]};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
@@ -122,14 +122,15 @@ export default function Page() {
     const groups=new Map<string,ReviewSubmission>();
     const addTool=(group:ReviewSubmission,tool:string)=>{if(!group.tools.includes(tool))group.tools.push(tool);if(tool==="history")group.has_history=true;else if(!group.psychometrics.includes(tool))group.psychometrics.push(tool)};
     for(const intake of intakesForReview){
-      const group:ReviewSubmission={key:"intake:"+intake.id,intake_id:intake.id,patient_id:intake.patient_id,patient_name:intake.patient_name,tools:[],channel:intake.channel,status:intake.status==="conflict"?"conflict":"ready",when:intake.submitted_at||intake.created_at,has_history:false,psychometrics:[]};
+      const group:ReviewSubmission={key:"intake:"+intake.id,intake_id:intake.id,patient_id:intake.patient_id,patient_name:intake.patient_name,tools:[],channel:intake.channel,status:intake.status==="conflict"?"conflict":"ready",when:intake.submitted_at||intake.created_at,has_history:false,psychometrics:[],assessmentIds:[]};
       intake.tools.forEach(tool=>addTool(group,tool));groups.set(group.key,group);
     }
     for(const assessment of psychometricsForReview){
       const key=assessment.intake_id?"intake:"+assessment.intake_id:"assessment:"+assessment.id;
       const existing=groups.get(key);
-      const group=existing||{key,intake_id:assessment.intake_id,patient_id:assessment.patient_id,patient_name:assessment.patient_name,tools:[],channel:reviewChannelLabel("",assessment.provenance||""),status:"ready" as const,when:assessment.completed_at||assessment.created_at,has_history:false,psychometrics:[]};
+      const group=existing||{key,intake_id:assessment.intake_id,patient_id:assessment.patient_id,patient_name:assessment.patient_name,tools:[],channel:reviewChannelLabel("",assessment.provenance||""),status:"ready" as const,when:assessment.completed_at||assessment.created_at,has_history:false,psychometrics:[],assessmentIds:[]};
       addTool(group,assessment.instrument);
+      group.assessmentIds.push({id:assessment.id,instrument:assessment.instrument});
       group.patient_id=group.patient_id||assessment.patient_id;
       group.patient_name=group.patient_name||assessment.patient_name;
       if(!existing)groups.set(key,group);
@@ -290,7 +291,7 @@ export default function Page() {
                 ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>Ταυτοποίηση <ChevronRight size={15}/></button>
                 :submission.patient_id?<div className="review-row-actions">
                   {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>Δείτε ιστορικό</Link>}
-                  {submission.psychometrics.length>0&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=psychometrics"}>Ψυχομετρικά</Link>}
+                  {submission.assessmentIds.map(assessment=><Link key={assessment.id} href={"/patients/demo/"+submission.patient_id+"?tab=treatment&section=measurements&assessment="+encodeURIComponent(assessment.id)}>{assessment.instrument} · Αποτέλεσμα</Link>)}
                  </div>:null}
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν υποβολές ασθενών.</div>}
           </div>}

@@ -1,3 +1,4 @@
+import * as browserRecovery from '../lib/clinical/browser-recovery.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,7 +18,7 @@ function mount({stored,write,onSaved=async()=>{}}={}){
   useEffect(fn,deps){const i=cursor++;if(changed(cells[i]?.deps,deps)){const old=cells[i];cells[i]={deps,fn};effects.push(()=>{old?.cleanup?.();cells[i].cleanup=fn()})}},
  };
  const module={exports:{}};
- vm.runInNewContext(code,{module,exports:module.exports,Error,require:id=>id==='react'?react:reconciliation,
+ vm.runInNewContext(code,{module,exports:module.exports,Error,require:id=>id==='react'?react:id.includes('browser-recovery')?browserRecovery:reconciliation,
   sessionStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
   setTimeout:fn=>{timers.set(++timerId,fn);return timerId},clearTimeout:id=>timers.delete(id),
  });

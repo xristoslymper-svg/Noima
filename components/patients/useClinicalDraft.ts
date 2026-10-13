@@ -1,4 +1,5 @@
 'use client';
+import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {recoveredClinicalDraftDisposition,shouldAdoptClinicalDraftServer} from '@/lib/clinical/draft-reconciliation';
 function clearRecovery(key:string){try{sessionStorage.removeItem(key)}catch{}}
@@ -13,7 +14,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  const backupKey=storageKey+':older-recovery';
  const backupOlder=(value:T,originalVersion:number|null)=>{
   try{
-   sessionStorage.setItem(backupKey,JSON.stringify({value,version:originalVersion}));
+   writeRecovery(sessionStorage,backupKey,JSON.stringify({value,version:originalVersion}));
    setOlderRecovery(value);
   }catch{/* Never overwrite a newer database record with a stale local draft. */}
  };
@@ -25,7 +26,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   const snapshot=latest.current;setSaving(true);setError('');
   const task=(async()=>{try{const result=await callbacks.current.write(snapshot,v.current);v.current=result.version;saved.current=JSON.stringify(result.value);
    if(JSON.stringify(latest.current)===JSON.stringify(snapshot)){latest.current=result.value;setValue(result.value);clearRecovery(storageKey)}
-   else{try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}))}catch{}}
+   else{try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:latest.current,version:v.current}))}catch{}}
    callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
   }catch(e){
    const message=e instanceof Error?e.message:'Αποτυχία αποθήκευσης';
@@ -49,9 +50,9 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(recoveredKey.current===storageKey)return;
   recoveredKey.current=storageKey;
   try{
-   const older=sessionStorage.getItem(backupKey);
+   const older=readRecovery(sessionStorage,backupKey);
    if(older){const parsed=JSON.parse(older);if(parsed?.value)setOlderRecovery(parsed.value as T)}
-   const text=sessionStorage.getItem(storageKey);
+   const text=readRecovery(sessionStorage,storageKey);
    if(!text)return;
    const local=JSON.parse(text) as {value:T;version:number|null};
    const disposition=recoveredClinicalDraftDisposition({
@@ -110,7 +111,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   }
   return ()=>{if(timer.current)clearTimeout(timer.current)};
  },[flush]);
- function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{sessionStorage.setItem(storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
+ function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
  function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
  function resolve(next:T,server:T,serverVersion:number|null){v.current=serverVersion;saved.current=JSON.stringify(server);blocked.current=false;setError('');change(next)}
  // On a genuine conflict, allowing navigation must not discard local text.
@@ -118,7 +119,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  function dismissOlderRecovery(){try{sessionStorage.removeItem(backupKey)}catch{};setOlderRecovery(null)}
  function preserveConflictForNavigation(){
   if(!blocked.current)return false;
-  try{sessionStorage.setItem(storageKey,JSON.stringify({value:latest.current,version:v.current}));return true}catch{return false}
+  try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:latest.current,version:v.current}));return true}catch{return false}
  }
  return {value,currentValue:()=>latest.current,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
 }

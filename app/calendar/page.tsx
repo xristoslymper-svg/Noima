@@ -349,6 +349,7 @@ export default function CalendarPage() {
     const aroundEnd=Math.min(1440,Math.ceil((currentMinute+90)/60)*60);
     return {start:Math.min(base.start,aroundStart),end:Math.max(base.end,aroundEnd)};
   }, [days, visibleEvents,currentDay,currentMinute]);
+  const [savedAppointment,setSavedAppointment]=useState<CalendarEvent|null>(null);
   const weekHourHeight = 68;
   const weekTotalHeight = ((weekWindow.end - weekWindow.start) / 60) * weekHourHeight;
   const weekHours = Array.from(
@@ -371,7 +372,7 @@ export default function CalendarPage() {
     if(!positionReady)return;
     if(restoringPosition.current){centeredTodayRef.current=currentDay;return}
     if(view!=="week"||focusDate!==currentDay){centeredTodayRef.current=null;return}
-    if(loading||centeredTodayRef.current===currentDay)return;
+    if(loading||savedAppointment||centeredTodayRef.current===currentDay)return;
     const frame=requestAnimationFrame(()=>{
       const scroller=weekScrollerRef.current;
       const marker=currentTimeRef.current;
@@ -384,8 +385,16 @@ export default function CalendarPage() {
       scroller.scrollTo({top:Math.max(0,markerTop-headerHeight-visibleHours*.4),behavior:"instant"});
     });
     return()=>cancelAnimationFrame(frame);
-  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition]);
+  },[view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition,savedAppointment]);
 
+  useEffect(()=>{
+    if(!savedAppointment||!events.some(e=>e.id===savedAppointment.id&&e.scheduled_start===savedAppointment.scheduled_start)||loading||view!=="week"||focusDate!==dateKey(new Date(savedAppointment.scheduled_start)))return;
+    const frame=requestAnimationFrame(()=>{const scroller=weekScrollerRef.current;if(!scroller)return;
+      const top=(athensMinutes(savedAppointment.scheduled_start)-weekWindow.start)/60*weekHourHeight;
+      scroller.scrollTo({top:Math.max(0,top-scroller.clientHeight*.25),behavior:'instant'});
+      centeredTodayRef.current=currentDay;setSavedAppointment(null);
+    });return()=>cancelAnimationFrame(frame);
+  },[savedAppointment,events,loading,view,focusDate,weekWindow.start,currentDay]);
   const minuteFromDrop = useCallback((clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     const raw = weekWindow.start + ((clientY - rect.top) / rect.height) * (weekWindow.end - weekWindow.start);
@@ -778,7 +787,9 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {intakeEvent&&<IntakeLauncher appointmentId={intakeEvent.id} patientId={intakeEvent.patient_id||undefined} patientEmail={intakeEvent.provisional_email||""} subjectLabel={intakeEvent.patient_name} defaultTools={intakeEvent.patient_id?["PHQ-9"]:["history"]} onClose={()=>setIntakeEvent(null)} onDone={()=>void refreshEvents()}/>}\n\n      {appointmentEditor && (
+      {intakeEvent&&<IntakeLauncher appointmentId={intakeEvent.id} patientId={intakeEvent.patient_id||undefined} patientEmail={intakeEvent.provisional_email||""} subjectLabel={intakeEvent.patient_name} defaultTools={intakeEvent.patient_id?["PHQ-9"]:["history"]} onClose={()=>setIntakeEvent(null)} onDone={()=>void refreshEvents()}/>}
+
+      {appointmentEditor && (
         <AppointmentEditor
           mode={appointmentEditor.mode}
           event={appointmentEditor.event}
@@ -796,8 +807,11 @@ export default function CalendarPage() {
           onClose={() => setAppointmentEditor(null)}
           onSaved={async (event) => {
             setAppointmentEditor(null);
+            if (event?.scheduled_start) {
+              setSavedAppointment(event);
+              setFocusDate(dateKey(new Date(event.scheduled_start)));
+            }
             await refreshEvents();
-            if (event?.scheduled_start) setFocusDate(dateKey(new Date(event.scheduled_start)));
           }}
           onOpenSession={openAppointmentSession}
         />
@@ -1047,6 +1061,7 @@ function AppointmentEditor({
   const [quickPhone,setQuickPhone]=useState("");
   const [quickEmail,setQuickEmail]=useState("");
   const [provisional,setProvisional]=useState<{first_name:string;last_name:string;phone:string;email:string}|null>(null);
+  const createRequest=useRef<{signature:string;id:string}|null>(null);
   const patientPickerRef=useRef<HTMLDivElement|null>(null);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
@@ -1106,7 +1121,7 @@ function AppointmentEditor({
     if (busyRef.current) return;
     const patient = patients.find(item => item.id === patientId);
     if (action === "create" && !patient && !provisional) {
-      setError("Επιλέξτε υπάρχοντα ασθενή ή καταχωρίστε νέο ραντεβού χωρίς φάκελο.");
+      setError("Επιλέξτε υπάρχοντα ασθενή ή καταχωρίστε νέο ασθενή.");
       return;
     }
     const [hours, minutes] = time.split(":").map(Number);
@@ -1122,6 +1137,9 @@ function AppointmentEditor({
     try {
       const startIso = (action === "cancel" || action === "restore") ? null : localAthensToIso(date, hours * 60 + minutes);
       const endIso = startIso ? addMinutes(startIso, durationMinutes) : null;
+      const signature=JSON.stringify({action,patientId,provisional,startIso,endIso,type,smsReminder});
+      if(!createRequest.current||createRequest.current.signature!==signature)createRequest.current={signature,id:crypto.randomUUID()};
+
       const response = await fetch("/api/calendar/command/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1135,6 +1153,7 @@ function AppointmentEditor({
           scope,
           patient_id: action === "create" ? patientId || null : event?.patient_id || null,
           patient_name: action === "create" ? patient ? (patient.first_name + " " + patient.last_name).trim() : provisional ? (provisional.first_name+" "+provisional.last_name).trim() : null : event?.patient_name || null,
+          request_id:createRequest.current.id,
           create_new_patient: action === "create" && !patient && Boolean(provisional),
           provisional_phone: action === "create" ? provisional?.phone || null : null,
           provisional_email: action === "create" ? provisional?.email || null : null,
@@ -1226,7 +1245,7 @@ function AppointmentEditor({
       {mode === "create" && recurrence !== "none" && date && <p className="calendar-recurrence-preview">{occurrences} ραντεβού · κάθε {recurrence} εβδομάδα/ες · {time}, ώρα Αθήνας. Η ώρα παραμένει σταθερή στις αλλαγές θερινής ώρας.</p>}
       {confirmCancel && <div className="calendar-dialog-confirm" role="alert">Να ακυρωθεί {scope === "one" ? "αυτό το ραντεβού" : "το επιλεγμένο σύνολο της σειράς"};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>Επιβεβαίωση ακύρωσης</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>Επιστροφή</button></div>}
 
-      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name} · ο φάκελος θα δημιουργηθεί από το intake.</span></div>}
+      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name} · ο φάκελος θα δημιουργηθεί μαζί με το ραντεβού.</span></div>}
       {error && <div className="calendar-move-error"><span>{error}</span></div>}
 
       <footer className="appointment-editor-footer">

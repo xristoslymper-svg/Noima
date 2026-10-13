@@ -50,11 +50,11 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
   patientFlight.current=task;try{await task}finally{patientFlight.current=null}
  }
  const flushRef=useRef<()=>Promise<void>>(async()=>{});
- flushRef.current=async()=>{if(!draft.preserveConflictForNavigation())await draft.flush();if(patientDirty.current)await savePatient()};
+ flushRef.current=async()=>{if(!draft.preserveConflictForNavigation())await draft.flush();if(patientDirty.current||patientFlight.current)throw new Error('Αποθηκεύστε ή ακυρώστε την αλλαγή στα στοιχεία ασθενή πριν συνεχίσετε.')};
  useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
+  <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Στοιχεία & ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
   <PatientReportedHistory patientId={bundle.patient.id}/>
 
   <section className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>

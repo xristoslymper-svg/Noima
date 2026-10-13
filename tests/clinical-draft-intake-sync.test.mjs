@@ -33,7 +33,7 @@ test('history navigation preserves unresolved local drafts instead of trapping t
  const source=readFileSync(new URL('../components/patients/PatientPanels.tsx',import.meta.url),'utf8');
  const hook=readFileSync(new URL('../components/patients/useClinicalDraft.ts',import.meta.url),'utf8');
  assert.match(source,/if\(!draft\.preserveConflictForNavigation\(\)\)await draft\.flush\(\)/);
- assert.match(hook,/sessionStorage\.setItem\(storageKey,JSON\.stringify\(\{value:latest\.current,version:v\.current\}\)\)/);
+ assert.match(hook,/writeRecovery\(sessionStorage,storageKey,JSON\.stringify\(\{value:latest\.current,version:v\.current\}\)\)/);
  assert.match(hook,/if\(!blocked\.current\)return false/);
  assert.match(hook,/if\(flight\.current\)return/);
  assert.doesNotMatch(source,/Σύγκριση εκδόσεων|Κράτησε τις αλλαγές μου|Χρήση τελευταίας αποθηκευμένης έκδοσης/);

@@ -1,4 +1,5 @@
 import React from 'react';
+import fixture from './fixtures/warm-patient.json';
 import {createRoot} from 'react-dom/client';
 import '../app/globals.css';
 import '../app/clinical-refinement.css';
@@ -11,5 +12,5 @@ import PatientWorkspace from '../components/patients/PatientWorkspace';
 
 createRoot(document.getElementById('root')!).render(<>
   <div className="fictional-pilot-notice">LOCAL QA · μόνο υποθετικοί ασθενείς · προσομοιωμένο API</div>
-  <PatientWorkspace patientRef="warm-patient"/>
+  <PatientWorkspace patientRef={fixture.patient.id}/>
 </>);

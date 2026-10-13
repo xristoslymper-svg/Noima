@@ -1,3 +1,4 @@
+import {reconcileRecord} from './record-reconciliation.ts';
 import type {DemoRisk, PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
@@ -74,9 +75,7 @@ export function workspaceTransitionSearch(search:string,tab:WorkspaceTab|LegacyW
 // A visit response contains only that visit. Keep longitudinal context for scores
 // and historical references, replacing matching records with the fresh response.
 export function mergeVisitContext(visit:PatientBundle,context:PatientBundle|null):PatientBundle{
- if(!context)return visit;
- const merge=<T>(old:T[],fresh:T[],key:(row:T)=>string)=>[...old.filter(row=>!fresh.some(item=>key(item)===key(row))),...fresh];
- return {...context,sessions:merge(context.sessions,visit.sessions,s=>s.id),sections:merge(context.sections,visit.sections,s=>s.id),risks:merge(context.risks,visit.risks,r=>r.session_id),proposals:merge(context.proposals,visit.proposals,p=>p.id),addenda:merge(context.addenda,visit.addenda,a=>a.id),corrections:merge(context.corrections||[],visit.corrections||[],c=>c.id)};
+ return reconcileRecord(context,visit,'visit');
 }
 const tabs=['summary','timeline','treatment','history','record','sessions','medications','psychometrics'];
 export function workspaceLocation(search:string){

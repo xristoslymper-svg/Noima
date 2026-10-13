@@ -1,0 +1,38 @@
+NOIMA privacy and clinical-data readiness review — 12 October 2026
+
+STATUS: synthetic pilot only. This review is not certification or authorization to process real patient records.
+
+VERIFIED
+Live Supabase metadata: RLS enabled on all public/private ordinary application tables; no authenticated-readable public views lacking security_invoker; no storage buckets. All 68 public demo functions accepting p_tester contain pilot_assert_owner. This checks the shared ownership boundary, not every function body or privileged administrator action. Anonymous token functions intentionally provide questionnaire/tablet access; broad permission revocation would break these flows. Advisors flag definer privileges and RLS tables without policies; these require semantic review, not permissive policies.
+Existing verified-user/workspace checks, optimistic version checks, clinical source references and summary grounding remain intact. Database tests exercise tenant isolation and unauthorized operations.
+
+CHANGES
+Shared withPilot guard rejects explicitly real and unrecognized CLINICAL_DATA_MODE values before handlers run. Public intake has the same restriction. Compatibility: unset mode continues the existing synthetic pilot; demo/synthetic are accepted. This is an environment gate, not automatic detection of real-person information. Direct database access and server-side readers are not governed by this HTTP gate.
+EXTERNAL_AI_ENABLED=false blocks transcription, scan, calendar parsing and clinical extraction/polishing/closure/summary-generation endpoints, including backfill. Manual records and cached summary reads remain available. Existing AI is enabled unless explicitly disabled; this is an operational kill switch, not provider approval.
+All API responses receive private/no-store caching headers; public/unauthorized withPilot responses also get no-store. Global no-referrer prevents questionnaire tokens from propagating in Referer headers.
+Transcription forwards neutral filenames with a supported extension and unchanged bytes. Background summary failures log a fixed code instead of arbitrary exception messages.
+Clinical drafts, older recovery copies, pending dictation, legacy section recovery and patient intake browser copies expire for recovery after 24 hours from last edit. Expired copies are removed on read, and existing account/logout cleanup remains. Legacy copies acquire expiry on first upgraded read because their original age is unknown. This is not guaranteed immediate physical deletion at the deadline while a tab remains idle, nor protection from XSS; sessionStorage is not an encrypted medical-record store.
+
+REMAINING REAL-PATIENT RELEASE BLOCKERS
+1. Identify controller/processor roles and sign provider DPAs. Verify all subprocessors, processing locations, international-transfer safeguards and support access. store:false does not establish zero provider retention; EU hosting alone does not establish compliance.
+2. Document lawful bases under GDPR Articles 6 and 9, Greek privacy notices, processing register, DPIA screening/full DPIA as indicated, and whether a DPO is required. Do not use blanket consent as a substitute for a healthcare legal basis.
+3. Implement and validate full record-access/export/admin audit coverage without narrative content in logs. Existing audit tables do not establish complete coverage. Confirm log retention and operational access.
+4. Configure/test MFA, account revocation and session/inactivity policy appropriate to clinical use; do not enable an MFA gate before enrollment and recovery work.
+5. Define lawful retention, legal holds, restriction/correction/access requests and eventual deletion across records, caches, backups, vendors and browser copies. Greek Medical Ethics Code Article 14 distinguishes 10-year private-practice/private-primary-care retention from 20 years in other cases, measured from last visit; counsel must confirm applicability. Do not automatically purge medical records just because an erasure request is received.
+6. Verify backup encryption and restoration, incident response/breach assessment and notification, secret rotation, provider failure behavior, penetration testing and abuse/rate limits for public bearer-token endpoints. Full anonymous RPC bodies/device lifecycle and privileged roles still need independent review.
+7. Review optional cookies/analytics under Law 3471/2006 and Greek implementing Law 4624/2019, and intended-purpose classification under MDR/AI Act before clinical decision support is marketed.
+
+No schema migration or production configuration change was made in this review. No real patient data was queried. Do not turn on real-patient processing merely by removing the environment guard.
+
+PRIMARY LEGAL SOURCES
+GDPR: https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng
+Greek DPA DPIA guidance: https://www.dpa.gr/el/foreis/ektimisi_adiktipou_kai_diavouleush/ektimisi_adiktipou
+Greek DPA health data: https://www.dpa.gr/el/enimerwtiko/thematikes_enotites/eidikeskatigories/dedomenaugeias/epexergasia_dedomenwn_ugeias
+Medical Ethics Code, Ministry of Health: https://www.moh.gov.gr/articles/newspaper/nomothesia-kanonismoi/3246-nomothesia-hlektronikhs-ygeias?fdl=8083
+
+DATABASE ADVISOR REFERENCES
+https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+VALIDATION: 368 application tests passed, including 57 database tests; the separate 57-test database suite passed; TypeScript and lint passed; git diff --check passed. Local next build stalled during startup and was interrupted. Changes have not been deployed.

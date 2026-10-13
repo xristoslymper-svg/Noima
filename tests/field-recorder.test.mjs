@@ -24,3 +24,14 @@ test('permission cancellation stops a late-granted stream without opening a reco
 test('a recorder error retains final captured audio when it can be recovered',async t=>{
  const h=harness(t);await h.recorder.start();h.instances[0].onerror();assert.equal(h.errors.length,0);assert.equal(h.blobs.length,1);assert.equal(h.instances[0].state,'inactive');assert.ok(h.stopped()>0);
 });
+
+test('denied permission does not repeatedly acquire audio and cancellation does not restart',async t=>{
+ const h=harness(t);let acquisitions=0;
+ globalThis.navigator.permissions={query:async()=>({state:'denied'})};globalThis.navigator.mediaDevices.getUserMedia=async()=>{acquisitions++;return h.stream};
+ await assert.rejects(h.recorder.start(),/αποκλειστεί/);assert.equal(acquisitions,0);
+ h.recorder.cancel();await h.recorder.start();assert.equal(acquisitions,0);
+});
+test('granted permission acquires only on explicit start; pause and resume never reacquire',async t=>{
+ const h=harness(t);let acquisitions=0;globalThis.navigator.permissions={query:async()=>({state:'granted'})};globalThis.navigator.mediaDevices.getUserMedia=async()=>{acquisitions++;return h.stream};
+ assert.equal(acquisitions,0);await h.recorder.start();h.recorder.pause();h.recorder.resume();assert.equal(acquisitions,1);h.recorder.cancel();assert.ok(h.stopped()>0);
+});

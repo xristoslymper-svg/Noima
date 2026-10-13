@@ -1,3 +1,4 @@
+import {confirmedCompletion} from '@/lib/clinical/finalization';
 import { after } from 'next/server';
 import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
@@ -32,7 +33,7 @@ function failure(error:unknown){
 function queueSummary(request:Request,patientId:string){
  if(!isClinicalId(patientId))return;
  const cookie=request.headers.get('cookie')||'';const origin=new URL(request.url).origin;
- after(async()=>{try{const response=await fetch(origin+'/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({patient_id:patientId})});if(!response.ok)console.error('clinical_summary_background_failed',{status:response.status})}catch(error){console.error('clinical_summary_background_failed',{error:error instanceof Error?error.message:'unknown'})}});
+ after(async()=>{try{const response=await fetch(origin+'/api/clinical/summary',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({patient_id:patientId})});if(!response.ok)console.error('clinical_summary_background_failed',{status:response.status})}catch{console.error('clinical_summary_background_failed',{code:'background_request_failed'})}});
 }
 async function handleGET(request:Request){
  if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Αυτός ο χώρος δέχεται μόνο φανταστικά δεδομένα. Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.'},{status:403});
@@ -77,8 +78,8 @@ async function handlePOST(request:Request){
    }
    case 'revise_context': return Response.json({revision:first(await rpc('demo_context_revise',{p_tester:tester,p_session:body.source_session_id,p_request:body.request_id,p_action:body.context_action,p_content:body.content||'',p_expected_revision:body.expected_revision}))});
    case 'save_closure': {const session=first(await rpc('demo_closure_save',{p_tester:tester,p_session:body.session_id,p_value:body.value,p_expected_version:body.expected_version}));return Response.json({session})}
-   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));queueSummary(request,session.patient_id);return Response.json({session})}
-   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }
  }catch(error){return failure(error)}

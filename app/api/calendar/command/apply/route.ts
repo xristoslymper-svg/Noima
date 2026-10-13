@@ -5,7 +5,7 @@ import {
   createDemoRecurringAppointments,
   type DemoCalendarMutation,
 } from "@/lib/calendar/demo-supabase";
-import { listPatients } from "@/lib/patients/demo-runtime";
+import { listPatients, rpc } from "@/lib/patients/demo-runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ type ApplyBody = {
   end_iso?: unknown;
   appointment_type?: unknown;
   create_new_patient?: unknown;
+  request_id?: unknown;
   provisional_phone?: unknown;
   provisional_email?: unknown;
   recurrence_interval_weeks?: unknown;
@@ -161,16 +162,19 @@ async function handlePOST(request: Request) {
       }
       const parts = patientName.split(/\s+/).filter(Boolean);
       try {
-        const event = await createDemoProvisionalAppointment(tester, {
-          first_name: parts[0],
-          last_name: parts.slice(1).join(" "),
-          phone: textOrNull(body.provisional_phone) || "",
-          email: textOrNull(body.provisional_email) || "",
-          scheduled_start: startIso,
-          scheduled_end: endIso,
-          appointment_type: appointmentType === "other" ? "other" : "initial_assessment",
+        if(typeof body.request_id!=='string'||!/^[a-f0-9-]{36}$/i.test(body.request_id))return Response.json({error:'Χρειάζεται έγκυρο αναγνωριστικό δημιουργίας.'},{status:400});
+        const result = await rpc('demo_calendar_create_patient_retry', {
+          p_tester:tester,p_request:body.request_id,
+          p_first_name: parts[0],
+          p_last_name: parts.slice(1).join(" "),
+          p_phone: textOrNull(body.provisional_phone) || "",
+          p_email: textOrNull(body.provisional_email) || "",
+          p_start: startIso,
+          p_end: endIso,
+          p_type: appointmentType === "other" ? "other" : "initial_assessment",p_sms:smsReminder,
         });
-        return Response.json({ event, patient_created: false, provisional: true, patient_id: null });
+        const created=result as {event:{patient_id:string};patient:{id:string}};
+        return Response.json({event:created.event,patient_created:true,patient_id:created.patient.id});
       } catch (error) {
         return errorResponse(error);
       }

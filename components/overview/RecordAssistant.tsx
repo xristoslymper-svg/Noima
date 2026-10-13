@@ -1,5 +1,5 @@
 'use client';
-import {useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {Search,Send,Sparkles} from 'lucide-react';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
@@ -44,13 +44,23 @@ export default function RecordAssistant({compact=false}:{compact?:boolean}){
 export function OverviewShortcuts(){
  const [query,setQuery]=useState(''),[patients,setPatients]=useState<SearchPatient[]>([]),[status,setStatus]=useState('');
  const sequence=useRef(0);
- async function search(event:React.FormEvent){
-  event.preventDefault();const current=++sequence.current;setPatients([]);setStatus('Αναζήτηση…');
-  try{const response=await fetch('/api/records/search?q='+encodeURIComponent(query.trim()),{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);if(current===sequence.current){setPatients(data.patients);setStatus(data.patients.length?'':'Δεν βρέθηκε ασθενής.')}}catch{if(current===sequence.current)setStatus('Η αναζήτηση δεν είναι διαθέσιμη προσωρινά.')}
- }
+ const timer=useRef<ReturnType<typeof setTimeout>|null>(null),pending=useRef<AbortController|null>(null);
+ const search=useCallback(async()=>{
+  if(timer.current)clearTimeout(timer.current);
+  pending.current?.abort();
+  if(query.trim().length<2)return;
+  const controller=new AbortController();pending.current=controller;
+  const current=++sequence.current;setPatients([]);setStatus('Αναζήτηση…');
+  try{const response=await fetch('/api/records/search?q='+encodeURIComponent(query.trim()),{cache:'no-store',signal:controller.signal});const data=await response.json();if(!response.ok)throw new Error(data.error);if(current===sequence.current){setPatients(data.patients);setStatus(data.patients.length?'':'Δεν βρέθηκε ασθενής.')}}catch{if(!controller.signal.aborted&&current===sequence.current)setStatus('Η αναζήτηση δεν είναι διαθέσιμη προσωρινά.')}
+ },[query]);
+ useEffect(()=>{
+  if(query.trim().length>=2)timer.current=setTimeout(()=>void search(),250);
+  return()=>{if(timer.current)clearTimeout(timer.current);pending.current?.abort()};
+ },[query,search]);
+ function closeResults(){if(timer.current)clearTimeout(timer.current);pending.current?.abort();sequence.current++;setPatients([]);setStatus('')}
  return <div className={styles.shortcuts}>
-  <div className={styles.searchWrap}><form onSubmit={event=>void search(event)}><Search size={16} aria-hidden="true"/><input aria-label="Αναζήτηση ασθενούς" placeholder="Αναζήτηση ασθενούς…" maxLength={100} value={query} onChange={event=>{sequence.current++;setQuery(event.target.value);setPatients([]);setStatus('')}}/><button disabled={query.trim().length<2} type="submit">Αναζήτηση</button></form>
-   {(patients.length>0||status)&&<div className={styles.results}><button className={styles.close} aria-label="Κλείσιμο αποτελεσμάτων" onClick={()=>{sequence.current++;setPatients([]);setStatus('')}}>×</button><span role="status">{status}</span>{patients.map(patient=><Link key={patient.id} href={'/patients/demo/'+patient.id}>{patient.first_name} {patient.last_name}<small>Φάκελος · {patient.id.slice(-6)}</small></Link>)}</div>}
+  <div className={styles.searchWrap}><form onSubmit={event=>{event.preventDefault();void search()}}><Search size={16} aria-hidden="true"/><input aria-label="Αναζήτηση ασθενούς" placeholder="Αναζήτηση ασθενούς…" maxLength={100} value={query} onKeyDown={event=>{if(event.key==='Escape')closeResults()}} onChange={event=>{sequence.current++;setQuery(event.target.value);setPatients([]);setStatus('')}}/><button disabled={query.trim().length<2} type="submit">Αναζήτηση</button></form>
+   {(patients.length>0||status)&&<div className={styles.results}><button className={styles.close} aria-label="Κλείσιμο αποτελεσμάτων" onClick={closeResults}>×</button><span role="status">{status}</span>{patients.map(patient=><Link key={patient.id} href={'/patients/demo/'+patient.id}>{patient.first_name} {patient.last_name}<small>Φάκελος · {patient.id.slice(-6)}</small></Link>)}</div>}
   </div>
   <Link className={styles.primary} href="/calendar?new=1">+ Νέο ραντεβού</Link>
   <Link href="/patients/new">+ Νέος ασθενής</Link>

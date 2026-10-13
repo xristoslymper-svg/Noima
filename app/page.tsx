@@ -176,7 +176,7 @@ export default function Page() {
   }
 
   return (
-    <main className={`app-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="overview"/>
+    <main className={`app-shell overview-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="overview"/>
       <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
         <div className="brand">
           <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>

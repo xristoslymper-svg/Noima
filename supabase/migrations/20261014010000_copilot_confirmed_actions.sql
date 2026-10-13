@@ -14,7 +14,7 @@ declare r private.copilot_actions;
 begin
  if auth.uid() is null or not private.pilot_owns(p_tester) then raise exception 'not_authorized'; end if;
  if not exists(select 1 from public.demo_patients where id=p_patient and tester_id=p_tester) then raise exception 'patient_not_found'; end if;
- if p_kind not in ('calendar','questionnaires') or jsonb_typeof(p_payload)<>'object' or octet_length(p_payload::text)>16000 then raise exception 'invalid_proposal'; end if;
+ if p_kind is null or p_kind not in ('calendar','questionnaires') or jsonb_typeof(p_payload) is distinct from 'object' or octet_length(p_payload::text)>16000 then raise exception 'invalid_proposal'; end if;
  insert into private.copilot_actions(id,actor,workspace,patient,kind,payload,expires_at)
  values(p_id,auth.uid(),p_tester,p_patient,p_kind,p_payload,now()+interval '10 minutes') on conflict(id) do nothing;
  select * into r from private.copilot_actions where id=p_id;
@@ -39,17 +39,19 @@ begin
  if not found then raise exception 'proposal_unavailable'; end if;
  if r.result is not null then return r.result; end if;
  if r.expires_at<=now() then raise exception 'proposal_expired'; end if;
+ -- Match the existing calendar service lock order before taking patient/event locks.
+ if r.kind='calendar' then perform pg_advisory_xact_lock(hashtextextended(p_tester::text,721)); end if;
  -- Same patient lock serializes duplicate questionnaire proposals as well.
  perform pg_advisory_xact_lock(hashtextextended(r.patient::text,913));
  if not exists(select 1 from public.demo_patients where id=r.patient and tester_id=p_tester) then raise exception 'patient_not_found'; end if;
  if r.kind='calendar' then
   action:=r.payload->>'action';
-  if action not in ('create','move','cancel') or (r.payload->>'patient_id')::uuid is distinct from r.patient or r.payload->>'scope'<>'one' then raise exception 'invalid_action'; end if;
+  if action is null or action not in ('create','move','cancel') or (r.payload->>'patient_id')::uuid is distinct from r.patient or (r.payload->>'scope') is distinct from 'one' then raise exception 'invalid_action'; end if;
   if action in ('move','cancel') then
    select * into e from public.demo_calendar_events where id=(r.payload->>'event_id')::uuid and tester_id=p_tester and patient_id=r.patient for update;
    if not found or e.status<>'scheduled' or e.session_id is not null or e.updated_at is distinct from (r.payload->>'expected_updated_at')::timestamptz then raise exception 'stale_calendar'; end if;
   end if;
-  if action in ('create','move') and ((r.payload->>'scheduled_start')::timestamptz<=now() or (r.payload->>'scheduled_end')::timestamptz-(r.payload->>'scheduled_start')::timestamptz not between interval '15 minutes' and interval '24 hours') then raise exception 'invalid_time'; end if;
+  if action in ('create','move') and (r.payload->>'scheduled_start' is null or r.payload->>'scheduled_end' is null or (r.payload->>'scheduled_start')::timestamptz<=now() or (r.payload->>'scheduled_end')::timestamptz-(r.payload->>'scheduled_start')::timestamptz not between interval '15 minutes' and interval '24 hours') then raise exception 'invalid_time'; end if;
   receipt:=public.demo_calendar_write_sms(p_tester,r.payload,null);
   select * into e from public.demo_calendar_events where id=(receipt->>'id')::uuid and patient_id=r.patient and tester_id=p_tester;
   if not found or (action='cancel' and e.status<>'cancelled') or (action<>'cancel' and (e.scheduled_start is distinct from (r.payload->>'scheduled_start')::timestamptz or e.scheduled_end is distinct from (r.payload->>'scheduled_end')::timestamptz)) then raise exception 'verification_failed'; end if;
@@ -57,9 +59,9 @@ begin
  else
   select email into recipient from public.demo_patients where id=r.patient and tester_id=p_tester;
   if recipient is distinct from r.payload->>'recipient' then raise exception 'recipient_changed'; end if;
-  if jsonb_typeof(r.payload->'invitations')<>'array' or jsonb_array_length(r.payload->'invitations') not between 1 and 2 then raise exception 'invalid_invitations'; end if;
+  if jsonb_typeof(r.payload->'invitations') is distinct from 'array' or jsonb_array_length(r.payload->'invitations') not between 1 and 2 then raise exception 'invalid_invitations'; end if;
   for item in select * from jsonb_array_elements(r.payload->'invitations') loop
-   if item->>'instrument' not in ('PHQ-9','GAD-7') or item->>'token' !~ '^[a-f0-9]{64}$' then raise exception 'invalid_instrument'; end if;
+   if item->>'id' is null or item->>'instrument' is null or item->>'instrument' not in ('PHQ-9','GAD-7') or item->>'token' is null or item->>'token' !~ '^[a-f0-9]{64}$' then raise exception 'invalid_instrument'; end if;
    if exists(select 1 from private.demo_assessments where patient_id=r.patient and tester_id=p_tester and instrument=item->>'instrument' and status in ('assigned','opened') and expires_at>now() and id<>(item->>'id')::uuid) then raise exception 'pending_invitation_exists'; end if;
    receipt:=public.demo_assessment_assign(p_tester,r.patient,(r.payload->>'appointment_id')::uuid,(item->>'id')::uuid,item->>'instrument',item->>'token');
    output:=output||jsonb_build_array(jsonb_build_object('id',receipt->>'id','instrument',item->>'instrument','token',item->>'token'));

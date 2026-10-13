@@ -972,6 +972,9 @@ test('copilot confirmed calendar execution is owned, atomic, expiring and retry 
  assert.equal((await sql('select count(*)::int n from demo_calendar_events where patient_id=$1',[patient.id]))[0].n,0);
  await rejected(owner,'select copilot_execute($1,$2,false)',[workspace,id],/confirmation_required/);
  await rejected(b,'select copilot_execute($1,$2,true)',[workspace,id],/confirmation_required/);
+ const invalidId='90000000-0000-4000-8000-000000000025';
+ await asUser(owner,()=>sql("select copilot_propose($1,$2,$3,'calendar',$4)",[workspace,invalidId,patient.id,JSON.stringify({...payload,scope:null})]));
+ await rejected(owner,'select copilot_execute($1,$2,true)',[workspace,invalidId],/invalid_action/);
  const [first]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
  const [again]=await asUser(owner,()=>sql('select copilot_execute($1,$2,true) result',[workspace,id]));
  assert.deepEqual(first.result,again.result);

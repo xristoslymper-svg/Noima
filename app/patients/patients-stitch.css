@@ -132,7 +132,7 @@
   min-width:0;
 }
 .patients-screen .registry-row {
-  display:grid;grid-template-columns:43px minmax(210px,2.8fr) minmax(116px,1.15fr) 73px 73px 74px 110px;
+  display:grid;grid-template-columns:43px minmax(210px,2.8fr) minmax(116px,1.15fr) 73px 73px 74px 20px;
   align-items:center;gap:12px;min-width:0;
   min-height:81px;padding:14px 22px;
   border-bottom:1px solid #eef2f0;color:#62798c;font-size:11px;
@@ -188,7 +188,7 @@
 }
 .patients-screen .registry-appointment:hover {background:#e9f5ed}
 .patients-screen .registry-open {
-  min-width:28px;min-height:32px;color:#376c55;border-radius:8px;
+  min-width:28px;min-height:32px;color:#8ea69a;border-radius:8px;
 }
 .patients-screen .registry-open:hover {background:#edf5ef;color:#376c55}
 .patients-screen .registry-draft {
@@ -206,7 +206,7 @@
 /* Keep the exact same record links, quick appointment action, filter and sort behavior. */
 @media (max-width:1360px) {
   .patients-screen .registry-row {
-    grid-template-columns:37px minmax(170px,2.6fr) minmax(92px,1fr) 65px 65px 66px 110px;
+    grid-template-columns:37px minmax(170px,2.6fr) minmax(92px,1fr) 65px 65px 66px 18px;
     gap:10px;padding-left:16px;padding-right:16px;
   }
   .patients-screen .registry-wrap { padding-left:24px;padding-right:24px; }
@@ -216,7 +216,7 @@
 }
 @media (max-width:1110px) {
   /* Hide only the NEXT-date column, never links/actions. */
-  .patients-screen .registry-row {grid-template-columns:38px minmax(190px,2.6fr) minmax(90px,1fr) 72px 66px 110px;}
+  .patients-screen .registry-row {grid-template-columns:38px minmax(190px,2.6fr) minmax(90px,1fr) 72px 66px 18px;}
   .patients-screen .registry-row>:nth-child(5) {display:none}
 }
 @media (max-width:800px) {
@@ -232,7 +232,7 @@
   .patients-screen .registry-filters button {background:#eef4f0}
   .patients-screen .registry-filters select{max-width:240px}
   .patients-screen .registry-row:not(.registry-labels) {
-    display:grid;grid-template-columns:38px minmax(0,1fr) auto 110px;
+    display:grid;grid-template-columns:38px minmax(0,1fr) auto 23px;
     gap:10px;min-height:78px;padding:12px 15px;
   }
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(3),
@@ -240,14 +240,14 @@
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(5) {display:none}
   .patients-screen .registry-avatar {display:grid;}
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(6){display:inline-flex;grid-column:3}
-  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7){display:flex;grid-column:4}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7){display:grid;grid-column:4}
   .patients-screen .registry-labels{display:none}
   .patients-screen .registry-search input{font-size:16px}
   .patients-screen .registry-filters button,.patients-screen .registry-filters select,
   .patients-screen .registry-heading .record,.patients-screen .registry-appointment,
   .patients-screen .registry-open,.patients-screen .registry-reset{min-height:44px}
   .patients-screen .registry-open{min-width:44px}
-  .patients-screen .registry-row:not(.registry-labels){grid-template-columns:38px minmax(0,1fr) auto 110px}
+  .patients-screen .registry-row:not(.registry-labels){grid-template-columns:38px minmax(0,1fr) auto 44px}
 }
 @media (max-width:520px) {
   .patients-screen .registry-heading {gap:12px;flex-wrap:wrap;margin-bottom:16px}
@@ -256,17 +256,14 @@
   .patients-screen .registry-stats {margin-bottom:22px;gap:7px}
   .patients-screen .registry-stats>div {padding:7px 9px;font-size:10px;gap:6px}
   .patients-screen .registry-row:not(.registry-labels) {
-    grid-template-columns:minmax(0,1fr) 60px 110px;gap:6px;padding:11px 12px;
+    grid-template-columns:minmax(0,1fr) 60px 44px;gap:6px;padding:11px 12px;
   }
   .patients-screen .registry-row:not(.registry-labels)>.registry-number {display:none}
   .patients-screen .registry-patient strong {font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .patients-screen .registry-avatar {width:34px;height:34px;border-radius:10px}
   .patients-screen .registry-patient-link {gap:9px}
   .patients-screen .registry-filters select {width:100%;max-width:100%}
-  .patients-screen .registry-row:not(.registry-labels)>.registry-patient-link {grid-column:1 / -1;grid-row:1;min-width:0;align-items:center;}
-  .patients-screen .registry-row:not(.registry-labels)>:nth-child(6) {grid-column:2;grid-row:2}
-  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7) {grid-column:3;grid-row:2}
+  .patients-screen .registry-row:not(.registry-labels)>.registry-patient-link {grid-column:1;grid-row:1;min-width:0;align-items:center;}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(6) {grid-column:2;grid-row:1}
+  .patients-screen .registry-row:not(.registry-labels)>:nth-child(7) {grid-column:3;grid-row:1}
 }
-
-
-.patients-screen .registry-open{display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap}

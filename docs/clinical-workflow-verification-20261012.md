@@ -45,3 +45,20 @@ Browser checks use real React components and CSS with persistent synthetic HTTP 
 The install audit reports six existing dependency vulnerabilities (four moderate, two high). No unrelated forced dependency upgrades were introduced. This PR is not a certification of production or regulatory readiness.
 
 No RAG, agents, additional clinical inference, new persistent infrastructure or removal of clinical/tenant safeguards was introduced. Keep the PR unmerged until hosted validation and the migration prerequisite are resolved.
+
+
+## Hosted verification update — 13 October 2026
+
+Current app source tested: `5dc9f7535273b02501ac0f22338e1be43dd3b2d4`, Vercel preview `dpl_2gU53gWKGKhW5eogJT1zvBpawhs4`. Stable preview: https://noima-git-codex-deployed-workflow-fix-957bd7-xristoslymper-3481.vercel.app . Google authentication was verified there after user-approved addition of its exact callback.
+
+The user explicitly required preserving the existing appearance. Registry CSS was restored to the original values (only trailing whitespace differs); the existing edit icon position now shows a pencil with an accessible label and tooltip. No color, typography, shape or layout redesign is included. Newer remote reliability commits were merged without overwriting them.
+
+Hosted Chrome checks used only designated synthetic records. Empty initial finalization retained its draft and showed required-risk guidance. Initial completion persisted across reload and populated timeline and grounded summary. On the current source, follow-up compact/detail editors retained the same session and transcript; historical MSE required explicit confirmation. Follow-up finalization persisted across reload. Demographic cancel retained age 35; explicit save to 36 survived reload on mobile. Exact GAD-7 submission opened at score 3/21 with seven answers, dates and linked visit; review remained pending. Two synthetic medication rows retained different doses and instructions without automatic adverse-effect editors.
+
+All checks passed for 5dc9f75: 388 tests, typecheck, lint, production build, clinical visual/interaction and synthetic recorder workflows. GitHub CI tests are distinct from hosted browser verification. No local application server was used in this pass.
+
+After explicit user authorization, the unchanged calendar migration was applied to hosted Supabase project mgpnaxaquzeoomxdzhic as version `20261013071709`. Its repository filename is aligned with that server-assigned version to prevent duplicate application. This supersedes the earlier migration-not-applied prerequisite above. No production app promotion or alias change occurred.
+
+Hosted calendar result: created SYNTHETIC CALENDAR QA and the linked appointment on 13 October at 18:30, with SMS off. The saved event remained in view at 18:30 and opened the actual new patient record. A transaction-wrapped hosted RPC replay against that exact synthetic event returned the same patient and appointment IDs; it was rolled back. This tests database idempotency, not a simulated browser connection-loss retry.
+
+Remaining limits: real microphone permission behavior on the user device was not exercised with live audio; GitHub synthetic recorder and lifecycle checks passed. Email wording was reviewed but no email was sent. Network-failure and cross-tenant cases were exercised by automated regressions, not injected into the shared hosted environment. Physical mobile-device behavior remains unverified; responsive Chrome viewport checks were performed.

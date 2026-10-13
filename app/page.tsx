@@ -186,7 +186,7 @@ export default function Page() {
         <nav className="nav">
           {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={label}><Icon size={19}/><span>{label}</span></Link>)}
         </nav>
-
+        <div className="overview-sidebar-assistant"><RecordAssistant compact/></div>
       </aside>
       {mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}
       <section className="workspace">
@@ -217,7 +217,7 @@ export default function Page() {
           </section>
 
           <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
-            <div className="overview-left-column"><div className="card sessions">
+            <div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id);
@@ -234,7 +234,6 @@ export default function Page() {
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
-            <RecordAssistant/></div>
             {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
               <ClinicalSummary compact overview bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=record'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>

@@ -5,7 +5,7 @@ import {Send,Sparkles} from 'lucide-react';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
 import styles from './RecordAssistant.module.css';
 type Turn={question:string;result?:SearchAnswer;error?:string};
-export default function RecordAssistant(){
+export default function RecordAssistant({compact=false}:{compact?:boolean}){
  const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false);
  const context=useRef<SearchPatient|null>(null),locked=useRef(false);
  async function ask(question:string,choice?:string){
@@ -20,7 +20,7 @@ export default function RecordAssistant(){
   }catch(error){setTurns(current=>current.map((turn,index)=>index===current.length-1?{question,error:error instanceof Error?error.message:'Δεν ολοκληρώθηκε η αναζήτηση.'}:turn))}
   finally{locked.current=false;setBusy(false)}
  }
- return <section className={styles.assistant} aria-label="Βοηθός φακέλων">
+ return <section className={styles.assistant+(compact?' '+styles.compact:'')} aria-label="Βοηθός φακέλων">
   <div className={styles.heading}><span><Sparkles size={18}/> Βοηθός φακέλων</span>{turns.length>0&&<button disabled={busy} onClick={()=>{setTurns([]);context.current=null}}>Νέα συζήτηση</button>}</div>
   <h2>Ρώτησε για τους φακέλους σου</h2>
   <p>Αγωγή, επισκέψεις, ραντεβού και εκκρεμότητες, με παραπομπή στην καταγραφή.</p>

@@ -4,6 +4,8 @@ import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import {useMobileNavigation} from '@/components/useMobileNavigation';
 import PilotProfile from '@/components/PilotProfile';
+import RecordAssistant,{OverviewShortcuts} from '@/components/overview/RecordAssistant';
+import './overview-search.css';
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -190,7 +192,7 @@ export default function Page() {
       <section className="workspace">
         <header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
           
-          <PilotProfile/>
+          <OverviewShortcuts/><PilotProfile/>
         </header>
 
         <div className="content">
@@ -215,7 +217,7 @@ export default function Page() {
           </section>
 
           <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
-            <div className="card sessions">
+            <div className="overview-left-column"><div className="card sessions">
               <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
               {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id);
@@ -232,6 +234,7 @@ export default function Page() {
               }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
             </div>
 
+            <RecordAssistant/></div>
             {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
               <ClinicalSummary compact overview bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=record'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>

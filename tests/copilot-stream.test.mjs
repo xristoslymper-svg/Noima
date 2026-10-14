@@ -49,3 +49,19 @@ test('browser cancellation aborts upstream generation',async()=>{
  const response=answerStream(slow(),{},()=>({}),abort);
  await response.body.cancel();assert.equal(abort.signal.aborted,true);
 });
+
+test('application consumer receives a delta while provider completion is still pending',async()=>{
+ setup([]);
+ let finish;
+ const gate=new Promise(resolve=>{finish=resolve});
+ globalThis.fetch=async()=>new Response(new ReadableStream({async start(c){
+  c.enqueue(encoder.encode('data: '+JSON.stringify(delta)+'\n\n'));
+  await gate;
+  c.enqueue(encoder.encode('data: '+JSON.stringify(complete)+'\n\n'));c.close();
+ }}));
+ const events=fastAnswer(copilotPatients()[0],'Πώς είναι;',null);
+ const first=await events.next();assert.equal(first.value.type,'delta');
+ finish();
+ const final=await events.next();assert.equal(final.value.type,'done');
+ await events.return();
+});

@@ -1,43 +1,36 @@
-# Βοηθός Ψ — architecture and verification
+# Βοηθός Ψ — single-call streaming Preview
 
-## Current architecture
+## Runtime
 
-The assistant writes natural Greek prose without mandatory citations, finding schemas, fixed headings, phrase bans, or a runtime model-verifier gate. Patient/workspace authorization, snapshot freshness, the synthetic-data privacy gate, and confirmed action execution are unchanged.
+The default conversation uses `/api/copilot/chat`: authenticated workspace → explicit patient selection → current eligible chart → one streaming model call → incremental browser text. The patient comes from the open chart or a user-confirmed choice, never from model authorization decisions. Starting without a patient returns choices without calling a model. Conversation memory is encrypted, workspace-bound, expires after 30 minutes and resets on patient/navigation changes.
 
-For charts within the configured context budget, the server supplies the complete eligible history in chronological order to one text-generation call. Draft notes are excluded by the shared clinical context builder. The input includes dated primary records, recorded corrections, important historical facts, medication conflicts, and a maintained summary only when its hash and policy are current. The summary is orientation; primary records remain authoritative.
+`OPENAI_COPILOT_FAST_MODEL` selects the Preview fast model, with reasoning effort none and a 1,000-token ceiling. The prompt requests a concise natural Greek answer, normally 2–4 sentences. No citation schema, model intent classifier, summary generator or model reviewer runs on this path. The existing Responses API integration is retained without a new SDK, vector database or service.
 
-For oversized charts, a model selects relevant records from the whole-history catalog. The server also retains durable/canonical information, corrections, sources underlying important facts and a fresh summary, and the two latest completed visits. Whole records are supplied, not truncated excerpts. The answer is told when the history was selected. If even mandatory context or the catalog exceeds the budget, processing fails explicitly. This is bounded retrieval; no embedding database has been added.
+The context builder includes eligible primary records, dates, corrections and explicit medication conflicts. Drafts and structured identifiers are excluded. Full records are used within the existing context budget. Oversized charts fail explicitly rather than add a retrieval model call or silently omit history. No new summary cache or embeddings have been introduced.
 
-Source links are not displayed beside each assertion. The interface offers one patient-chart link. The model is not asked to generate internal source IDs, punctuation patterns or classification labels for clinical prose.
+Streaming begins after authorization and reading a chart snapshot. There is no second full database read after generation; therefore concurrent chart edits are not detected during the response. A subsequent question fetches current records. This is a read-only answer, not authorization to execute a write. The stream carries snapshot_at metadata.
 
-Intent routing and action arguments remain structured because backend execution needs validated parameters. Creating/moving/cancelling appointments and sending questionnaire invitations still require an expiring, authorized confirmation proposal and persisted-result checks. The model cannot change medication, finalize notes or execute arbitrary writes.
+The shared SSE parser handles split UTF-8 and CRLF events. Only a completed provider response issues the next conversation token. Truncation, provider errors and interruption produce an error; the browser removes the incomplete answer and offers retry. Browser cancellation aborts upstream generation. No hidden retry adds calls or cost.
 
-## Why the previous design changed
+## Actions
 
-The earlier citation-gated pipeline made three synthesis calls, required a particular response schema, and rejected entire responses based on a boolean model verdict. Manual review also found a false-positive verdict. Citation formatting was not a reliable measure of factual correctness.
+The interface separates **Συζήτηση** from **Ενέργεια**. The action mode retains structured intent/parameter extraction, validation, expiring proposals and explicit confirmation. One-call latency claims apply to conversational answers only. Medication and diagnosis writes remain unsupported.
 
-The new runtime separates natural response generation from development-time evaluation. An offline automated reviewer checks actual synthetic outputs against primary records and reports specific quoted issues and reasons. It does not block production requests, rewrite answers, or certify clinical correctness. The reviewer currently uses the configured generation model, so correlated errors remain possible and clinical review is still required.
+## Hosted evaluation
 
-## Validation and visible deliverables
+Implementation is authored through connected GitHub tools. Checks execute in GitHub Actions and Vercel only. The Preview build evaluates actual streamed answers for ten varied Greek questions on synthetic repository charts. It consumes the same application SSE transport and records first-text latency, completion latency, deltas and generation call count.
 
-All implementation is authored through connected GitHub tools. Tests and builds run in GitHub Actions and Vercel, never locally.
+The separate GPT-5.4 reviewer runs only during evaluation, after timing stops. Calibration examples check that it can distinguish chart uncertainty from an incorrect answer. Reviewer findings remain fallible, and successful generation is not a clinical accuracy score. Fixtures share longitudinal patterns; broader clinician review and multi-turn acceptance remain necessary.
 
-- Draft PR and latest commit-specific results: https://github.com/xristoslymper-svg/Noima/pull/101
-- Branch Preview report: https://noima-git-codex-clinical-copilot-agent-xristoslymper-3481.vercel.app/copilot-evaluation.html
-- The report includes actual answers, generation latency/usage and separate automated critique.
-- A completed generation is not an accuracy result. New review outcomes cannot be compared directly with old citation-gate pass rates.
-- The Vercel build intentionally publishes failed/needs-review reports; deployment success is not clinical-evaluation success.
+The report explicitly excludes browser-network, authentication and database latency. It is not a measurement of complete patient-app response time. Build success is not evaluation success; failed reports remain visible.
 
-Regression tests cover full-context single-call generation, natural formatting, omission of drafts and structured identifiers, summary freshness, retrieval retention/limits, foreign-source rejection, incomplete output/usage accounting, and instruction/data separation. These tests establish software behavior, not freedom from hallucinations.
+- Draft PR: https://github.com/xristoslymper-svg/Noima/pull/101
+- Preview report: https://noima-git-codex-clinical-copilot-agent-xristoslymper-3481.vercel.app/copilot-evaluation.html
 
-## Hosted acceptance and release limitations
+## Release limitations
 
-The Preview report uses fictional repository fixtures and actual provider calls. It neither reads Supabase nor sends email. Runtime external-model processing remains gated to approved synthetic data.
+Preview only; no merge, production deployment, database migration or production data write. Runtime AI remains restricted to explicitly approved synthetic workspaces. The build evaluator reads repository fixtures and never accesses patient databases or sends mail.
 
-The authenticated end-to-end flows for clinical questions, calendar mutations and mailbox-provider acceptance remain incomplete: no verified isolated staging database/test account is available. Preview database defaults can target production, so no authenticated patient/action testing was performed against them. No hosted migration was applied.
+Authenticated patient/chat/calendar/mailbox end-to-end acceptance remains incomplete because no verified isolated staging database and test login is available. Preview database defaults may target production; do not enable runtime synthetic flags as a shortcut. No paid Supabase branch or upgrade was created.
 
-The Supabase organization is on Free. The cost endpoint is unavailable; no paid branch or plan upgrade was created. Vercel project access works without an explicit teamId; build logs can be inspected in the authorized browser.
-
-No merge, production deployment or production data write was performed. Remaining work includes isolated hosted action testing, clinician-reviewed scoring, model comparison, authenticated responsive/keyboard testing, and fuller multi-turn evaluation. Streaming is not implemented.
-
-**Status: reviewable Preview implementation; not production/clinical approval.**
+**Status: reviewable streaming Preview, pending hosted acceptance and clinical review.**

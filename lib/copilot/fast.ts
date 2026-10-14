@@ -28,7 +28,7 @@ export async function* fastAnswer(bundle:PatientBundle,question:string,previous:
   if(raw==='[DONE]')continue;
   const event=JSON.parse(raw);
   if(event.type==='response.output_text.delta'&&typeof event.delta==='string'){
-   if(event.delta&&!firstText)firstText=Math.round(performance.now()-started);
+   if(event.delta.trim()&&!firstText)firstText=Math.round(performance.now()-started);
    answer+=event.delta;yield {type:'delta',text:event.delta};
   }else if(event.type==='response.completed'){
    if(event.response?.status!=='completed')throw new Error('copilot_incomplete_output');

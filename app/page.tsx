@@ -58,7 +58,7 @@ const nav = [
   [CalendarDays, "Ημερολόγιο", "/calendar"],
   [Users, "Ασθενείς", "/patients"],
   [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
-  [Sparkles, "Προώθηση γραφείου", "/promotion"],
+  [Megaphone, "Προώθηση γραφείου", "/promotion"],
 ] as const;
 
 export default function Page() {

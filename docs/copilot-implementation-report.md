@@ -6,7 +6,7 @@ The default conversation uses `/api/copilot/chat`: authenticated workspace → e
 
 `OPENAI_COPILOT_FAST_MODEL` selects the Preview fast model, with reasoning effort none and a 1,000-token ceiling. The prompt requests a concise natural Greek answer, normally 2–4 sentences. No citation schema, model intent classifier, summary generator or model reviewer runs on this path. The existing Responses API integration is retained without a new SDK, vector database or service.
 
-The context builder includes eligible primary records, dates, corrections and explicit medication conflicts. Drafts and structured identifiers are excluded. Full records are used within the existing context budget. Oversized charts fail explicitly rather than add a retrieval model call or silently omit history. No new summary cache or embeddings have been introduced.
+The context builder includes eligible primary records, dates, corrections and explicit medication conflicts. Deterministic latest/previous completed-encounter dates and medication event timelines distinguish the medication start date from later dose changes; no model call computes these anchors. Drafts and structured identifiers are excluded. Full records are used within the existing context budget. Oversized charts fail explicitly rather than add a retrieval model call or silently omit history. No new summary cache or embeddings have been introduced.
 
 Streaming begins after authorization and reading a chart snapshot. There is no second full database read after generation; therefore concurrent chart edits are not detected during the response. A subsequent question fetches current records. This is a read-only answer, not authorization to execute a write. The stream carries snapshot_at metadata.
 

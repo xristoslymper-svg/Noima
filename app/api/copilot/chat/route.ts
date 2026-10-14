@@ -15,7 +15,7 @@ async function post(req:Request){
   (b.conversation!==undefined&&(typeof b.conversation!=='string'||b.conversation.length>20000)))
   return Response.json({error:'Μη έγκυρη ερώτηση ή επιλογή ασθενούς.'},{status:400});
  try{
-  assertCopilotPrivacy();seal({probe:true},'copilot-chat:'+b.tester);
+  assertCopilotPrivacy(process.env.OPENAI_COPILOT_FAST_MODEL);seal({probe:true},'copilot-chat:'+b.tester);
   let memory:FastMemory|null=b.conversation?unseal<FastMemory>(b.conversation,'copilot-chat:'+b.tester):null;
   if(memory&&memory.expires<Date.now())memory=null;
   const roster=await request('demo_patients?select=id,first_name,last_name&tester_id=eq.'+encodeURIComponent(b.tester)) as SearchPatient[];

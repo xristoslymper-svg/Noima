@@ -1,8 +1,8 @@
 export type Usage={input_tokens:number;output_tokens:number;calls:number};
-export function assertCopilotPrivacy(){
+export function assertCopilotPrivacy(model=process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL){
  const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
  if(!['demo','synthetic'].includes(mode||'')||process.env.COPILOT_SYNTHETIC_APPROVED!=='true'||process.env.EXTERNAL_AI_ENABLED!=='true')throw new Error('copilot_privacy_disabled');
- if(!process.env.OPENAI_API_KEY||!(process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL))throw new Error('copilot_provider_unconfigured');
+ if(!process.env.OPENAI_API_KEY||!model)throw new Error('copilot_provider_unconfigured');
 }
 export const COPILOT_CONTEXT_LIMIT=110000;
 async function generate(instructions:string,input:unknown,usage:Usage,schema?:Record<string,unknown>):Promise<string>{

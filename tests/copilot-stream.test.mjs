@@ -65,3 +65,15 @@ test('application consumer receives a delta while provider completion is still p
  const final=await events.next();assert.equal(final.value.type,'done');
  await events.return();
 });
+
+test('fast configuration is independent of the legacy model and exposes unambiguous temporal anchors',async()=>{
+ const calls=setup([delta,complete]);delete process.env.OPENAI_COPILOT_MODEL;delete process.env.OPENAI_CLINICAL_MODEL;
+ for await(const event of fastAnswer(copilotPatients()[0],'πορεία',null))void event;
+ const input=JSON.parse(calls[0].input);
+ assert.equal(input.encounter_dates.latest_completed,'2026-09-10T09:00:00Z');
+ assert.equal(input.encounter_dates.previous_completed,'2026-08-10T09:00:00Z');
+ assert.equal(input.medication_timeline[0].dated_events[0].state.dose,10);
+ assert.equal(input.medication_timeline[0].dated_events[1].date,'2026-05-10');
+ assert.equal(input.medication_timeline[0].listing.dose,20);
+ assert.equal(calls.length,1);
+});

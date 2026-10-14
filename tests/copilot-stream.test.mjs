@@ -86,11 +86,22 @@ test('interactive preview uses fixed synthetic context and one streaming call',a
  assert.match(calls[0].input,/Fictional A/);
  await assert.rejects(async()=>{for await(const event of fastAnswer(copilotPatients()[0],'Τι άλλαξε;',null)){}});
 });
-test('synthetic permission cannot enable production or unrelated branches',async()=>{
+test('synthetic permission cannot enable an unapproved production ref or unrelated preview',async()=>{
  const calls=setup([delta,complete]);
  for(const [environment,branch,enabled] of [['production','codex/clinical-copilot-agent','true'],['preview','main','true'],['preview','codex/clinical-copilot-agent','false']]){
  Object.assign(process.env,{VERCEL_ENV:environment,VERCEL_GIT_COMMIT_REF:branch,COPILOT_INTERACTIVE_SYNTHETIC:enabled});
  await assert.rejects(async()=>{for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}},/synthetic_preview_disabled/);
  }
  assert.equal(calls.length,0);
+});
+
+test('released synthetic chart runs only on explicitly enabled production main in demo mode',async()=>{
+ const calls=setup([delta,complete]);
+ Object.assign(process.env,{VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'main',CLINICAL_DATA_MODE:'demo',COPILOT_INTERACTIVE_SYNTHETIC:'true'});
+ for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}
+ assert.equal(calls.length,1);
+ assert.match(calls[0].input,/Fictional A/);
+ process.env.CLINICAL_DATA_MODE='real';
+ await assert.rejects(async()=>{for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}},/synthetic_preview_disabled/);
+ assert.equal(calls.length,1);
 });

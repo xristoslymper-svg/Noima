@@ -31,6 +31,7 @@ import {
   Home,
   Mic2,
   Menu,
+  Megaphone,
   ListTodo,
   Search,
   Settings,

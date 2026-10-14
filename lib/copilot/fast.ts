@@ -1,12 +1,21 @@
 import type {PatientBundle} from '../patients/demo-runtime';
 import {clinicalInput,clinicalInstructions} from './clinical.ts';
 import {assertCopilotPrivacy,COPILOT_CONTEXT_LIMIT,type Usage} from './provider.ts';
+import {syntheticPreviewEnabled,syntheticPatient} from './preview.ts';
 import {sseData} from './stream.ts';
 
 export type FastMemory={patient_id:string;question:string;answer:string;expires:number};
 export type FastEvent={type:'delta';text:string}|{type:'done';answer:string;usage:Usage;first_text_ms:number;elapsed_ms:number;snapshot:string};
 export async function* fastAnswer(bundle:PatientBundle,question:string,previous:FastMemory|null,signal?:AbortSignal):AsyncGenerator<FastEvent>{
  assertCopilotPrivacy(process.env.OPENAI_COPILOT_FAST_MODEL);
+ yield* generateFastAnswer(bundle,question,previous,signal);
+}
+// This entry point accepts no caller-supplied chart and never reads a patient DB.
+export async function* syntheticAnswer(question:string,previous:FastMemory|null,signal?:AbortSignal):AsyncGenerator<FastEvent>{
+ if(!syntheticPreviewEnabled()||!process.env.OPENAI_API_KEY||!process.env.OPENAI_COPILOT_FAST_MODEL)throw new Error('synthetic_preview_disabled');
+ yield* generateFastAnswer(syntheticPatient(),question,previous,signal);
+}
+async function* generateFastAnswer(bundle:PatientBundle,question:string,previous:FastMemory|null,signal?:AbortSignal):AsyncGenerator<FastEvent>{
  const started=performance.now(),usage:Usage={calls:0,input_tokens:0,output_tokens:0};
  // No model selector, summary generator or reviewer in this path.
  const context=await clinicalInput(bundle,question,null,null,usage,false);

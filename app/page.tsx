@@ -4,7 +4,7 @@ import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import {useMobileNavigation} from '@/components/useMobileNavigation';
 import PilotProfile from '@/components/PilotProfile';
-import RecordAssistant,{OverviewShortcuts} from '@/components/overview/RecordAssistant';
+import {OverviewShortcuts} from '@/components/overview/RecordAssistant';
 import './overview-search.css';
 
 import Link from "next/link";
@@ -186,7 +186,7 @@ export default function Page() {
         <nav className="nav">
           {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={label}><Icon size={19}/><span>{label}</span></Link>)}
         </nav>
-        <div className="overview-sidebar-assistant"><RecordAssistant compact/></div>
+        
       </aside>
       {mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}
       <section className="workspace">

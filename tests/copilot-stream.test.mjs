@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fastAnswer,answerStream} from '../lib/copilot/fast.ts';
+import {fastAnswer,syntheticAnswer,answerStream} from '../lib/copilot/fast.ts';
 import {sseData} from '../lib/copilot/stream.ts';
 import {copilotPatients} from './fixtures/copilot.mjs';
 const env={...process.env},originalFetch=globalThis.fetch;
@@ -76,4 +76,21 @@ test('fast configuration is independent of the legacy model and exposes unambigu
  assert.equal(input.medication_timeline[0].dated_events[1].date,'2026-05-10');
  assert.equal(input.medication_timeline[0].listing.dose,20);
  assert.equal(calls.length,1);
+});
+
+test('interactive preview uses fixed synthetic context and one streaming call',async()=>{
+ const calls=setup([delta,complete]);
+ Object.assign(process.env,{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/clinical-copilot-agent',COPILOT_INTERACTIVE_SYNTHETIC:'true',COPILOT_SYNTHETIC_APPROVED:'false'});
+ for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}
+ assert.equal(calls.length,1);
+ assert.match(calls[0].input,/Fictional A/);
+ await assert.rejects(async()=>{for await(const event of fastAnswer(copilotPatients()[0],'Τι άλλαξε;',null)){}});
+});
+test('synthetic permission cannot enable production or unrelated branches',async()=>{
+ const calls=setup([delta,complete]);
+ for(const [environment,branch,enabled] of [['production','codex/clinical-copilot-agent','true'],['preview','main','true'],['preview','codex/clinical-copilot-agent','false']]){
+ Object.assign(process.env,{VERCEL_ENV:environment,VERCEL_GIT_COMMIT_REF:branch,COPILOT_INTERACTIVE_SYNTHETIC:enabled});
+ await assert.rejects(async()=>{for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}},/synthetic_preview_disabled/);
+ }
+ assert.equal(calls.length,0);
 });

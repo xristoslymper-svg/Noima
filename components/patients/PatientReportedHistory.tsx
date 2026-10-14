@@ -1,4 +1,5 @@
 'use client';
+import {useSyntheticChart} from './SyntheticChartContext';
 import {useEffect,useState} from 'react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {historyDraftFromAnswers} from '@/lib/intake/history';
@@ -7,11 +8,13 @@ import {normalizedPatientHistory,patientReportedHighlights,receivedPatientHistor
 const fields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Θεραπείες και φάρμακα'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνικό ιστορικό'],['allergies','Αλλεργίες']] as const;
 const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
 export default function PatientReportedHistory({patientId,compact=false,onOpen}:{patientId:string;compact?:boolean;onOpen?:()=>void}){
+ const synthetic=useSyntheticChart();
  const [data,setData]=useState<ReceivedHistory[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState(false);
  const [retry,setRetry]=useState(0);
  useEffect(()=>{
+  if(synthetic){setData([]);setLoading(false);setError(false);return;}
   const controller=new AbortController();
   setLoading(true);setError(false);setData([]);
   let inFlight=false;
@@ -43,7 +46,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   window.addEventListener('focus',refresh);
   const timer=window.setInterval(refresh,60_000);
   return()=>{controller.abort();window.removeEventListener('focus',refresh);window.clearInterval(timer)};
- },[patientId,retry,compact]);
+ },[patientId,retry,compact,synthetic]);
  if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
  if(error)return compact?null:<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>;
  if(!data.length)return compact?null:<p className="patient-reported-muted">Δεν έχει επιστραφεί ακόμη ερωτηματολόγιο ιστορικού.</p>;

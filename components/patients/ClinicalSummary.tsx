@@ -1,4 +1,5 @@
 'use client';
+import {useSyntheticChart} from './SyntheticChartContext';
 import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
@@ -10,6 +11,7 @@ import ClinicalCardView from './ClinicalCardView';
 type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
 type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null};
 export default function ClinicalSummary({bundle,compact=false,overview=false}:Props){
+ const synthetic=useSyntheticChart();
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
  const handledRefresh=useRef(0);
  const retryAfter=useRef<{key:string;at:number}|null>(null);
@@ -18,6 +20,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
  const key=summaryContextKey(bundle,clinicDay());
  useEffect(()=>{const focus=()=>setRetry(n=>n+1);window.addEventListener('focus',focus);const timer=setInterval(focus,60000);return()=>{window.removeEventListener('focus',focus);clearInterval(timer)}},[]);
  useEffect(()=>{
+  if(synthetic){setState('ready');return;}
   const force=refresh>handledRefresh.current;handledRefresh.current=refresh;
   // A changed patient record (key) or a manual refresh bypasses the passive cooldown.
   if(!force&&retryAfter.current?.key===key&&Date.now()<retryAfter.current.at)return;
@@ -33,7 +36,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
    setState('unavailable');
   });
   return()=>{active=false;controller.abort()};
- },[key,retry,refresh,bundle.patient.id]);
+ },[key,retry,refresh,bundle.patient.id,synthetic]);
  const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;

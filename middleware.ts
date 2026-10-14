@@ -4,6 +4,13 @@ import { supabaseUrl, supabaseKey } from './lib/pilot/config';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
+  if(request.nextUrl.pathname==='/copilot-evaluation.html'&&process.env.VERCEL_ENV==='preview'){
+    const report=NextResponse.next();
+    report.headers.set('X-Robots-Tag','noindex, nofollow');
+    report.headers.set('Cache-Control','no-store');
+    report.headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
+    return report;
+  }
   let response=NextResponse.next({request});
   const client=createServerClient(supabaseUrl,supabaseKey,{cookies:{
     getAll:()=>request.cookies.getAll(),

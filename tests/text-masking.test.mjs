@@ -38,3 +38,9 @@ test('clinical dates with times are not mistaken for spaced phone numbers',()=>{
  assert.equal(maskProviderPayload(raw),raw);
  assert.match(maskProviderPayload('Τηλέφωνο 210 999 8888'),/\[ΤΗΛΕΦΩΝΟ\]/);
 });
+
+test('different named relatives remain distinguishable after masking',()=>{
+ const seed='μητέρα: Άννα Κανελλοπούλου; σύζυγος: Πέτρος Δοκιμαστικός.';
+ const masked=maskProviderPayload({question:'Άννα Κανελλοπούλου και Πέτρος Δοκιμαστικός'}, {}, seed);
+ assert.match(masked.question,/\[ΣΥΓΓΕΝΗΣ_1\] και \[ΣΥΓΓΕΝΗΣ_2\]/);
+});

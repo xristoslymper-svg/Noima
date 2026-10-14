@@ -8,7 +8,7 @@ function pattern(value:string){
 }
 export function createClinicalMasker(identity:MaskIdentity={},seed?:unknown){
  const entries:Array<{text:string;token:string}>=[];
- const add=(value:string|undefined,token:string)=>{const text=value?.trim();if(text&&text.length>=3&&!entries.some(e=>e.text===text))entries.push({text,token})};
+ const add=(value:string|undefined,token:string)=>{const text=value?.trim();if(text&&text.length>=3&&!entries.some(e=>e.text===text)){const label=token==='[ΣΥΓΓΕΝΗΣ]'?'[ΣΥΓΓΕΝΗΣ_'+(entries.filter(e=>e.token.startsWith('[ΣΥΓΓΕΝΗΣ_')).length+1)+']':token;entries.push({text,token:label})}};
  add([identity.first_name,identity.last_name].filter(Boolean).join(' '),'[ΑΣΘΕΝΗΣ]');
  add(identity.first_name,'[ΑΣΘΕΝΗΣ]');add(identity.last_name,'[ΑΣΘΕΝΗΣ]');
  for(const key of ['email','phone','landline','contact_phone','address','amka'] as const)add(identity[key],'[ΣΤΟΙΧΕΙΟ_ΤΑΥΤΟΤΗΤΑΣ]');

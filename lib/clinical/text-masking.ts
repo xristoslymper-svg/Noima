@@ -21,7 +21,10 @@ export function createClinicalMasker(identity:MaskIdentity={},seed?:unknown){
   s=replace(s,/[A-Z0-9.!#$%&'*+/=?^_\x60{|}~-]+@[A-Z0-9](?:[A-Z0-9.-]*[A-Z0-9])?\.[A-Z]{2,}/giu,'[EMAIL]');
   s=replace(s,/(?:https?:\/\/|www\.)[^\s<>"\])]+/giu,'[ΣΥΝΔΕΣΜΟΣ]');
   s=replace(s,/(?<!\d)\+\d(?:[\s().-]*\d){6,14}(?!\d)/gu,'[ΤΗΛΕΦΩΝΟ]');
-  s=replace(s,/(?<!\d)(?:\+?30[\s().-]*)?[2679](?:[\s().-]*\d){9}(?!\d)/gu,'[ΤΗΛΕΦΩΝΟ]');
+  s=s.replace(/(?<!\d)(?:\+?30[\s().-]*)?[2679](?:[\s().-]*\d){9}(?!\d)/gu,candidate=>{
+   if(/\d{4}[-.]\d{2}[-.]\d{2}/u.test(candidate))return candidate;
+   replacements++;return '[ΤΗΛΕΦΩΝΟ]';
+  });
   s=replace(s,/(?<!\d)\d{11}(?!\d)/gu,'[ΑΜΚΑ]');
   s=replace(s,/\b[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]){11,30}\b/giu,'[IBAN]');
   s=replace(s,/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/giu,'[ΑΝΑΓΝΩΡΙΣΤΙΚΟ]');

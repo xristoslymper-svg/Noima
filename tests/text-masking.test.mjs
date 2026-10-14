@@ -32,3 +32,9 @@ test('registry stats contain only counts and preserve primitive values',()=>{
  assert.ok(masker.stats().replacements>=2);
  assert.deepEqual(Object.keys(masker.stats()),['replacements']);
 });
+
+test('clinical dates with times are not mistaken for spaced phone numbers',()=>{
+ const raw='Επίσκεψη 2026-09-10 12:00, επανέλεγχος 2026.10.14 09:30. PHQ-9 12.';
+ assert.equal(maskProviderPayload(raw),raw);
+ assert.match(maskProviderPayload('Τηλέφωνο 210 999 8888'),/\[ΤΗΛΕΦΩΝΟ\]/);
+});

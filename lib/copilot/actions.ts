@@ -4,7 +4,6 @@ import {request,rpc} from '../patients/demo-runtime';
 import {clinicLocalToIso,formatClinicDateTime} from '../clinic-time.ts';
 import {modelJSON,objectSchema,stringSchema,type Usage} from './provider.ts';
 import {validEmail} from '../mail/providers';
-import {pilotClient} from '../pilot/server';
 type Appointment={id:string;patient_id:string;scheduled_start:string;scheduled_end:string;status:string;session_id:string|null;updated_at:string};
 type Proposal={id:string;kind:string;expires_at:string};
 export async function prepareAction(workspace:string,bundle:PatientBundle,query:string,kind:'calendar'|'questionnaires',usage:Usage){
@@ -30,8 +29,6 @@ export async function prepareAction(workspace:string,bundle:PatientBundle,query:
   summary=(p.action==='create'?'Νέο ραντεβού':p.action==='move'?'Μετακίνηση από '+formatClinicDateTime(event!.scheduled_start):'Ακύρωση')+' · '+patient.first_name+' '+patient.last_name+' · '+formatClinicDateTime(start)+(p.action==='cancel'?'':' – '+formatClinicDateTime(end))+' · Europe/Athens';
  }else{
   if(!validEmail(patient.email))throw new Error('copilot_recipient_missing');
-  const client=await pilotClient();const {data:mailbox,error}=await client.rpc('pilot_mailbox_get');
-  if(error||!mailbox)throw new Error('copilot_mailbox_missing');
   const p=await modelJSON<{instruments:string[];before_next:boolean;clarification:string}>(
    'Extract requested questionnaires from the explicit Greek SEND request. Only PHQ-9 and GAD-7 are available. Do not replace unknown instruments. Return empty instruments and clarification for ambiguity or a read-only question. before_next=true only if explicitly tied to the next appointment. Never invent recipients; they are resolved server-side.',
    {query},objectSchema({instruments:{type:'array',maxItems:2,items:{type:'string',enum:['PHQ-9','GAD-7']}},before_next:{type:'boolean'},clarification:stringSchema}),usage);
@@ -41,7 +38,7 @@ export async function prepareAction(workspace:string,bundle:PatientBundle,query:
   const appointment=p.before_next?bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_start)>Date.now()).sort((a,b)=>a.scheduled_start.localeCompare(b.scheduled_start))[0]:null;
   if(p.before_next&&!appointment)throw new Error('copilot_appointment_missing');
   payload={recipient:patient.email,appointment_id:appointment?.id||null,invitations:p.instruments.map(instrument=>({id:randomUUID(),token:randomBytes(32).toString('hex'),instrument}))};
-  summary='Αποστολή '+p.instruments.join(' και ')+' · '+patient.first_name+' '+patient.last_name+' · Προς: '+patient.email+(appointment?' · Ραντεβού '+formatClinicDateTime(appointment.scheduled_start):'')+' · Προσωπικός σύνδεσμος, ισχύς 14 ημερών. Άμεση αποστολή μετά την επιβεβαίωση.';
+  summary='Αποστολή '+p.instruments.join(' και ')+' · '+patient.first_name+' '+patient.last_name+' · Προς: '+patient.email+(appointment?' · Ραντεβού '+formatClinicDateTime(appointment.scheduled_start):'')+' · Προσωπικός σύνδεσμος, ισχύς 14 ημερών. Μετά την επιβεβαίωση, θα γίνει αποστολή από το συνδεδεμένο email ή θα ανοίξει έτοιμο email για χειροκίνητη αποστολή.';
  }
  const proposal=await rpc('copilot_propose',{p_tester:workspace,p_id:randomUUID(),p_patient:patient.id,p_kind:kind,p_payload:payload}) as Proposal;
  return {answer:'Έλεγξε την πρόταση πριν την εκτέλεση.',sources:[],proposal:{...proposal,summary}};

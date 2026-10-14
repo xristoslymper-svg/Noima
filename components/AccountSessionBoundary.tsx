@@ -81,5 +81,5 @@ export default function AccountSessionBoundary({children}: {children: React.Reac
 
  if(publicPage) return children;
  if(!account) return <main className="pilot-page"><section className="pilot-card">{error ? <><h1>Δεν φορτώθηκε ο λογαριασμός</h1><p>Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.</p><button onClick={() => {setError(false); setRetry(value => value + 1);}}>Δοκιμή ξανά</button></> : <p role="status">Φόρτωση του προσωπικού σας χώρου…</p>}</section></main>;
- return <AccountContext.Provider value={account}>{children}{(path==='/'||path.startsWith('/patients/demo/'))&&<RecordAssistant synthetic={path==='/patients/demo/synthetic-copilot'}/>}</AccountContext.Provider>;
+ return <AccountContext.Provider value={account}>{children}{account.identity&&<RecordAssistant synthetic={path==='/patients/demo/synthetic-copilot'}/>}</AccountContext.Provider>;
 }

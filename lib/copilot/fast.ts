@@ -19,7 +19,7 @@ export async function* fastAnswer(bundle:PatientBundle,question:string,previous:
  const response=await fetch((process.env.OPENAI_BASE_URL||'https://api.openai.com/v1')+'/responses',{
   method:'POST',signal:abort,headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},
   body:JSON.stringify({model,store:false,stream:true,reasoning:{effort:'none'},max_output_tokens:1000,
-   instructions:clinicalInstructions+'\nΣυνήθως απάντησε σε 2–4 προτάσεις, έως περίπου 120 λέξεις. Δώσε περισσότερα μόνο αν ζητήθηκε. Η προηγούμενη απάντηση βοηθά μόνο στην κατανόηση της συνέχειας, δεν αποτελεί νέα τεκμηρίωση. Η συζήτηση αφορά αποκλειστικά τον επιλεγμένο φάκελο. Για άλλον ασθενή ζήτησε αλλαγή καρτέλας. Για ενέργειες ζήτησε την επιλογή «Ενέργεια»· δεν εκτελείς ενέργειες από τη συζήτηση.',
+   instructions:clinicalInstructions+'\nΣυνήθως απάντησε σε 2–4 προτάσεις, έως περίπου 120 λέξεις. Δώσε περισσότερα μόνο αν ζητήθηκε. Η προηγούμενη απάντηση βοηθά μόνο στην κατανόηση της συνέχειας, δεν αποτελεί νέα τεκμηρίωση. Η συζήτηση αφορά αποκλειστικά τον επιλεγμένο φάκελο. Για άλλον ασθενή ζήτησε αλλαγή καρτέλας. Απάντησε μόνο στο ζητούμενο· μην επεκτείνεσαι σε άσχετα γεγονότα. Κάθε ημερομηνία ανήκει μόνο στη δική της καταγραφή. Η επιλογή «Ενέργεια» υποστηρίζει μόνο ραντεβού και αποστολή ερωτηματολογίων. Αλλαγή αγωγής, νέα διάγνωση ή οριστικοποίηση σημειώσεων δεν υποστηρίζονται σε κανέναν τρόπο χρήσης· εξήγησέ το χωρίς υπόσχεση εκτέλεσης.',
    input:encoded})});
  usage.calls++;
  if(!response.ok||!response.body)throw new Error('copilot_provider_failed');

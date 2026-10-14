@@ -60,3 +60,21 @@ test('retrieval instructions treat injected notes as data and verification can r
  await assert.rejects(synthesize(b,'πορεία',null,null,usage()),/grounding_failed/);
  assert.match(inputs[1].instructions,/untrusted/);assert.match(inputs[2].instructions,/untrusted/);
 });
+
+test('writer schema permits only supplied evidence IDs and duplicate citations are normalized',async()=>{
+ configured();const b=copilotPatients()[0];
+ const inputs=provider([{source_ids:[]},{findings:[{text:'Αναφέρει αϋπνία στην τελευταία επίσκεψη.',source_ids:['section:note-0-8','section:note-0-8'],group_label:'Εικόνα'}]},{checks:[{index:0,supported:true}]}]);
+ const answer=await synthesize(b,'πορεία',null,null,usage());
+ const allowed=inputs[1].text.format.schema.properties.findings.items.properties.source_ids.items.enum;
+ const evidence=JSON.parse(inputs[1].input).sources;
+ assert.deepEqual(allowed,evidence.map(s=>s.id));
+ assert.equal(answer.blocks[0].sources.length,1);
+ assert.ok(inputs[0].text.format.schema.properties.source_ids.items.enum.includes('section:note-0-1'));
+});
+test('fresh summary primary references remain available to the writer even when selector omits them',async()=>{
+ configured();const b=copilotPatients()[0];
+ const cache={context_hash:await summaryContextHash(b),policy_version:SUMMARY_POLICY_VERSION,findings:[{text:'Αναφέρει άγχος και δυσκολία ύπνου.',source_ids:['section:note-0-3']}]};
+ const inputs=provider([{source_ids:[]},{findings:[{text:'Αναφέρει άγχος και δυσκολία ύπνου.',source_ids:['section:note-0-3'],group_label:'Ιστορικό'}]},{checks:[{index:0,supported:true}]}]);
+ await synthesize(b,'ύπνος',null,cache,usage());
+ assert.ok(JSON.parse(inputs[1].input).sources.some(s=>s.id==='section:note-0-3'));
+});

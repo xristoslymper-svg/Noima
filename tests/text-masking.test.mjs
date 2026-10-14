@@ -51,3 +51,10 @@ test('capitalised relative labels mask names while preserving clinical descripti
  assert.doesNotMatch(masked,/Κανελλοπούλου|ΔΟΚΙΜΑΣΤΙΚΟΣ/);
  assert.match(masked,/μητέρα: κατάθλιψη σε ύφεση/);
 });
+
+test('opaque structured source references retain their contract while the same ID in prose is masked',()=>{
+ const id='11111111-1111-4111-8111-000000000001';
+ const value=maskProviderPayload({id:'section:'+id,content:'Αναφορά '+id});
+ assert.equal(value.id,'section:'+id);
+ assert.doesNotMatch(value.content,/11111111/);
+});

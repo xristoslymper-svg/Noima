@@ -39,7 +39,9 @@ export function createClinicalMasker(identity:MaskIdentity={},seed?:unknown){
  function visit<T>(value:T):T{
   if(typeof value==='string')return text(value) as T;
   if(Array.isArray(value))return value.map(visit) as T;
-  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,visit(item)])) as T;
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[
+   key,key==='id'&&typeof item==='string'&&/^(?:[a-z_]+:)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(item)?item:visit(item)
+  ])) as T;
   return value;
  }
  function mask<T>(value:T):T{

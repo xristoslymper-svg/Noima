@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {copilotPatients} from './fixtures/copilot.mjs';
-import {synthesize,understand,resolveMedication} from '../lib/copilot/clinical.ts';
+import {synthesize,understand,resolveMedication,assertCautiousClaims} from '../lib/copilot/clinical.ts';
 import {assertCopilotPrivacy} from '../lib/copilot/provider.ts';
 import {matchPatients} from '../lib/overview/record-search.ts';
 import {summaryContextHash,SUMMARY_POLICY_VERSION} from '../lib/clinical/summary-context.ts';
@@ -43,7 +43,7 @@ test('question synthesis includes old safety, excludes drafts, verifies citation
 });
 test('unsupported claims are rejected even with valid citation IDs',async()=>{
  configured();provider([{source_ids:['section:note-0-8']},{findings:[{text:'Η αγωγή προκάλεσε πλήρη ίαση.',source_ids:['section:note-0-8'],group_label:'Ισχυρισμός'}]},{checks:[{index:0,supported:false}]}]);
- await assert.rejects(synthesize(copilotPatients()[0],'πορεία',null,null,usage()),/grounding_failed/);
+ await assert.rejects(synthesize(copilotPatients()[0],'πορεία',null,null,usage()),/grounding_failed|causal_language/);
 });
 test('invented citations fail before verifier/display',async()=>{
  configured();provider([{source_ids:['foreign-patient']}]);
@@ -77,4 +77,15 @@ test('fresh summary primary references remain available to the writer even when 
  const inputs=provider([{source_ids:[]},{findings:[{text:'Αναφέρει άγχος και δυσκολία ύπνου.',source_ids:['section:note-0-3'],group_label:'Ιστορικό'}]},{checks:[{index:0,supported:true}]}]);
  await synthesize(b,'ύπνος',null,cache,usage());
  assert.ok(JSON.parse(inputs[1].input).sources.some(s=>s.id==='section:note-0-3'));
+});
+
+test('live evaluation regression rejects causal attribution even if an LLM verifier would accept it',()=>{
+ const b=copilotPatients()[0];
+ assert.throws(()=>assertCautiousClaims([{text:'Βελτίωση του ύπνου είχε αναφερθεί ως αποτέλεσμα αλλαγής αγωγής.',source_ids:['section:note-0-4']}],b),/causal_language/);
+ assert.doesNotThrow(()=>assertCautiousClaims([{text:'Αναφέρθηκε καλύτερος ύπνος μετά την αλλαγή. Δεν τεκμηριώνεται αιτιότητα.',source_ids:['section:note-0-4']}],b));
+});
+test('active medication and latest stopped event cannot be silently reconciled',()=>{
+ const b=copilotPatients()[0];
+ assert.throws(()=>assertCautiousClaims([{text:'Η αγωγή Fictional A σταμάτησε.',source_ids:['event:event-0-7']}],b),/unresolved_medication_conflict/);
+ assert.doesNotThrow(()=>assertCautiousClaims([{text:'Υπάρχει ασυνέπεια: το Fictional A είναι ενεργό στον πίνακα αγωγής αλλά υπάρχει μεταγενέστερο συμβάν διακοπής.',source_ids:['medication:med-a-0','event:event-0-7']}],b));
 });

@@ -4,10 +4,12 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {Search,Send,Sparkles} from 'lucide-react';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
+import {sseData} from '@/lib/copilot/stream';
 import styles from './RecordAssistant.module.css';
 type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string};
 type Turn={question:string;choice?:string;result?:Reply;error?:string;executing?:boolean;done?:boolean};
 export default function RecordAssistant({compact=false}:{compact?:boolean}){
+ const [actionMode,setActionMode]=useState(false);
  const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false),[expanded,setExpanded]=useState(false),[patient,setPatient]=useState<SearchPatient|null>(null);
  const context=useRef<string|undefined>(undefined),locked=useRef(false),sequence=useRef(0),pending=useRef<AbortController|null>(null),tail=useRef<HTMLDivElement|null>(null);
  const pathname=usePathname();
@@ -22,8 +24,22 @@ export default function RecordAssistant({compact=false}:{compact?:boolean}){
   const timeout=setTimeout(()=>controller.abort(),175000);
   setTurns(t=>[...t.slice(-7),{question,choice}]);
   try{
-   const r=await fetch('/api/copilot',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({query:question,choice_id:choice,conversation:context.current})});
-   const data=await r.json();if(!r.ok)throw new Error(data.error||'Η ερώτηση δεν ολοκληρώθηκε.');
+   const r=await fetch(actionMode?'/api/copilot':'/api/copilot/chat',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({query:question,choice_id:choice,conversation:context.current,patient_id:choice||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]})});
+   let data:Reply;
+   if(r.ok&&r.headers.get('content-type')?.includes('text/event-stream')&&r.body){
+    let partial:Reply={answer:'',sources:[]},complete=false;
+    for await(const raw of sseData(r.body)){
+     if(current!==sequence.current)return;
+     const event=JSON.parse(raw);
+     if(event.type==='error')throw new Error(event.error);
+     if(event.type==='meta'){partial={...partial,patient:event.patient};setPatient(event.patient||null);}
+     if(event.type==='delta')partial={...partial,answer:partial.answer+event.text};
+     if(event.type==='done'){partial={...partial,answer:event.answer,conversation:event.conversation};complete=true;}
+     setTurns(t=>t.map((turn,i)=>i===t.length-1?{question,choice,result:partial}:turn));
+    }
+    if(!complete)throw new Error('Η απάντηση διακόπηκε. Δοκιμάστε ξανά.');
+    data=partial;
+   }else{const value=await r.json();if(!r.ok)throw new Error(value.error||'Η ερώτηση δεν ολοκληρώθηκε.');data=value;}
    if(current!==sequence.current)return;
    context.current=data.conversation;setPatient(data.patient||null);
    setTurns(t=>t.map((turn,i)=>i===t.length-1?{question,choice,result:data}:turn));
@@ -42,10 +58,11 @@ export default function RecordAssistant({compact=false}:{compact?:boolean}){
   }catch(e){if(current===sequence.current)setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,error:e instanceof Error?e.message:'Η κατάσταση δεν επιβεβαιώθηκε.'}:turn))}
   finally{if(current===sequence.current){locked.current=false;setBusy(false)}}
  }
- const examples=patient?['Πότε ξεκίνησε η δεύτερη αγωγή;','Και πώς ήταν ο ύπνος της μετά;','Τι άλλαξε από την προηγούμενη επίσκεψη;']:['Τι αγωγή παίρνει η…','Πώς εξελίχθηκε η κατάσταση της…','Στείλε PHQ-9 στον…'];
+ const examples=actionMode?['Κλείσε ραντεβού για τον…','Στείλε PHQ-9 στον…']:patient?['Πότε ξεκίνησε η δεύτερη αγωγή;','Και πώς ήταν ο ύπνος της μετά;','Τι άλλαξε από την προηγούμενη επίσκεψη;']:['Τι αγωγή παίρνει η…','Πώς εξελίχθηκε η κατάσταση της…','Τι άλλαξε στην τελευταία επίσκεψη της…'];
  return <section className={styles.assistant+(compact&&!expanded?' '+styles.compact:'')+(expanded?' '+styles.expanded:'')} aria-label="Βοηθός Ψ">
   <div className={styles.heading}><span><Sparkles size={18}/> Βοηθός Ψ</span><button aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Σύμπτυξη':'Ανάπτυξη'}</button><button disabled={busy} onClick={reset}>Νέα συζήτηση</button></div>
-  <p className={styles.context}>{patient?'Φάκελος: '+patient.first_name+' '+patient.last_name:'Επίλεξε ασθενή στην ερώτησή σου.'}</p>
+  <label>Τρόπος χρήσης <select disabled={busy} value={actionMode?'action':'chat'} onChange={e=>{reset();setActionMode(e.target.value==='action')}}><option value="chat">Συζήτηση</option><option value="action">Ενέργεια</option></select></label>
+  <p className={styles.context}>{patient?'Φάκελος: '+patient.first_name+' '+patient.last_name:'Η συζήτηση αφορά τον επιλεγμένο φάκελο. Για άλλον ασθενή ξεκίνα νέα συζήτηση.'}</p>
   <h2>Ο φάκελος, σε μια συζήτηση</h2>
   <p>Συζήτησε την πορεία του ασθενούς και οργάνωσε τις επόμενες ενέργειες.</p>
   <div className={styles.suggestions}>{examples.map(example=><button disabled={busy} key={example} onClick={()=>setQuery(example.replace('…',' '))}>{example}</button>)}</div>

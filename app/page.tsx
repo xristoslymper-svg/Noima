@@ -31,6 +31,7 @@ import {
   Home,
   Mic2,
   Menu,
+  Megaphone,
   ListTodo,
   Search,
   Settings,
@@ -58,6 +59,7 @@ const nav = [
   [CalendarDays, "Ημερολόγιο", "/calendar"],
   [Users, "Ασθενείς", "/patients"],
   [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
+  [Megaphone, "Προώθηση γραφείου", "/promotion"],
 ] as const;
 
 export default function Page() {

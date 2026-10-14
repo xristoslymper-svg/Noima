@@ -6,8 +6,9 @@ import {usePathname} from 'next/navigation';
 import {Search,Send,Sparkles,Minus,Plus,Square,MessageCircle,ArrowUpRight} from 'lucide-react';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
 import {sseData} from '@/lib/copilot/stream';
+import {manualMailtoHref,type ManualCompose} from '@/lib/mail/manual-compose';
 import styles from './RecordAssistant.module.css';
-type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string};
+type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string;compose?:ManualCompose};
 type Turn={question:string;choice?:string;result?:Reply;error?:string;executing?:boolean;done?:boolean;firstMs?:number;totalMs?:number};
 export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
  const [mounted,setMounted]=useState(false),[open,setOpen]=useState(false),[actionMode,setActionMode]=useState(false);
@@ -62,7 +63,10 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
    const response=await fetch('/api/copilot/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proposal_id:proposal.id,confirm:true})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Δεν επιβεβαιώθηκε ολοκλήρωση.');
    if(current!==sequence.current)return;
-   setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,done:data.status==='verified'||data.status==='accepted',result:{...turn.result,...data,proposal}}:turn));
+   setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,done:data.status==='verified'||data.status==='accepted'||data.status==='manual',result:{...turn.result,...data,proposal}}:turn));
+   // Match the Library: open the prepared message, but never claim it was sent.
+   // A visible button remains available if the browser has no mailto handler.
+   if(data.status==='manual'&&data.compose?.to&&data.compose?.subject&&data.compose?.body)window.location.href=manualMailtoHref(data.compose);
   }catch(e){if(current===sequence.current)setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,error:e instanceof Error?e.message:'Η κατάσταση δεν επιβεβαιώθηκε.'}:turn));}
   finally{if(current===sequence.current){locked.current=false;setBusy(false);}}
  }
@@ -82,7 +86,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
       {turn.result?.answer?<p>{turn.result.answer}</p>:<span className={styles.thinking} role="status"><i/><i/><i/><span className={styles.srOnly}>Διαβάζω τον φάκελο</span></span>}
       {turn.result?.blocks?.map((block,i)=><div className={styles.block} key={i}><strong>{block.title}</strong><p>{block.text}</p></div>)}
       {turn.result?.choices?.map(p=><button className={styles.choice} disabled={busy} key={p.id} onClick={()=>void ask(turn.question,p.id)}>{p.first_name} {p.last_name} · {p.id.slice(-6)}</button>)}
-      {turn.result?.proposal&&<div className={styles.action}><strong>Προτεινόμενη ενέργεια</strong><p>{turn.result.proposal.summary}</p><small>Λήξη: {new Date(turn.result.proposal.expires_at).toLocaleTimeString('el-GR')}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?'Εκτέλεση…':'Επιβεβαιώνω την εκτέλεση'}</button>}</div>}
+      {turn.result?.proposal&&<div className={styles.action}><strong>Προτεινόμενη ενέργεια</strong><p>{turn.result.proposal.summary}</p><small>Λήξη: {new Date(turn.result.proposal.expires_at).toLocaleTimeString('el-GR')}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?'Εκτέλεση…':'Επιβεβαιώνω την εκτέλεση'}</button>}{turn.result?.compose&&<><button type="button" onClick={()=>{if(turn.result?.compose)window.location.href=manualMailtoHref(turn.result.compose)}}>Άνοιγμα έτοιμου email</button><small>Το NOIMA δεν έχει στείλει email. Ελέγξτε το μήνυμα και πατήστε «Αποστολή» στο πρόγραμμα email σας.</small></>}</div>}
       {turn.totalMs!==undefined&&<div className={styles.answerFooter}><span>{(turn.totalMs/1000).toFixed(1)} δευτ.{synthetic&&turn.firstMs!==undefined?' · πρώτο κείμενο '+(turn.firstMs/1000).toFixed(1)+' δευτ.':''}</span>{turn.result?.patient&&!synthetic&&!turn.result.proposal&&<Link href={'/patients/demo/'+turn.result.patient.id}>Καρτέλα <ArrowUpRight size={12}/></Link>}</div>}
      </div>}
     </article>)}</div>

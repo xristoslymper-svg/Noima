@@ -47,7 +47,7 @@ export default function RecordAssistant({compact=false}:{compact?:boolean}){
   <div className={styles.heading}><span><Sparkles size={18}/> Βοηθός Ψ</span><button aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Σύμπτυξη':'Ανάπτυξη'}</button><button disabled={busy} onClick={reset}>Νέα συζήτηση</button></div>
   <p className={styles.context}>{patient?'Φάκελος: '+patient.first_name+' '+patient.last_name:'Επίλεξε ασθενή στην ερώτησή σου.'}</p>
   <h2>Ο φάκελος, σε μια συζήτηση</h2>
-  <p>Κλινικές απαντήσεις με πηγές. Οι ενέργειες χρειάζονται επιβεβαίωση.</p>
+  <p>Συζήτησε την πορεία του ασθενούς και οργάνωσε τις επόμενες ενέργειες.</p>
   <div className={styles.suggestions}>{examples.map(example=><button disabled={busy} key={example} onClick={()=>setQuery(example.replace('…',' '))}>{example}</button>)}</div>
   <div className={styles.conversation} aria-live="polite" aria-busy={busy}>{turns.map((turn,index)=><div className={styles.turn} key={index}>
    <strong>{turn.question}</strong>
@@ -56,12 +56,12 @@ export default function RecordAssistant({compact=false}:{compact?:boolean}){
    {turn.result&&<>
     {turn.result.patient&&<span className={styles.patient}>{turn.result.patient.first_name} {turn.result.patient.last_name}</span>}
     <p>{turn.result.answer}</p>
-    {turn.result.blocks?.map((block,i)=><article className={styles.block} key={i}><h3>{block.title}</h3><p>{block.text}</p><div className={styles.sources}>{block.sources.map((s,j)=><Link key={j} href={s.href}>{s.label} →</Link>)}</div></article>)}
+    {turn.result.blocks?.map((block,i)=><article className={styles.block} key={i}><h3>{block.title}</h3><p>{block.text}</p></article>)}
     {turn.result.choices?.map(p=><button className={styles.choice} disabled={busy} key={p.id} onClick={()=>void ask(turn.question,p.id)}>{p.first_name} {p.last_name} · {p.id.slice(-6)}</button>)}
-    <div className={styles.sources}>{turn.result.sources.map((s,i)=><Link key={i} href={s.href}>{s.label} →</Link>)}</div>
+    {turn.result.patient&&!turn.result.proposal&&<div className={styles.sources}><Link href={'/patients/demo/'+turn.result.patient.id}>Επιβεβαίωση στην καρτέλα ασθενούς →</Link></div>}
     {turn.result.proposal&&<div className={styles.action}><strong>Προτεινόμενη ενέργεια</strong><p>{turn.result.proposal.summary}</p><small>Λήξη: {new Date(turn.result.proposal.expires_at).toLocaleTimeString('el-GR')}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?'Εκτέλεση και επαλήθευση…':turn.error||turn.result.status==='attention'?'Επανάληψη ίδιας επιβεβαίωσης':'Επιβεβαιώνω την εκτέλεση'}</button>}</div>}
    </>}
-   {!turn.result&&!turn.error&&<p>Ανάκτηση και έλεγχος τεκμηρίωσης…</p>}
+   {!turn.result&&!turn.error&&<p>Διαβάζω τον φάκελο…</p>}
   </div>)}<div ref={tail}/></div>
   <form className={styles.compose} onSubmit={e=>{e.preventDefault();void ask(query)}}>
    <label className={styles.srOnly} htmlFor="record-question">Ερώτηση ή αίτημα ενέργειας</label>

@@ -1,85 +1,43 @@
-# Βοηθός Ψ — implementation and verification
+# Βοηθός Ψ — architecture and verification
 
-## Delivery status
+## Current architecture
 
-Draft PR: https://github.com/xristoslymper-svg/Noima/pull/101
-Branch: codex/clinical-copilot-agent. Base: d7702cd6967142714495e63dad923715f3185b71.
+The assistant writes natural Greek prose without mandatory citations, finding schemas, fixed headings, phrase bans, or a runtime model-verifier gate. Patient/workspace authorization, snapshot freshness, the synthetic-data privacy gate, and confirmed action execution are unchanged.
 
-Implementation was authored and committed through the connected GitHub API.
-No local repository, package execution, database, test runner or development server was used for this request.
-No merge, production deployment, hosted migration or production clinical-data write was performed.
+For charts within the configured context budget, the server supplies the complete eligible history in chronological order to one text-generation call. Draft notes are excluded by the shared clinical context builder. The input includes dated primary records, recorded corrections, important historical facts, medication conflicts, and a maintained summary only when its hash and policy are current. The summary is orientation; primary records remain authoritative.
 
-**Verdict: not ready for production or clinical use.** The implementation and automated synthetic component tests are published. The three required hosted end-to-end acceptance scenarios remain incomplete.
+For oversized charts, a model selects relevant records from the whole-history catalog. The server also retains durable/canonical information, corrections, sources underlying important facts and a fresh summary, and the two latest completed visits. Whole records are supplied, not truncated excerpts. The answer is told when the history was selected. If even mandatory context or the catalog exceeds the budget, processing fails explicitly. This is bounded retrieval; no embedding database has been added.
 
-## Implemented behavior
+Source links are not displayed beside each assertion. The interface offers one patient-chart link. The model is not asked to generate internal source IDs, punctuation patterns or classification labels for clinical prose.
 
-- Structured LLM intent selection over an explicit read/action allowlist; model configuration is required, with no assumed model default.
-- Authorized deterministic retrieval of exact medications, medication start dates, appointments, tasks and psychometric results.
-- Question-specific source selection, evidence-grounded clinical writing and a separate semantic verifier. Unknown source IDs or unsupported claims reject the response.
-- Full-history source catalog includes old significant safety evidence; mandatory canonical findings and corrections are retained. Draft visit narratives are excluded.
-- Existing summary cache is used only when its content hash and policy match. Evidence is re-read before returning synthesis to reject concurrent changes.
-- Encrypted, expiring patient-specific conversation state tracks ordered medications, the focused medication and temporal context. Switching patients clears incompatible state.
-- Create/move/cancel appointment previews with explicit confirmation, durable proposal ownership and expiry, stale-version rejection, existing calendar conflict checks and persisted-result verification.
-- PHQ-9/GAD-7 invitation previews use the saved patient recipient, existing assignment contracts and the existing authorized mailbox route. Duplicate invitations and replay are handled. Provider acceptance is distinguished from delivery.
-- Compact/expanded sidebar, patient context, cited answer blocks, confirmation cards, visible execution state and failed-question retry.
+Intent routing and action arguments remain structured because backend execution needs validated parameters. Creating/moving/cancelling appointments and sending questionnaire invitations still require an expiring, authorized confirmation proposal and persisted-result checks. The model cannot change medication, finalize notes or execute arbitrary writes.
 
-## Automated evidence
+## Why the previous design changed
 
-At commit 07e767e54330d617b9ec1eabe41af8776d94a804:
+The earlier citation-gated pipeline made three synthesis calls, required a particular response schema, and rejected entire responses based on a boolean model verdict. Manual review also found a false-positive verdict. Citation formatting was not a reliable measure of factual correctness.
 
-- Quality gate: https://github.com/xristoslymper-svg/Noima/actions/runs/38484419051
-- TypeScript, lint, 413 tests and production build passed.
-- Synthetic evaluation: https://github.com/xristoslymper-svg/Noima/actions/runs/38484419117
-- Nine focused mocked-provider/adversarial tests passed.
-- Two additional database tests exercise the new proposal/confirmation functions against all migrations in the GitHub runner: persisted calendar create/move/replay, unauthorized and expired/stale actions, questionnaire assignment/replay/duplicate prevention and simulated mailbox acceptance.
-- Follow-up hardening rejects null action parameters and aligns calendar advisory-lock ordering with the existing service; its final check results are recorded on the PR.
+The new runtime separates natural response generation from development-time evaluation. An offline automated reviewer checks actual synthetic outputs against primary records and reports specific quoted issues and reasons. It does not block production requests, rewrite answers, or certify clinical correctness. The reviewer currently uses the configured generation model, so correlated errors remain possible and clinical review is still required.
 
-The dataset in tests/fixtures/copilot.mjs contains ten fictional patients, similar/identical names, eight completed visits plus a draft per patient, historical safety findings, medication changes, PHQ/GAD trajectories, conflicts/missing documentation, cancelled/rescheduled appointments and pending/completed assessments.
+## Validation and visible deliverables
 
-These tests establish component behavior under their fixtures. They do not establish live Greek-language identification accuracy, hallucination rate or end-to-end action correctness.
+All implementation is authored through connected GitHub tools. Tests and builds run in GitHub Actions and Vercel, never locally.
 
-## Live-model evaluation
+- Draft PR and latest commit-specific results: https://github.com/xristoslymper-svg/Noima/pull/101
+- Branch Preview report: https://noima-git-codex-clinical-copilot-agent-xristoslymper-3481.vercel.app/copilot-evaluation.html
+- The report includes actual answers, generation latency/usage and separate automated critique.
+- A completed generation is not an accuracy result. New review outcomes cannot be compared directly with old citation-gate pass rates.
+- The Vercel build intentionally publishes failed/needs-review reports; deployment success is not clinical-evaluation success.
 
-The workflow produced:
-```json
-{"status":"not_run","reason":"Approved synthetic test-provider configuration unavailable","usage":{"calls":0,"input_tokens":0,"output_tokens":0}}
-```
+Regression tests cover full-context single-call generation, natural formatting, omission of drafts and structured identifiers, summary freshness, retrieval retention/limits, foreign-source rejection, incomplete output/usage accounting, and instruction/data separation. These tests establish software behavior, not freedom from hallucinations.
 
-Artifact: https://github.com/xristoslymper-svg/Noima/actions/runs/38484419117/artifacts/11857724113
+## Hosted acceptance and release limitations
 
-Reproduction in GitHub Actions requires COPILOT_EVAL_APPROVED=true and COPILOT_EVAL_MODEL repository variables plus COPILOT_EVAL_API_KEY as a secret. Do not put credentials in source or PR comments.
-The evaluation script records actual usage and elapsed time when configured. No live accuracy, latency, token cost or hallucination figures are claimed from mocked responses. Monetary cost calculation and a clinician-reviewed scoring rubric remain outstanding.
+The Preview report uses fictional repository fixtures and actual provider calls. It neither reads Supabase nor sends email. Runtime external-model processing remains gated to approved synthetic data.
 
-## Hosted evidence and acceptance matrix
+The authenticated end-to-end flows for clinical questions, calendar mutations and mailbox-provider acceptance remain incomplete: no verified isolated staging database/test account is available. Preview database defaults can target production, so no authenticated patient/action testing was performed against them. No hosted migration was applied.
 
-The branch preview opened at:
-https://noima-git-codex-clinical-copilot-agent-xristoslymper-3481.vercel.app
+The Supabase organization is on Free. The cost endpoint is unavailable; no paid branch or plan upgrade was created. Vercel project access works without an explicit teamId; build logs can be inspected in the authorized browser.
 
-The browser reached the NOIMA sign-in page and its synthetic-pilot notice. Authenticated assistant behavior was not tested. No synthetic staging login or verified isolated staging database was available.
+No merge, production deployment or production data write was performed. Remaining work includes isolated hosted action testing, clinician-reviewed scoring, model comparison, authenticated responsive/keyboard testing, and fuller multi-turn evaluation. Streaming is not implemented.
 
-| Required scenario | Verified evidence | Status |
-| --- | --- | --- |
-| A: longitudinal clinical question with citations | Synthetic source/verification unit tests; no actual provider response or authenticated browser answer | Incomplete |
-| B: Greek request, confirmation, persisted appointment change | Database confirmation/create/move/replay tests; no hosted Greek-to-calendar flow | Incomplete |
-| C: Greek request, confirmation, delivery-service acceptance | Assignment/idempotency tests and simulated acceptance; no real mailbox-provider acceptance | Incomplete |
-
-The connected Vercel integration returned 404 for noima-pi. Discovery returned project noima (prj_0PKUlauk0QZWfnOvcNcIu7DAyhee), but project access returned 403 for account scope xristoslymper-3481. Reconnect with access to that project/account before inspecting or configuring Preview resources. No CLI fallback was used.
-
-## Security and privacy assessment
-
-The new external-model path fails closed unless CLINICAL_DATA_MODE is explicitly demo/synthetic, COPILOT_SYNTHETIC_APPROVED=true and EXTERNAL_AI_ENABLED=true. This is a synthetic-only gate, not authorization to process real patient data. Structured identifier removal does not anonymize free-text notes. Provider terms and real-data release requirements have not been approved or verified for this implementation.
-
-Server routes use existing authenticated workspace resolution and patient access. The model has no SQL execution, arbitrary write, medication-change, diagnosis or note-finalization tool. Action proposals are private, actor/workspace scoped, expire after ten minutes, require explicit confirmation and retain durable results for idempotent replay. Existing mailbox credentials remain server-only. The migration is committed but not applied to any hosted database.
-
-The evidence verifier is an additional model check, not proof of factual truth. Clinical review and actual-provider adversarial evaluation remain necessary.
-
-## Remaining limitations and completion steps
-
-1. Restore authorized Vercel integration access and provision/identify an isolated synthetic staging database and test account. Apply the committed migration only there after confirming isolation.
-2. Configure an approved synthetic provider and run the live evaluation workflow; review the actual answers, Greek variations, patient disambiguation, tool choice and multi-turn sequences.
-3. Run all three scenarios in the authenticated Preview. Use a controlled synthetic mailbox recipient and verify provider acceptance plus persisted calendar/assessment records.
-4. Verify keyboard/mobile behavior and browser retry/navigation races. UI has not received authenticated visual verification.
-5. Some medication/history citations link to the relevant patient tab when no visit link exists; exact per-event deep links remain outstanding. Do not describe these as fully granular citation navigation.
-6. Responses are returned after full evidence validation; streaming is not implemented. Suggested questions are limited rather than a comprehensive context-aware recommendation system.
-7. Psychometric retrieval returns completed-result history; more precise question-specific score filtering and scored live-evaluation coverage remain outstanding.
-8. Add calibrated clinical evaluation metrics and model-specific monetary cost reporting before claiming production readiness.
+**Status: reviewable Preview implementation; not production/clinical approval.**

@@ -17,7 +17,7 @@ const messages:Record<string,string>={
  copilot_mailbox_missing:'Συνδέστε πρώτα το email αποστολής στον λογαριασμό.',
  copilot_invitation_pending:'Υπάρχει ήδη ενεργή πρόσκληση. Ελέγξτε την πριν δημιουργήσετε νέα.',
  copilot_calendar_conflict:'Η ώρα συμπίπτει με άλλο ραντεβού. Επιλέξτε διαφορετική ώρα.',
- copilot_grounding_failed:'Η σύνθεση δεν πέρασε τον έλεγχο τεκμηρίωσης και δεν εμφανίζεται. Δοκιμάστε πιο συγκεκριμένη ερώτηση.',
+ copilot_no_evidence:'Δεν υπάρχουν διαθέσιμες καταγραφές για να απαντήσω σε αυτή την ερώτηση.',
  copilot_context_limit:'Το σχετικό αρχείο υπερβαίνει το ασφαλές όριο σύνθεσης. Δεν παραλείφθηκαν σιωπηρά παλαιότερες καταγραφές.',
  copilot_stale:'Ο φάκελος άλλαξε κατά την επεξεργασία. Επαναλάβετε την ερώτηση.',
 };
@@ -74,7 +74,7 @@ async function post(req:Request){
   const code=e instanceof Error?e.message:'copilot_failed';
   // Fixed error codes only: no questions, provider payloads, names or clinical text.
   const safe=Object.hasOwn(messages,code)?code:'copilot_failed';
-  return Response.json({error:messages[safe]||'Η ενέργεια δεν ολοκληρώθηκε. Δεν εμφανίζεται μη επαληθευμένη απάντηση. Δοκιμάστε ξανά.',code:safe},{status:safe==='copilot_privacy_disabled'?403:503});
+  return Response.json({error:messages[safe]||'Η επεξεργασία δεν ολοκληρώθηκε. Δοκιμάστε ξανά.',code:safe},{status:safe==='copilot_privacy_disabled'?403:503});
  }
 }
 export const POST=withPilot(post);

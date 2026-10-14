@@ -50,7 +50,9 @@ export function createClinicalMasker(identity:MaskIdentity={},seed?:unknown){
     for(const match of item.matchAll(/(?:όνομα(?:τεπώνυμο)?|ονομα(?:τεπωνυμο)?|εργοδότης|εργοδοτης|εταιρεία|εταιρεια|διεύθυνση|διευθυνση|address|employer|name)\s*[:=]\s*([^.;,\n!?]+)/giu)){
      const entity=match[1].trim();if(entity.length<=120&&!entity.startsWith('['))add(entity,'[ΣΤΟΙΧΕΙΟ_ΤΑΥΤΟΤΗΤΑΣ]');
     }
-    for(const match of item.matchAll(/(?:μητέρα|μητερα|πατέρας|πατερας|σύζυγος|συζυγος|αδελφός|αδελφος|αδελφή|αδελφη)\s*(?:της|του)?\s*[:,]?\s*(\p{Lu}[\p{L}\p{M}'-]+\s+\p{Lu}[\p{L}\p{M}'-]+)/gu))add(match[1],'[ΣΥΓΓΕΝΗΣ]');
+    for(const match of item.matchAll(/(?:μητέρα|μητερα|πατέρας|πατερας|σύζυγος|συζυγος|αδελφός|αδελφος|αδελφή|αδελφη)\s*(?:της|του)?\s*[:,]?\s*(\p{L}[\p{L}\p{M}'-]+\s+\p{L}[\p{L}\p{M}'-]+)/giu)){
+     if(match[1].split(/\s+/u).every(word=>/^\p{Lu}/u.test(word)))add(match[1],'[ΣΥΓΓΕΝΗΣ]');
+    }
    }else if(Array.isArray(item))item.forEach(collect);
    else if(item&&typeof item==='object')Object.values(item).forEach(collect);
   };

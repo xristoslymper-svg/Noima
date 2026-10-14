@@ -44,3 +44,10 @@ test('different named relatives remain distinguishable after masking',()=>{
  const masked=maskProviderPayload({question:'Άννα Κανελλοπούλου και Πέτρος Δοκιμαστικός'}, {}, seed);
  assert.match(masked.question,/\[ΣΥΓΓΕΝΗΣ_1\] και \[ΣΥΓΓΕΝΗΣ_2\]/);
 });
+
+test('capitalised relative labels mask names while preserving clinical descriptions',()=>{
+ const raw='Μητέρα: Άννα Κανελλοπούλου; ΠΑΤΕΡΑΣ: ΠΕΤΡΟΣ ΔΟΚΙΜΑΣΤΙΚΟΣ; μητέρα: κατάθλιψη σε ύφεση.';
+ const masked=maskProviderPayload(raw);
+ assert.doesNotMatch(masked,/Κανελλοπούλου|ΔΟΚΙΜΑΣΤΙΚΟΣ/);
+ assert.match(masked,/μητέρα: κατάθλιψη σε ύφεση/);
+});

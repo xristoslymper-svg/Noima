@@ -10,9 +10,9 @@ export default function Promotion(){
  const [mobileNav,setMobileNav]=useMobileNavigation();
  const account=useAccountSession();
  const loggedName=account?.identity?.full_name?.trim()||"Ο επαγγελματίας";
- const adName=name.trim()||loggedName;
  const [budget,setBudget]=useState(100),[custom,setCustom]=useState(false),[detailsOpen,setDetailsOpen]=useState(false);
  const [name,setName]=useState(""),[city,setCity]=useState("Αθήνα"),[specialty,setSpecialty]=useState("Ψυχίατρος"),[website,setWebsite]=useState("");
+ const adName=name.trim()||loggedName;
  const [step,setStep]=useState<"draft"|"review"|"demo"|"paused">("draft"),[ack,setAck]=useState(false),[error,setError]=useState("");
  const reset=()=>{setStep("draft");setAck(false);setError("")};
  const prepare=()=>{if((!name.trim()&&loggedName==="Ο επαγγελματίας")||city.trim().length<2||!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(website)||budget<20||budget>5000){setDetailsOpen(true);setError("Συμπλήρωσε τα στοιχεία που λείπουν, έγκυρη ιστοσελίδα https:// και ποσό 20–5.000€.");return}setError("");setStep("review")};

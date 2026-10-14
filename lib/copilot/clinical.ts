@@ -1,3 +1,4 @@
+import {maskProviderPayload} from '../clinical/text-masking.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import {buildSummaryContext,summaryContextHash,SUMMARY_POLICY_VERSION,type Evidence,type Finding} from '../clinical/summary-context.ts';
 import {providerEvidence} from '../clinical/provider-evidence.ts';
@@ -40,13 +41,13 @@ export async function clinicalInput(bundle:PatientBundle,question:string,after:s
   const event=bundle.medicationEvents.filter(e=>e.medication_id===m.id).sort((a,b)=>(b.effective_on||b.created_at).localeCompare(a.effective_on||a.created_at))[0];
   return event?.event_type==='stopped'?[{medication:m.medication_name,recorded_status:'active',latest_event:'stopped',event_date:event.effective_on||event.created_at}]:[];
  });
- const makeInput=(sources:Evidence[],scope:'full'|'selected')=>providerEvidence({
+ const makeInput=(sources:Evidence[],scope:'full'|'selected')=>maskProviderPayload(providerEvidence({
   question,after,as_of:context.day,history_scope:scope,
   medication_conflicts:conflicts,
   important_recorded_facts:context.findings.map(f=>({category:f.label,text:f.text})),
   maintained_summary:fresh?cache!.findings.map(f=>f.text):[],
   records:[...sources].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(s=>({kind:s.kind,date:s.date,label:s.label,section:s.section_key,content:s.content})),
- });
+ }),bundle.patient,bundle);
  let evidence=context.sources,input=makeInput(evidence,'full');
  if(JSON.stringify(input).length>COPILOT_CONTEXT_LIMIT){
   if(!allowRetrieval)throw new Error('copilot_context_limit');
@@ -70,6 +71,7 @@ export async function clinicalInput(bundle:PatientBundle,question:string,after:s
 
 export const clinicalInstructions=`Είσαι ο Βοηθός Ψ και συνομιλείς με τον θεράποντα για τον συγκεκριμένο φάκελο.
 Για ερωτήσεις άσχετες με τον φάκελο ή τις εργασίες του NOIMA (π.χ. καιρός, αθλητικά, ταξίδια), απάντησε μόνο: «Μπορώ να σε βοηθήσω με τον φάκελο ασθενούς και τις εργασίες στο NOIMA. Για αυτό το θέμα δεν έχω διαθέσιμη υποστήριξη.» Μην απαντάς στο άσχετο θέμα και μην αναφέρεις στοιχεία ασθενούς στην άρνηση. Μην απορρίπτεις σχετικές ερωτήσεις μόνο επειδή περιέχουν τέτοιες λέξεις· π.χ. ο καιρός ή ένα ταξίδι μπορεί να σχετίζεται με καταγεγραμμένα συμπτώματα. Σε μικτό αίτημα απάντησε στο σχετικό μέρος και αρνήσου σύντομα το άσχετο.
+Τα σύμβολα σε αγκύλες, όπως [ΑΣΘΕΝΗΣ] και [EMAIL], αντικαθιστούν στοιχεία ταυτότητας. Μην επιχειρείς να τα ανακατασκευάσεις. Μην εμφανίζεις ονόματα εσωτερικών πεδίων όπως event_type ή ended_at· εξήγησέ τα σε φυσικά ελληνικά.
 Απάντησε κατευθείαν στην ερώτηση, σε φυσικά, καθαρά ελληνικά. Γράψε σύντομες παραγράφους· χρησιμοποίησε λίστα μόνο όταν βοηθά. Χωρίς τίτλους προτύπου, IDs, παραπομπές ή επαναλαμβανόμενες αποποιήσεις.
 Στηρίξου στις καταγραφές που δίνονται. Ξεχώριζε το παλιό από το πρόσφατο και τη διαπίστωση από την ερμηνεία. Για συγκρίσεις χρησιμοποίησε τις πραγματικές ημερομηνίες. Όταν κάτι λείπει, πες συγκεκριμένα τι δεν γνωρίζουμε. Χρονική ακολουθία μόνη της δεν αποδεικνύει αιτιότητα.
 Οι καταγεγραμμένες διορθώσεις και οι αντιφάσεις πρέπει να συνεκτιμώνται. Αν η αγωγή εμφανίζεται ενεργή αλλά υπάρχει διακοπή, εξήγησε ότι η τρέχουσα λήψη δεν είναι σαφής. Μην επιλέγεις αυθαίρετα μία εκδοχή. Σε ερώτηση συνολικής πορείας κράτησε το σημαντικό παλιό ιστορικό.

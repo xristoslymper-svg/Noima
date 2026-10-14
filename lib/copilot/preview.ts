@@ -1,7 +1,7 @@
 import {copilotPatients} from './synthetic-fixtures.mjs';
 export const SYNTHETIC_CHART_PATH='/patients/demo/synthetic-copilot';
 export function syntheticPreviewEnabled(){
- const preview=process.env.VERCEL_ENV==='preview'&&process.env.VERCEL_GIT_COMMIT_REF==='codex/clinical-copilot-agent';
+ const preview=process.env.VERCEL_ENV==='preview'&&['codex/clinical-copilot-agent','codex/copilot-text-masking'].includes(process.env.VERCEL_GIT_COMMIT_REF||'');
  const releasedDemo=process.env.VERCEL_ENV==='production'&&process.env.VERCEL_GIT_COMMIT_REF==='main'&&['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||'');
  return (preview||releasedDemo)&&process.env.COPILOT_INTERACTIVE_SYNTHETIC==='true'&&process.env.EXTERNAL_AI_ENABLED!=='false';
 }

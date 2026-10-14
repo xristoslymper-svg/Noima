@@ -1,3 +1,4 @@
+import {maskProviderPayload} from '../clinical/text-masking.ts';
 export type Usage={input_tokens:number;output_tokens:number;calls:number};
 export function assertCopilotPrivacy(model=process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL){
  const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
@@ -7,7 +8,7 @@ export function assertCopilotPrivacy(model=process.env.OPENAI_COPILOT_MODEL||pro
 export const COPILOT_CONTEXT_LIMIT=110000;
 async function generate(instructions:string,input:unknown,usage:Usage,schema?:Record<string,unknown>):Promise<string>{
  assertCopilotPrivacy();
- const encoded=JSON.stringify(input);
+ const encoded=JSON.stringify(maskProviderPayload(input));
  if(encoded.length>COPILOT_CONTEXT_LIMIT)throw new Error('copilot_context_limit');
  const response=await fetch((process.env.OPENAI_BASE_URL||'https://api.openai.com/v1')+'/responses',{
  method:'POST',signal:AbortSignal.timeout(45000),headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},

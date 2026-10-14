@@ -105,3 +105,17 @@ test('released synthetic chart runs only on explicitly enabled production main i
  await assert.rejects(async()=>{for await(const event of syntheticAnswer('Τι άλλαξε;',null)){}},/synthetic_preview_disabled/);
  assert.equal(calls.length,1);
 });
+
+test('actual single provider request masks chart notes, question and prior conversation',async()=>{
+ const calls=setup([delta,complete]),b=copilotPatients()[0];
+ b.patient.first_name='Νεφέλη';b.patient.last_name='Δειγματοπούλου';
+ b.sections[0].content+=' Εργοδότης: Εργοστάσιο Δείγμα Άλφα; μητέρα: Άννα Κανελλοπούλου; mask-canary@example.invalid; +30 210 999 8888; ΑΜΚΑ 12345678901.';
+ const previous={patient_id:b.patient.id,question:'Η Νεφέλη Δειγματοπούλου στο Εργοστάσιο Δείγμα Άλφα;',answer:'Η Άννα Κανελλοπούλου, mask-canary@example.invalid.',expires:Date.now()+10000};
+ for await(const event of fastAnswer(b,'Τι άλλαξε για τη Νεφέλη Δειγματοπούλου στο Εργοστάσιο Δείγμα Άλφα;',previous)){}
+ assert.equal(calls.length,1);
+ assert.doesNotMatch(calls[0].input,/Νεφέλη|Δειγματοπούλου|Εργοστάσιο|Κανελλοπούλου|mask-canary@|999 8888|12345678901/);
+ const payload=JSON.parse(calls[0].input);
+ assert.match(payload.current_question,/ΑΣΘΕΝΗΣ/);
+ assert.match(payload.previous.answer,/EMAIL/);
+ assert.match(calls[0].input,/2026-09-10|Fictional A/);
+});

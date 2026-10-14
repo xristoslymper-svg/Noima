@@ -1,3 +1,4 @@
+import {maskProviderPayload} from '../clinical/text-masking.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import {clinicalInput,clinicalInstructions} from './clinical.ts';
 import {assertCopilotPrivacy,COPILOT_CONTEXT_LIMIT,type Usage} from './provider.ts';
@@ -29,7 +30,7 @@ async function* generateFastAnswer(bundle:PatientBundle,question:string,previous
  const input={...(context.input as Record<string,unknown>),
   encounter_dates:{latest_completed:visits[0]?.started_at||null,previous_completed:visits[1]?.started_at||null},
   medication_timeline:medicationTimeline,previous:previous?.patient_id===bundle.patient.id?{question:previous.question,answer:previous.answer}:null,current_question:question};
- const encoded=JSON.stringify(input);
+ const encoded=JSON.stringify(maskProviderPayload(input,bundle.patient,bundle));
  if(encoded.length>COPILOT_CONTEXT_LIMIT)throw new Error('copilot_context_limit');
  const abort=AbortSignal.any([AbortSignal.timeout(30000),...(signal?[signal]:[])]);
  const model=process.env.OPENAI_COPILOT_FAST_MODEL;

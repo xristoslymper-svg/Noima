@@ -22,6 +22,35 @@ if(process.env.COPILOT_EVAL_APPROVED!=='true'||!process.env.OPENAI_API_KEY||(!pr
 else{
  Object.assign(process.env,{CLINICAL_DATA_MODE:'synthetic',COPILOT_SYNTHETIC_APPROVED:'true',EXTERNAL_AI_ENABLED:'true'});
  const patients=copilotPatients();
+ // Hosted outbound canary probe. Inspect the actual request before forwarding
+ // it to the provider; never log the original request or identifiers.
+ {
+  const bundle=copilotPatients()[0];
+  bundle.patient.first_name='Νεφέλη';bundle.patient.last_name='Δειγματοπούλου';
+  bundle.sections[0].content+=' Εργοδότης: Εργοστάσιο Δείγμα Άλφα; μητέρα: Άννα Κανελλοπούλου; mask-canary@example.invalid; +30 210 999 8888; ΑΜΚΑ 12345678901.';
+  const question='Τι άλλαξε στον ύπνο της Νεφέλης Δειγματοπούλου από την προηγούμενη επίσκεψη; Εργοδότης: Εργοστάσιο Δείγμα Άλφα.';
+  const previous={patient_id:bundle.patient.id,question:'Η Νεφέλη Δειγματοπούλου στο Εργοστάσιο Δείγμα Άλφα;',answer:'Η Άννα Κανελλοπούλου ανέφερε mask-canary@example.invalid.',expires:Date.now()+60000};
+  const realFetch=globalThis.fetch,canaries=['Νεφέλη','Δειγματοπούλου','Εργοστάσιο Δείγμα Άλφα','Κανελλοπούλου','mask-canary@example.invalid','210 999 8888','12345678901'];
+  let calls=0,verified=false,first=null,answer='',final=null;
+  const start=performance.now();
+  try{
+   globalThis.fetch=async(url,init)=>{
+    const payload=JSON.parse(init.body);calls++;
+    if(canaries.some(term=>payload.input.includes(term)))throw new Error('masking_canary_leak_blocked_before_provider');
+    const input=JSON.parse(payload.input);
+    verified=Boolean(input.current_question.includes('[ΑΣΘΕΝΗΣ]')&&input.previous.answer.includes('[EMAIL]')&&input.encounter_dates.latest_completed==='2026-09-10T09:00:00Z'&&payload.stream===true);
+    if(!verified)throw new Error('masking_probe_contract_failed');
+    return realFetch(url,init);
+   };
+   for await(const event of fastAnswer(bundle,question,previous)){
+    if(event.type==='delta'){if(first===null)first=Math.round(performance.now()-start);answer+=event.text;}
+    else final=event;
+   }
+   report.masking_probe={passed:verified&&calls===1&&Boolean(final)&&!canaries.some(term=>answer.includes(term)),canaries_absent:verified,provider_calls:calls,first_text_ms:first,completion_ms:Math.round(performance.now()-start),answer};
+  }catch(error){report.masking_probe={passed:false,error:error.message,provider_calls:calls};}
+  finally{globalThis.fetch=realFetch;}
+ }
+
  // Calibration tests distinguish an answer error from a faithfully reported
  // chart limitation. Never report an uncalibrated judge as clinical accuracy.
  const correct='Οι καταγεγραμμένες βαθμολογίες PHQ-9 και GAD-7 μειώθηκαν από 19 στις 10 Φεβρουαρίου 2026 σε 12 στις 10 Σεπτεμβρίου 2026. Στην επίσκεψη της 10ης Αυγούστου αρνείται αϋπνία, ενώ στις 10 Σεπτεμβρίου αναφέρει αϋπνία και δεν διερευνήθηκαν ανεπιθύμητες ενέργειες. Υπάρχει παλαιότερο ιστορικό απόπειρας και κρίσεων πανικού, χωρίς ολοκληρωμένη πρόσφατη δομημένη εκτίμηση κινδύνου. Για το Fictional A καταγράφονται έναρξη 10 mg στις 10 Φεβρουαρίου, αλλαγή σε 20 mg στις 10 Μαΐου και διακοπή στις 10 Αυγούστου, αλλά παραμένει ενεργό στην καταχώριση αγωγής: η τρέχουσα λήψη δεν είναι σαφής. Το Fictional B είναι καταχωρισμένο ενεργό, 5 mg ημερησίως, με έναρξη στις 10 Μαΐου. Τον Μάιο αναφέρθηκε καλύτερος ύπνος μετά την αλλαγή αγωγής, χωρίς να τεκμηριώνεται αιτιότητα.';
@@ -79,6 +108,7 @@ else{
  }
  report.status=report.results.some(r=>r.status==='failed')?'failed':report.results.some(r=>['needs_review','review_unavailable'].includes(r.status))?'needs_review':'completed';
  if(report.calibration.some(x=>!x.passed))report.status='review_unreliable';
+ if(!report.masking_probe?.passed)report.status='failed';
  report.review_note='Automated same-model critique, not clinical validation. This evaluation differs from the previous citation-gated pipeline; pass rates are not directly comparable.';
  const measured=report.results.filter(r=>r.first_text_ms!==undefined);
  const percentile=(xs,p)=>[...xs].sort((a,b)=>a-b)[Math.min(xs.length-1,Math.ceil(xs.length*p)-1)]??null;
@@ -89,5 +119,5 @@ else{
  report.cost='Not estimated: account/model pricing has not been supplied.';
 }
 await writeFile('evaluation/copilot-live.json',JSON.stringify(report,null,2));
-console.log(JSON.stringify({status:report.status,reason:report.reason,usage:report.usage,results:report.results.map(({patient,question,status,error})=>({patient,question,status,error}))}));
+console.log(JSON.stringify({status:report.status,reason:report.reason,masking_probe:report.masking_probe,usage:report.usage,results:report.results.map(({patient,question,status,error})=>({patient,question,status,error}))}));
 if(report.status==='failed')process.exitCode=1;

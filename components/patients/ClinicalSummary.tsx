@@ -1,4 +1,6 @@
 'use client';
+import {useTranslations} from 'next-intl';
+
 import {useSyntheticChart} from './SyntheticChartContext';
 import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
@@ -11,6 +13,8 @@ import ClinicalCardView from './ClinicalCardView';
 type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
 type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null};
 export default function ClinicalSummary({bundle,compact=false,overview=false}:Props){
+ const t=useTranslations();
+
  const synthetic=useSyntheticChart();
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
  const handledRefresh=useRef(0);
@@ -39,14 +43,14 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
  },[key,retry,refresh,bundle.patient.id,synthetic]);
  const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
  const reason=result?.key===key?result.data.reason:null;
- const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;
+ const readinessText=reason==='no_completed_visit'?t('clinical.summaryAfterFirstVisit'):reason==='insufficient_notes'?t('clinical.briefNotesSummaryHelp'):reason?t('clinical.summaryUnavailableFallback'):null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
  return <section className="clinical-summary">
-  <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>
+  <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?t('clinical.beforeVisitKicker'):t('clinical.atAGlanceKicker')}</span><h2>{compact?t('clinical.briefOverview'):t('clinical.currentState')}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}
   <ClinicalCardView card={card} patientId={bundle.patient.id} compact={compact} overview={overview}/>
-  {hasDraft&&<p className="clinical-summary-notice">Υπάρχει πρόχειρη επίσκεψη. Οι σημειώσεις της θα ενσωματωθούν όταν ολοκληρωθεί.</p>}
-  <footer className="clinical-card-footer"><span role="status">{state==='loading'?'Ενημέρωση…':state==='unavailable'?'Η σύνθεση δεν ανανεώθηκε.':card.synthesized?'Σύνθεση με πηγές':'Καταγραφές φακέλου'}</span><button disabled={state==='loading'} onClick={()=>setRefresh(n=>n+1)}>Ανανέωση</button>{compact&&<Link href={'/patients/demo/'+bundle.patient.id+'?tab=summary'}>Άνοιγμα κλινικής εικόνας →</Link>}</footer>
+  {hasDraft&&<p className="clinical-summary-notice">{t('clinical.draftExcludedFromSummary')}</p>}
+  <footer className="clinical-card-footer"><span role="status">{state==='loading'?t('common.updating'):state==='unavailable'?t('errors.summaryRefresh'):card.synthesized?t('clinical.sourcedSynthesis'):t('clinical.recordEntries')}</span><button disabled={state==='loading'} onClick={()=>setRefresh(n=>n+1)}>{t('common.refresh')}</button>{compact&&<Link href={'/patients/demo/'+bundle.patient.id+'?tab=summary'}>{t('clinical.openOverviewLink')}</Link>}</footer>
   <style jsx>{`.clinical-summary-notice{font-size:12px;line-height:1.5;color:#728278;margin:0 0 12px}.clinical-summary-head h2{margin:4px 0 15px;font-size:25px;letter-spacing:-.025em;color:#293e35}.summary-editorial-kicker{font-size:10px;color:#79887e;letter-spacing:.12em}.clinical-card-footer{display:flex;align-items:center;gap:14px;margin-top:12px;font-size:11px;color:#7c897f}.clinical-card-footer span{margin-right:auto}.clinical-card-footer button{border:0;background:none;color:#50745e;cursor:pointer}.clinical-card-footer a{color:#50745e;text-decoration:none}`}</style>
  </section>;
 }

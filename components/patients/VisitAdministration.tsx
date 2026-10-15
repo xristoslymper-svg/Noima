@@ -7,9 +7,13 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import VisitNextAppointment from './VisitNextAppointment';
 import styles from './VisitAdministration.module.css';
 type Payment='unknown'|'pending'|'paid'|'not_applicable';
-const choices:[Payment,string][]=[['paid','Πληρωμένο'],['pending','Εκκρεμεί'],['not_applicable','Χωρίς χρέωση'],['unknown','Δεν έχει σημειωθεί']];
+
 export default function VisitAdministration({bundle,sessionId,reload,registerFlusher,onDirtyChange,disabled=false}:{bundle:PatientBundle;sessionId:string;reload:()=>Promise<unknown>;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;disabled?:boolean}){
- const t=useTranslations();
+const t=useTranslations();
+
+const choices:[Payment,string][]=[['paid',t('billing.paid')],['pending',t('common.pending')],['not_applicable',t('billing.noCharge')],['unknown',t('billing.unrecorded')]];
+
+ 
 
  const linked=bundle.appointments.filter(a=>a.session_id===sessionId&&(!a.patient_id||a.patient_id===bundle.patient.id));const appointment=linked.length===1?linked[0]:undefined;
  const [confirmed,setConfirmed]=useState<{id:string;status:Payment;updatedAt:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');const flight=useRef(false),mounted=useRef(true);

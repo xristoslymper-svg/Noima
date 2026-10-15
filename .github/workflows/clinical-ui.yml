@@ -2,7 +2,7 @@ name: Clinical editor browser checks
 on:
   workflow_dispatch:
   push:
-    branches: ['main', 'fix/visit-workflow-*']
+    branches: ['main', 'fix/visit-workflow-*', 'codex/greek-english-i18n']
   pull_request:
     paths:
       - 'components/patients/**'
@@ -14,6 +14,9 @@ on:
       - 'app/patients/**'
       - 'app/api/**'
       - 'lib/**'
+      - 'i18n/**'
+      - 'components/LanguageSelector.tsx'
+      - 'components/PilotProfile.tsx'
       - 'supabase/**'
       - 'browser-tests/**'
       - 'tests/**'

@@ -1,7 +1,7 @@
 name: Isolated visit application APIs
 on:
   push:
-    branches: ['fix/visit-workflow-*']
+    branches: ['fix/visit-workflow-*', 'codex/greek-english-i18n']
   pull_request:
     paths:
       - 'components/patients/**'
@@ -10,6 +10,9 @@ on:
       - 'app/calendar/**'
       - 'app/patients/**'
       - 'lib/**'
+      - 'i18n/**'
+      - 'components/LanguageSelector.tsx'
+      - 'components/PilotProfile.tsx'
       - 'supabase/**'
       - 'browser-tests/**'
       - 'tests/**'

@@ -434,3 +434,6 @@
 .contextEntry:focus-visible { outline:2px solid #719685; outline-offset:4px; }
 @media(max-width:1000px){ .enrichedVisit { grid-template-columns:100px minmax(0,1fr); } .visitContext { grid-column:2; } }
 @media(max-width:700px){ .enrichedVisit { grid-template-columns:1fr; } .visitContext { grid-column:1; margin-top:10px; } }
+
+.recordDialogControls{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+.recordDialogControls button:first-child{width:auto;font-size:.85rem;white-space:normal}

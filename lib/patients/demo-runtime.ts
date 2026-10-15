@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments} from '../calendar/upcoming.ts';
 import type {ContextRevision} from '../clinical/continuity-context';
 import type {ContinuityDraft,VisitContinuity} from '../clinical/continuity';
 import {pilotAuthorization} from '@/lib/pilot/request-scope';
@@ -16,7 +17,7 @@ export type DemoHistory = { patient_id:string; psychiatric_history:string; medic
 export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string; started_at:string; ended_at:string|null; status:string; notes:string; updated_at:string };
 export type DemoMedicationEvent = { id:string; patient_id:string; medication_id:string; session_id:string|null; event_type:string; previous_state:Record<string,unknown>|null; new_state:Record<string,unknown>|null; reason:string; effective_on:string; created_at:string };
 export type DemoMedicationSideEffect = { id:string; patient_id:string; medication_id:string; session_id:string|null; effect_text:string; severity:'mild'|'moderate'|'severe'; impact:string; noted_on:string; resolved_on:string|null; note:string; created_at:string; updated_at:string };
-export type PatientBundle = { contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
+export type PatientBundle = { contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;payment_status?:'unknown'|'pending'|'paid'|'not_applicable';updated_at?:string;patient_id?:string|null;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
 
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
 export async function request(path:string, init:RequestInit={}){
@@ -63,7 +64,7 @@ export async function listPatientRows(tester:string){
  for(const group of completed.values())group.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const now=Date.now();
  const nextAppointments=new Map<string,typeof appointments[number]>();
- for(const appointment of appointments){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id)&&appointment.status==='scheduled'&&new Date(appointment.scheduled_end).getTime()>=now)nextAppointments.set(appointment.patient_id,appointment)}
+ for(const appointment of selectUpcomingAppointments(appointments,now)){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id))nextAppointments.set(appointment.patient_id,appointment)}
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
  const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({
@@ -96,7 +97,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
     request(`demo_clinical_entries?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.desc`),
     request(`demo_session_addenda?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
     request(`demo_session_corrections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
-    request(`demo_calendar_events?select=id,session_id,appointment_type,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
+    request(`demo_calendar_events?select=id,patient_id,session_id,appointment_type,scheduled_start,scheduled_end,status,payment_status,updated_at&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
     rpc('demo_medication_revisions_for_patient',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_context_revisions',{p_tester:tester,p_patient:patient.id}),

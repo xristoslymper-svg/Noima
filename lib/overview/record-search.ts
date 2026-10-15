@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments} from '../calendar/upcoming.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 
 export type SearchPatient={id:string;first_name:string;last_name:string};
@@ -23,7 +24,7 @@ export function recordAnswer(bundle:PatientBundle,topic:SearchTopic,now=Date.now
   return last?result(`Τελευταία ολοκληρωμένη επίσκεψη: ${date(last.started_at)}.\n${last.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}.`,'Άνοιγμα συγκεκριμένης επίσκεψης',base+'?tab=record&session='+last.id):result('Δεν υπάρχει ολοκληρωμένη επίσκεψη στον φάκελο.','Επισκέψεις',base+'?tab=timeline');
  }
  if(topic==='next_appointment'){
-  const next=bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_start)>=now).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start))[0];
+  const next=selectUpcomingAppointments(bundle.appointments,now)[0];
   return next?result('Επόμενο προγραμματισμένο ραντεβού: '+date(next.scheduled_start)+'.','Συνδεδεμένο ραντεβού',base+'?appointment='+next.id):result('Δεν υπάρχει καταγεγραμμένο επόμενο ραντεβού.','Φάκελος ασθενή',base);
  }
  return {answer:'Μπορώ να αναζητήσω ενεργή αγωγή, τελευταία ολοκληρωμένη επίσκεψη, επόμενο ραντεβού και εκκρεμότητες. Ρώτησε για ένα από αυτά.',sources:[]};

@@ -9,7 +9,7 @@ test('next appointment uses a dedicated compact form and clear primary schedulin
  assert.match(component,/className=\{styles\.form\} hidden=\{!formOpen\}/);
  assert.match(component,/className=\{styles\.fields\}/);
  assert.match(component,/className=\{styles\.actions\}/);
- assert.match(component,/className=\{styles\.save\} disabled=\{!date\|\|busy\}/);
+ assert.match(component,/className=\{styles\.save\} disabled=\{!date\|\|busy\|\|needsVerification\}/);
  assert.match(component,/className=\{styles\.cancel\} disabled=\{busy\} onClick=\{cancel\}/);
  assert.match(component,/className=\{styles\.trigger\}/);
  assert.match(component,/aria-controls=\{formId\}/);

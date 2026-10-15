@@ -12,6 +12,7 @@ import * as riskFindings from '../lib/clinical/risk-findings.ts';
 import * as record from '../lib/clinical/patient-record.ts';
 import * as clinicTime from '../lib/clinic-time.ts';
 import * as assessmentLink from '../lib/clinical/assessment-link.ts';
+import * as booking from '../lib/calendar/confirmed-booking.ts';
 
 const require=createRequire(import.meta.url);
 const compiled=file=>ts.transpileModule(readFileSync('components/patients/'+file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
@@ -26,7 +27,7 @@ function mount({bundle=fixture(),response={ok:true,json:async()=>({})},reload=as
  const cells=[],effects=[],cleanups=new Map(),flushers=new Map(),requests=[],dirty=[];let cursor=0;
  const hooks={useId:()=> 'appointment-form',useMemo:f=>f(),useRef(initial){const i=cursor++;return cells[i]??=( {current:initial})},useState(initial){const i=cursor++;if(!(i in cells))cells[i]=initial;return[cells[i],value=>{cells[i]=typeof value==='function'?value(cells[i]):value}]},useEffect(fn){const i=cursor++;effects.push(()=>{cleanups.get(i)?.();cleanups.set(i,fn())})}};
  const module={exports:{}};
- vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name)});
+ vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/calendar/confirmed-booking'?booking:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name)});
  const props={bundle,reload,registerFlusher:(key,fn)=>{flushers.set(key,fn);return()=>flushers.delete(key)},onDirtyChange:(_,value)=>dirty.push(value)};
  return {requests,dirty,flush:()=>flushers.get('appointment')(),render(){cursor=0;const tree=module.exports.default(props);effects.splice(0).forEach(fn=>fn());return tree}};
 }
@@ -57,7 +58,7 @@ test('failed save retains date, visible form and finalization guard',async()=>{
  const m=mount({response:{ok:false,json:async()=>({error:'Δοκιμαστικό σφάλμα'})}});let t=open(m);date(t).props.onInput({currentTarget:{value:'2099-10-10'}});t=m.render();button(t,'Προγραμματισμός').props.onClick();await new Promise(r=>setImmediate(r));t=m.render();assert.equal(date(t).props.value,'2099-10-10');assert.equal(form(t).props.hidden,false);assert.match(text(t),/Δοκιμαστικό σφάλμα/);await assert.rejects(m.flush());assert.equal(m.requests.length,1);
 });
 test('successful save collapses only after refresh; failed refresh cannot resubmit the saved date',async()=>{
- for(const refreshOK of [true,false]){const m=mount({reload:async()=>refreshOK?{}:null});let t=open(m);date(t).props.onInput({currentTarget:{value:'2099-10-10'}});t=m.render();button(t,'Προγραμματισμός').props.onClick();await new Promise(r=>setImmediate(r));t=m.render();assert.equal(date(t).props.value,'');assert.equal(form(t).props.hidden,refreshOK);assert.match(text(t),refreshOK?/Το ραντεβού αποθηκεύτηκε\./:/η προβολή δεν ανανεώθηκε/);await m.flush();assert.equal(m.requests.length,1);assert.equal(m.requests[0].patient_id,'fictional');assert.equal(m.requests[0].appointment_type,'follow_up')}
+ for(const refreshOK of [true,false]){const event={id:'10000000-0000-4000-8000-000000000001',patient_id:'fictional',status:'scheduled',appointment_type:'follow_up',scheduled_start:clinicTime.clinicLocalToIso('2099-10-10','09:00'),scheduled_end:new Date(Date.parse(clinicTime.clinicLocalToIso('2099-10-10','09:00'))+3000000).toISOString()};const m=mount({response:{ok:true,json:async()=>({event})},reload:async()=>refreshOK?fixture([event]):null});let t=open(m);date(t).props.onInput({currentTarget:{value:'2099-10-10'}});t=m.render();button(t,'Προγραμματισμός').props.onClick();await new Promise(r=>setImmediate(r));t=m.render();assert.equal(date(t).props.value,'');assert.equal(form(t).props.hidden,true);if(!refreshOK){assert.equal(button(t,'Νέο ραντεβού').props.disabled,true);assert.ok(button(t,'Έλεγχος αποθήκευσης ραντεβού'))}assert.match(text(t),refreshOK?/Το ραντεβού αποθηκεύτηκε\./:/η προβολή δεν ανανεώθηκε/);await m.flush();assert.equal(m.requests.length,1);assert.equal(m.requests[0].patient_id,'fictional');assert.equal(m.requests[0].appointment_type,'follow_up')}
 });
 
 const summaryModule={exports:{}};

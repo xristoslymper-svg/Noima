@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import * as upcoming from '../lib/calendar/upcoming.ts';
 import ts from 'typescript';
 import {readFileSync} from 'node:fs';
 const compiled=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -9,7 +10,7 @@ function load(source,mocks,globals={}){const m={exports:{}};vm.runInNewContext(s
 const plain=value=>JSON.parse(JSON.stringify(value));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const diagnosis=code=>({kind:'assessment',fields:[{key:'diagnosis',codes:code?[{code}]:[]}]});
-function registry(fetch){return load(runtime,{'@/lib/pilot/request-scope':{pilotAuthorization:()=>({Authorization:'Bearer synthetic'})},'@/lib/clinical/identity':{isClinicalId:()=>true}},{fetch}).listPatientRows}
+function registry(fetch){return load(runtime,{'../calendar/upcoming.ts':upcoming,'@/lib/pilot/request-scope':{pilotAuthorization:()=>({Authorization:'Bearer synthetic'})},'@/lib/clinical/identity':{isClinicalId:()=>true}},{fetch}).listPatientRows}
 const response=data=>({ok:true,text:async()=>JSON.stringify(data)});
 test('registry waits for bootstrap, then starts all five reads without waiting for patients',async()=>{
  const bootstrap=deferred(),patients=deferred(),paths=[];
@@ -25,7 +26,7 @@ test('registry retains input order, stable dates, first matches, corrected diagn
  const sessions=[{id:'draft1',patient_id:'a',status:'draft',started_at:'2026-01-05'},{id:'draft2',patient_id:'a',status:'draft',started_at:'2026-01-04'},{id:'new',patient_id:'a',status:'completed',started_at:'2026-01-03'},{id:'old',patient_id:'a',status:'completed',started_at:'2026-01-02'},{id:'b1',patient_id:'b',status:'completed',started_at:'2026-01-03'},{id:'b2',patient_id:'b',status:'completed',started_at:'2026-01-03'}];
  const sections=[{patient_id:'a',session_id:'new',document:diagnosis('NEW')},{patient_id:'a',session_id:'old',document:diagnosis('OLD')},{patient_id:'a',session_id:'old',document:diagnosis('DUPLICATE')},{patient_id:'b',session_id:'b1',document:diagnosis('B')}];
  const corrections=[{session_id:'new',patch:{assessment:{after:diagnosis(null)}}},{session_id:'old',patch:{assessment:{after:diagnosis('CORRECTED')}}},{session_id:'old',patch:{assessment:{after:diagnosis('LATEST')}}},{session_id:'old',patch:{assessment:{after:{kind:'mse'}}}}];
- const appointments=[{id:'cancelled',patient_id:'a',status:'cancelled',scheduled_end:'2099-01-01'},{id:'past',patient_id:'a',status:'scheduled',scheduled_end:'2000-01-01'},{id:'next',patient_id:'a',status:'scheduled',scheduled_end:'2099-01-01'},{id:'later',patient_id:'a',status:'scheduled',scheduled_end:'2099-02-01'}];
+ const appointments=[{id:'ongoing',patient_id:'a',status:'scheduled',scheduled_start:'2000-01-01',scheduled_end:'2099-01-01'},{id:'cancelled',patient_id:'a',status:'cancelled',scheduled_end:'2099-01-01'},{id:'past',patient_id:'a',status:'scheduled',scheduled_end:'2000-01-01'},{id:'next',patient_id:'a',status:'scheduled',scheduled_start:'2099-01-01',scheduled_end:'2099-01-01'},{id:'later',patient_id:'a',status:'scheduled',scheduled_start:'2099-02-01',scheduled_end:'2099-02-01'}];
  const tables={demo_patients:patients,demo_sessions:sessions,demo_session_sections:sections,demo_session_corrections:corrections,demo_calendar_events:appointments};
  const snapshot=JSON.stringify(tables);const read=registry(async url=>response(tables[new URL(url).pathname.split('/').at(-1)]||[]));
  const result=plain(await read('a'));assert.deepEqual(result.map(r=>r.id),['b','a','empty']);assert.deepEqual(result.map(r=>r.registry_number),[2,1,3]);assert.equal(result[0].last_session.id,'b1');assert.equal(result[1].last_session.id,'new');assert.equal(result[1].draft.id,'draft1');assert.equal(result[1].diagnosis.code,'LATEST');assert.equal(result[1].next_appointment.id,'next');assert.equal(result[2].diagnosis,null);assert.equal(result[2].last_session,null);assert.equal(JSON.stringify(tables),snapshot);

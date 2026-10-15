@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments} from './upcoming.ts';
 export type CalendarPosition = {
   workspace: string;
   date: string;
@@ -18,7 +19,7 @@ export function readCalendarPosition(value: unknown, workspace: string): Calenda
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== p.date) return null;
   if (!['day', 'week'].includes(p.view) || !['all', 'current', 'scheduled', 'completed', 'cancelled'].includes(p.filter)) return null;
   if (![p.top, p.left, p.pageTop].every(n => Number.isFinite(n) && n >= 0)) return null;
-  return p;
+  return {workspace:p.workspace,date:p.date,view:p.view,filter:p.filter,top:p.top,left:p.left,pageTop:p.pageTop};
 }
 
 export function nextWeekDate(date: string): string {
@@ -29,8 +30,7 @@ export function nextWeekDate(date: string): string {
 
 export function upcomingAppointments<T extends {id: string; patient_id: string | null; status: string; scheduled_start: string}>(events: T[], patientId: string, now: number, excludedId?: string): T[] {
   if (!patientId) return [];
-  return events.filter(e => e.patient_id === patientId && e.id !== excludedId && e.status === 'scheduled' && Date.parse(e.scheduled_start) >= now)
-    .sort((a, b) => Date.parse(a.scheduled_start) - Date.parse(b.scheduled_start));
+  return selectUpcomingAppointments(events.filter(e=>e.patient_id===patientId),now,{excludeAppointmentId:excludedId});
 }
 
 // The payment RPC returns a database row, not the enriched calendar projection.

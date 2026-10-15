@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import {useTranslations} from 'next-intl';
 
 import {useRef} from 'react';
@@ -8,10 +10,14 @@ import styles from './MobileClinical.module.css';
 type Day={key:string;day:string;date:string};
 type Props={date:string;today:string;days:Day[];view:'day'|'week';filter:string;onDate:(value:string)=>void;onPrevious:()=>void;onNext:()=>void;onView:(value:'day'|'week')=>void;onFilter:(value:string)=>void;onRefresh:()=>void;onNew:()=>void};
 export default function MobileCalendarControls(p:Props){
- const t=useTranslations();
+const t=useTranslations();
+
+ const locale=useLocale();
+
+ 
 
  const menu=useRef<HTMLDetailsElement>(null);
- const title=new Intl.DateTimeFormat('el-GR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(p.date+'T12:00:00Z'));
+ const title=new Intl.DateTimeFormat(locale,{weekday:'short',day:'numeric',month:'short'}).format(new Date(p.date+'T12:00:00Z'));
  return <div className={styles.calendarControls}>
   <div className={styles.calendarDateRow}>
    <button type="button" aria-label={t('accessibility.previousDate')} onClick={p.onPrevious}><ChevronLeft size={20}/></button>

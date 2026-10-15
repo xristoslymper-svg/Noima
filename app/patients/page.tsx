@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import {useTranslations} from 'next-intl';
 
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
@@ -15,10 +17,16 @@ import { getDemoTesterId } from '@/lib/demo-tester';
 type DiagnosisCode={code:string;label:string};
 type Row={id:string;first_name:string;last_name:string;reported_age:number|null;note:string;chief_complaint:string;status:string;created_at:string;updated_at:string;registry_number:number;diagnosis:DiagnosisCode|null;draft?:{id:string}|null;last_session?:{completed_at:string}|null;next_appointment?:{scheduled_start:string}|null};
 const normalize=(value:string)=>value.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('el');
-const formatDate=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short'}).format(new Date(value)):'—';
+
 
 export default function Patients(){
- const t=useTranslations();
+const t=useTranslations();
+
+ const locale=useLocale();
+
+const formatDate=(value?:string|null)=>value?new Intl.DateTimeFormat(locale,{day:'2-digit',month:'short'}).format(new Date(value)):'—';
+
+ 
 
  const [assign,setAssign]=useState<string|null>(null);
  useEffect(()=>{const code=new URLSearchParams(window.location.search).get('assign');if(code==='PHQ-9'||code==='GAD-7')setAssign(code)},[]);

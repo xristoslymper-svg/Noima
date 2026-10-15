@@ -1,10 +1,20 @@
 'use client';
+import {useLocale} from 'next-intl';
+
+import {useTranslations} from 'next-intl';
+
 import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {recoveredClinicalDraftDisposition,shouldAdoptClinicalDraftServer} from '@/lib/clinical/draft-reconciliation';
 function clearRecovery(key:string){try{sessionStorage.removeItem(key)}catch{}}
 // Session-local recovery retains unsaved text; recovery never silently overwrites a newer server version.
 export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,onDirty,quietRecovery=false}:{storageKey:string;initial:T;version:number|null;write:(value:T,version:number|null)=>Promise<{value:T;version:number}>;onSaved:()=>Promise<unknown>;onDirty:(dirty:boolean)=>void;quietRecovery?:boolean}){
+const t=useTranslations();
+
+ const locale=useLocale();
+
+ 
+
  const [value,setValue]=useState(initial),[error,setError]=useState(''),[saving,setSaving]=useState(false),[savedAt,setSavedAt]=useState('');
  const [olderRecovery,setOlderRecovery]=useState<T|null>(null);
  const latest=useRef(initial),saved=useRef(JSON.stringify(initial)),v=useRef(version),flight=useRef<Promise<void>|null>(null),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -20,16 +30,16 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  };
  const flush=useCallback(async function flush():Promise<void>{
   if(timer.current)clearTimeout(timer.current);
-  if(blocked.current)throw new Error('Ελέγξτε τη σύγκρουση πριν συνεχίσετε.');
+  if(blocked.current)throw new Error(t('visits.reviewConflictFirst'));
   if(flight.current){await flight.current;if(JSON.stringify(latest.current)!==saved.current)return flush();return}
   if(JSON.stringify(latest.current)===saved.current)return;
   const snapshot=latest.current;setSaving(true);setError('');
   const task=(async()=>{try{const result=await callbacks.current.write(snapshot,v.current);v.current=result.version;saved.current=JSON.stringify(result.value);
    if(JSON.stringify(latest.current)===JSON.stringify(snapshot)){latest.current=result.value;setValue(result.value);clearRecovery(storageKey)}
    else{try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:latest.current,version:v.current}))}catch{}}
-   callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString('el-GR',{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
+   callbacks.current.onDirty(JSON.stringify(latest.current)!==saved.current);setSavedAt(new Date().toLocaleTimeString(locale,{timeZone:'Europe/Athens',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}));try{await callbacks.current.onSaved()}catch{/* the write is committed; a later canonical reload can recover the view */}
   }catch(e){
-   const message=e instanceof Error?e.message:'Αποτυχία αποθήκευσης';
+   const message=e instanceof Error?e.message:t('errors.saveFailed');
    const conflict=/άλλαξε|Επαναφορτώστε|stale/.test(message);
    if(conflict&&quietRecovery){
     backupOlder(latest.current,v.current);
@@ -72,7 +82,7 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
     timer.current=setTimeout(()=>void flush().catch(()=>{}),700);
    }else{
     blocked.current=true;
-    setError('Υπάρχουν μη αποθηκευμένες αλλαγές και η καταγραφή έχει ενημερωθεί. Επιλέξτε ποια αλλαγή θέλετε να κρατήσετε.');
+    setError(t('visits.updatedWithUnsavedChanges'));
    }
   }catch{/* storage may be unavailable */}
  },[storageKey,backupKey,quietRecovery,version,flush]);
@@ -114,10 +124,10 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
  function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
  function acceptServerPreservingLocal(next:T,nextVersion:number|null){
-  if(flight.current)throw new Error('Περιμένετε να ολοκληρωθεί η αποθήκευση.');
+  if(flight.current)throw new Error(t('visits.waitForSave'));
   if(JSON.stringify(latest.current)!==JSON.stringify(next)){
    const existing=readRecovery(sessionStorage,backupKey);
-   if(existing&&JSON.stringify(JSON.parse(existing).value)!==JSON.stringify(latest.current))throw new Error('Υπάρχει ήδη αντίγραφο προηγούμενων αλλαγών. Κρατήστε το πριν το αντικαταστήσετε.');
+   if(existing&&JSON.stringify(JSON.parse(existing).value)!==JSON.stringify(latest.current))throw new Error(t('visits.existingBackupWarning'));
    // If storage is unavailable, fail before replacing any local text.
    writeRecovery(sessionStorage,backupKey,JSON.stringify({value:latest.current,version:v.current}));
    setOlderRecovery(latest.current);

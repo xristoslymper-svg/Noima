@@ -18,14 +18,14 @@ export function clinicLocalToIso(date:string,time:string){
 
 const asDate=(value:string|Date)=>value instanceof Date?value:new Date(value);
 
-export function formatClinicDate(value:string|Date){
-  return new Intl.DateTimeFormat('el-GR',{timeZone:CLINIC_TIMEZONE,day:'2-digit',month:'short',year:'numeric'}).format(asDate(value));
+export function formatClinicDate(value:string|Date,locale:string='el'){
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale,{timeZone:CLINIC_TIMEZONE,day:'2-digit',month:'short',year:'numeric'}).format(asDate(value));
 }
 
-export function formatClinicDateTime(value:string|Date){
-  return new Intl.DateTimeFormat('el-GR',{timeZone:CLINIC_TIMEZONE,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(asDate(value));
+export function formatClinicDateTime(value:string|Date,locale:string='el'){
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale,{timeZone:CLINIC_TIMEZONE,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(asDate(value));
 }
 
-export function formatClinicAppointment(value:string|Date){
-  return new Intl.DateTimeFormat('el-GR',{timeZone:CLINIC_TIMEZONE,weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(asDate(value));
+export function formatClinicAppointment(value:string|Date,locale:string='el'){
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale,{timeZone:CLINIC_TIMEZONE,weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(asDate(value));
 }

@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import Link from 'next/link';
 import PrevisitBriefingView from './PrevisitBriefingView';
 import ClinicalOrientationView from './ClinicalOrientationView';
@@ -9,6 +11,8 @@ import {overviewAttention} from '@/lib/overview/attention';
 
 // Whole sentences only: long records stay available behind an explicit disclosure.
 export default function ClinicalCardView({card,patientId,compact=false,overview=false}:{card:ClinicalCard;patientId:string;compact?:boolean;overview?:boolean}){
+ const locale=useLocale();
+
  if((overview||compact)&&card.briefing)return <PrevisitBriefingView card={card} brief={card.briefing} patientId={patientId}/>;
  if(card.orientation&&!overview&&!compact)return <ClinicalOrientationView card={card} patientId={patientId}/>;
  const comparison=clinicalCardPreview(card.changeSummary,compact?35:60);
@@ -22,7 +26,7 @@ export default function ClinicalCardView({card,patientId,compact=false,overview=
   return <section className="clinical-card-section"><h3>{title}</h3>{preview.map((item,i)=><p key={i}>{item.text}</p>)}{!items.length&&<p className="clinical-card-empty">{empty}</p>}{rest.length>0&&<details className="clinical-card-details"><summary>{preview.length?'Περισσότερα':'Άνοιγμα καταγραφής'} · {rest.length}</summary>{rest.map((item,i)=><p key={i}>{item.text}</p>)}</details>}{!compact&&sourceLinks(items)}</section>;
  }
  return <div className={'clinical-card'+(compact?' clinical-card-compact':'')}>
-  <p className="clinical-card-date">{card.date?'Τελευταία ολοκληρωμένη επίσκεψη · '+formatClinicDateTime(card.date):'Δεν υπάρχει ολοκληρωμένη επίσκεψη'}</p>
+  <p className="clinical-card-date">{card.date?'Τελευταία ολοκληρωμένη επίσκεψη · '+formatClinicDateTime(card.date, locale):'Δεν υπάρχει ολοκληρωμένη επίσκεψη'}</p>
   {!overview&&card.alerts.length>0&&<section className="clinical-card-attention" aria-label="Σημεία προσοχής"><strong>Χρειάζεται προσοχή</strong>{card.alerts.map(f=><details key={f.key}><summary>{f.label} · {f.text.split(/(?<=[.!?])\s/u)[0]}</summary><p>{f.text}</p>{sourceLinks([f])}</details>)}</section>}
   {attention&&<>
    {attentionGroup('Καταγεγραμμένα ευρήματα προς κλινική ανασκόπηση',attention.concern)}

@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
@@ -32,6 +34,8 @@ export default function IntakeLauncher({
  onClose:()=>void;
  onDone?:()=>void;
 }){
+ const locale=useLocale();
+
  const account=useAccountSession();
  const [tools,setTools]=useState<string[]>(defaultTools);
  const [channel,setChannel]=useState<Channel>(initialChannel);
@@ -182,7 +186,7 @@ export default function IntakeLauncher({
         </div>
         {subjectMode==='appointment'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
          <option value="">Επιλέξτε ραντεβού…</option>
-         {events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat('el-GR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':' · χωρίς φάκελο'}</option>)}
+         {events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat(locale,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':' · χωρίς φάκελο'}</option>)}
         </select></label>}
         {subjectMode==='patient'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
          <option value="">Επιλέξτε ασθενή…</option>

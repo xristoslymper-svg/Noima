@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import Link from 'next/link';
 import type {ClinicalCard} from '@/lib/clinical/clinical-card';
 import {clinicalCardPreview} from '@/lib/clinical/clinical-card';
@@ -8,7 +10,9 @@ import styles from './PrevisitBriefing.module.css';
 
 /** Stable reading order; all facts and the compact safety status retain evidence. */
 export default function PrevisitBriefingView({card,brief,patientId}:{card:ClinicalCard;brief:PrevisitBriefing;patientId:string}){
- const date=(value?:string|null)=>value?formatClinicDate(value):'';
+ const locale=useLocale();
+
+ const date=(value?:string|null)=>value?formatClinicDate(value, locale):'';
  function sources(items:Pick<BriefItem,'source_ids'>[],label='Πηγές'){
   const evidence=[...new Set(items.flatMap(i=>i.source_ids))].map(id=>card.sources.find(s=>s.id===id)).filter(s=>s!==undefined);
   return evidence.length>0&&<details className={styles.sources}><summary>{label}</summary>{evidence.map(s=><Link key={s.id} href={'/patients/demo/'+encodeURIComponent(patientId)+'?tab='+s.target+(s.session_id?'&session='+encodeURIComponent(s.session_id):'')}>{s.label}</Link>)}</details>;

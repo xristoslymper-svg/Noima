@@ -1,4 +1,6 @@
 "use client";
+import {useLocale} from 'next-intl';
+
 import {useTranslations} from 'next-intl';
 
 import {useMobileNavigation} from '@/components/useMobileNavigation';
@@ -96,48 +98,13 @@ function dateKey(value: Date) {
   return `${pick("year")}-${pick("month")}-${pick("day")}`;
 }
 
-function timeLabel(iso: string) {
-  return new Intl.DateTimeFormat("el-GR", {
-    timeZone: TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(iso));
-}
 
-function appointmentType(value: string) {
-  if (value === "initial_assessment") return "Πρώτη αξιολόγηση";
-  if (value === "follow_up") return "Επανεξέταση";
-  if (value === "other") return "Άλλο";
-  return value;
-}
 
-function weekKeys(focus: string) {
-  const [year, month, day] = focus.split("-").map(Number);
-  const base = new Date(Date.UTC(year, month - 1, day, 12));
-  // The selected date anchors the middle of this rolling seven-day view.
-  const first = new Date(base);
-  first.setUTCDate(base.getUTCDate() - 3);
 
-  return Array.from({ length: 7 }, (_, index) => {
-    const value = new Date(first);
-    value.setUTCDate(first.getUTCDate() + index);
-    const key = value.toISOString().slice(0, 10);
-    return {
-      key,
-      day: new Intl.DateTimeFormat("el-GR", { weekday: "short" }).format(value),
-      date: new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "short" }).format(value),
-    };
-  });
-}
 
-function focusTitle(focus: string) {
-  return new Intl.DateTimeFormat("el-GR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date(`${focus}T12:00:00Z`));
-}
+
+
+
 
 function athensMinutes(iso: string) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -154,24 +121,13 @@ function localAthensToIso(date: string, minute: number) {
   return clinicLocalToIso(date, String(Math.floor(minute / 60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0"));
 }
 function isPastScheduled(event:CalendarEvent){return event.status==="scheduled"&&!event.session_id&&Date.parse(event.scheduled_end)<Date.now()}
-function statusLabel(event: CalendarEvent){return event.status==="completed"?"Ολοκληρώθηκε":event.status==="cancelled"?"Ακυρώθηκε":event.session_id?"Σε εξέλιξη":isPastScheduled(event)?"Παρελθόν":"Προγραμματισμένο";}
+
 
 function addMinutes(iso: string, minutes: number) {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
 }
 
-function dateTimeLabel(iso: string) {
-  return new Intl.DateTimeFormat("el-GR", {
-    timeZone: TIMEZONE,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(iso));
-}
+
 
 function eventDurationMinutes(event: CalendarEvent) {
   return Math.max(
@@ -181,7 +137,11 @@ function eventDurationMinutes(event: CalendarEvent) {
 }
 
 export default function CalendarPage() {
- const t=useTranslations();
+const t=useTranslations();
+
+const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=useCalendarLabels();
+
+ 
 
   const [mobileNav, setMobileNav] = useMobileNavigation();
   const mobileCalendar=useMobileCalendarLayout();
@@ -1062,7 +1022,11 @@ function AppointmentEditor({
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
 }) {
- const t=useTranslations();
+const t=useTranslations();
+
+const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=useCalendarLabels();
+
+ 
 
   const initialPatient = event?.patient_id || nextFor?.patient_id || initialPatientId || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
@@ -1274,4 +1238,66 @@ function AppointmentEditor({
       </footer>
     </section>
   </div>;
+}
+
+function useCalendarLabels(){
+const t=useTranslations();
+
+ const locale=useLocale();
+
+ 
+
+function timeLabel(iso: string) {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}
+function appointmentType(value: string) {
+  if (value === "initial_assessment") return t('visits.firstAssessment');
+  if (value === "follow_up") return t('visits.followup');
+  if (value === "other") return t('common.other');
+  return value;
+}
+function weekKeys(focus: string) {
+  const [year, month, day] = focus.split("-").map(Number);
+  const base = new Date(Date.UTC(year, month - 1, day, 12));
+  // The selected date anchors the middle of this rolling seven-day view.
+  const first = new Date(base);
+  first.setUTCDate(base.getUTCDate() - 3);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const value = new Date(first);
+    value.setUTCDate(first.getUTCDate() + index);
+    const key = value.toISOString().slice(0, 10);
+    return {
+      key,
+      day: new Intl.DateTimeFormat(locale, { weekday: "short" }).format(value),
+      date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(value),
+    };
+  });
+}
+function focusTitle(focus: string) {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${focus}T12:00:00Z`));
+}
+function statusLabel(event: CalendarEvent){return event.status==="completed"?t('visits.completedPrefix'):event.status==="cancelled"?t('common.cancelled'):event.session_id?t('visits.inProgress'):isPastScheduled(event)?t('calendar.past'):t('calendar.scheduled');}
+function dateTimeLabel(iso: string) {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TIMEZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}
+return {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel};
 }

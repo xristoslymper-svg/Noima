@@ -1,4 +1,6 @@
 'use client';
+import {useLocale} from 'next-intl';
+
 import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import Link from 'next/link';
@@ -10,6 +12,8 @@ import styles from './RecordAssistant.module.css';
 type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string};
 type Turn={question:string;choice?:string;result?:Reply;error?:string;executing?:boolean;done?:boolean;firstMs?:number;totalMs?:number};
 export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
+ const locale=useLocale();
+
  const [mounted,setMounted]=useState(false),[open,setOpen]=useState(false),[actionMode,setActionMode]=useState(false);
  const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false),[patient,setPatient]=useState<SearchPatient|null>(null);
  const context=useRef<string|undefined>(undefined),locked=useRef(false),sequence=useRef(0),pending=useRef<AbortController|null>(null);
@@ -82,7 +86,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
       {turn.result?.answer?<p>{turn.result.answer}</p>:<span className={styles.thinking} role="status"><i/><i/><i/><span className={styles.srOnly}>Διαβάζω τον φάκελο</span></span>}
       {turn.result?.blocks?.map((block,i)=><div className={styles.block} key={i}><strong>{block.title}</strong><p>{block.text}</p></div>)}
       {turn.result?.choices?.map(p=><button className={styles.choice} disabled={busy} key={p.id} onClick={()=>void ask(turn.question,p.id)}>{p.first_name} {p.last_name} · {p.id.slice(-6)}</button>)}
-      {turn.result?.proposal&&<div className={styles.action}><strong>Προτεινόμενη ενέργεια</strong><p>{turn.result.proposal.summary}</p><small>Λήξη: {new Date(turn.result.proposal.expires_at).toLocaleTimeString('el-GR')}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?'Εκτέλεση…':'Επιβεβαιώνω την εκτέλεση'}</button>}</div>}
+      {turn.result?.proposal&&<div className={styles.action}><strong>Προτεινόμενη ενέργεια</strong><p>{turn.result.proposal.summary}</p><small>Λήξη: {new Date(turn.result.proposal.expires_at).toLocaleTimeString(locale)}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?'Εκτέλεση…':'Επιβεβαιώνω την εκτέλεση'}</button>}</div>}
       {turn.totalMs!==undefined&&<div className={styles.answerFooter}><span>{(turn.totalMs/1000).toFixed(1)} δευτ.{synthetic&&turn.firstMs!==undefined?' · πρώτο κείμενο '+(turn.firstMs/1000).toFixed(1)+' δευτ.':''}</span>{turn.result?.patient&&!synthetic&&!turn.result.proposal&&<Link href={'/patients/demo/'+turn.result.patient.id}>Καρτέλα <ArrowUpRight size={12}/></Link>}</div>}
      </div>}
     </article>)}</div>

@@ -1,4 +1,6 @@
 "use client";
+import {useLocale} from 'next-intl';
+
 import {useTranslations} from 'next-intl';
 
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
@@ -50,20 +52,29 @@ type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;p
 type OverviewPayload={events?:OverviewEvent[];tasks?:TodoTask[];psychometrics?:OverviewPsychometric[];intakes?:OverviewIntake[]};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
-const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
-const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
-const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
-const reviewWhen=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 
-const nav = [
-  [Home, "Επισκόπηση", "/"],
-  [CalendarDays, "Ημερολόγιο", "/calendar"],
-  [Users, "Ασθενείς", "/patients"],
-  [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
-] as const;
+
+const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
+
+
+
 
 export default function Page() {
- const t=useTranslations();
+const t=useTranslations();
+
+ const locale=useLocale();
+
+const overviewTime=(iso:string)=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const overviewDayLabel=()=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase(locale);
+const reviewWhen=(iso:string)=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const nav = [
+  [Home, t('navigation.overview'), "/"],
+  [CalendarDays, t('navigation.calendar'), "/calendar"],
+  [Users, t('navigation.patients'), "/patients"],
+  [BookOpen, t('navigation.library'), "/psychometrics"],
+] as const;
+
+ 
 
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useMobileNavigation();
@@ -288,7 +299,7 @@ export default function Page() {
 
           {widgetOpen==="payments"&&<div className="dashboard-widget-list">
             {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>
-              <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
+              <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
               <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>{t('billing.markPaid')}</span><Check size={15}/></button>
             </div>):<div className="dashboard-widget-empty">{t('billing.noPendingPayments')}</div>}
           </div>}
@@ -309,7 +320,7 @@ export default function Page() {
             <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder={t('dashboard.taskPlaceholder')} maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>{t('common.add')}</button></div>
             <div className="dashboard-widget-list">
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
-                <div><strong>{task.title}</strong><span>{task.source_session_id?t('visits.draftRecord'):t('dashboard.task')}{task.due_at?" · "+new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
+                <div><strong>{task.title}</strong><span>{task.source_session_id?t('visits.draftRecord'):t('dashboard.task')}{task.due_at?" · "+new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
                 {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=record&session="+task.source_session_id} aria-label={t('common.continue')+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={t('common.complete')+task.title}><Check size={16}/></button>}
               </div>):<div className="dashboard-widget-empty">{t('dashboard.noPendingTasks')}</div>}
             </div>

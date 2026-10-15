@@ -12,8 +12,12 @@
 /* Share the existing logo row: no extra row above the login form. */
 .pilot-login-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .language-setting-compact{margin:0;max-width:160px;align-self:flex-start}
-.language-setting-compact label,.language-setting-compact [role=status]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
-.language-setting-compact select{width:auto;max-width:100%;font-size:13px}
+.language-setting-compact [role=status]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.login-language-buttons{display:flex;gap:4px}
+.pilot-card .login-language-buttons button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:8px;font-size:11px;background:#fafcfb;color:var(--noima-muted)}
+.pilot-card .login-language-buttons button[aria-pressed=true]{background:#e9f3ef;border-color:var(--noima-accent);color:var(--noima-accent);font-weight:650}
+.login-language-buttons svg{width:21px;height:14px;border-radius:2px;flex:none}
+.login-language-buttons button:focus-visible{outline:2px solid #72a696;outline-offset:2px}
 
 /* The profile keeps the original link's intrinsic size and existing .profile
    styling. Reset native button decoration without stretching the header. */

@@ -32,9 +32,9 @@ try{
   await context.route('**/*',r=>[origin,new URL(api).origin].includes(new URL(r.request().url()).origin)?r.continue():r.abort());
   await page.goto(origin+'/login');assert.equal(await page.locator('html').getAttribute('lang'),'el');
   await assertLoginPresentation(page);await page.screenshot({path:resolve(out,size+'-login-el.png')});
-  await page.getByLabel('Γλώσσα',{exact:true}).selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');await page.reload();assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await page.getByRole('button',{name:'English',exact:true}).click();await page.waitForFunction(()=>document.documentElement.lang==='en');await page.reload();assert.equal(await page.locator('html').getAttribute('lang'),'en');
   await assertLoginPresentation(page);await page.screenshot({path:resolve(out,size+'-login-en.png')});
-  await page.getByLabel('Language',{exact:true}).selectOption('el');await page.waitForFunction(()=>document.documentElement.lang==='el');
+  await page.getByRole('button',{name:'Ελληνικά',exact:true}).click();await page.waitForFunction(()=>document.documentElement.lang==='el');
   const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200,`Application login: ${(await login.json()).error??'ok'}`);
   const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.postDataJSON()?.action})});
   async function post(path,data){const r=await context.request.post(origin+path,{headers:{origin},data});const body=await r.json();assert.equal(r.ok(),true,`${path}: ${body.error}`);return body}

@@ -4,15 +4,12 @@ import {resolve} from 'node:path';
 export async function assertLoginPresentation(page){
  const layout=await page.locator('.pilot-card').evaluate(card=>{
   const brand=card.querySelector('.brand-mark').getBoundingClientRect();
-  const language=card.querySelector('.language-setting select').getBoundingClientRect();
-  const field=card.querySelector('input');
-  const selectStyle=getComputedStyle(card.querySelector('.language-setting select')),fieldStyle=getComputedStyle(field);
-  return {sameRow:language.top>=brand.top-1&&language.bottom<=brand.bottom+8,overlap:language.left<brand.right,
-   select:[selectStyle.backgroundColor,selectStyle.borderColor,selectStyle.borderRadius],field:[fieldStyle.backgroundColor,fieldStyle.borderColor,fieldStyle.borderRadius]};
+  const language=card.querySelector('.login-language-buttons').getBoundingClientRect();
+  return {sameRow:language.top>=brand.top-1&&language.bottom<=brand.bottom+8,overlap:language.left<brand.right,selected:card.querySelectorAll('.login-language-buttons button[aria-pressed="true"]').length};
  });
- assert.equal(layout.sameRow,true,'The login selector must share the original logo row');
- assert.equal(layout.overlap,false,'The login selector must not overlap the logo');
- assert.deepEqual(layout.select,layout.field,'The login selector must use the existing input palette and border treatment');
+ assert.equal(layout.sameRow,true,'The login language buttons must share the original logo row');
+ assert.equal(layout.overlap,false,'The login language buttons must not overlap the logo');
+ assert.equal(layout.selected,1,'Exactly one login language must be selected');
 }
 
 export async function assertWorkspacePresentation(page){

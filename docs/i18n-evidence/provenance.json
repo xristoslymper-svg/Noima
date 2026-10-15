@@ -1,0 +1,19 @@
+{
+  "repository": "xristoslymper-svg/Noima",
+  "branch": "codex/greek-english-i18n",
+  "testedCommit": "229dd994fbc7178f20a9db7fdc3b86f2f53f1c0d",
+  "workflowRunId": 38796746566,
+  "workflowUrl": "https://github.com/xristoslymper-svg/Noima/actions/runs/38796746566",
+  "artifactId": 12001909567,
+  "artifactName": "visit-application-api-evidence",
+  "artifactUrl": "https://github.com/xristoslymper-svg/Noima/actions/runs/38796746566/artifacts/12001909567",
+  "artifactCreatedAt": "2026-10-15T19:52:38Z",
+  "artifactZipBytes": 1907971,
+  "artifactZipSha256": "78b98a70dee301ddab1579ec1753976f0f80774a7d95bad57fcbb1c082f901e4",
+  "screenshotCount": 28,
+  "data": "Synthetic patients and users in disposable CI Supabase; no production data",
+  "viewports": {
+    "desktop": { "width": 1440, "height": 1000 },
+    "mobile": { "width": 390, "height": 844 }
+  }
+}

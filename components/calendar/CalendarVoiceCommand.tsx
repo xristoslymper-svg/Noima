@@ -1,5 +1,5 @@
 'use client';
-import {useTranslations} from 'next-intl';
+import {useLocale,useTranslations} from 'next-intl';
 
 
 import { useEffect, useRef, useState } from 'react';
@@ -48,6 +48,7 @@ export default function CalendarVoiceCommand({
   onApplied: (event?: { scheduled_start?: string }) => Promise<void> | void;
 }) {
  const t=useTranslations();
+ const locale=useLocale();
 
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -117,7 +118,7 @@ export default function CalendarVoiceCommand({
     try {
       const response = await fetch('/api/calendar/command/parse', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json','x-noima-output-locale':locale },
         body: JSON.stringify({ transcript: text.trim(), follow_ups: answers, tester: getDemoTesterId() }),
       });
       const data = (await response.json().catch(() => ({}))) as Proposal & { error?: string };
@@ -372,7 +373,7 @@ export default function CalendarVoiceCommand({
   const clarificationCancelled =
     Boolean(isClarify) &&
     proposal?.command.missing_fields.length === 0 &&
-    Boolean(proposal.command.clarification?.toLocaleLowerCase('el').includes('ακυρώ'));
+    Boolean(proposal.command.clarification?.toLocaleLowerCase('el').includes('ακυρώ')||/cancelled|canceled/i.test(proposal.command.clarification||''));
   const canAnswerClarification = Boolean(isClarify && !clarificationCancelled);
 
   return (

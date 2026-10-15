@@ -68,6 +68,7 @@ export default function PatientSession({
  const systemMessage=useSystemMessage();
 
 const t=useTranslations();
+const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'),risk:t('visits.steps.risk'),history:t('visits.steps.history'),assessment:t('visits.steps.assessment'),diagnosis:t('visits.steps.diagnosis'),medication:t('visits.steps.medication'),plan:t('visits.steps.plan'),symptoms:t('visits.steps.symptoms'),adherence:t('visits.steps.adherence'),mseChanges:t('visits.steps.mseChanges'),psychometrics:t('visits.steps.psychometrics'),review:t('visits.steps.review')};
 
  const locale=useLocale();
 
@@ -234,7 +235,7 @@ const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||val
   </div>
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title={t('visits.visitNotes')} rows={4}/>}
-  <nav className="visit-scroll-nav" aria-label={t('accessibility.visitNavigation')}>{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key,label])=>{const isRequired=requiredVisitStep(key),complete=isRequired&&requiredStepState(key);return <button type="button" key={key} aria-current={activePart===key?'step':undefined} className={[activePart===key?'active':'',isRequired?'required':'',complete?'complete':''].filter(Boolean).join(' ')} onClick={()=>goToPart(key)}><i/>{complete&&<Check size={12} aria-hidden="true"/>}<span>{label}{isRequired&&!complete&&<sup aria-label={t('common.required')}>*</sup>}</span></button>})}</nav>
+  <nav className="visit-scroll-nav" aria-label={t('accessibility.visitNavigation')}>{visitSteps[draft.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key])=>{const isRequired=requiredVisitStep(key),complete=isRequired&&requiredStepState(key);return <button type="button" key={key} aria-current={activePart===key?'step':undefined} className={[activePart===key?'active':'',isRequired?'required':'',complete?'complete':''].filter(Boolean).join(' ')} onClick={()=>goToPart(key)}><i/>{complete&&<Check size={12} aria-hidden="true"/>}<span>{stepLabels[draft.session_type==='follow_up'?(key==='interview'?'symptoms':key==='mse'?'mseChanges':key==='plan'?'review':key):key]}{isRequired&&!complete&&<sup aria-label={t('common.required')}>*</sup>}</span></button>})}</nav>
   <fieldset ref={documentRef} disabled={flushing||finalizing||finishingLater} className={draft.session_type==='initial_assessment'?'visit-document first-assessment':'visit-document'}>
    <VisitPart anchor="interview" number="01" title={draft.session_type==='follow_up'?t('clinical.symptomsCourse'):t('clinical.presentingComplaintCurrentState')}>{editor('interview',draft.session_type==='follow_up'?t('clinical.symptomsCourse'):t('clinical.presentingComplaintCurrentState'),4)}<details className="visit-related-detail"><summary>{t('clinical.dailyLifeImpact')}{sections.find(s=>s.section_key==='functioning')?.content.trim()?t('clinical.recordExistsSuffix'):''}</summary>{editor('functioning',t('clinical.functioning'))}</details>{draft.session_type==='initial_assessment'&&bundle.patient.chief_complaint?.trim()&&<details className="visit-additional"><summary>{t('clinical.originalPresentingComplaint')}</summary><p style={{whiteSpace:'pre-wrap'}}>{bundle.patient.chief_complaint}</p></details>}</VisitPart>
    <VisitPart anchor="mse" number="02" title={draft.session_type==='follow_up'?t('clinical.mseChanges'):t('clinical.mentalStatusExamination')}>
@@ -256,7 +257,7 @@ const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||val
   {draft.session_type==='follow_up'&&<FollowupRecovery disabled={flushing||finalizing||finishingLater}/> }
   <div className="finalize-bar">
    <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing?t('visits.savingDraft'):finalizing?t('visits.finalizing'):t('visits.finalize')}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?t('visits.savingDraft'):t('visits.finishLater')}</button>}
-   {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>{t('common.goTo')}</button></span>}
+   {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{systemMessage(blocker.message)} <button type="button" onClick={()=>goToPart(blocker.anchor)}>{t('common.goTo')}</button></span>}
   </div>
 
   {flushError&&<div className="save-state error" role="alert"><strong>{t('visits.unsavedChanges')}</strong> {systemMessage(flushError)} <span>{t('visits.resolveBeforeFinalize')}</span></div>}

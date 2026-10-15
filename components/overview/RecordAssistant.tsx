@@ -72,7 +72,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
   locked.current=true;setBusy(true);const current=sequence.current;
   setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:true,error:undefined}:turn));
   try{
-   const response=await fetch('/api/copilot/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proposal_id:proposal.id,confirm:true})});
+   const response=await fetch('/api/copilot/confirm',{method:'POST',headers:{'Content-Type':'application/json','x-noima-output-locale':locale},body:JSON.stringify({proposal_id:proposal.id,confirm:true})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||t('errors.assistantCompletionUnconfirmed'));
    if(current!==sequence.current)return;
    setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,done:data.status==='verified'||data.status==='accepted',result:{...turn.result,...data,proposal}}:turn));

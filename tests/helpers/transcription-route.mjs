@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import ts from 'typescript';
+import {errorJson} from '../../i18n/errors.ts';
 
 export function transcriptionRoute({authenticated=true,membership=true,provider,routeSource}={}) {
  const calls=[],scope=new AsyncLocalStorage();
@@ -17,7 +18,7 @@ export function transcriptionRoute({authenticated=true,membership=true,provider,
   const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   vm.runInNewContext(compiled,{
    module:mod,exports:mod.exports,
-   require:name=>{if(!(name in mocks))throw new Error('Unexpected import: '+name);return mocks[name]},
+   require:name=>{if(name==='@/i18n/errors')return {errorJson};if(!(name in mocks))throw new Error('Unexpected import: '+name);return mocks[name]},
    Request,Response,FormData,File,Blob,URL,AbortController,DOMException,setTimeout,clearTimeout,
    process:{env},
    fetch:async(url,init)=>{

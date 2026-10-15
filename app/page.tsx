@@ -117,7 +117,7 @@ const nav = [
         setSchedule(events);setTasks(data.tasks||[]);setPsychometricsForReview(data.psychometrics||[]);setIntakesForReview(data.intakes||[]);
         setSelectedPatientId(current=>current&&ids.includes(current)?current:restoreOverviewSelection(entryState,tester,todayKey,ids)||ids[0]||null);
         hasSnapshot.current=true;setOverviewState('ready');setOverviewRefreshError(false);setNowMs(Date.now());setBundleRetry(n=>n+1);
-        if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
+        if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json','x-noima-output-locale':locale},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
       },
       error:()=>{if(hasSnapshot.current)setOverviewRefreshError(true);else setOverviewState('error');}
     });

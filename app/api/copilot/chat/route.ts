@@ -1,3 +1,4 @@
+import {outputTranslator} from '@/i18n/output-translator';
 import {errorJson} from '@/i18n/errors';
 import {withPilot} from '@/lib/pilot/route';
 import {patientBundle,request} from '@/lib/patients/demo-runtime';
@@ -10,6 +11,7 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=45;
 async function post(req:Request){
+ const t=outputTranslator();
  const b=await req.json().catch(()=>null);
  if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||
   (b.patient_id!==undefined&&(!isClinicalId(b.patient_id)))||
@@ -25,7 +27,7 @@ async function post(req:Request){
   if(!id){
    const words=new Set(normalizedName(b.query).split(/\s+/));
    const found=roster.filter(p=>normalizedName(p.first_name+' '+p.last_name).split(/\s+/).some(w=>w.length>=3&&words.has(w)));
-   return Response.json({answer:'Επίλεξε τον ασθενή για αυτή τη συζήτηση. Μπορείς επίσης να ανοίξεις την καρτέλα του.',choices:(found.length?found:roster).slice(0,12),sources:[]});
+   return Response.json({answer:t('clinical.chooseChatPatient'),choices:(found.length?found:roster).slice(0,12),sources:[]});
   }
   const patient=roster.find(p=>p.id===id);
   if(!patient)return errorJson({error:'Ο φάκελος δεν είναι διαθέσιμος.'},{status:404});

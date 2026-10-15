@@ -1,5 +1,6 @@
 'use client';
 import {useTranslations} from 'next-intl';
+import {useOptionLabel} from './option-labels';
 // Only render transient system errors through this adapter, never clinical text.
 const messageKeys={
   "Δεν φορτώθηκε ο λογαριασμός": "errors.accountLoad",
@@ -703,12 +704,17 @@ const messageKeys={
 } as const;
 export function useSystemMessage(){
  const t=useTranslations();
+ const optionLabel=useOptionLabel();
  return (message:string)=>{
   const key=messageKeys[message as keyof typeof messageKeys];if(key)return t(key);
   const conflict=message.match(/^Υπάρχει ήδη άλλο ραντεβού στις (.*)\. Δεν έγινε καμία αλλαγή\.$/u);
   if(conflict)return t('errors.calendarConflictTime',{time:conflict[1]});
   const daylight=message.match(/^Η σειρά περιλαμβάνει μη έγκυρη ή διπλή ώρα λόγω αλλαγής θερινής ώρας\. Επιλέξτε διαφορετική ώρα\. (.*)$/u);
   if(daylight)return t('errors.daylightSavingTime',{detail:daylight[1]});
+  if(message==='Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.')return t('validation.riskBeforeFinalizing');
+  if(message==='Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.')return t('validation.positiveRiskDetails');
+  const pending=message.match(/^Υπάρχουν (\d+) ενότητες MSE με προηγούμενες επιλογές/);if(pending)return t('validation.pendingMseDomains',{count:Number(pending[1])});
+  const required=message.match(/^Χρειάζεται καταγραφή: (.*)\.$/);if(required)return t('validation.recordRequired',{section:optionLabel(required[1])});
   return message;
  };
 }

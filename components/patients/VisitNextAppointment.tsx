@@ -85,6 +85,6 @@ const t=useTranslations();
   </div>
   {needsVerification&&<button type="button" disabled={busy} onClick={()=>void verifyBooking()}>{t('calendar.verifyBooking')}</button>}
   {notice&&<p className={styles.feedback} role="status">{notice}</p>}
-  {error&&<p className={systemMessage(styles.error)} role="alert">{systemMessage(error)}</p>}
+  {error&&<p className={styles.error} role="alert">{systemMessage(error)}</p>}
  </div>;
 }

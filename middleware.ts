@@ -27,10 +27,11 @@ export async function middleware(request:NextRequest) {
   response.cookies.getAll().forEach(cookie => refreshed.cookies.set(cookie));
   response = refreshed;
   const path=request.nextUrl.pathname;
-  const publicPath=path==='/login'||path==='/forgot-password';
+  const patientPage=['/assessment','/intake','/tablet'].includes(path);
+  const publicPath=path==='/login'||path==='/forgot-password'||patientPage;
   let destination:string|null=null;
   if(!user&&!publicPath) destination='/login';
-  if(user){
+  if(user&&!patientPage){
     const {data:identity}=await client.rpc('pilot_identity');
     if(identity) {
       response.cookies.set('noima-workspace-id',identity.workspace_id,{sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/'});
@@ -41,4 +42,4 @@ export async function middleware(request:NextRequest) {
   response.headers.set('Cache-Control','private, no-store');
   return response;
 }
-export const config={matcher:['/((?!api|auth/callback|assessment|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wasm|onnx)$).*)']};
+export const config={matcher:['/((?!api|auth/callback|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wasm|onnx)$).*)']};

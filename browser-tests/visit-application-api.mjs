@@ -24,7 +24,6 @@ try{
   const client=createClient(api,key,{auth:{persistSession:false,autoRefreshToken:false}});const auth=await client.auth.signInWithPassword({email,password});assert.equal(auth.error,null);
   const joined=await client.rpc('pilot_join',{p_name:'QA '+label});assert.equal(joined.error,null);return {email,password,client,workspace:joined.data.workspace_id};}
  const owner=await user('Workflow'),other=await user('Other Workspace');
- async function rpc(client,name,args){const r=await client.rpc(name,args);assert.equal(r.error,null,`${name}: ${r.error?.message}`);return Array.isArray(r.data)?r.data[0]:r.data}
  for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
   const context=await browser.newContext({viewport}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.route('**/*',r=>[origin,new URL(api).origin].includes(new URL(r.request().url()).origin)?r.continue():r.abort());
@@ -59,6 +58,27 @@ try{
   assert.equal(calls.filter(c=>c.action==='finalize_session').length,1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:resolve(out,size+'-completed.png')});
   at=performance.now();offset=calls.length;await page.getByRole('button',{name:'Επιστροφή στο πρόγραμμα',exact:true}).click();await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).waitFor();timings.push({size,action:'return',ms:performance.now()-at,requests:calls.slice(offset)});assert.equal(new URL(page.url()).pathname,'/calendar');
+  for(const [index,mode] of ['compact','detailed'].entries()){
+   const date=new Date(+started+(index+1)*7*86400000);
+   const appointment=await post('/api/calendar/command/apply',{action:'create',patient_id:patientId,start_iso:date.toISOString(),end_iso:new Date(+date+3000000).toISOString(),appointment_type:'follow_up'});
+   const followup=(await post('/api/calendar/appointment',{event_id:appointment.event.id})).session;
+   await post('/api/patients/demo/runtime',{action:'save_section',session_id:followup.id,section_key:'mse',content:'QA follow-up MSE',source:'manual',expected_version:null});
+   await post('/api/patients/demo/runtime',{action:'save_risk',session_id:followup.id,risk:{suicidal_ideation:'negative',intent:'negative',plan:'negative',self_harm:'negative',attempt_history:'negative'},expected_version:null});
+   await post('/api/patients/demo/runtime',{action:'save_closure',session_id:followup.id,expected_version:0,value:{transcript:'',clinical_state_summary:'QA follow-up state',treatment_decision:'QA decision',next_review_focus:'QA next review',adherence:'QA adherence',pinned_context:'',source:'manual'}});
+   await page.goto(origin+'/patients/demo/'+patientId+'?tab=record&session='+followup.id);
+   await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();
+   if(mode==='compact'){
+    await page.getByRole('button',{name:'Συνέχεια αργότερα',exact:true}).click();await page.locator('dialog[open]').waitFor({state:'hidden'});
+    const taskRows=await owner.client.rpc('demo_task_list',{p_tester:owner.workspace});assert.equal(taskRows.error,null);assert.ok(taskRows.data.some(t=>t.source_session_id===followup.id&&t.patient_id===patientId&&t.status==='open'));
+    await page.goto(origin);await page.getByRole('button',{name:'Άνοιγμα εκκρεμοτήτων',exact:true}).click();
+    await page.getByRole('dialog',{name:'Εκκρεμότητες',exact:true}).locator('a[href="/patients/demo/'+patientId+'?tab=record&session='+followup.id+'"]').click();
+    await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();assert.equal(new URL(page.url()).searchParams.get('session'),followup.id);
+   }else await page.getByRole('button',{name:'Αναλυτική καταγραφή',exact:false}).click();
+   const before=calls.filter(c=>c.action==='finalize_closure').length;
+   await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).click();await area.waitFor();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();
+   assert.equal(calls.filter(c=>c.action==='finalize_closure').length,before+1);const saved=(await owner.client.from('demo_sessions').select('*').eq('id',followup.id).single()).data;assert.equal(saved.status,'completed');assert.equal(saved.patient_id,patientId);assert.equal(saved.closure_draft,null);
+   await page.reload();await area.waitFor();assert.equal(calls.filter(c=>c.action==='finalize_closure').length,before+1);await page.screenshot({path:resolve(out,size+'-'+mode+'-followup.png')});
+  }
   // Authentic membership and RLS: another user cannot read or mutate this visit.
   const unauthorized=await browser.newContext();await unauthorized.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:other.email,password:other.password}});
   const denied=await unauthorized.request.get(origin+'/api/patients/demo/visit?patient='+patientId+'&session='+sessionId+'&tester='+owner.workspace);assert.equal(denied.ok(),false);

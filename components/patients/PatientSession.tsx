@@ -1,55 +1,204 @@
-// Real React components + actual migrated PostgreSQL RPCs behind a synthetic HTTP/auth adapter.
-// This does not assert Vercel/Supabase production deployment or real external integrations.
-import assert from 'node:assert/strict';
-import {build} from 'esbuild';
-import {chromium} from 'playwright';
-import {createServer} from 'node:http';
-import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
-import {resolve} from 'node:path';
-import {createWorkflowDatabase} from './workflow-postgres.mjs';
-const out=resolve('test-results/visit-workflow');mkdirSync(out,{recursive:true});
-await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import PatientWorkspace from './components/patients/PatientWorkspace';import CalendarPage from './app/calendar/page';import './app/globals.css';import './app/clinical-refinement.css';import './app/visit-workspace.css';import './app/mobile.css';import './app/initial-assessment.css';import './app/clinical-editor.css';import './app/noima-ui.css';const id=location.pathname.split('/').pop();createRoot(document.getElementById('root')).render(location.pathname==='/calendar'?<CalendarPage/>:<PatientWorkspace patientRef={id}/>);`,loader:'jsx',resolveDir:process.cwd()},bundle:true,outfile:resolve(out,'fixture.js'),jsx:'automatic',define:{'process.env':'{}','process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_NOIMA_MOBILE_V2':'"0"'},alias:{'@':process.cwd()},loader:{'.module.css':'local-css'},plugins:[{name:'synthetic-navigation',setup(b){b.onResolve({filter:/^next\/(link|navigation)$/},a=>({path:a.path,namespace:'synthetic-navigation'}));b.onLoad({filter:/.*/,namespace:'synthetic-navigation'},a=>({loader:'jsx',resolveDir:process.cwd(),contents:a.path==='next/link'?"import React from 'react';export default function Link({children,...props}){return <a {...props}>{children}</a>}":"export const usePathname=()=>location.pathname;export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push:u=>location.assign(u),replace:u=>location.replace(u),refresh:()=>location.reload()});"}));}}]});
-const db=await createWorkflowDatabase();
-const server=createServer(async(req,res)=>{
- const url=new URL(req.url,'http://localhost');res.setHeader('cache-control','no-store');
- if(url.pathname.startsWith('/api/')){
-  res.setHeader('content-type','application/json');try{let body=null;if(req.method!=='GET'){let raw='';for await(const c of req)raw+=c;body=JSON.parse(raw||'{}')}const result=await db.dispatch(url.pathname,url.searchParams,body);return res.end(JSON.stringify(result))}catch(e){res.statusCode=409;return res.end(JSON.stringify({error:e.message}))}
- }
- if(['/fixture.js','/fixture.css'].includes(url.pathname)){res.setHeader('content-type',url.pathname.endsWith('.js')?'text/javascript':'text/css');return res.end(readFileSync(resolve(out,url.pathname.slice(1))))}
- res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="el"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/fixture.css"><div id="root"></div><script src="/fixture.js"></script></html>');
-});
-await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
-const browser=await chromium.launch({headless:true}),results=[];
-try{
- for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
-  async function check(name,type,fn){
-   const info=await db.seed(type),context=await browser.newContext({viewport});await context.addCookies([{name:'noima-workspace-id',value:db.tester,url:origin}]);await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage();page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
-   const record=origin+'/patients/demo/'+info.patientId+'?tab=record&session='+info.sessionId;
-   async function open(){await page.goto(record);await page.locator('dialog[open]').waitFor();await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();assert.deepEqual(errors,[])}
-   const administration=()=>page.getByRole('region',{name:'Διεκπεραίωση επίσκεψης',exact:true});
-   async function finalize(){await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).click();await administration().waitFor();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();const s=(await db.state()).sessions.find(s=>s.id===info.sessionId);assert.equal(s.status,'completed');assert.ok(s.completed_at);}
-   try{await fn({page,context,info,open,record,administration,finalize});assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'no page horizontal overflow');await page.screenshot({path:resolve(out,size+'-'+name+'.png')});results.push({name,size,status:'passed'});console.log('PASS',size,name)}
-   catch(e){await page.screenshot({path:resolve(out,size+'-'+name+'-failed.png')}).catch(()=>{});writeFileSync(resolve(out,size+'-'+name+'-dom.txt'),await page.locator('body').innerText().catch(()=>''));results.push({name,size,status:'failed',error:e.message,errors});console.error('FAIL',size,name,e.message,errors)}
-   finally{await context.close();writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'React/browser and real PostgreSQL repository migrations/RPCs; synthetic HTTP/auth adapter. No remote AI, SMS, email, live database or production patient data.',results},null,2))}
+'use client';
+
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
+import FollowupClosure from './FollowupClosure';
+import {followupFinalizationVersion,focusFollowupBlocker} from '@/lib/clinical/followup-finalization';
+import VisitAdministration from './VisitAdministration';
+import RiskEditor from './RiskTreeEditor';
+import StructuredVisitEditor from './StructuredVisitEditor';
+import CompletedRecordEditor from './CompletedRecordEditor';
+import VisitHistory from './VisitHistory';
+import VisitNextAppointment from './VisitNextAppointment';
+import VisitScores from './VisitScores';
+import MedicationTable from './MedicationTable';
+import {FollowupDraftProvider,FollowupField,FollowupRecovery} from './FollowupDraft';
+import {followupFields} from '@/lib/clinical/followup-fields';
+import SectionEditor from './SectionEditor';
+import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
+import { demoPost } from '@/lib/patients/demo-client';
+import { formatClinicDateTime } from '@/lib/clinic-time';
+import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference,sessionClinicalTime,mseTimeline} from '@/lib/clinical/visit-workspace-state';
+
+const definitions=[
+ ['interview','Αναφορά ασθενούς & συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
+ ['mse','Εξέταση ψυχικής κατάστασης (MSE)','Στοχευμένα ευρήματα της σημερινής εξέτασης.'],
+ ['assessment','Κλινική εκτίμηση','Διάγνωση / διαφορική, formulation και κλινική αποτίμηση.'],
+ ['plan','Θεραπευτικό πλάνο','Αγωγή, παρεμβάσεις, παραπομπές και οδηγίες.'],
+ ['review','Επανεκτίμηση','Χρονικός ορίζοντας και τι πρέπει να ελεγχθεί στην επίσκεψη.'],
+ ['functioning','Λειτουργικότητα','Εργασία, σχέσεις, καθημερινότητα και ύπνος.'],
+ ['effects','Παρενέργειες','Ανεπιθύμητες ενέργειες και επίδρασή τους.'],
+ ['adherence','Λήψη αγωγής','Λήψη αγωγής, παραλείψεις και δυσκολίες.'],
+] as const;
+
+const required=new Set(['interview','mse','assessment','plan','review']);
+const fmt=(value?:string|null)=>value?formatClinicDateTime(value):'—';
+const riskOptions=[['not_assessed','Δεν διερευνήθηκε'],['unknown','Άγνωστο'],['negative','Αρνητικό'],['positive','Θετικό']] as const;
+const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||value;
+
+type RegisterFlusher=(key:string,flush:()=>Promise<void>)=>(()=>void);
+type DirtyChange=(key:string,dirty:boolean)=>void;
+
+export default function PatientSession({
+ bundle,
+ reload,
+ onFinalize,
+ onFinishLater,
+ finalizing,
+ finalizeError,
+ selectedSessionId,
+ onSelectSession,
+ contextReady=true,
+ reloadContext=reload,
+ onClose,
+ beforeNavigate,
+ previousMse,
+}:{
+ beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;
+ previousMse?:ReturnType<typeof previousMseReference>;
+ contextReady?:boolean;
+ reloadContext?:()=>Promise<unknown>;
+ onClose?:()=>void;
+ bundle:PatientBundle;
+ reload:()=>Promise<unknown>;
+ onFinalize:(sessionId:string,closure?:boolean,closureVersion?:number)=>Promise<void>;
+ onFinishLater?:(sessionId:string,reason?:string)=>Promise<void>;
+ finalizing:boolean;
+ finalizeError:string;
+ selectedSessionId:string|null;
+ onSelectSession:(sessionId?:string|null)=>void;
+}){
+ const [detailed,setDetailed]=useState(false);
+ const [narrativeMode,setNarrativeMode]=useState<Record<string,boolean>>({});
+ const completed=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
+ const requested=selectedSessionId?bundle.sessions.find(s=>s.id===selectedSessionId):undefined;
+ const draft=requested?.status==='draft'?requested:(!selectedSessionId?bundle.sessions.find(s=>s.status==='draft'):undefined);
+ const selected=requested?.status==='completed'?requested:undefined;
+ const flushers=useRef(new Map<string,()=>Promise<void>>());
+ const dirtyKeys=useRef(new Set<string>());
+ const [dirtyCount,setDirtyCount]=useState(0);
+ const [flushing,setFlushing]=useState(false);
+ const [flushError,setFlushError]=useState('');
+ const [refreshError,setRefreshError]=useState('');
+ const [showFinalizeGuidance,setShowFinalizeGuidance]=useState(false);
+ const [finishingLater,setFinishingLater]=useState(false);
+ const finishing=useRef(false);
+ const documentRef=useRef<HTMLFieldSetElement>(null);
+ const [activePart,setActivePart]=useState('interview');
+
+ const registerFlusher=useCallback<RegisterFlusher>((key,flush)=>{
+  flushers.current.set(key,flush);
+  return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)};
+ },[]);
+
+ const onDirtyChange=useCallback<DirtyChange>((key,dirty)=>{
+  if(dirty)dirtyKeys.current.add(key);else dirtyKeys.current.delete(key);
+  setDirtyCount(dirtyKeys.current.size);
+ },[]);
+
+ useEffect(()=>{
+  const warn=(event:BeforeUnloadEvent)=>{
+   if(!dirtyKeys.current.size)return;
+   event.preventDefault();
+   event.returnValue='';
+  };
+  window.addEventListener('beforeunload',warn);
+  return()=>window.removeEventListener('beforeunload',warn);
+ },[]);
+
+ const flushAll=useCallback(async(requireRefresh=false)=>{
+  setFlushing(true);
+  setFlushError('');
+  setRefreshError('');
+  try{
+   const pending=[...flushers.current.values()];
+   await Promise.all(pending.map(flush=>flush()));
+  }catch(cause){
+   const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκαν όλες οι αλλαγές.';
+   setFlushError(message);
+   setFlushing(false);
+   throw cause;
   }
-  await check('initial-finalize-payment-next-visit','initial_assessment',async({page,info,open,administration,finalize})=>{
-   await open();await finalize();const admin=administration();await admin.getByRole('button',{name:'Πληρωμένο',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Κατάσταση πληρωμής"] button[aria-pressed="true"]')?.textContent==='Πληρωμένο');
-   assert.equal((await db.state()).appointments.find(a=>a.id===info.eventId).payment_status,'paid');
-   await admin.getByRole('button',{name:'Προγραμματισμός',exact:true}).click();await admin.getByRole('button',{name:'Σε 4 εβδομάδες',exact:true}).click();await admin.getByLabel('Ώρα Αθήνας',{exact:true}).fill(size==='desktop'?'09:00':'11:00');await admin.getByRole('button',{name:'Προγραμματισμός',exact:true}).click();await admin.getByText('Το ραντεβού αποθηκεύτηκε.',{exact:true}).waitFor();
-   const saved=await db.state();assert.equal(saved.appointments.length,2);assert.equal(saved.sessions.find(s=>s.id===info.sessionId).status,'completed');assert.equal(db.requests.filter(r=>r.action==='finalize_session').length,1);
-   await page.reload();await administration().getByRole('button',{name:'Πληρωμένο',exact:true}).waitFor();assert.equal(await administration().getByRole('button',{name:'Πληρωμένο',exact:true}).getAttribute('aria-pressed'),'true');assert.equal((await db.state()).appointments.length,2);
-  });
-  await check('compact-followup-finalizes-once','follow_up',async({open,finalize,info})=>{await open();await finalize();assert.equal(db.requests.filter(r=>r.action==='finalize_closure').length,1);assert.equal((await db.state()).sessions.find(s=>s.id===info.sessionId).closure_draft,null)});
-  await check('detailed-followup-finalizes-once','follow_up',async({page,open,finalize})=>{await open();await page.getByRole('button',{name:'Αναλυτική καταγραφή',exact:false}).click();await page.getByRole('button',{name:'Σύντομη καταγραφή',exact:true}).waitFor();await finalize();assert.equal(db.requests.filter(r=>r.action==='finalize_closure').length,1)});
-  await check('recovery-requires-consent-and-preserves-local','follow_up',async({page,open,info})=>{
-   await open();db.faults.save=100;const field=page.getByRole('textbox',{name:'Κλινική εικόνα',exact:true});await field.fill('QA UNSAVED LOCAL TEXT');const load=page.getByRole('button',{name:'Φόρτωση αποθηκευμένου προχείρου…',exact:true});await load.waitFor();await load.click();assert.equal(await field.inputValue(),'QA UNSAVED LOCAL TEXT');await page.getByRole('button',{name:'Ακύρωση φόρτωσης',exact:true}).click();assert.equal(await field.inputValue(),'QA UNSAVED LOCAL TEXT');await load.click();await page.getByRole('button',{name:'Διατήρηση αντιγράφου και φόρτωση',exact:true}).click();
-   await page.waitForFunction(id=>document.getElementById(id)?.value==='QA saved state',info.sessionId+'-closure-clinical_state_summary');
-   await page.locator('summary').filter({hasText:'Αντίγραφο μη αποθηκευμένων αλλαγών'}).click();assert.match(await page.getByRole('textbox',{name:'Αντίγραφο μη αποθηκευμένων αλλαγών',exact:true}).inputValue(),/QA UNSAVED LOCAL TEXT/);
-   assert.equal((await db.state()).sessions.find(s=>s.id===info.sessionId).closure_draft.clinical_state_summary,'QA saved state');
-   await page.reload();await page.locator('summary').filter({hasText:'Αντίγραφο μη αποθηκευμένων αλλαγών'}).click();assert.match(await page.getByRole('textbox',{name:'Αντίγραφο μη αποθηκευμένων αλλαγών',exact:true}).inputValue(),/QA UNSAVED LOCAL TEXT/);
-  });
-  await check('retry-save-does-not-replace-local','follow_up',async({page,open,info})=>{
-   await open();db.faults.s…15944 tokens truncated…ctions.some(s=>s.section_key===key&&s.content.trim());
+  if(!requireRefresh){setFlushing(false);return null}
+  try{
+   const refreshed=await reload();
+   if(!refreshed)throw new Error('refresh_unavailable');
+   return refreshed;
+  }catch(cause){
+   setRefreshError('Οι αλλαγές αποθηκεύτηκαν, αλλά η προβολή δεν ανανεώθηκε. Δοκιμάστε ξανά ή ανανεώστε τον φάκελο.');
+   if(requireRefresh)throw cause;
+   return null;
+  }finally{
+   setFlushing(false);
+  }
+ },[reload]);
+
+ useEffect(()=>{if(!beforeNavigate)return;const flush=async()=>{await flushAll()};beforeNavigate.current=flush;return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null}},[beforeNavigate,flushAll]);
+
+ useEffect(()=>{
+  const root=documentRef.current;if(!root)return;
+  const sections=[...root.querySelectorAll<HTMLElement>('[data-visit-part]')];
+  let frame=0;
+  const dialog=root.closest('dialog');
+  const navigationKeys=new Set<string>(visitSteps[draft?.session_type==='initial_assessment'?'initial_assessment':'follow_up'].map(([key])=>key));
+  const navigable=sections.filter(section=>navigationKeys.has(section.dataset.visitPart||''));
+  const update=()=>{frame=0;const top=dialog?.getBoundingClientRect().top||0;const atBottom=dialog&&dialog.scrollTop>0&&dialog.scrollTop+dialog.clientHeight>=dialog.scrollHeight-2;setActivePart(atBottom&&navigable.length?navigable[navigable.length-1].dataset.visitPart!:activeVisitPart(navigable.map(section=>({key:section.dataset.visitPart||'interview',top:section.getBoundingClientRect().top})),top+125))};
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
+  const target=dialog||window;
+  target.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
+  const observer=new ResizeObserver(schedule);sections.forEach(section=>observer.observe(section));update();
+  return()=>{target.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);observer.disconnect();if(frame)cancelAnimationFrame(frame)};
+ },[draft?.id,detailed]);
+ function goToPart(key:string){documentRef.current?.querySelector<HTMLElement>('[data-visit-part="'+key+'"]')?.scrollIntoView({behavior:'smooth',block:'start'})}
+
+ async function finishLater(){
+  if(!draft||!onFinishLater||finishingLater)return;
+  setFinishingLater(true);
+  try{await flushAll();await onFinishLater(draft.id)}catch{}finally{setFinishingLater(false)}
+ }
+ async function finalizeSafely(){
+  if(finishing.current)return;finishing.current=true;
+  try{
+   const fresh=await flushAll(true) as PatientBundle;
+   if(draft?.session_type==='follow_up'){await onFinalize(draft.id,true,followupFinalizationVersion(fresh,draft.id));return}
+   const reference=draft?.session_type==='follow_up'?{section:{document:{kind:'mse' as const,fields:Object.values(mseTimeline(fresh,draft.id,draft.started_at).references).map(r=>r.field)}}}:null;
+   const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id),reference?.section.document,draft?.session_type==='initial_assessment');
+   if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
+   if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
+   await onFinalize(draft.id);
+  }catch(cause){
+   setFlushError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η οριστικοποίηση.');if(draft)focusFollowupBlocker(cause,draft.id);
+  }finally{finishing.current=false}
+ }
+
+ if(selected){
+  return <><VisitAdministration bundle={bundle} sessionId={selected.id} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} disabled={finalizing||!contextReady}/><CompletedSessionView session={selected} bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onBack={()=>onSelectSession(null)} /></>;
+ }
+
+ if(selectedSessionId&&!requested){
+  return <section className="panel-stack"><div className="panel-heading"><div><span className="kicker">ΣΥΝΕΔΡΙΕΣ</span><h2>Η συγκεκριμένη συνεδρία δεν είναι διαθέσιμη</h2><p>Ο σύνδεσμος είναι παλιός ή η συνεδρία δεν ανήκει πλέον σε αυτόν τον φάκελο.</p></div><button onClick={()=>onSelectSession(null)}>Προβολή συνεδριών</button></div></section>;
+ }
+
+ if(!draft){
+  return <section className="panel-stack">
+   <div className="panel-heading"><div><span className="kicker">ΣΥΝΕΔΡΙΕΣ</span><h2>Ολοκληρωμένες συνεδρίες</h2><p>Επιλέξτε ολοκληρωμένη συνεδρία για να δείτε ακριβώς τι καταγράφηκε.</p></div></div>
+   {completed.length?<CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/>:<div className="panel-empty">Δεν υπάρχει ακόμη συνεδρία.</div>}
+  </section>;
+ }
+
+ const risk=bundle.risks.find(x=>x.session_id===draft.id);
+ const sections=bundle.sections.filter(x=>x.session_id===draft.id);
+ const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
+ const timeline=draft.session_type==='follow_up'&&contextReady?mseTimeline(bundle,draft.id,draft.started_at):undefined;
+ const sharedDraft=(view:React.ReactNode)=>draft.session_type==='follow_up'?<FollowupDraftProvider key={draft.id} bundle={bundle} session={draft} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}>{view}</FollowupDraftProvider>:view;
+ if(draft.session_type==='follow_up'&&!detailed)return sharedDraft(<FollowupClosure key={draft.id} bundle={bundle} session={draft} reload={reload} reloadContext={reloadContext} contextReady={contextReady} onDirtyChange={onDirtyChange} registerFlusher={registerFlusher} flushAll={flushAll} onDetailed={()=>void flushAll(true).then(()=>setDetailed(true)).catch(()=>{})} onFinalize={version=>onFinalize(draft.id,true,version)} onFinishLater={onFinishLater?finishLater:undefined} finalizing={finalizing} finalizeError={finalizeError||flushError} />);
+ const blocker=finalizationBlocker(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null,draft.session_type==='initial_assessment');
+ const requiredStepState=(key:string)=>{
+  if(draft.session_type==='follow_up'&&key==='plan')return Boolean(draft.closure_draft?.treatment_decision.trim()&&draft.closure_draft?.next_review_focus.trim());
+  if(draft.session_type==='follow_up'&&key in followupFields)return Boolean(draft.closure_draft?.[followupFields[key as keyof typeof followupFields]]?.trim());
+  if(key==='risk')return Boolean(risk&&risk.suicidal_ideation!=='not_assessed'&&(risk.suicidal_ideation!=='positive'||![risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed')));
+  if(key==='plan')return (draft.session_type==='initial_assessment'?['plan']:['plan','review']).every(requiredKey=>sections.some(s=>s.section_key===requiredKey&&s.content.trim()));
+  return required.has(key)&&sections.some(s=>s.section_key===key&&s.content.trim());
  };
  const requiredVisitStep=(key:string)=>required.has(key)||key==='risk';
 

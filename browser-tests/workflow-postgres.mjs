@@ -22,7 +22,9 @@ export async function createWorkflowDatabase(){
   Object.assign(faults,{save:0,refresh:0,refreshAfterFinalize:false,payment:0,booking:0,refreshAfterBooking:false});requests.length=0;index++;
   await transaction(async()=>{
    [patient]=await sql('select * from demo_patient_create_v2($1,$2)',[tester,'QA Workflow '+index]);
-   const day=new Date();day.setUTCDate(day.getUTCDate()+index+1);day.setUTCHours(10,0,0,0);
+   // Seed visits outside quick-booking weeks so independent scenarios cannot
+   // collide with each other's legitimate future appointment mutations.
+   const day=new Date();day.setUTCDate(day.getUTCDate()+index+60);day.setUTCHours(10,0,0,0);
    [{event}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3::timestamptz,$4::timestamptz,$5) event",[tester,patient.id,day.toISOString(),new Date(day.getTime()+3000000).toISOString(),type]);
    [session]=await sql('select * from demo_calendar_start_session($1,$2)',[tester,event.id]);
    for(const key of type==='follow_up'?['mse']:['interview','mse','assessment','plan','review'])await sql("select * from demo_session_save_section($1,$2,$3,$4,'manual',null)",[tester,session.id,key,'QA '+key]);
@@ -51,7 +53,7 @@ export async function createWorkflowDatabase(){
    if(body.tester!==tester)throw new Error('Synthetic fixture workspace mismatch');
    if(path==='/api/calendar/appointment'){const [s]=await sql('select * from demo_calendar_start_session($1,$2)',[tester,body.event_id]);return {session:s}}
    if(path==='/api/calendar/payment'){const [e]=await sql('select * from demo_payment_set($1,$2,$3)',[tester,body.event_id,body.status]);return {event:e}}
-   if(path==='/api/calendar/command/apply'&&body.action==='create'){const [{event:e}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3::timestamptz,$4::timestamptz,$5) event",[tester,body.patient_id,body.start_iso,body.end_iso,body.appointment_type]);return {event:e}}
+   if(path==='/api/calendar/command/apply'&&body.action==='create'){const [{event:e}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,$3::timestamptz,$4::timestamptz,$5) event",[tester,body.patient_id,body.start_iso,body.end_iso,body.appointment_type]);if(faults.refreshAfterBooking){faults.refreshAfterBooking=false;faults.refresh=1}return {event:e}}
    let rows;
    switch(body.action){
     case 'save_section':rows=await sql('select * from demo_session_save_section($1,$2,$3,$4,$5,$6)',[tester,body.session_id,body.section_key,body.content,body.source||'manual',body.expected_version??null]);return {section:rows[0]};

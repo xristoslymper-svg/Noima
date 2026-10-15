@@ -18,5 +18,6 @@ export function useCalendarPosition({date,view,filter,setDate,setView,setFilter,
   const click=(e:MouseEvent)=>{if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;const a=(e.target as Element).closest('a');if(!a||a.target==='_blank')return;const url=new URL(a.href);if(url.origin===location.origin&&url.pathname.startsWith('/patients/demo/')){explicitDeparture.current=true;leave()}};
   document.addEventListener('click',click,true);window.addEventListener('pagehide',leave);return()=>{document.removeEventListener('click',click,true);window.removeEventListener('pagehide',leave)};
  },[remember]);
- return {ready,restoring,remember};
+ const depart=useCallback(()=>{explicitDeparture.current=true;remember();const position=readCalendarPosition(history.state?.noimaCalendar,getDemoTesterId());if(position)rememberCalendarDeparture(position,true)},[remember]);
+ return {ready,restoring,remember,depart};
 }

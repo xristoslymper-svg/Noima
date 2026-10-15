@@ -34,7 +34,6 @@
     "view": "View",
     "date": "Date",
     "time": "Time",
-    "minutesSuffix": " minutes",
     "type": "Type",
     "create": "Create",
     "saveChanges": "Save changes",
@@ -113,7 +112,8 @@
     "submit": "Submit",
     "fictionalData": "FICTIONAL TEST DATA",
     "paper": "Paper",
-    "link": "Link"
+    "link": "Link",
+    "minutesCount": "{count, plural, one {# minute} other {# minutes}}"
   },
   "settings": {
     "title": "Settings",
@@ -807,8 +807,6 @@
     "otherScheduledPrefix": "Other scheduled appointments · ",
     "scheduledSuffix": " · Scheduled",
     "scheduleAction": "Schedule",
-    "inPrefix": "In",
-    "weeksSuffix": " weeks",
     "athensTime": "Athens time",
     "reminderOptions": "Reminder options",
     "noRealSms": " No real SMS is sent.",
@@ -844,7 +842,8 @@
     "morning": "morning",
     "midday": "midday",
     "afternoon": "afternoon",
-    "evening": "evening"
+    "evening": "evening",
+    "inWeeks": "In {count, plural, one {# week} other {# weeks}}"
   },
   "patients": {
     "new": "New",
@@ -984,7 +983,6 @@
     "noVisits": "No visits recorded yet.",
     "compactRecord": "Brief record",
     "savingDraft": "Saving draft…",
-    "pendingChangesSuffix": " changes pending",
     "draftSaved": "Draft saved",
     "startedPrefix": "Started",
     "visitNotes": "Visit notes",
@@ -1110,9 +1108,12 @@
       "mseChanges": "MSE changes",
       "psychometrics": "Measures",
       "review": "Review"
-    }
+    },
+    "pendingChangesCount": "{count, plural, one {# change pending} other {# changes pending}}"
   },
   "clinical": {
+    "psychiatricInterview": "Psychiatric interview",
+    "evaluation": "Clinical assessment",
     "overviewLoading": "Loading clinical overview…",
     "noSummary": "No clinical summary",
     "presentingComplaint": "Presenting complaint",
@@ -1613,7 +1614,10 @@
       "appointment": "Appointment",
       "confirmed_context": "Confirmed context",
       "patient_context": "Patient details / presenting concern"
-    }
+    },
+    "missingRiskDisclaimer": "There is no completed structured risk assessment. Missing information does not indicate a negative finding.",
+    "riskSourceConflict": "The narrative mentions risk while the structured entry is negative, unknown or not assessed. Review timing, negation and agreement between sources; no automatic reconciliation was performed.",
+    "unstructuredDoseReview": "The narrative mentions a dose without a corresponding structured medication entry. Check whether it refers to current or historical treatment."
   },
   "history": {
     "initialHistory": "Initial history",

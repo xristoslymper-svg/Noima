@@ -34,7 +34,6 @@
     "view": "Προβολή",
     "date": "Ημερομηνία",
     "time": "Ώρα",
-    "minutesSuffix": " λεπτά",
     "type": "Τύπος",
     "create": "Δημιουργία",
     "saveChanges": "Αποθήκευση αλλαγών",
@@ -113,7 +112,8 @@
     "submit": "Υποβολή",
     "fictionalData": "ΥΠΟΘΕΤΙΚΑ ΔΕΔΟΜΕΝΑ ΔΟΚΙΜΗΣ",
     "paper": "Έντυπο",
-    "link": "Σύνδεσμος"
+    "link": "Σύνδεσμος",
+    "minutesCount": "{count, plural, one {# λεπτό} other {# λεπτά}}"
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -807,8 +807,6 @@
     "otherScheduledPrefix": "Άλλα προγραμματισμένα · ",
     "scheduledSuffix": " · Προγραμματισμένο",
     "scheduleAction": "Προγραμματισμός",
-    "inPrefix": "Σε ",
-    "weeksSuffix": " εβδομάδες",
     "athensTime": "Ώρα Αθήνας",
     "reminderOptions": "Επιλογές υπενθύμισης",
     "noRealSms": " Δεν αποστέλλεται πραγματικό SMS.",
@@ -844,7 +842,8 @@
     "morning": "πρωί",
     "midday": "μεσημέρι",
     "afternoon": "απόγευμα",
-    "evening": "βράδυ"
+    "evening": "βράδυ",
+    "inWeeks": "Σε {count, plural, one {# εβδομάδα} other {# εβδομάδες}}"
   },
   "patients": {
     "new": "Νέος",
@@ -984,7 +983,6 @@
     "noVisits": "Δεν υπάρχει ακόμη συνεδρία.",
     "compactRecord": "Σύντομη καταγραφή",
     "savingDraft": "Αποθήκευση πρόχειρου…",
-    "pendingChangesSuffix": " αλλαγές σε αναμονή",
     "draftSaved": "Το πρόχειρο αποθηκεύτηκε",
     "startedPrefix": "Έναρξη ",
     "visitNotes": "Σημειώσεις επίσκεψης",
@@ -1110,9 +1108,12 @@
       "mseChanges": "MSE αλλαγές",
       "psychometrics": "Μετρήσεις",
       "review": "Επανεκτίμηση"
-    }
+    },
+    "pendingChangesCount": "{count, plural, one {# αλλαγή σε αναμονή} other {# αλλαγές σε αναμονή}}"
   },
   "clinical": {
+    "psychiatricInterview": "Ψυχιατρική συνέντευξη",
+    "evaluation": "Κλινική αξιολόγηση",
     "overviewLoading": "Φόρτωση κλινικής εικόνας…",
     "noSummary": "Χωρίς κλινική σύνοψη",
     "presentingComplaint": "Λόγος προσέλευσης",
@@ -1613,7 +1614,10 @@
       "appointment": "Ραντεβού",
       "confirmed_context": "Επιβεβαιωμένο πλαίσιο",
       "patient_context": "Στοιχεία / λόγος προσέλευσης"
-    }
+    },
+    "missingRiskDisclaimer": "Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.",
+    "riskSourceConflict": "Η αφηγηματική καταγραφή αναφέρεται σε κίνδυνο ενώ η δομημένη ένδειξη είναι αρνητική, άγνωστη ή μη διερευνημένη. Ελέγξτε χρόνο, άρνηση και συμφωνία των πηγών· δεν έγινε αυτόματη συμφιλίωση.",
+    "unstructuredDoseReview": "Υπάρχει αφηγηματική αναφορά δόσης χωρίς αντίστοιχη δομημένη αγωγή. Ελέγξτε αν αφορά τρέχουσα ή ιστορική θεραπεία."
   },
   "history": {
     "initialHistory": "Αρχικό ιστορικό",

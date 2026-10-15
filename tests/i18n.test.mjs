@@ -51,6 +51,8 @@ test('validation and finalization errors render in both languages without touchi
  assert.equal(en('Χρειάζεται καταγραφή: Θεραπευτικό πλάνο.'),'Recording required: Treatment plan.');
  const pending='Υπάρχουν 2 ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα.';
  assert.match(en(pending),/^2 MSE domains/);
+ assert.equal(en('Η καταγραφή οριστικοποιήθηκε.'),'The clinical record was finalized.');
+ assert.equal(el('The appointment was saved.'),'Το ραντεβού αποθηκεύτηκε.');
  const clinical='Δεν αναφέρει νέες παρενέργειες — patient authored.';
  assert.equal(en(clinical),clinical);assert.equal(el(clinical),clinical);
 });

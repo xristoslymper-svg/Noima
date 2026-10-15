@@ -1,6 +1,7 @@
 'use client';
 import {useTranslations} from 'next-intl';
 import {useOptionLabel} from './option-labels';
+import {noticeKeys} from './system-notices';
 // Only render transient system errors through this adapter, never clinical text.
 const messageKeys={
   "Δεν φορτώθηκε ο λογαριασμός": "errors.accountLoad",
@@ -706,7 +707,9 @@ export function useSystemMessage(){
  const t=useTranslations();
  const optionLabel=useOptionLabel();
  return (message:string)=>{
-  const key=messageKeys[message as keyof typeof messageKeys];if(key)return t(key);
+  const key=messageKeys[message as keyof typeof messageKeys]||noticeKeys[message as keyof typeof noticeKeys];if(key)return t(key);
+  const deferred=Object.entries(noticeKeys).find(([text,key])=>key==='visits.deferredNotice'&&message.startsWith(text+' '));
+  if(deferred)return t('visits.deferredNotice')+message.slice(deferred[0].length);
   const conflict=message.match(/^Υπάρχει ήδη άλλο ραντεβού στις (.*)\. Δεν έγινε καμία αλλαγή\.$/u);
   if(conflict)return t('errors.calendarConflictTime',{time:conflict[1]});
   const daylight=message.match(/^Η σειρά περιλαμβάνει μη έγκυρη ή διπλή ώρα λόγω αλλαγής θερινής ώρας\. Επιλέξτε διαφορετική ώρα\. (.*)$/u);

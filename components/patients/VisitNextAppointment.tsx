@@ -71,7 +71,7 @@ const t=useTranslations();
   <button type="button" className={styles.trigger} ref={triggerRef} disabled={needsVerification||busy} hidden={formOpen} aria-expanded={formOpen} aria-controls={formId} onClick={()=>{setNotice('');setExpanded(true)}}><CalendarPlus size={16} aria-hidden="true"/>{next?t('calendar.newAppointment'):t('calendar.scheduleAction')}</button>
   {/* The form must stay mounted when visually collapsed, preserving dirty/save guards. */}
   <div id={formId} className={styles.form} hidden={!formOpen}>
-   <div className={styles.quickDates}>{quickDates.map(item=><button type="button" key={item.weeks} className={date===item.value?styles.quickSelected:undefined} aria-pressed={date===item.value} onClick={()=>setDate(item.value)} disabled={busy}>{t('calendar.inPrefix')} {item.weeks}  {t('calendar.weeksSuffix')}</button>)}</div>
+   <div className={styles.quickDates}>{quickDates.map(item=><button type="button" key={item.weeks} className={date===item.value?styles.quickSelected:undefined} aria-pressed={date===item.value} onClick={()=>setDate(item.value)} disabled={busy}>{t('calendar.inWeeks',{count:item.weeks})}</button>)}</div>
    <div className={styles.fields}>
     <label className={styles.field}>{t('common.date')}<input ref={dateRef} type="date" value={date} onInput={e=>setDate(e.currentTarget.value)} disabled={busy}/></label>
     <label className={styles.field}>{t('calendar.athensTime')}<input type="time" value={time} onInput={e=>setTime(e.currentTarget.value)} disabled={busy}/></label>
@@ -84,7 +84,7 @@ const t=useTranslations();
    <details className={styles.reminders}><summary>{t('calendar.reminderOptions')}</summary><label><input type="checkbox" checked={smsReminder&&hasMobile} disabled={busy||!hasMobile} onChange={e=>setSmsReminder(e.target.checked)}/>  {t('calendar.smsReminder')}</label><small>{hasMobile?t('calendar.maskedMobilePrefix')+mobile.slice(-4)+t('calendar.simulationSuffix'):t('calendar.validMobileRequired')}  {t('calendar.noRealSms')}</small></details>
   </div>
   {needsVerification&&<button type="button" disabled={busy} onClick={()=>void verifyBooking()}>{t('calendar.verifyBooking')}</button>}
-  {notice&&<p className={styles.feedback} role="status">{notice}</p>}
+  {notice&&<p className={styles.feedback} role="status">{systemMessage(notice)}</p>}
   {error&&<p className={styles.error} role="alert">{systemMessage(error)}</p>}
  </div>;
 }

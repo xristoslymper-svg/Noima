@@ -1,4 +1,5 @@
 'use client';
+import {useFindingText} from '@/i18n/finding-text';
 import {useOptionLabel} from '@/i18n/option-labels';
 import {useEvidenceLabel} from '@/i18n/evidence-label';
 import {useTranslations} from 'next-intl';
@@ -15,6 +16,7 @@ import styles from './PrevisitBriefing.module.css';
 /** Stable reading order; all facts and the compact safety status retain evidence. */
 export default function PrevisitBriefingView({card,brief,patientId}:{card:ClinicalCard;brief:PrevisitBriefing;patientId:string}){
  const t=useTranslations();
+ const findingText=useFindingText();
  const evidenceLabel=useEvidenceLabel();
  const displayLabel=useOptionLabel();
 
@@ -50,10 +52,10 @@ export default function PrevisitBriefingView({card,brief,patientId}:{card:Clinic
   <section className={styles.safety} data-brief-risk={brief.ideation.value} aria-label={t('clinical.suicidalIdeation')}>
    <p><strong>{t('clinical.suicidalIdeationPrefix')}</strong> <span className={styles.status}>{ideationLabel}</span>{brief.ideation.qualifier&&<span> · {brief.ideation.qualifier}</span>}{brief.ideation.date&&<small> · {date(brief.ideation.date)}</small>}</p>
    <p className={styles.meta}>{brief.ideation.date?t('clinical.lastVisitNotCurrentAssessment'):t('clinical.noCompletedRisk')}</p>
-   {brief.safetyFlags.map((f,i)=><p className={styles.safetyFlag} key={i}>{f.text}</p>)}
-   {(brief.ideation.source_ids.length>0||riskNotes.length>0)&&<details className={styles.more}><summary>{t('clinical.riskRecordSources')}</summary>{riskNotes.map(f=><p key={f.key}>{f.text}</p>)}{sources([brief.ideation,...riskNotes])}</details>}
+   {brief.safetyFlags.map((f,i)=><p className={styles.safetyFlag} key={i}>{findingText(f)}</p>)}
+   {(brief.ideation.source_ids.length>0||riskNotes.length>0)&&<details className={styles.more}><summary>{t('clinical.riskRecordSources')}</summary>{riskNotes.map(f=><p key={f.key}>{findingText(f)}</p>)}{sources([brief.ideation,...riskNotes])}</details>}
   </section>
-  {otherAlerts.length>0&&<section className={styles.section} aria-label={t('clinical.attentionPoints')}><h3>{t('clinical.pointsToReview')}</h3>{otherAlerts.map(f=><details className={styles.attention} key={f.key}><summary>{alertLabel(f.key,f.label)}</summary><p>{f.text}</p>{sources([f])}</details>)}</section>}
+  {otherAlerts.length>0&&<section className={styles.section} aria-label={t('clinical.attentionPoints')}><h3>{t('clinical.pointsToReview')}</h3>{otherAlerts.map(f=><details className={styles.attention} key={f.key}><summary>{alertLabel(f.key,f.label)}</summary><p>{findingText(f)}</p>{sources([f])}</details>)}</section>}
   {card.notes.some(i=>i.role==='plan')&&<section className={styles.section}><details className={styles.more}><summary>{t('clinical.recordedPlanReview')}</summary>{paragraphs(card.notes.filter(i=>i.role==='plan'))}{sources(card.notes.filter(i=>i.role==='plan'))}</details></section>}
   <p className={styles.meta}>{card.date?t('visits.lastCompletedPrefix')+date(card.date):t('visits.noCompletedVisitSentence')}</p>
  </article>;

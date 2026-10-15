@@ -231,7 +231,7 @@ const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||val
   {draft.session_type==='follow_up'&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>{t('visits.compactRecord')}</button>}
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?t('visits.savingDraft'):dirtyCount?dirtyCount+t('visits.pendingChangesSuffix'):t('visits.draftSaved')}</span><small>{t('visits.startedPrefix')} {fmt(draft.started_at)}</small></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?t('visits.savingDraft'):dirtyCount?t('visits.pendingChangesCount',{count:dirtyCount}):t('visits.draftSaved')}</span><small>{t('visits.startedPrefix')} {fmt(draft.started_at)}</small></div>
   </div>
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title={t('visits.visitNotes')} rows={4}/>}

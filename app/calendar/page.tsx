@@ -1,4 +1,6 @@
 "use client";
+import {useTranslations} from 'next-intl';
+
 import {useMobileNavigation} from '@/components/useMobileNavigation';
 import MobileCalendarControls from '@/components/mobile/MobileCalendarControls';
 import {useMobileCalendarLayout} from '@/components/mobile/useMobileCalendarLayout';
@@ -179,6 +181,8 @@ function eventDurationMinutes(event: CalendarEvent) {
 }
 
 export default function CalendarPage() {
+ const t=useTranslations();
+
   const [mobileNav, setMobileNav] = useMobileNavigation();
   const mobileCalendar=useMobileCalendarLayout();
   const [view, setView] = useState<"day" | "week">("week");
@@ -225,7 +229,7 @@ export default function CalendarPage() {
       if (!response.ok || !data.events) throw new Error(data.error || "calendar");
       setEvents(data.events);
     } catch {
-      setCalendarError("Δεν ήταν δυνατή η φόρτωση του ημερολογίου.");
+      setCalendarError(t('errors.calendarLoad'));
     } finally {
       setLoading(false);
     }
@@ -257,7 +261,7 @@ export default function CalendarPage() {
       rememberVisitDeparture();
       window.location.href = "/patients/demo/" + encodeURIComponent(data.session.patient_id) + "?tab=record&session=" + encodeURIComponent(data.session.id);
     } catch (cause) {
-      setCalendarError(cause instanceof Error ? cause.message : "Δεν ήταν δυνατή η έναρξη της συνεδρίας.");
+      setCalendarError(cause instanceof Error ? cause.message : t('errors.visitStart'));
       setOpeningSession(null);
     }
   }, [openingSession,rememberVisitDeparture]);
@@ -313,10 +317,10 @@ export default function CalendarPage() {
     try {
       const response=await fetch("/api/calendar/command/apply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action,event_id:event.id,expected_updated_at:event.updated_at,scope:"one"})});
       const data=await response.json();
-      if(!response.ok)throw new Error(data.error||"Η αλλαγή δεν αποθηκεύτηκε.");
+      if(!response.ok)throw new Error(data.error||t('errors.changeSave'));
       setSelectedEvent(null);setUndoEvent(action==="cancel"?data.event:null);
       await refreshEvents();
-    }catch(error){setQuickError(error instanceof Error?error.message:"Η αλλαγή δεν αποθηκεύτηκε.");await refreshEvents();}
+    }catch(error){setQuickError(error instanceof Error?error.message:t('errors.changeSave'));await refreshEvents();}
     finally{quickBusyRef.current=false;setQuickBusy(false);}
   }
 
@@ -326,12 +330,12 @@ export default function CalendarPage() {
     try{
       const response=await fetch("/api/calendar/payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),event_id:event.id,status})});
       const data=(await response.json().catch(()=>({}))) as {event?:CalendarEvent;error?:string};
-      if(!response.ok||!data.event)throw new Error(data.error||"Η πληρωμή δεν ενημερώθηκε.");
+      if(!response.ok||!data.event)throw new Error(data.error||t('errors.paymentUpdate'));
       const updated=data.event;
       setEvents(current=>current.map(item=>item.id===updated.id?applyPaymentUpdate(item,updated):item));
       setSelectedEvent(current=>current?.id===updated.id?applyPaymentUpdate(current,updated):current);
     }catch(error){
-      setQuickError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.");
+      setQuickError(error instanceof Error?error.message:t('errors.paymentUpdate'));
       await refreshEvents();
     }finally{setPaymentBusy(false)}
   }
@@ -464,8 +468,8 @@ export default function CalendarPage() {
       if (!response.ok) {
         setMoveError(
           data.code === "calendar_conflict"
-            ? "Η ώρα δεν είναι πλέον διαθέσιμη. Το ραντεβού έμεινε στην αρχική του θέση."
-            : data.error || "Η μετακίνηση δεν αποθηκεύτηκε.",
+            ? t('calendar.slotTakenUnchanged')
+            : data.error || t('errors.reschedule'),
         );
         return;
       }
@@ -477,7 +481,7 @@ export default function CalendarPage() {
       setPendingMove(null);
       await refreshEvents();
     } catch {
-      setMoveError("Η μετακίνηση δεν αποθηκεύτηκε. Το ραντεβού έμεινε στην αρχική του θέση.");
+      setMoveError(t('calendar.rescheduleFailedUnchanged'));
     } finally {
       setMoveSaving(false);
     }
@@ -485,32 +489,32 @@ export default function CalendarPage() {
 
   return (
     <main className={`app-shell secondary-shell${mobileV2Enabled?` ${mobileStyles.scope}`:``}`}><MobileClinicalNav active="calendar"/>
-      <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav ? "sidebar mobile-open" : "sidebar"}>
+      <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label={t('accessibility.mainNavigation')} className={mobileNav ? "sidebar mobile-open" : "sidebar"}>
         <button
           className="mobile-nav-close"
           onClick={() => setMobileNav(false)}
-          aria-label="Κλείσιμο μενού"
+          aria-label={t('accessibility.closeMenu')}
         >
           <X size={20} />
         </button>
         <div className="brand">
-          <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>
+          <Link href="/" className="brand-mark" aria-label={t('accessibility.goToOverview')} title={t('navigation.overview')}>Ψ</Link>
           <div className="brand-copy">
-            <div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div>
+            <div className="brand-sub">{t('navigation.tagline')}</div>
           </div>
         </div>
         <nav className="nav">
-          <Link href="/" className="nav-item"><Home size={19} /><span>Επισκόπηση</span></Link>
-          <Link href="/calendar" className="nav-item active"><CalendarDays size={19} /><span>Ημερολόγιο</span></Link>
-          <Link href="/patients" className="nav-item"><Users size={19} /><span>Ασθενείς</span></Link>
-          <Link href="/psychometrics" className="nav-item"><BookOpen size={19} /><span>Βιβλιοθήκη</span></Link>
+          <Link href="/" className="nav-item"><Home size={19} /><span>{t('navigation.overview')}</span></Link>
+          <Link href="/calendar" className="nav-item active"><CalendarDays size={19} /><span>{t('navigation.calendar')}</span></Link>
+          <Link href="/patients" className="nav-item"><Users size={19} /><span>{t('navigation.patients')}</span></Link>
+          <Link href="/psychometrics" className="nav-item"><BookOpen size={19} /><span>{t('navigation.library')}</span></Link>
         </nav>
       </aside>
 
       {mobileNav && (
         <button
           className="mobile-nav-backdrop" tabIndex={-1}
-          aria-label="Κλείσιμο μενού"
+          aria-label={t('accessibility.closeMenu')}
           onClick={() => setMobileNav(false)}
         />
       )}
@@ -520,7 +524,7 @@ export default function CalendarPage() {
           <button
             className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation"
             onClick={() => setMobileNav(true)}
-            aria-label="Άνοιγμα μενού"
+            aria-label={t('accessibility.openMenu')}
           >
             <Menu size={21} />
           </button>
@@ -531,36 +535,35 @@ export default function CalendarPage() {
         <div className="calendar-page-content">
           <div className="calendar-page-heading">
             <div>
-              <h1>Ημερολόγιο</h1>
+              <h1>{t('navigation.calendar')}</h1>
             </div>
             <div className="calendar-page-actions">
               {mobileCalendar?<PilotProfile/>:<>
               <button className="voice-calendar-button" onClick={() => setVoice(true)}>
-                <Mic2 size={16} /> Φωνητική εντολή
-              </button>
-              <button className="add-appointment" aria-label={mobileCalendar?"Νέο ραντεβού":undefined} onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>{mobileCalendar?"+ Νέο":"+ Νέο ραντεβού"}</button>
+                <Mic2 size={16} />  {t('calendar.voiceCommand')} </button>
+              <button className="add-appointment" aria-label={mobileCalendar?t('calendar.newAppointment'):undefined} onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>{mobileCalendar?t('common.addNew'):t('calendar.addAppointment')}</button>
               </>}
             </div>
           </div>
 
           {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-nav">
-              <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
+              <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label={t('accessibility.previousDate')}>‹</button>
               <strong>{focusTitle(focusDate)}</strong>
-              <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
-              {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
+              <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label={t('accessibility.nextDate')}>›</button>
+              {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>{t('calendar.today')}</button>}
             </div>
-            <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + " ραντεβού" : "Χωρίς ραντεβού"}</span>
-            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
-              <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
-              <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
+            <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + t('calendar.appointmentsSuffix') : t('calendar.noAppointments')}</span>
+            <label className="calendar-filter"><span className="sr-only">{t('calendar.appointmentStatus')}</span><select aria-label={t('calendar.appointmentStatus')} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">{t('calendar.currentFilter')}</option><option value="scheduled">{t('calendar.scheduledFilter')}</option><option value="completed">{t('calendar.completedFilter')}</option><option value="cancelled">{t('calendar.cancelledFilter')}</option><option value="all">{t('calendar.allFilter')}</option></select></label><input aria-label={t('calendar.goToDate')} className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label={t('accessibility.refreshCalendar')} className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
+              <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>{t('calendar.day')}</button>
+              <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{t('calendar.week')}</button>
             </div>
           </div>}
 
           {calendarError && (
             <div className="calendar-runtime-error">
               <span>{calendarError}</span>
-              <button onClick={() => void refreshEvents()}>Δοκιμή ξανά</button>
+              <button onClick={() => void refreshEvents()}>{t('common.retry')}</button>
             </div>
           )}
 
@@ -568,7 +571,7 @@ export default function CalendarPage() {
             {view === "day" && !mobileCalendar ? (
               <section className="calendar-day-card">
                 {loading ? (
-                  <div className="calendar-empty-state">Φόρτωση ημερολογίου…</div>
+                  <div className="calendar-empty-state">{t('calendar.loading')}</div>
                 ) : dayEvents.length ? (
                   dayEvents.map(event => (
                     <article className={"clinical-event clinical-agenda-row status-"+event.status + (event === nextEvent ? " next" : "")} key={event.id}>
@@ -586,16 +589,16 @@ export default function CalendarPage() {
                       </div>
                       <div className="clinical-event-actions agenda-actions">
                         {event.patient_id && event.status === "scheduled" && <button className="agenda-session" onClick={() => void openAppointmentSession(event)} disabled={openingSession === event.id}>
-                          <Stethoscope size={14}/>{openingSession === event.id ? "Άνοιγμα…" : event.session_id ? "Συνέχεια" : "Έναρξη"}
+                          <Stethoscope size={14}/>{openingSession === event.id ? t('common.opening') : event.session_id ? t('common.continue') : t('common.getStarted')}
                         </button>}
-                        <button className="agenda-more" onClick={() => {setQuickError("");setSelectedEvent(event)}} aria-label={"Λεπτομέρειες ραντεβού " + event.patient_name}>
+                        <button className="agenda-more" onClick={() => {setQuickError("");setSelectedEvent(event)}} aria-label={t('calendar.appointmentDetails') + event.patient_name}>
                           <ChevronRight size={17}/>
                         </button>
                       </div>
                     </article>
                   ))
                 ) : (
-                  <div className="calendar-empty-state">Δεν υπάρχουν ραντεβού για σήμερα.</div>
+                  <div className="calendar-empty-state">{t('calendar.noAppointmentsForToday')}</div>
                 )}
               </section>
             ) : (
@@ -607,7 +610,7 @@ export default function CalendarPage() {
                     return <button data-calendar-day={day.key} className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
                       <span>{day.day}</span>
                       <strong>{day.date}</strong>
-                      <small>{count ? count + (count === 1 ? " ραντεβού" : " ραντεβού") : "—"}</small>
+                      <small>{count ? count + (count === 1 ? t('calendar.appointmentsSuffix') : t('calendar.appointmentsSuffix')) : "—"}</small>
                     </button>;
                   })}
 
@@ -742,8 +745,8 @@ export default function CalendarPage() {
             )}
 
             <aside className="calendar-side-card calendar-day-context">
-              <span className="kicker">{focusDate === dateKey(new Date()) ? "ΣΗΜΕΡΑ" : "ΗΜΕΡΑ"}</span>
-              <h3>{nextEvent ? "Επόμενο" : "Καθαρό πρόγραμμα"}</h3>
+              <span className="kicker">{focusDate === dateKey(new Date()) ? t('calendar.todayKicker') : t('calendar.dayKicker')}</span>
+              <h3>{nextEvent ? t('common.next') : t('calendar.clearSchedule')}</h3>
               {nextEvent ? (
                 <div className="calendar-next-card">
                   <strong>{timeLabel(nextEvent.scheduled_start)} · {nextEvent.patient_name}</strong>
@@ -751,12 +754,12 @@ export default function CalendarPage() {
                   {nextEvent.readiness === "waiting" && <small><Clock size={12}/> {nextEvent.readiness_label}</small>}
                   <div>
                     {nextEvent.patient_id && <button onClick={() => void openAppointmentSession(nextEvent)} disabled={openingSession === nextEvent.id}>
-                      <Stethoscope size={14}/>{nextEvent.session_id ? "Συνέχεια συνεδρίας" : "Έναρξη συνεδρίας"}
+                      <Stethoscope size={14}/>{nextEvent.session_id ? t('visits.resumeVisit') : t('visits.startVisit')}
                     </button>}
-                    {nextEvent.patient_id && <Link href={"/patients/demo/" + nextEvent.patient_id + "?appointment=" + nextEvent.id}>Φάκελος</Link>}
+                    {nextEvent.patient_id && <Link href={"/patients/demo/" + nextEvent.patient_id + "?appointment=" + nextEvent.id}>{t('patients.record')}</Link>}
                   </div>
                 </div>
-              ) : <p>Δεν υπάρχουν ραντεβού για αυτή την ημέρα.</p>}
+              ) : <p>{t('calendar.noAppointmentsForDay')}</p>}
               {waiting && waiting.id !== nextEvent?.id && <div className="calendar-quiet-attention"><Clock size={13}/><span>{waiting.patient_name} · {waiting.readiness_label}</span></div>}
             </aside>
           </div>
@@ -765,35 +768,35 @@ export default function CalendarPage() {
 
       {selectedEvent && (
         <div className="calendar-appointment-popover-backdrop" onClick={() => setSelectedEvent(null)}>
-          <section ref={dialogRef} tabIndex={-1} aria-label="Λεπτομέρειες ραντεβού" className="calendar-appointment-popover" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
-            <button className="calendar-popover-close" onClick={() => setSelectedEvent(null)} aria-label="Κλείσιμο"><X size={16}/></button>
+          <section ref={dialogRef} tabIndex={-1} aria-label={t('calendar.appointmentDetails')} className="calendar-appointment-popover" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
+            <button className="calendar-popover-close" onClick={() => setSelectedEvent(null)} aria-label={t('common.close')}><X size={16}/></button>
             <span className={"calendar-popover-kind " + (selectedEvent.appointment_type === "initial_assessment" ? "initial" : "follow")}>{appointmentType(selectedEvent.appointment_type)}</span>
             <div className="calendar-name-row"><h3>{selectedEvent.patient_name}</h3>{selectedEvent.patient_id&&<SummaryPeek patientId={selectedEvent.patient_id}/>}</div>
-            <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′ · {statusLabel(selectedEvent)}{selectedEvent.series_id ? " · ↻ Επαναλαμβανόμενο" : ""}</p>
+            <p>{dateTimeLabel(selectedEvent.scheduled_start)} · {eventDurationMinutes(selectedEvent)}′ · {statusLabel(selectedEvent)}{selectedEvent.series_id ? t('calendar.recurringSuffix') : ""}</p>
 
             <div className="calendar-popover-actions calendar-icon-actions calendar-icon-actions-compact">
-              {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>Φάκελος</span></Link>}
-              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"} onClick={()=>{setIntakeEvent(selectedEvent);setSelectedEvent(null)}}><Activity size={20}/><span>{selectedEvent.patient_id?"Ερωτηματολόγιο":"Στείλε ιστορικό"}</span></button>
-              <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>Ραντεβού</span></button>
+              {selectedEvent.patient_id && <Link href={"/patients/demo/"+selectedEvent.patient_id+"?appointment="+selectedEvent.id}><FolderOpen size={20}/><span>{t('patients.record')}</span></Link>}
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"} onClick={()=>{setIntakeEvent(selectedEvent);setSelectedEvent(null)}}><Activity size={20}/><span>{selectedEvent.patient_id?t('psychometrics.questionnaire'):t('history.sendHistory')}</span></button>
+              <button disabled={quickBusy||paymentBusy} onClick={()=>setAppointmentActionsOpen(open=>!open)}><CalendarDays size={20}/><span>{t('calendar.appointment')}</span></button>
             </div>
 
             {appointmentActionsOpen&&<div ref={appointmentActionsRef} className="calendar-appointment-actions-menu">
-              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>Αλλαγή αυτού</button>
-              {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:nextWeekDate(dateKey(new Date(selectedEvent.scheduled_start)))});setSelectedEvent(null)}}>Κλείσιμο επόμενου</button>}
+              <button disabled={quickBusy||paymentBusy||selectedEvent.status!=="scheduled"||Boolean(selectedEvent.session_id)} onClick={()=>{setAppointmentEditor({mode:"edit",event:selectedEvent});setSelectedEvent(null)}}>{t('calendar.editThisAppointment')}</button>
+              {selectedEvent.patient_id&&<button disabled={quickBusy||paymentBusy} onClick={()=>{setAppointmentEditor({mode:"create",nextFor:selectedEvent,date:nextWeekDate(dateKey(new Date(selectedEvent.scheduled_start)))});setSelectedEvent(null)}}>{t('calendar.bookNext')}</button>}
             </div>}
 
             {selectedEvent.patient_id&&selectedEvent.status!=="cancelled"&&<div className="calendar-payment-state">
-              <div><strong>Κατάσταση πληρωμής</strong><span role="status">{selectedEvent.payment_status==="paid"?"Πληρωμένο":selectedEvent.payment_status==="pending"?"Εκκρεμεί":selectedEvent.payment_status==="not_applicable"?"Χωρίς χρέωση":"Δεν έχει σημειωθεί"}</span></div>
+              <div><strong>{t('billing.paymentStatus')}</strong><span role="status">{selectedEvent.payment_status==="paid"?t('billing.paid'):selectedEvent.payment_status==="pending"?t('common.pending'):selectedEvent.payment_status==="not_applicable"?t('billing.noCharge'):t('billing.unrecorded')}</span></div>
               <div className="calendar-payment-choice">
-                <button aria-pressed={selectedEvent.payment_status==="paid"} className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}>{selectedEvent.payment_status==="paid"&&<Check size={14}/>} Πληρωμένο</button>
-                <button aria-pressed={selectedEvent.payment_status==="pending"} className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>Εκκρεμεί</button>
-                {selectedEvent.payment_status!=="unknown"&&<button disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"unknown")}>Δεν έχει σημειωθεί</button>}
+                <button aria-pressed={selectedEvent.payment_status==="paid"} className={selectedEvent.payment_status==="paid"?"selected":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"paid")}>{selectedEvent.payment_status==="paid"&&<Check size={14}/>}  {t('billing.paid')}</button>
+                <button aria-pressed={selectedEvent.payment_status==="pending"} className={selectedEvent.payment_status==="pending"?"selected pending":""} disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"pending")}>{t('common.pending')}</button>
+                {selectedEvent.payment_status!=="unknown"&&<button disabled={paymentBusy||quickBusy} onClick={()=>void setPaymentStatus(selectedEvent,"unknown")}>{t('billing.unrecorded')}</button>}
               </div>
             </div>}
-            {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?"Προγραμματισμένη προσομοίωση "+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":selectedEvent.sms_reminder.status==="missing_phone"?"Χρειάζεται κινητό":selectedEvent.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Ανενεργή υπενθύμιση"}</p>}
+            {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?t('calendar.reminderSimulationScheduled')+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?t('calendar.reminderSimulated'):selectedEvent.sms_reminder.status==="missing_phone"?t('calendar.mobileRequired'):selectedEvent.sms_reminder.status==="expired"?t('calendar.appointmentPast'):t('calendar.reminderInactive')}</p>}
             {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
-            {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?"Ακύρωση…":selectedEvent.series_id?"Ακύρωση μόνο αυτού του ραντεβού":"Ακύρωση ραντεβού"}</button>}
-            {selectedEvent.status==="cancelled" && <div className="calendar-cancelled-actions"><button className="calendar-rebook-slot" disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"create",date:dateKey(new Date(selectedEvent.scheduled_start)),minute:athensMinutes(selectedEvent.scheduled_start),duration:eventDurationMinutes(selectedEvent)});setSelectedEvent(null)}}><CalendarDays size={14}/> Νέο ραντεβού στην ίδια ώρα</button><button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?"Επαναφορά…":"Επαναφορά ραντεβού"}</button></div>}
+            {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?t('common.cancelling'):selectedEvent.series_id?t('calendar.cancelOnlyThis'):t('calendar.cancelAppointment')}</button>}
+            {selectedEvent.status==="cancelled" && <div className="calendar-cancelled-actions"><button className="calendar-rebook-slot" disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"create",date:dateKey(new Date(selectedEvent.scheduled_start)),minute:athensMinutes(selectedEvent.scheduled_start),duration:eventDurationMinutes(selectedEvent)});setSelectedEvent(null)}}><CalendarDays size={14}/>  {t('calendar.newSameTime')}</button><button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?t('common.restoring'):t('calendar.restoreAppointment')}</button></div>}
           </section>
         </div>
       )}
@@ -831,39 +834,39 @@ export default function CalendarPage() {
       {pendingStart&&<AppointmentStartConfirmation scheduledStart={pendingStart.scheduled_start} onCancel={()=>setPendingStart(null)} onConfirm={()=>{const pending=pendingStart;setPendingStart(null);void openAppointmentSession(pending,true)}}/>}
       {pendingMove && (
         <div className="calendar-move-overlay" onClick={() => !moveSaving && setPendingMove(null)}>
-          <section ref={dialogRef} tabIndex={-1} aria-label="Μετακίνηση ραντεβού" className="calendar-move-dialog" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+          <section ref={dialogRef} tabIndex={-1} aria-label={t('calendar.rescheduleAppointment')} className="calendar-move-dialog" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
             <button
               className="calendar-move-close"
               onClick={() => setPendingMove(null)}
               disabled={moveSaving}
-              aria-label="Κλείσιμο"
+              aria-label={t('common.close')}
             >
               <X size={18} />
             </button>
-            <span className="kicker">ΜΕΤΑΚΙΝΗΣΗ ΡΑΝΤΕΒΟΥ</span>
+            <span className="kicker">{t('calendar.rescheduleKicker')}</span>
             <h3>{pendingMove.event.patient_name}</h3>
-            {pendingMove.event.series_id && <p>Η μετακίνηση αφορά μόνο αυτό το ραντεβού της σειράς.</p>}
+            {pendingMove.event.series_id && <p>{t('calendar.rescheduleSingleHelp')}</p>}
             <div className="calendar-move-comparison">
               <div>
-                <span>Από</span>
+                <span>{t('common.from')}</span>
                 <strong>{dateTimeLabel(pendingMove.event.scheduled_start)}</strong>
               </div>
               <span className="calendar-move-arrow">→</span>
               <div>
-                <span>Σε</span>
+                <span>{t('common.to')}</span>
                 <strong>{dateTimeLabel(pendingMove.startIso)}</strong>
               </div>
             </div>
 
             {pendingMove.conflict ? (
               <div className="calendar-move-error">
-                <strong>Η ώρα είναι ήδη κατειλημμένη.</strong>
-                <span>Δεν έγινε καμία αλλαγή. Επιλέξτε άλλη ώρα στο ημερολόγιο.</span>
+                <strong>{t('calendar.slotUnavailable')}</strong>
+                <span>{t('calendar.selectAnotherTime')}</span>
               </div>
             ) : (
               <div className="calendar-move-safe">
                 {Date.parse(pendingMove.startIso)<Date.now()?<Clock size={15} aria-hidden="true" />:<Check size={15} aria-hidden="true" />}
-                {Date.parse(pendingMove.startIso)<Date.now()?"Η επιλεγμένη ώρα έχει ήδη περάσει. Η αναδρομική μετακίνηση επιτρέπεται.":"Η αλλαγή θα αποθηκευτεί μόνο όταν πατήσετε «Μετακίνηση»."}
+                {Date.parse(pendingMove.startIso)<Date.now()?t('calendar.pastRescheduleHelp'):t('calendar.rescheduleConfirmHelp')}
               </div>
             )}
 
@@ -871,11 +874,11 @@ export default function CalendarPage() {
 
             <footer>
               <button onClick={() => setPendingMove(null)} disabled={moveSaving}>
-                {pendingMove.conflict ? "Επιστροφή" : "Ακύρωση"}
+                {pendingMove.conflict ? t('common.back') : t('common.cancel')}
               </button>
               {!pendingMove.conflict && (
                 <button className="calendar-move-confirm" onClick={() => void confirmMove()} disabled={moveSaving}>
-                  {moveSaving ? "Αποθήκευση…" : "Μετακίνηση"}
+                  {moveSaving ? t('common.saving') : t('calendar.move')}
                 </button>
               )}
             </footer>
@@ -883,7 +886,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {undoEvent && <div className="calendar-undo" role="status"><span>Το ραντεβού ακυρώθηκε.</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/> Αναίρεση</button><button aria-label="Κλείσιμο ειδοποίησης" onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{quickError}</span>}</div>}
+      {undoEvent && <div className="calendar-undo" role="status"><span>{t('calendar.appointmentCancelled')}</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/>  {t('common.undo')}</button><button aria-label={t('accessibility.dismissNotification')} onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{quickError}</span>}</div>}
       <style jsx global>{`
         .calendar-payment-state{flex-wrap:wrap}.calendar-payment-choice{flex-wrap:wrap}
         .appointment-next-suggestion{font-size:12px;line-height:1.6;color:#53685f;margin:0 0 14px}
@@ -1059,6 +1062,8 @@ function AppointmentEditor({
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
 }) {
+ const t=useTranslations();
+
   const initialPatient = event?.patient_id || nextFor?.patient_id || initialPatientId || "";
   const initialDate = event ? dateKey(new Date(event.scheduled_start)) : focusDate;
   const eventMinute = event ? athensMinutes(event.scheduled_start) : initialMinute ?? (nextFor?athensMinutes(nextFor.scheduled_start):9 * 60);
@@ -1103,7 +1108,7 @@ function AppointmentEditor({
   }
   function chooseProvisionalPatient(){
     const firstName=quickFirstName.trim();
-    if(!firstName){setError("Συμπληρώστε τουλάχιστον το όνομα.");return}
+    if(!firstName){setError(t('validation.firstNameRequired'));return}
     const value={first_name:firstName,last_name:quickLastName.trim(),phone:quickPhone.trim(),email:quickEmail.trim()};
     setProvisional(value);setPatientId("");setPatientSearch((value.first_name+" "+value.last_name).trim());
     setQuickPatientOpen(false);setPatientPickerOpen(false);setType("initial_assessment");setTypeManuallyChosen(true);setRecurrence("none");setSmsReminder(false);setError("");
@@ -1132,13 +1137,13 @@ function AppointmentEditor({
     if (busyRef.current) return;
     const patient = patients.find(item => item.id === patientId);
     if (action === "create" && !patient && !provisional) {
-      setError("Επιλέξτε υπάρχοντα ασθενή ή καταχωρίστε νέο ασθενή.");
+      setError(t('validation.selectOrCreatePatient'));
       return;
     }
     const [hours, minutes] = time.split(":").map(Number);
     const durationMinutes = Number(duration);
     if (action !== "cancel" && action !== "restore" && (!date || !Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(durationMinutes) || durationMinutes < 15)) {
-      setError("Ελέγξτε ημερομηνία, ώρα και διάρκεια.");
+      setError(t('validation.dateTimeDuration'));
       return;
     }
 
@@ -1177,12 +1182,12 @@ function AppointmentEditor({
       });
       const data = (await response.json().catch(() => ({}))) as { event?: CalendarEvent; error?: string; code?: string };
       if (!response.ok) {
-        setError(data.error || "Η αλλαγή δεν αποθηκεύτηκε.");
+        setError(data.error || t('errors.changeSave'));
         return;
       }
       await onSaved(data.event);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά.");
+      setError(cause instanceof Error ? cause.message : t('errors.changeSaveRetry'));
     } finally {
       busyRef.current=false;
       setSaving(false);
@@ -1190,82 +1195,82 @@ function AppointmentEditor({
   }
 
   return <div className="calendar-move-overlay" onClick={() => !saving && onClose()}>
-    <section ref={editorRef} tabIndex={-1} aria-label={mode === "create" ? "Νέο ραντεβού" : "Αλλαγή ραντεβού"} className="calendar-appointment-dialog" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
-      <button className="calendar-move-close" onClick={onClose} disabled={saving} aria-label="Κλείσιμο"><X size={18}/></button>
-      <h3>{mode === "create" ? "Νέο ραντεβού" : event?.patient_name}</h3>
+    <section ref={editorRef} tabIndex={-1} aria-label={mode === "create" ? t('calendar.newAppointment') : t('calendar.editAppointment')} className="calendar-appointment-dialog" role="dialog" aria-modal="true" onClick={click => click.stopPropagation()}>
+      <button className="calendar-move-close" onClick={onClose} disabled={saving} aria-label={t('common.close')}><X size={18}/></button>
+      <h3>{mode === "create" ? t('calendar.newAppointment') : event?.patient_name}</h3>
       {mode === "edit" && <span className="appointment-editor-type">{appointmentType(event?.appointment_type || "")}</span>}
 
-      {selectedStartIso&&<div className="appointment-datetime-context"><CalendarDays size={16}/><div><span>Ημερομηνία & ώρα</span><strong>{dateTimeLabel(selectedStartIso)}</strong></div></div>}
-      {mode==="create"&&nextFor&&<p className="appointment-next-suggestion">Αρχική πρόταση: μία εβδομάδα μετά το επιλεγμένο ραντεβού, την ίδια ώρα Αθήνας. Μπορείτε να αλλάξετε ημερομηνία και ώρα.</p>}
-      {mode==="create"&&patientId&&<div className="appointment-existing-bookings" aria-label="Ήδη προγραμματισμένα ραντεβού">
-        {eventsLoading?<p role="status">Έλεγχος προγραμματισμένων ραντεβού…</p>:eventsError?<p role="status">Δεν ήταν δυνατός ο έλεγχος των ήδη προγραμματισμένων ραντεβού.</p>:upcoming.length>0?<>
-          <strong>Ήδη προγραμματισμένα για τον ασθενή ({upcoming.length})</strong>
-          <ul>{upcoming.map(existing=><li key={existing.id}><span>{dateTimeLabel(existing.scheduled_start)}</span><button type="button" disabled={saving} aria-label={"Προβολή ραντεβού "+dateTimeLabel(existing.scheduled_start)} onClick={()=>onViewExisting(existing)}>Προβολή</button></li>)}</ul>
-          <small>Η δημιουργία προσθέτει νέο ραντεβού. Δεν αλλάζει τα υπάρχοντα.</small>
+      {selectedStartIso&&<div className="appointment-datetime-context"><CalendarDays size={16}/><div><span>{t('calendar.dateAndTime')}</span><strong>{dateTimeLabel(selectedStartIso)}</strong></div></div>}
+      {mode==="create"&&nextFor&&<p className="appointment-next-suggestion">{t('calendar.suggestedNextHelp')}</p>}
+      {mode==="create"&&patientId&&<div className="appointment-existing-bookings" aria-label={t('calendar.existingAppointments')}>
+        {eventsLoading?<p role="status">{t('calendar.checkingAppointments')}</p>:eventsError?<p role="status">{t('errors.existingAppointmentsLoad')}</p>:upcoming.length>0?<>
+          <strong>{t('calendar.existingForPatientPrefix')}{upcoming.length})</strong>
+          <ul>{upcoming.map(existing=><li key={existing.id}><span>{dateTimeLabel(existing.scheduled_start)}</span><button type="button" disabled={saving} aria-label={t('calendar.viewAppointment')+dateTimeLabel(existing.scheduled_start)} onClick={()=>onViewExisting(existing)}>{t('common.view')}</button></li>)}</ul>
+          <small>{t('calendar.newAppointmentHelp')}</small>
         </>:null}
       </div>}
-      {pastSelection&&<div className="appointment-past-warning" role="status"><Clock size={15}/><div><strong>Η επιλεγμένη ώρα έχει ήδη περάσει.</strong><span>Μπορείτε να καταχωρίσετε το ραντεβού αναδρομικά.</span></div></div>}
+      {pastSelection&&<div className="appointment-past-warning" role="status"><Clock size={15}/><div><strong>{t('calendar.selectedTimePast')}</strong><span>{t('calendar.retrospectiveHelp')}</span></div></div>}
       <fieldset disabled={saving || event?.status === "completed" || event?.status === "cancelled" || Boolean(event?.session_id)} className="appointment-form-grid" style={{border:0,padding:0,margin:0}}>
         {mode === "create" && <div ref={patientPickerRef} className="appointment-patient-field">
-          <span className="appointment-field-label">Ασθενής</span>
+          <span className="appointment-field-label">{t('patients.patient')}</span>
           <div className="appointment-patient-search">
             <Search size={16}/>
             <input
               type="search"
               value={patientSearch}
-              placeholder={selectedPatient?(selectedPatient.first_name+" "+selectedPatient.last_name):"Αναζήτηση ασθενή…"}
+              placeholder={selectedPatient?(selectedPatient.first_name+" "+selectedPatient.last_name):t('patients.searchSinglePlaceholder')}
               autoComplete="off"
               onFocus={()=>{if(!quickPatientOpen)setPatientPickerOpen(true)}}
               onChange={change=>{setPatientSearch(change.target.value);setPatientPickerOpen(true);setQuickPatientOpen(false);setProvisional(null);if(patientId)setPatientId("")}}
             />
-            {selectedPatient&&<button type="button" aria-label="Καθαρισμός ασθενή" onClick={()=>{setPatientId("");setPatientSearch("");setProvisional(null);setPatientPickerOpen(true)}}><X size={14}/></button>}
+            {selectedPatient&&<button type="button" aria-label={t('patients.clearSelection')} onClick={()=>{setPatientId("");setPatientSearch("");setProvisional(null);setPatientPickerOpen(true)}}><X size={14}/></button>}
           </div>
           {patientPickerOpen&&<div className="appointment-patient-results">
             {matchingPatients.map(patient=><button type="button" key={patient.id} onClick={()=>{setPatientId(patient.id);setPatientSearch("");setPatientPickerOpen(false)}}>
               <span>{patient.first_name} {patient.last_name}</span>
               {patient.id===patientId&&<Check size={14}/>}
             </button>)}
-            {normalizedPatientSearch&&matchingPatients.length===0&&<small>Δεν βρέθηκε ασθενής.</small>}
+            {normalizedPatientSearch&&matchingPatients.length===0&&<small>{t('patients.noPatientFound')}</small>}
             <div className="appointment-new-patient-actions">
-              <button type="button" className="appointment-create-patient" onClick={openQuickPatient}><UserPlus size={15}/><span>{normalizedPatientSearch?"Νέος ασθενής":"Δημιουργία νέου ασθενή"}</span></button>
-              <Link href="/patients/new" target="_blank" rel="noreferrer" onClick={()=>setPatientPickerOpen(false)}>Πλήρης φάκελος ↗</Link>
+              <button type="button" className="appointment-create-patient" onClick={openQuickPatient}><UserPlus size={15}/><span>{normalizedPatientSearch?t('patients.newPatient'):t('patients.createNewPatient')}</span></button>
+              <Link href="/patients/new" target="_blank" rel="noreferrer" onClick={()=>setPatientPickerOpen(false)}>{t('patients.fullRecordLink')}</Link>
             </div>
           </div>}
           {quickPatientOpen&&<div className="appointment-quick-patient">
-            <div className="appointment-quick-patient-head"><strong>Νέος ασθενής</strong><button type="button" onClick={()=>setQuickPatientOpen(false)} aria-label="Κλείσιμο"><X size={14}/></button></div>
+            <div className="appointment-quick-patient-head"><strong>{t('patients.newPatient')}</strong><button type="button" onClick={()=>setQuickPatientOpen(false)} aria-label={t('common.close')}><X size={14}/></button></div>
             <div className="appointment-quick-patient-grid">
-              <label>Όνομα *<input autoFocus value={quickFirstName} onChange={e=>setQuickFirstName(e.target.value)}/></label>
-              <label>Επώνυμο<input value={quickLastName} onChange={e=>setQuickLastName(e.target.value)}/></label>
-              <label>Κινητό<input value={quickPhone} onChange={e=>setQuickPhone(e.target.value)} placeholder="Προαιρετικό"/></label><label>Email<input type="email" value={quickEmail} onChange={e=>setQuickEmail(e.target.value)} placeholder="Προαιρετικό"/></label>
+              <label>{t('patients.firstNameRequired')}<input autoFocus value={quickFirstName} onChange={e=>setQuickFirstName(e.target.value)}/></label>
+              <label>{t('patients.lastName')}<input value={quickLastName} onChange={e=>setQuickLastName(e.target.value)}/></label>
+              <label>{t('patients.mobile')}<input value={quickPhone} onChange={e=>setQuickPhone(e.target.value)} placeholder={t('common.optional')}/></label><label>Email<input type="email" value={quickEmail} onChange={e=>setQuickEmail(e.target.value)} placeholder={t('common.optional')}/></label>
             </div>
             <div className="appointment-quick-patient-footer">
-              <Link href="/patients/new" target="_blank" rel="noreferrer">Δημιουργία πλήρους φακέλου ↗</Link>
-              <button type="button" disabled={!quickFirstName.trim()} onClick={chooseProvisionalPatient}>Χρήση για το ραντεβού</button>
+              <Link href="/patients/new" target="_blank" rel="noreferrer">{t('patients.createFullRecordLink')}</Link>
+              <button type="button" disabled={!quickFirstName.trim()} onClick={chooseProvisionalPatient}>{t('calendar.useForAppointment')}</button>
             </div>
           </div>}
         </div>}
-        <label>Ημερομηνία<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
-        <label>Ώρα<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
-        <label>Διάρκεια<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration} λεπτά</option>}<option value="30">30 λεπτά</option><option value="50">50 λεπτά</option><option value="60">60 λεπτά</option><option value="90">90 λεπτά</option></select></label>
-        {mode === "create" && <label>Τύπος<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">Επανεξέταση</option><option value="initial_assessment">Αρχική αξιολόγηση</option><option value="other">Άλλο</option></select></label>}
-        {mode === "create" && <label>Επανάληψη<select value={recurrence} disabled={Boolean(provisional)} onChange={change => setRecurrence(change.target.value)}><option value="none">Δεν επαναλαμβάνεται</option><option value="1">Κάθε εβδομάδα</option><option value="2">Κάθε 2 εβδομάδες</option><option value="4">Κάθε 4 εβδομάδες</option></select></label>}
-        {mode === "create" && recurrence !== "none" && <label>Αριθμός ραντεβού<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
+        <label>{t('common.date')}<input type="date" value={date} onInput={change => setDate(change.currentTarget.value)}/></label>
+        <label>{t('common.time')}<input type="time" step="1800" value={time} onInput={change => setTime(change.currentTarget.value)}/></label>
+        <label>{t('calendar.duration')}<select value={duration} onChange={change => setDuration(change.target.value)}>{!["30","50","60","90"].includes(duration) && <option value={duration}>{duration}  {t('common.minutesSuffix')}</option>}<option value="30">{t('calendar.duration30')}</option><option value="50">{t('calendar.duration50')}</option><option value="60">{t('calendar.duration60')}</option><option value="90">{t('calendar.duration90')}</option></select></label>
+        {mode === "create" && <label>{t('common.type')}<select value={type} onChange={change => {setType(change.target.value);setTypeManuallyChosen(true)}}><option value="follow_up">{t('visits.followup')}</option><option value="initial_assessment">{t('visits.initialAssessment')}</option><option value="other">{t('common.other')}</option></select></label>}
+        {mode === "create" && <label>{t('calendar.recurrence')}<select value={recurrence} disabled={Boolean(provisional)} onChange={change => setRecurrence(change.target.value)}><option value="none">{t('calendar.noRecurrence')}</option><option value="1">{t('calendar.everyWeek')}</option><option value="2">{t('calendar.everyTwoWeeks')}</option><option value="4">{t('calendar.everyFourWeeks')}</option></select></label>}
+        {mode === "create" && recurrence !== "none" && <label>{t('calendar.appointmentCountLabel')}<select value={occurrences} onChange={change => setOccurrences(change.target.value)}><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="12">12</option><option value="24">24</option></select></label>}
       </fieldset>
-      <div className="calendar-sms-setting"><label><input type="checkbox" checked={smsReminder} disabled={saving||event?.status==="completed"||event?.status==="cancelled"||Boolean(event?.session_id)} onChange={e=>setSmsReminder(e.target.checked)}/> Υπενθύμιση SMS · 24 ώρες πριν</label><small>{hasMobile ? "Κινητό …"+patientMobile.replace(/\D/g,"").slice(-4)+" · Προσομοίωση αποστολής" : "Χρειάζεται έγκυρο κινητό στον φάκελο ασθενή."}</small><small>Σε ραντεβού εντός 24 ωρών, προγραμματίζεται στον επόμενο έλεγχο. Δεν αποστέλλεται πραγματικό SMS.</small>{event?.sms_reminder&&<small>{event.sms_reminder.status==="simulated"?"Η αποστολή προσομοιώθηκε":event.sms_reminder.status==="queued"?"Προγραμματισμένη: "+dateTimeLabel(event.sms_reminder.due_at):event.sms_reminder.status==="missing_phone"?"Δεν υπάρχει έγκυρο κινητό":event.sms_reminder.status==="expired"?"Το ραντεβού έχει περάσει":"Η υπενθύμιση ακυρώθηκε"}</small>}</div>
-      {event?.series_id && event.status !== "completed" && !event.session_id && <label className="calendar-series-scope">Εφαρμογή σε <select value={scope} disabled={saving} onChange={e=>setScope(e.target.value)}><option value="one">Μόνο αυτό το ραντεβού</option><option value="future">Αυτό και τα επόμενα</option><option value="series">Όλα τα {event.status === "cancelled" ? "ακυρωμένα" : "προγραμματισμένα"} της σειράς</option></select></label>}
-      {mode === "create" && recurrence !== "none" && date && <p className="calendar-recurrence-preview">{occurrences} ραντεβού · κάθε {recurrence} εβδομάδα/ες · {time}, ώρα Αθήνας. Η ώρα παραμένει σταθερή στις αλλαγές θερινής ώρας.</p>}
-      {confirmCancel && <div className="calendar-dialog-confirm" role="alert">Να ακυρωθεί {scope === "one" ? "αυτό το ραντεβού" : "το επιλεγμένο σύνολο της σειράς"};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>Επιβεβαίωση ακύρωσης</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>Επιστροφή</button></div>}
+      <div className="calendar-sms-setting"><label><input type="checkbox" checked={smsReminder} disabled={saving||event?.status==="completed"||event?.status==="cancelled"||Boolean(event?.session_id)} onChange={e=>setSmsReminder(e.target.checked)}/>  {t('calendar.smsReminder')}</label><small>{hasMobile ? t('calendar.maskedMobilePrefix')+patientMobile.replace(/\D/g,"").slice(-4)+t('calendar.simulationSuffix') : t('calendar.validMobileRequired')}</small><small>{t('calendar.smsSimulationHelp')}</small>{event?.sms_reminder&&<small>{event.sms_reminder.status==="simulated"?t('calendar.reminderSimulated'):event.sms_reminder.status==="queued"?t('calendar.reminderScheduledPrefix')+dateTimeLabel(event.sms_reminder.due_at):event.sms_reminder.status==="missing_phone"?t('calendar.noValidMobile'):event.sms_reminder.status==="expired"?t('calendar.appointmentPast'):t('calendar.reminderCancelled')}</small>}</div>
+      {event?.series_id && event.status !== "completed" && !event.session_id && <label className="calendar-series-scope">{t('calendar.applyTo')} <select value={scope} disabled={saving} onChange={e=>setScope(e.target.value)}><option value="one">{t('calendar.thisOnly')}</option><option value="future">{t('calendar.thisAndFollowing')}</option><option value="series">{t('calendar.allSeriesPrefix')} {event.status === "cancelled" ? t('calendar.cancelledLower') : t('calendar.scheduledLower')}  {t('calendar.inSeriesSuffix')}</option></select></label>}
+      {mode === "create" && recurrence !== "none" && date && <p className="calendar-recurrence-preview">{occurrences}  {t('calendar.seriesAppointmentsEvery')} {recurrence}  {t('calendar.seriesWeeks')} {time}{t('calendar.athensDstHelp')}</p>}
+      {confirmCancel && <div className="calendar-dialog-confirm" role="alert">{t('calendar.cancelPromptPrefix')} {scope === "one" ? t('calendar.cancelThisObject') : t('calendar.cancelSelectionObject')};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>{t('calendar.confirmCancel')}</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>{t('common.back')}</button></div>}
 
-      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>Συνδεδεμένο με τον φάκελο ασθενή.</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>Άνοιγμα φακέλου</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name} · ο φάκελος θα δημιουργηθεί μαζί με το ραντεβού.</span></div>}
+      {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>{t('calendar.linkedRecord')}</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>{t('patients.openRecord')}</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name}  {t('calendar.createRecordWithAppointment')}</span></div>}
       {error && <div className="calendar-move-error"><span>{error}</span></div>}
 
       <footer className="appointment-editor-footer">
-        {mode === "edit" && event?.status === "scheduled" && !event.session_id && <button className="appointment-cancel-action" onClick={() => setConfirmCancel(true)} disabled={saving}>Ακύρωση ραντεβού</button>}
-        {event?.status === "cancelled" && <button disabled={saving} onClick={()=>void mutate("restore")}>Επαναφορά ραντεβού</button>}
+        {mode === "edit" && event?.status === "scheduled" && !event.session_id && <button className="appointment-cancel-action" onClick={() => setConfirmCancel(true)} disabled={saving}>{t('calendar.cancelAppointment')}</button>}
+        {event?.status === "cancelled" && <button disabled={saving} onClick={()=>void mutate("restore")}>{t('calendar.restoreAppointment')}</button>}
         <span/>
-        <button onClick={onClose} disabled={saving}>Κλείσιμο</button>
-        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? "Άνοιγμα…" : event.session_id ? "Συνέχεια καταγραφής" : "Νέα καταγραφή"}</button>}
-        {(!event || (event.status === "scheduled" && !event.session_id)) && <button className="calendar-move-confirm" onClick={() => void mutate(mode === "create" ? "create" : "move")} disabled={saving}>{saving ? "Αποθήκευση…" : mode === "create" ? "Δημιουργία" : "Αποθήκευση αλλαγών"}</button>}
+        <button onClick={onClose} disabled={saving}>{t('common.close')}</button>
+        {mode === "edit" && event?.patient_id && event.status === "scheduled" && <button onClick={() => void onOpenSession(event)} disabled={saving || openingSession}>{openingSession ? t('common.opening') : event.session_id ? t('visits.continueRecord') : t('visits.newRecord')}</button>}
+        {(!event || (event.status === "scheduled" && !event.session_id)) && <button className="calendar-move-confirm" onClick={() => void mutate(mode === "create" ? "create" : "move")} disabled={saving}>{saving ? t('common.saving') : mode === "create" ? t('common.create') : t('common.saveChanges')}</button>}
       </footer>
     </section>
   </div>;

@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseUrl, supabaseKey } from './lib/pilot/config';
+import {resolveLocale, localeCookie} from './i18n/config';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
@@ -11,12 +12,20 @@ export async function middleware(request:NextRequest) {
     report.headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
     return report;
   }
-  let response=NextResponse.next({request});
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete('x-noima-locale');
+  let response=NextResponse.next({request: {headers: requestHeaders}});
   const client=createServerClient(supabaseUrl,supabaseKey,{cookies:{
     getAll:()=>request.cookies.getAll(),
-    setAll:values=>{values.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request});values.forEach(({name,value,options})=>response.cookies.set(name,value,options));},
+    setAll:values=>{values.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request: {headers: new Headers([...requestHeaders, ['cookie', request.cookies.toString()]])}});values.forEach(({name,value,options})=>response.cookies.set(name,value,options));},
   }});
   const {data:{user}}=await client.auth.getUser();
+  const locale = resolveLocale(user?.user_metadata?.noima_locale, request.cookies.get(localeCookie)?.value);
+  requestHeaders.set('x-noima-locale', locale);
+  requestHeaders.set('cookie', request.cookies.toString());
+  const refreshed = NextResponse.next({request: {headers: requestHeaders}});
+  response.cookies.getAll().forEach(cookie => refreshed.cookies.set(cookie));
+  response = refreshed;
   const path=request.nextUrl.pathname;
   const publicPath=path==='/login'||path==='/forgot-password';
   let destination:string|null=null;

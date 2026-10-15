@@ -1,4 +1,6 @@
 'use client';
+import {useTranslations} from 'next-intl';
+
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, Mic2, Send, ShieldCheck, Sparkles, Square, X } from 'lucide-react';
@@ -45,6 +47,8 @@ export default function CalendarVoiceCommand({
   onClose: () => void;
   onApplied: (event?: { scheduled_start?: string }) => Promise<void> | void;
 }) {
+ const t=useTranslations();
+
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -91,7 +95,7 @@ export default function CalendarVoiceCommand({
   useEffect(() => {
     alive.current = true;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      fail('Το πρόγραμμα περιήγησης δεν υποστηρίζει ηχογράφηση.');
+      fail(t('errors.recordingUnsupported'));
     }
     return () => {
       alive.current = false;
@@ -119,7 +123,7 @@ export default function CalendarVoiceCommand({
       const data = (await response.json().catch(() => ({}))) as Proposal & { error?: string };
 
       if (!response.ok || !data.command) {
-        fail(data.error || 'Δεν μπόρεσα να καταλάβω την εντολή.');
+        fail(data.error || t('calendar.voiceNotUnderstood'));
         return;
       }
 
@@ -131,12 +135,12 @@ export default function CalendarVoiceCommand({
       busy.current = false;
       setStage('proposal');
     } catch {
-      fail('Δεν ήταν δυνατή η ανάλυση της εντολής. Δοκιμάστε ξανά.');
+      fail(t('errors.voiceCommandParse'));
     }
   }
 
   const displayFollowUp=(value:string)=>{
-    if (/event_id\s+[0-9a-f-]{36}/i.test(value)) return "Επιλέχθηκε συγκεκριμένο ραντεβού.";
+    if (/event_id\s+[0-9a-f-]{36}/i.test(value)) return t('calendar.specificAppointmentSelected');
     return value
       .replace(/\s*\[patient_id:[0-9a-f-]{36}\]/i,"")
       .replace(/\s*\[create_new_patient:true\]/i,"");
@@ -154,7 +158,7 @@ export default function CalendarVoiceCommand({
   async function transcribe(blob: Blob, mode: 'initial' | 'clarification') {
     if (!alive.current) return;
     if (blob.size < 800) {
-      fail('Η ηχογράφηση είναι πολύ σύντομη ή δεν ακούγεται ομιλία.');
+      fail(t('errors.recordingTooShort'));
       return;
     }
 
@@ -170,14 +174,14 @@ export default function CalendarVoiceCommand({
 
       if (!response.ok) {
         fail(data.code === 'missing_api_key'
-          ? 'Η υπηρεσία GPT μεταγραφής δεν είναι ρυθμισμένη στο production περιβάλλον.'
-          : data.error || 'Η μεταγραφή δεν ολοκληρώθηκε.');
+          ? t('errors.transcriptionNotConfigured')
+          : data.error || t('errors.transcriptionIncomplete'));
         return;
       }
 
       const text = data.text?.trim();
       if (!text) {
-        fail('Δεν αναγνωρίστηκε ομιλία. Δοκιμάστε ξανά.');
+        fail(t('errors.noSpeech'));
         return;
       }
 
@@ -190,7 +194,7 @@ export default function CalendarVoiceCommand({
         await parseCommand(text, []);
       }
     } catch {
-      fail('Δεν ήταν δυνατή η επικοινωνία με την υπηρεσία μεταγραφής.');
+      fail(t('errors.transcriptionConnection'));
     }
   }
 
@@ -230,7 +234,7 @@ export default function CalendarVoiceCommand({
       recording.ondataavailable = event => {
         if (event.data.size) chunks.push(event.data);
       };
-      recording.onerror = () => fail('Η ηχογράφηση διακόπηκε. Ελέγξτε το μικρόφωνο.');
+      recording.onerror = () => fail(t('errors.recordingInterrupted'));
       recording.onstop = () => {
         clearTimer();
         stopStream();
@@ -252,8 +256,8 @@ export default function CalendarVoiceCommand({
     } catch (cause) {
       const denied = cause instanceof DOMException && cause.name === 'NotAllowedError';
       fail(denied
-        ? 'Δεν δόθηκε πρόσβαση στο μικρόφωνο. Επιτρέψτε την πρόσβαση και δοκιμάστε ξανά.'
-        : 'Δεν βρέθηκε διαθέσιμο μικρόφωνο.');
+        ? t('errors.microphonePermission')
+        : t('errors.noMicrophone'));
     }
   }
 
@@ -262,7 +266,7 @@ export default function CalendarVoiceCommand({
     const appointmentType = proposal.command.appointment_type || 'follow_up';
     setProposal({
       ...proposal,
-      summary: `${proposal.command.new_patient ? "Νέος ασθενής + ραντεβού" : "Νέο ραντεβού"}: ${proposal.command.patient_name} · ${slot.label}`,
+      summary: `${proposal.command.new_patient ? "Νέος ασθενής + ραντεβού" : t('calendar.newAppointment')}: ${proposal.command.patient_name} · ${slot.label}`,
       available_slots: [],
       command: {
         ...proposal.command,
@@ -318,14 +322,14 @@ export default function CalendarVoiceCommand({
           const past = data.code === 'past_appointment';
           setProposal({
             ...proposal,
-            summary: past ? 'Η ώρα έχει ήδη περάσει' : 'Η ώρα δεν είναι διαθέσιμη',
+            summary: past ? t('calendar.timePast') : t('calendar.timeUnavailable'),
             command: {
               ...proposal.command,
               action: 'clarify',
               intended_action: proposal.command.action as Intent,
               clarification: past
-                ? 'Η ώρα έχει ήδη περάσει. Πείτε νέα ημέρα και ώρα για να συνεχίσουμε.'
-                : 'Υπάρχει ήδη άλλο ραντεβού σε αυτή την ώρα. Πείτε μια άλλη ώρα για να συνεχίσουμε.',
+                ? t('calendar.voiceTimePastHelp')
+                : t('calendar.voiceConflictHelp'),
               missing_fields: past ? ['date','time'] : ['time'],
             },
             clarification_options: [],
@@ -335,10 +339,10 @@ export default function CalendarVoiceCommand({
           return;
         }
         if (data.code === 'session_already_started') {
-          fail('Η συνεδρία για αυτό το ραντεβού έχει ήδη ξεκινήσει. Ανοίξτε τον φάκελο του ασθενή αντί να αλλάξετε το ραντεβού.');
+          fail(t('calendar.voiceVisitStartedHelp'));
           return;
         }
-        fail(data.error || 'Η αλλαγή δεν αποθηκεύτηκε.');
+        fail(data.error || t('errors.changeSave'));
         return;
       }
 
@@ -347,7 +351,7 @@ export default function CalendarVoiceCommand({
       setDonePatientId(data.patient_id || proposal.command.patient_id || null);
       setStage('done');
     } catch {
-      fail('Η αλλαγή δεν αποθηκεύτηκε. Δοκιμάστε ξανά.');
+      fail(t('errors.changeSaveRetry'));
     }
   }
 
@@ -374,7 +378,7 @@ export default function CalendarVoiceCommand({
   return (
     <div className="voice-command-overlay" onClick={() => {if(stage !== 'applying')onClose()}}>
       <section className="voice-command-card" onClick={event => event.stopPropagation()} aria-modal="true" ref={dialogRef} tabIndex={-1} role="dialog">
-        <button className="voice-command-close" onClick={onClose} disabled={stage === 'applying'} aria-label="Κλείσιμο φωνητικής εντολής">
+        <button className="voice-command-close" onClick={onClose} disabled={stage === 'applying'} aria-label={t('accessibility.closeVoiceCommand')}>
           <X size={18} />
         </button>
 
@@ -384,14 +388,14 @@ export default function CalendarVoiceCommand({
               <div className="voice-orb small"><Sparkles size={20} /></div>
               <div>
                 <span className="kicker">
-                  {isClarify ? 'ΧΡΕΙΑΖΕΤΑΙ ΜΙΑ ΔΙΕΥΚΡΙΝΙΣΗ' : isAvailability ? 'ΔΙΑΘΕΣΙΜΟΤΗΤΑ' : 'ΠΡΙΝ ΓΙΝΕΙ Η ΑΛΛΑΓΗ'}
+                  {isClarify ? t('calendar.clarificationKicker') : isAvailability ? t('calendar.availabilityKicker') : t('calendar.beforeChangeKicker')}
                 </span>
                 <h3>{isClarify ? proposal.command.clarification : proposal.summary}</h3>
               </div>
             </div>
 
             <details className="voice-command-transcript">
-              <summary>Τι άκουσα</summary>
+              <summary>{t('calendar.heardText')}</summary>
               <label className="voice-command-edit-label">
                 <textarea
                   className="voice-command-textarea"
@@ -400,7 +404,7 @@ export default function CalendarVoiceCommand({
                   rows={3}
                 />
               </label>
-              <small>Αν η μεταγραφή είναι λάθος, διορθώστε την και πατήστε «Ξανά από την αρχή».</small>
+              <small>{t('calendar.transcriptCorrectionHelp')}</small>
             </details>
 
             {followUps.length > 0 && (
@@ -411,8 +415,8 @@ export default function CalendarVoiceCommand({
 
             {proposal.command.new_patient && proposal.command.patient_name && !isAvailability && !isClarify && (
               <div className="voice-new-patient-note">
-                <strong>Νέος ασθενής</strong>
-                <span>Δεν υπάρχει φάκελος για {proposal.command.patient_name}. Αν επιβεβαιώσετε, θα δημιουργηθεί βασικός φάκελος και θα συνδεθεί με αυτό το ραντεβού. Τα υπόλοιπα στοιχεία μπορούν να συμπληρωθούν αργότερα.</span>
+                <strong>{t('patients.newPatient')}</strong>
+                <span>{t('calendar.noRecordForPrefix')} {proposal.command.patient_name}{t('calendar.voiceCreateRecordHelp')}</span>
               </div>
             )}
 
@@ -428,8 +432,7 @@ export default function CalendarVoiceCommand({
                   </div>
                 )}
                 <label>
-                  Απαντήστε για να συνεχίσω
-                  <div className="voice-answer-row">
+                   {t('calendar.answerToContinue')} <div className="voice-answer-row">
                     <input
                       value={clarificationAnswer}
                       onChange={event => setClarificationAnswer(event.target.value)}
@@ -439,18 +442,18 @@ export default function CalendarVoiceCommand({
                           void submitClarification(clarificationAnswer);
                         }
                       }}
-                      placeholder={proposal.command.missing_fields.includes('patient') ? 'π.χ. Μαρία' : 'Γράψτε τη διευκρίνιση…'}
+                      placeholder={proposal.command.missing_fields.includes('patient') ? t('patients.nameExample') : t('calendar.clarificationPlaceholder')}
                       autoFocus
                     />
-                    <button className="voice-answer-mic" onClick={() => void start('clarification')} aria-label="Απάντηση με φωνή" title="Απάντηση με φωνή">
+                    <button className="voice-answer-mic" onClick={() => void start('clarification')} aria-label={t('calendar.answerByVoice')} title={t('calendar.answerByVoice')}>
                       <Mic2 size={17} />
                     </button>
-                    <button className="voice-answer-send" onClick={() => void submitClarification(clarificationAnswer)} disabled={!clarificationAnswer.trim()} aria-label="Συνέχεια">
+                    <button className="voice-answer-send" onClick={() => void submitClarification(clarificationAnswer)} disabled={!clarificationAnswer.trim()} aria-label={t('common.continue')}>
                       <Send size={16} />
                     </button>
                   </div>
                 </label>
-                <small>Δεν χρειάζεται να ξαναπείτε όλη την εντολή. Θα κρατήσω όσα έχετε ήδη δώσει.</small>
+                <small>{t('calendar.keepCommandContext')}</small>
               </div>
             )}
 
@@ -461,29 +464,29 @@ export default function CalendarVoiceCommand({
                     <ClockIcon />
                     <span>{slot.label}</span>
                     {proposal.command.patient_name && (
-                      <button onClick={() => selectSlot(slot)}>Κλείσιμο εδώ</button>
+                      <button onClick={() => selectSlot(slot)}>{t('common.closeHere')}</button>
                     )}
                   </div>
-                )) : <span>Δεν βρέθηκε διαθέσιμη ώρα στο ζητούμενο διάστημα.</span>}
+                )) : <span>{t('calendar.noAvailability')}</span>}
               </div>
             )}
 
             <div className="voice-safe-note">
               <ShieldCheck size={15} />
               {isClarify
-                ? 'Δεν έγινε καμία αλλαγή.'
+                ? t('common.noChangesMade')
                 : isAvailability
-                  ? 'Η αναζήτηση διαθεσιμότητας δεν αλλάζει το ημερολόγιο.'
-                  : 'Καμία αλλαγή δεν γίνεται πριν πατήσετε Επιβεβαίωση.'}
+                  ? t('calendar.availabilityReadOnly')
+                  : t('calendar.confirmBeforeChange')}
             </div>
 
             <footer>
               <button onClick={clarificationCancelled ? reset : () => void parseCommand(transcript, [])}>
-                {clarificationCancelled ? 'Νέα εντολή' : 'Ξανά από την αρχή'}
+                {clarificationCancelled ? t('calendar.newCommand') : t('calendar.startAgain')}
               </button>
               {!isClarify && !isAvailability && (
                 <button className="voice-confirm" onClick={() => void confirm()}>
-                  <Check size={15} /> {proposal.command.new_patient ? "Δημιουργία φακέλου & ραντεβού" : "Επιβεβαίωση"}
+                  <Check size={15} /> {proposal.command.new_patient ? t('calendar.createPatientAppointment') : t('common.confirm')}
                 </button>
               )}
             </footer>
@@ -491,79 +494,76 @@ export default function CalendarVoiceCommand({
         ) : stage === 'done' ? (
           <div className="voice-listening voice-done">
             <div className="voice-done-icon"><Check size={22} /></div>
-            <span className="kicker">ΑΠΟΘΗΚΕΥΤΗΚΕ</span>
-            <h3>Το ημερολόγιο ενημερώθηκε</h3>
+            <span className="kicker">{t('common.savedKicker')}</span>
+            <h3>{t('calendar.updated')}</h3>
             <p>{doneMessage}</p>
             <div className="voice-done-actions">
-              <button onClick={reset}>Νέα εντολή</button>
-              {donePatientId&&<button onClick={()=>{window.location.href='/patients/demo/'+encodeURIComponent(donePatientId)}}>Άνοιγμα φακέλου</button>}
-              <button className="voice-confirm" onClick={onClose}>Τέλος</button>
+              <button onClick={reset}>{t('calendar.newCommand')}</button>
+              {donePatientId&&<button onClick={()=>{window.location.href='/patients/demo/'+encodeURIComponent(donePatientId)}}>{t('patients.openRecord')}</button>}
+              <button className="voice-confirm" onClick={onClose}>{t('common.finish')}</button>
             </div>
           </div>
         ) : (
           <div className="voice-listening">
             <div className="voice-orb"><Mic2 size={24} /></div>
-            <span className="kicker">{captureMode.current === 'clarification' ? 'ΑΠΑΝΤΗΣΗ' : 'ΦΩΝΗΤΙΚΗ ΕΝΤΟΛΗ'}</span>
+            <span className="kicker">{captureMode.current === 'clarification' ? t('calendar.answerKicker') : t('calendar.voiceCommandKicker')}</span>
             <h3>
               {stage === 'recording'
-                ? captureMode.current === 'clarification' ? 'Σας ακούω — απαντήστε μόνο στη διευκρίνιση' : 'Σας ακούω…'
+                ? captureMode.current === 'clarification' ? t('calendar.listeningClarification') : t('calendar.listening')
                 : stage === 'transcribing'
-                  ? 'Μεταγράφω…'
+                  ? t('calendar.transcribing')
                   : stage === 'parsing'
-                    ? 'Ελέγχω την εντολή…'
+                    ? t('calendar.checkingCommand')
                     : stage === 'applying'
-                      ? 'Ενημερώνω το ημερολόγιο…'
+                      ? t('calendar.updating')
                       : stage === 'permission'
-                        ? 'Πρόσβαση στο μικρόφωνο…'
+                        ? t('calendar.requestingMicrophone')
                         : stage === 'error'
-                          ? 'Δεν ολοκληρώθηκε'
-                          : 'Τι θέλετε να κάνω στο ημερολόγιο;'}
+                          ? t('common.incomplete')
+                          : t('calendar.voicePrompt')}
             </h3>
 
             <p>
               {stage === 'recording'
                 ? `Ηχογράφηση · ${seconds} / 30″`
                 : stage === 'transcribing'
-                  ? 'Μετατρέπω την ομιλία σας σε κείμενο.'
+                  ? t('calendar.transcribingHelp')
                   : stage === 'parsing'
-                    ? 'Ελέγχω ασθενή, ραντεβού, ημερομηνία, ώρα και τυχόν σύγκρουση.'
+                    ? t('calendar.checkingHelp')
                     : stage === 'applying'
-                      ? 'Αποθηκεύω μόνο την αλλαγή που επιβεβαιώσατε.'
+                      ? t('calendar.savingConfirmedHelp')
                       : stage === 'error'
                         ? error
-                        : 'Μπορείτε να δημιουργήσετε, μεταφέρετε ή ακυρώσετε ραντεβού και να ζητήσετε διαθέσιμες ώρες.'}
+                        : t('calendar.voiceCapabilities')}
             </p>
 
             {stage === 'ready' && (
               <div className="voice-examples">
-                <span>«Κλείσε τη Μαρία αύριο στις 12»</span>
-                <span>«Κλείσε νέο ασθενή Γιώργο Μανώλη αύριο στις 17:00»</span>
-                <span>«Μετέφερε τον Γιάννη στις 13:00»</span>
-                <span>«Βρες μου κενό την Παρασκευή»</span>
+                <span>{t('calendar.voiceExampleBook')}</span>
+                <span>{t('calendar.voiceExampleNewPatient')}</span>
+                <span>{t('calendar.voiceExampleMove')}</span>
+                <span>{t('calendar.voiceExampleAvailability')}</span>
               </div>
             )}
 
             {stage === 'recording' && <div className="voice-wave"><i/><i/><i/><i/><i/></div>}
-            {stage === 'ready' && <label>Ή γράψτε την εντολή<textarea aria-label="Γραπτή εντολή ημερολογίου" className="voice-command-textarea" maxLength={1000} value={transcript} onChange={event=>setTranscript(event.target.value)}/></label>}
+            {stage === 'ready' && <label>{t('calendar.typeCommandAlternative')}<textarea aria-label={t('accessibility.calendarWrittenCommand')} className="voice-command-textarea" maxLength={1000} value={transcript} onChange={event=>setTranscript(event.target.value)}/></label>}
 
             <div className="voice-capture-actions">
-              {stage === 'ready' && <button disabled={!transcript.trim()} onClick={()=>void parseCommand(transcript,[])}>Ανάλυση εντολής</button>}
+              {stage === 'ready' && <button disabled={!transcript.trim()} onClick={()=>void parseCommand(transcript,[])}>{t('calendar.analyseCommand')}</button>}
               {stage === 'ready' && (
                 <button className="voice-confirm" onClick={() => void start('initial')}>
-                  <Mic2 size={16} /> Έναρξη
-                </button>
+                  <Mic2 size={16} />  {t('common.getStarted')} </button>
               )}
               {stage === 'recording' && (
                 <button className="voice-confirm" onClick={stop}>
-                  <Square size={15} /> Διακοπή & μεταγραφή
-                </button>
+                  <Square size={15} />  {t('calendar.stopAndTranscribe')} </button>
               )}
               {stage === 'error' && (
                 <>
-                  <button onClick={reset}>Νέα εντολή</button>
+                  <button onClick={reset}>{t('calendar.newCommand')}</button>
                   <button className="voice-confirm" onClick={() => void start(captureMode.current)}>
-                    <Mic2 size={16} /> Δοκιμή ξανά
-                  </button>
+                    <Mic2 size={16} />  {t('common.retry')} </button>
                 </>
               )}
             </div>

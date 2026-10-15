@@ -1,13 +1,19 @@
 'use client';
 import Link from 'next/link';
+import {useRef} from 'react';
+import {useTranslations} from 'next-intl';
+import LanguageSelector from '@/components/LanguageSelector';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 
 export default function PilotProfile(){
- const account=useAccountSession();
- const name=account?.identity?.full_name||'Ο χώρος μου';
- return <Link className="profile" href="/account" aria-label={`Λογαριασμός ${account?.email||''}`}>
+ const account=useAccountSession(), t=useTranslations(), dialog=useRef<HTMLDialogElement>(null);
+ const name=account?.identity?.full_name||t('settings.workspace');
+ return <><button type="button" className="profile" onClick={()=>dialog.current?.showModal()} aria-label={t('settings.profile')} aria-haspopup="dialog">
   <div className="avatar">{name.split(/\s+/).slice(0,2).map(s=>s[0]).join('')}</div>
-  <div className="profile-copy"><strong>{name}</strong><span>{account?.email||'Ιδιωτικός πιλοτικός χώρος'}</span></div>
+  <div className="profile-copy"><strong>{name}</strong><span>{account?.email||t('settings.privateWorkspace')}</span></div>
   <span className="pilot-badge">DEMO</span>
- </Link>;
+ </button><dialog ref={dialog} className="profile-settings-dialog" aria-label={t('settings.title')}>
+   <div className="profile-settings-heading"><h2>{t('settings.title')}</h2><button type="button" onClick={()=>dialog.current?.close()} aria-label={t('common.close')}>×</button></div>
+   <LanguageSelector/><Link href="/account">{t('settings.account')}</Link>
+ </dialog></>;
 }

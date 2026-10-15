@@ -6,17 +6,20 @@ import "./mobile.css";
 import "./initial-assessment.css";
 import "./clinical-editor.css";
 import "./noima-ui.css";
+import {getLocale, getMessages} from 'next-intl/server';
+import LocaleProvider, {PilotNotice} from '@/i18n/LocaleProvider';
 import AccountSessionBoundary from '@/components/AccountSessionBoundary';
 
 export const metadata: Metadata = {
-  title: "Ψυχιατρικό Workspace",
-  description: "Κλινικό workspace σχεδιασμένο για ψυχιάτρους."
+  title: "NOIMA",
+  description: "NOIMA"
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
   return (
-    <html lang="el">
-      <body><div className="fictional-pilot-notice">Πιλοτική δοκιμή · μόνο υποθετικοί ασθενείς και περιστατικά</div>{process.env.CLINICAL_DATA_MODE==='real'?<main className="record-state">Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.</main>:<AccountSessionBoundary>{children}</AccountSessionBoundary>}</body>
+    <html lang={locale}>
+      <body><LocaleProvider initialLocale={locale} initialMessages={messages}><PilotNotice realData={process.env.CLINICAL_DATA_MODE==='real'}/>{process.env.CLINICAL_DATA_MODE!=='real'&&<AccountSessionBoundary>{children}</AccountSessionBoundary>}</LocaleProvider></body>
     </html>
   );
 }

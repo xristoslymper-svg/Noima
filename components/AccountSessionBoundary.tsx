@@ -1,4 +1,6 @@
 'use client';
+import {useTranslations} from 'next-intl';
+
 import {useEffect, useState, useRef, createContext, useContext} from 'react';
 import RecordAssistant from '@/components/overview/RecordAssistant';
 import {usePathname} from 'next/navigation';
@@ -14,6 +16,8 @@ const AccountContext = createContext<AccountSession | null>(null);
 export function useAccountSession() { return useContext(AccountContext); }
 
 export default function AccountSessionBoundary({children}: {children: React.ReactNode}) {
+ const t=useTranslations();
+
  const path = usePathname();
  const publicPage = isPublicAccountPage(path);
  const [account, setAccount] = useState<AccountSession | null>(null);
@@ -80,6 +84,6 @@ export default function AccountSessionBoundary({children}: {children: React.Reac
  }, [path, publicPage, retry]);
 
  if(publicPage) return children;
- if(!account) return <main className="pilot-page"><section className="pilot-card">{error ? <><h1>Δεν φορτώθηκε ο λογαριασμός</h1><p>Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.</p><button onClick={() => {setError(false); setRetry(value => value + 1);}}>Δοκιμή ξανά</button></> : <p role="status">Φόρτωση του προσωπικού σας χώρου…</p>}</section></main>;
+ if(!account) return <main className="pilot-page"><section className="pilot-card">{error ? <><h1>{t('errors.accountLoad')}</h1><p>{t('errors.checkConnection')}</p><button onClick={() => {setError(false); setRetry(value => value + 1);}}>{t('common.retry')}</button></> : <p role="status">{t('settings.workspaceLoading')}</p>}</section></main>;
  return <AccountContext.Provider value={account}>{children}{account.identity&&<RecordAssistant synthetic={path==='/patients/demo/synthetic-copilot'}/>}</AccountContext.Provider>;
 }

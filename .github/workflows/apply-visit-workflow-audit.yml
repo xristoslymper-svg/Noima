@@ -18,7 +18,7 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
-      MAILBOX_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      MAILBOX_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
       OPENAI_API_KEY: test
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -46,21 +46,11 @@ jobs:
           p=Path('components/patients/VisitAdministration.tsx')
           p.write_text(p.read_text().replace("const useConfirmed=confirmed?.id===appointment?.id&&", "const useConfirmed=confirmed&&appointment&&confirmed.id===appointment.id&&"))
           for p in Path('browser-tests').glob('*.mjs'):
-            s=p.read_text()
-            s=s.replace("'process.env.NODE_ENV':'\"production\"'", "'process.env.NODE_ENV':'\"production\"','process.env.NEXT_PUBLIC_MOBILE_V2':'\"false\"'")
+            s=p.read_text().replace("'process.env.NODE_ENV':'\"production\"'", "'process.env.NODE_ENV':'\"production\"','process.env.NEXT_PUBLIC_MOBILE_V2':'\"false\"'")
             p.write_text(s)
           PY
-          git restore scripts/apply-visit-workflow-audit.mjs
+          git restore scripts/apply-visit-workflow-audit.mjs .github/workflows/clinical-ui.yml
           git diff --check
-          test -f components/patients/VisitAdministration.tsx
-          git diff --stat
-          mkdir -p audit-export
-          tar --exclude=.git --exclude=node_modules --exclude=.next --exclude=audit-export --exclude=test-results -czf audit-export/source.tar.gz .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: visit-workflow-source
-          path: audit-export/source.tar.gz
-          retention-days: 7
       - name: Persist source on this branch only
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,7 +62,7 @@ jobs:
           test -f lib/clinical/followup-finalization.ts
           git config user.name 'NOIMA workflow maintenance'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- components/ lib/ browser-tests/ .github/workflows/clinical-ui.yml
+          git add -- components/ lib/ browser-tests/
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Fix draft recovery, finalization and post-visit workflow'
           helper='!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f'

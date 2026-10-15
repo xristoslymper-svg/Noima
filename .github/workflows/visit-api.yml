@@ -43,7 +43,7 @@ jobs:
         run: |
           npx supabase start --help
           docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' workflow-ci
-          npx supabase start --network-id workflow-ci -x studio,imgproxy,realtime,storage-api,edge-runtime,logflare,vector,supavisor
+          node browser-tests/start-isolated-supabase.mjs
       - name: Build and exercise real application APIs with synthetic users
         run: node browser-tests/visit-application-api.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

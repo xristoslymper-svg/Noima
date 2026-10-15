@@ -212,7 +212,7 @@ export default function CalendarPage() {
   const currentTimeRef=useRef<HTMLDivElement|null>(null);
   const centeredTodayRef=useRef<string|null>(null);
   const [nowMs,setNowMs]=useState(()=>Date.now());
-  const {ready:positionReady,restoring:restoringPosition,remember:rememberPosition}=useCalendarPosition({date:focusDate,view,filter:statusFilter,setDate:setFocusDate,setView,setFilter:setStatusFilter,scroller:weekScrollerRef,loading});
+  const {ready:positionReady,restoring:restoringPosition,remember:rememberPosition,depart:rememberVisitDeparture}=useCalendarPosition({date:focusDate,view,filter:statusFilter,setDate:setFocusDate,setView,setFilter:setStatusFilter,scroller:weekScrollerRef,loading});
 
   const refreshEvents = useCallback(async () => {
     try {
@@ -254,12 +254,13 @@ export default function CalendarPage() {
       });
       const data = (await response.json().catch(() => ({}))) as { session?: { id: string; patient_id: string }; error?: string };
       if (!response.ok || !data.session) throw new Error(data.error || "session");
+      rememberVisitDeparture();
       window.location.href = "/patients/demo/" + encodeURIComponent(data.session.patient_id) + "?tab=record&session=" + encodeURIComponent(data.session.id);
     } catch (cause) {
       setCalendarError(cause instanceof Error ? cause.message : "Δεν ήταν δυνατή η έναρξη της συνεδρίας.");
       setOpeningSession(null);
     }
-  }, [openingSession]);
+  }, [openingSession,rememberVisitDeparture]);
 
   useEffect(() => {
     void refreshEvents();

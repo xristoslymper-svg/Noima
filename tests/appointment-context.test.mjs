@@ -8,6 +8,7 @@ test('calendar return state is valid, workspace scoped and rejects corrupt histo
  assert.deepEqual(readCalendarPosition(saved,'a'),saved);
  for(const value of [null,{}, {...saved,workspace:'b'},{...saved,date:'2026-02-31'},{...saved,top:-1},{...saved,filter:'invalid'}])assert.equal(readCalendarPosition(value,'a'),null);
  assert.equal(readCalendarPosition(saved,''),null);
+ assert.deepEqual(readCalendarPosition({...saved,clinical_text:'must never persist',redirect:'https://invalid.example'},'a'),saved);
 });
 test('next appointment advances calendar days across month, year and DST boundaries',()=>{
  assert.equal(nextWeekDate('2026-10-23'),'2026-10-30');

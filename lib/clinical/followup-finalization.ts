@@ -3,7 +3,8 @@ import {followupFieldConflicts} from './followup-fields.ts';
 import {finalizationBlocker,mseTimeline} from './visit-workspace-state.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 export class FollowupFinalizationError extends Error{
- constructor(message:string,readonly anchor:string,readonly field?:string){super(message)}
+ readonly anchor:string;readonly field?:string;
+ constructor(message:string,anchor:string,field?:string){super(message);this.anchor=anchor;this.field=field}
 }
 export function focusFollowupBlocker(cause:unknown,sessionId:string){
  if(!(cause instanceof FollowupFinalizationError))return;

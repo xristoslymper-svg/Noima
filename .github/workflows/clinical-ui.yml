@@ -18,6 +18,8 @@ on:
       - 'lib/patients/**'
       - 'supabase/**'
       - 'browser-tests/**'
+      - 'tests/**'
+      - 'package*.json'
       - '.github/workflows/clinical-ui.yml'
 permissions:
   contents: read

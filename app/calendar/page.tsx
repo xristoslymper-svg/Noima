@@ -513,7 +513,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label={t('accessibility.nextDate')}>›</button>
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>{t('calendar.today')}</button>}
             </div>
-            <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + t('calendar.appointmentsSuffix') : t('calendar.noAppointments')}</span>
+            <span className="calendar-day-count">{dayEvents.length ? t('calendar.appointmentCount',{count:dayEvents.length}) : t('calendar.noAppointments')}</span>
             <label className="calendar-filter"><span className="sr-only">{t('calendar.appointmentStatus')}</span><select aria-label={t('calendar.appointmentStatus')} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">{t('calendar.currentFilter')}</option><option value="scheduled">{t('calendar.scheduledFilter')}</option><option value="completed">{t('calendar.completedFilter')}</option><option value="cancelled">{t('calendar.cancelledFilter')}</option><option value="all">{t('calendar.allFilter')}</option></select></label><input aria-label={t('calendar.goToDate')} className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label={t('accessibility.refreshCalendar')} className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>{t('calendar.day')}</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{t('calendar.week')}</button>
@@ -570,7 +570,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
                     return <button data-calendar-day={day.key} className={"week-day-head time-grid-head" + (day.key === focusDate ? " today" : "")} key={day.key} onClick={() => setFocusDate(day.key)}>
                       <span>{day.day}</span>
                       <strong>{day.date}</strong>
-                      <small>{count ? count + (count === 1 ? t('calendar.appointmentsSuffix') : t('calendar.appointmentsSuffix')) : "—"}</small>
+                      <small>{count ? t('calendar.appointmentCount',{count}) : "—"}</small>
                     </button>;
                   })}
 

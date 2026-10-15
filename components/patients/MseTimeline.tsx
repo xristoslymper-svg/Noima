@@ -1,3 +1,4 @@
+import {useOptionLabel} from '@/i18n/option-labels';
 
 import {useTranslations} from 'next-intl';
 
@@ -7,6 +8,7 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 
 export default function MseTimeline({timeline}:{timeline:ReturnType<typeof mseTimeline>}){
  const t=useTranslations();
+ const displayLabel=useOptionLabel();
 
  const locale=useLocale();
 

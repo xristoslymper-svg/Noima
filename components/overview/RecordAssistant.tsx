@@ -59,7 +59,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
    }else{const value=await r.json();if(!r.ok)throw new Error(value.error||t('errors.assistantRequestFailed'));data=value;}
    if(current!==sequence.current)return;
    context.current=data.conversation;setPatient(data.patient||null);update(data,performance.now()-started);
-  }catch(e){if(current===sequence.current){setQuery(question);setTurns(t=>t.map((turn,i)=>i===t.length-1?{question,choice,error:controller.signal.aborted?t('errors.assistantInterruptedRetry'):e instanceof Error?e.message:t('common.tryAgainSentence')}:turn));}}
+  }catch(e){if(current===sequence.current){setQuery(question);setTurns(previous=>previous.map((turn,i)=>i===previous.length-1?{question,choice,error:controller.signal.aborted?t('errors.assistantInterruptedRetry'):e instanceof Error?e.message:t('common.tryAgainSentence')}:turn));}}
   finally{clearTimeout(timeout);if(current===sequence.current){locked.current=false;setBusy(false);input.current?.focus();}}
  }
  async function confirm(index:number){
@@ -71,7 +71,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
    const data=await response.json();if(!response.ok)throw new Error(data.error||t('errors.assistantCompletionUnconfirmed'));
    if(current!==sequence.current)return;
    setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,done:data.status==='verified'||data.status==='accepted',result:{...turn.result,...data,proposal}}:turn));
-  }catch(e){if(current===sequence.current)setTurns(t=>t.map((turn,i)=>i===index?{...turn,executing:false,error:e instanceof Error?e.message:t('errors.assistantStatusUnconfirmed')}:turn));}
+  }catch(e){if(current===sequence.current)setTurns(previous=>previous.map((turn,i)=>i===index?{...turn,executing:false,error:e instanceof Error?e.message:t('errors.assistantStatusUnconfirmed')}:turn));}
   finally{if(current===sequence.current){locked.current=false;setBusy(false);}}
  }
  const examples=actionMode?[t('clinical.assistantBookPrompt'),t('clinical.assistantSendPrompt')]:inChart||patient?[t('clinical.assistantChangesPrompt'),t('clinical.assistantMedicationPrompt'),t('clinical.assistantSleepPrompt')]:[t('clinical.assistantCoursePrompt'),t('clinical.assistantTakingPrompt')];

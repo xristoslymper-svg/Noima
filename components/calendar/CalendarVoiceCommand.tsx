@@ -266,7 +266,7 @@ export default function CalendarVoiceCommand({
     const appointmentType = proposal.command.appointment_type || 'follow_up';
     setProposal({
       ...proposal,
-      summary: `${proposal.command.new_patient ? "Νέος ασθενής + ραντεβού" : t('calendar.newAppointment')}: ${proposal.command.patient_name} · ${slot.label}`,
+      summary: `${proposal.command.new_patient ? t('calendar.newPatientAndAppointment') : t('calendar.newAppointment')}: ${proposal.command.patient_name} · ${slot.label}`,
       available_slots: [],
       command: {
         ...proposal.command,
@@ -525,7 +525,7 @@ export default function CalendarVoiceCommand({
 
             <p>
               {stage === 'recording'
-                ? `Ηχογράφηση · ${seconds} / 30″`
+                ? t('calendar.recordingProgress',{seconds})
                 : stage === 'transcribing'
                   ? t('calendar.transcribingHelp')
                   : stage === 'parsing'

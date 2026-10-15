@@ -6,12 +6,12 @@ import {clinicLocalToIso,formatClinicAppointment} from '@/lib/clinic-time';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {upcomingAppointments} from '@/lib/clinical/patient-record';
 import styles from './VisitNextAppointment.module.css';
-export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean}){
+export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true,sessionId}:{sessionId?:string;bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean}){
  const [date,setDate]=useState(''),[time,setTime]=useState('09:00'),[duration,setDuration]=useState('50'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [smsReminder,setSmsReminder]=useState(true);
  const [expanded,setExpanded]=useState(false),[notice,setNotice]=useState('');
  const formId=useId(),dateRef=useRef<HTMLInputElement>(null),triggerRef=useRef<HTMLButtonElement>(null);
- const appointments=upcomingAppointments(bundle),next=appointments[0];
+ const appointments=upcomingAppointments(bundle,new Date(),{excludeSessionId:sessionId}),next=appointments[0];
  const formOpen=expanded||Boolean(date)||busy;
  const saveRef=useRef(false);
  const mobile=bundle.patient.phone?.replace(/[^+0-9]/g,'')||'';

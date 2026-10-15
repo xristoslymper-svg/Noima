@@ -2,19 +2,21 @@ import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
 import {resolve,relative} from 'node:path';
 import ts from 'typescript';
 import {parse} from '@formatjs/icu-messageformat-parser';
+import {locales as configuredLocales,defaultLocale} from '../i18n/config.ts';
 
 export function flatMessages(object,prefix=''){
  return Object.fromEntries(Object.entries(object).flatMap(([key,value])=>typeof value==='string'?[[prefix+key,value]]:Object.entries(flatMessages(value,prefix+key+'.'))));
 }
 export function auditDictionaries(root=process.cwd()){
- const locales=['el','en'];
+ const locales=[...configuredLocales];
  const messages=Object.fromEntries(locales.map(locale=>[locale,flatMessages(JSON.parse(readFileSync(resolve(root,'i18n/messages/'+locale+'.json'),'utf8')))]));
- const allKeys=new Set(Object.keys(messages.el)),used=new Set(),errors=[],calls=[];
+ const allKeys=new Set(Object.keys(messages[defaultLocale])),used=new Set(),errors=[],calls=[];
+ const parameters=value=>{const names=new Set();function walk(nodes){for(const node of nodes){if(node.type>=1&&node.type<=6)names.add(node.value);if(node.options)for(const option of Object.values(node.options))walk(option.value);if(node.children)walk(node.children)}}walk(parse(value));return [...names].sort().join(',')};
  for(const locale of locales){
   for(const key of allKeys)if(!(key in messages[locale]))errors.push(locale+': missing '+key);
   for(const [key,value]of Object.entries(messages[locale])){
    if(!allKeys.has(key))errors.push(locale+': extra '+key);
-   try{parse(value)}catch(error){errors.push(locale+': invalid ICU '+key+' — '+error.message)}
+   try{if(parameters(value)!==parameters(messages[defaultLocale][key]||''))errors.push(locale+': mismatched ICU parameters '+key)}catch(error){errors.push(locale+': invalid ICU '+key+' — '+error.message)}
   }
  }
  function walk(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(resolve(dir,e.name)):[resolve(dir,e.name)]);}

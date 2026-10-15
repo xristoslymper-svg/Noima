@@ -21,7 +21,7 @@ export function intlTestModule(name,locale='el'){
  if(name==='@/i18n/recipient')return recipient;
  if(name==='@/i18n/messages')return {loadMessages:async locale=>dictionaries[locale]};
  if(name==='@/i18n/output-language')return outputLanguage;
- if(name==='@/i18n/option-labels'||name==='@/i18n/system-message'){
+ if(name==='@/i18n/option-labels'||name==='@/i18n/system-message'||name==='./option-keys'){
   const module={exports:{}};
   const source=ts.transpileModule(readFileSync(new URL('../../i18n/'+name.split('/').at(-1)+'.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
   vm.runInNewContext(source,{module,exports:module.exports,require:id=>intlTestModule(id,locale)});

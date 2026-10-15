@@ -1,3 +1,4 @@
+import {unsavedLocaleSwitch,localePersistenceAndRecipient} from './i18n-application.mjs';
 // C: browser -> actual Next.js handlers -> local Supabase Auth/PostgREST/RPCs.
 // Only run on a disposable GitHub runner. Never accepts a remote database URL.
 import assert from 'node:assert/strict';
@@ -27,8 +28,13 @@ try{
   const joined=await client.rpc('pilot_join',{p_name:'QA '+label});assert.equal(joined.error,null);return {email,password,client,workspace:joined.data.workspace_id};}
  const owner=await user('Workflow'),other=await user('Other Workspace');
  for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
-  const context=await browser.newContext({viewport}),page=await context.newPage();page.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport,locale:'en-US'}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.route('**/*',r=>[origin,new URL(api).origin].includes(new URL(r.request().url()).origin)?r.continue():r.abort());
+  await page.goto(origin+'/login');assert.equal(await page.locator('html').getAttribute('lang'),'el');
+  await page.screenshot({path:resolve(out,size+'-login-el.png')});
+  await page.getByLabel('Γλώσσα',{exact:true}).selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');await page.reload();assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  await page.screenshot({path:resolve(out,size+'-login-en.png')});
+  await page.getByLabel('Language',{exact:true}).selectOption('el');await page.waitForFunction(()=>document.documentElement.lang==='el');
   const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200,`Application login: ${(await login.json()).error??'ok'}`);
   const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.postDataJSON()?.action})});
   async function post(path,data){const r=await context.request.post(origin+path,{headers:{origin},data});const body=await r.json();assert.equal(r.ok(),true,`${path}: ${body.error}`);return body}
@@ -42,8 +48,8 @@ try{
   const url=origin+'/patients/demo/'+patientId+'?tab=record&session='+sessionId;
   let at=performance.now(),offset=calls.length;await page.goto(url);await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();timings.push({size,action:'open',ms:performance.now()-at,requests:calls.slice(offset)});
   const field=page.getByRole('textbox',{name:'Λόγος προσέλευσης & παρούσα εικόνα *',exact:true});
-  at=performance.now();offset=calls.length;await field.fill('QA UPDATED THROUGH REAL API');
-  await page.waitForResponse(async r=>r.url().endsWith('/api/patients/demo/runtime')&&r.request().method()==='POST'&&r.request().postDataJSON()?.action==='save_section'&&r.ok());
+  at=performance.now();offset=calls.length;
+  await unsavedLocaleSwitch({page,field,text:'QA UPDATED THROUGH REAL API',action:'save_section',client:owner.client,patientId,sessionId,size,mode:'initial',out});
   timings.push({size,action:'save',ms:performance.now()-at,requests:calls.slice(offset)});
   at=performance.now();offset=calls.length;await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).click();
   const area=page.getByRole('region',{name:'Διεκπεραίωση επίσκεψης',exact:true});await area.waitFor();
@@ -81,11 +87,14 @@ try{
     await page.getByRole('dialog',{name:'Εκκρεμότητες',exact:true}).locator('a[href="/patients/demo/'+patientId+'?tab=record&session='+followup.id+'"]').click();
     await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();assert.equal(new URL(page.url()).searchParams.get('session'),followup.id);
    }else await page.getByRole('button',{name:'Αναλυτική καταγραφή',exact:false}).click();
+   const followupField=page.getByRole('textbox',{name:mode==='compact'?'Κλινική εικόνα':/^Συμπτώματα/});
+   await unsavedLocaleSwitch({page,field:followupField,text:'QA follow-up — Δεν αναφέρει νέα συμπτώματα. Drug 10 mg.',action:'save_closure',client:owner.client,patientId,sessionId:followup.id,size,mode:'followup-'+mode,out});
    const before=calls.filter(c=>c.action==='finalize_closure').length;
    await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).click();await area.waitFor();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();
    assert.equal(calls.filter(c=>c.action==='finalize_closure').length,before+1);const saved=(await owner.client.from('demo_sessions').select('*').eq('id',followup.id).single()).data;assert.equal(saved.status,'completed');assert.equal(saved.patient_id,patientId);assert.equal(saved.closure_draft,null);
    await page.reload();await area.waitFor();assert.equal(calls.filter(c=>c.action==='finalize_closure').length,before+1);await page.screenshot({path:resolve(out,size+'-'+mode+'-followup.png')});
   }
+  await localePersistenceAndRecipient({browser,context,page,origin,api,owner,other,patientId,sessionId,out,size});
   // Authentic membership and RLS: another user cannot read or mutate this visit.
   const unauthorized=await browser.newContext();await unauthorized.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:other.email,password:other.password}});
   const denied=await unauthorized.request.get(origin+'/api/patients/demo/visit?patient='+patientId+'&session='+sessionId+'&tester='+owner.workspace);assert.equal(denied.ok(),false);

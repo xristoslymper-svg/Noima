@@ -1,3 +1,5 @@
+import {recipientLocale} from '@/i18n/recipient';
+import {loadMessages} from '@/i18n/messages';
 import {errorJson} from '@/i18n/errors';
 import { withPilot } from '@/lib/pilot/route';
 import {patientBundle} from '@/lib/patients/demo-runtime';
@@ -14,7 +16,8 @@ async function handleGET(request:Request){
   const bundle=await patientBundle(tester,patient);
   if(url.searchParams.get('format')==='print'){
    const nonce=randomBytes(18).toString('base64');
-   const html=patientRecordPrintableHtml(bundle,nonce);
+   const locale=recipientLocale(url.searchParams.get('lang'));
+   const html=patientRecordPrintableHtml(bundle,nonce,undefined,{locale,messages:await loadMessages(locale)});
    return new Response(html,{headers:{
     'Content-Type':'text/html; charset=utf-8',
     'Content-Disposition':'inline',

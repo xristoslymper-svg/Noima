@@ -91,13 +91,13 @@ export default function ClinicalTextField(p:Props){
  async function confirm(){await accept()}
  function askCancel(){if(snapshot.phase==='permission'){stop();return}if(snapshot.phase==='recording')recorder.current?.pause();setCancelOpen(true)}
  const id=p.sessionId+'-'+p.section+'-'+p.fieldKey;
- const aiHint=awaitingAudio&&!busy?t('clinical.transcribeOrDiscardFirst'):busy?t('clinical.completeActiveAction'):pending?t('clinical.confirmTextFirst'):snapshot.confirmed.trim().length<2?t('clinical.enterTextFirst'):t('clinical.improveWording');
+ const aiHint=(awaitingAudio&&!busy?t('clinical.transcribeOrDiscardFirst'):busy?t('clinical.completeActiveAction'):pending?t('clinical.confirmTextFirst'):snapshot.confirmed.trim().length<2?t('clinical.enterTextFirst'):t('clinical.improveWording'))+' · '+t('clinical.newAiLanguage',{language:languageNames[locale]});
  const micHint=awaitingAudio&&!capturing?t('clinical.transcribeOrDiscardFirst'):capturing?t('clinical.dictationActiveField'):busy?t('clinical.completeActiveAction'):snapshot.pending?.kind==='ai'?t('clinical.reviewAiFirst'):t('clinical.dictation');
  const status=snapshot.phase==='permission'?t('clinical.microphoneLoading'):snapshot.phase==='transcribing'?t('clinical.transcriptionLoading'):snapshot.phase==='paused'?t('clinical.paused'):t('clinical.recording');
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
    <button type="button" title={micHint} aria-label={t('accessibility.dictationPrefix')+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&t('clinical.dictation')}</button>
-   <button type="button" title={aiHint+' · '+t('clinical.newAiLanguage',{language:languageNames[locale]})} aria-label={t('accessibility.improveWordingPrefix')+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>{t('clinical.aiWording')}</span></button>
+   <button type="button" title={aiHint} aria-label={t('accessibility.improveWordingPrefix')+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>{t('clinical.aiWording')}</span></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>

@@ -1,4 +1,5 @@
 'use client';
+import {languageNames} from '@/i18n/config';
 import {useLocale,useTranslations} from 'next-intl';
 
 import {useSyntheticChart} from './SyntheticChartContext';

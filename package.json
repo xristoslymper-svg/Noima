@@ -10,7 +10,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:db": "node --test tests/database.test.mjs",
     "lint": "eslint app components lib i18n --max-warnings 0",
-    "check:i18n": "node scripts/check-i18n.mjs"
+    "check:i18n": "node --experimental-strip-types scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "3.8.1",

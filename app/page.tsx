@@ -56,7 +56,7 @@ const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 
 
-const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
+
 
 
 
@@ -65,6 +65,7 @@ export default function Page() {
  const systemMessage=useSystemMessage();
 
 const t=useTranslations();
+const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email",t('common.paper'),t('common.link')].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?t('common.paper'):provenance.includes("patient_link")?t('common.link'):"Noima";
 
  const locale=useLocale();
 

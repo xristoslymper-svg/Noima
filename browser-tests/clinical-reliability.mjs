@@ -106,7 +106,10 @@ try{
    completionMode='malformed';await open(`?tab=record&session=${visitId}`);const finish=page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true});await finish.waitFor();await finish.click();
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);
    completionMode='ok';await finish.click();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();assert.ok(await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).count()>=4);
+   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();
+   const expectedVisits=state.sessions.filter(s=>s.status==='completed').length;
+   const visitButtons=page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true});
+   await visitButtons.nth(expectedVisits-1).waitFor();assert.equal(await visitButtons.count(),expectedVisits);
    await nav('Σύνοψη').click();await page.getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
   });
   await check('second-medication-isolation',async({page,open})=>{

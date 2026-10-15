@@ -1,0 +1,239 @@
+{
+  "scope": "C: real Next.js application, Supabase Auth/PostgREST and repository migrations in disposable GitHub CI; synthetic users and records only",
+  "results": [
+    {
+      "size": "desktop",
+      "status": "passed",
+      "scenario": "new appointment -> real save/finalize/payment/booking -> reload -> calendar; cross-workspace read/write rejected"
+    },
+    {
+      "size": "mobile",
+      "status": "passed",
+      "scenario": "new appointment -> real save/finalize/payment/booking -> reload -> calendar; cross-workspace read/write rejected"
+    }
+  ],
+  "timings": [
+    {
+      "size": "desktop",
+      "action": "open",
+      "ms": 1125.8034929999994,
+      "requests": [
+        {
+          "path": "/api/pilot",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        },
+        {
+          "path": "/api/intake",
+          "method": "POST",
+          "action": "list"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "POST"
+        }
+      ]
+    },
+    {
+      "size": "desktop",
+      "action": "save",
+      "ms": 768.7089629999973,
+      "requests": [
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "POST",
+          "action": "save_section"
+        }
+      ]
+    },
+    {
+      "size": "desktop",
+      "action": "finalize",
+      "ms": 562.330581000002,
+      "requests": [
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "POST",
+          "action": "finalize_session"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "size": "desktop",
+      "action": "return",
+      "ms": 263.87790899999527,
+      "requests": [
+        {
+          "path": "/api/pilot",
+          "method": "GET"
+        },
+        {
+          "path": "/api/calendar/events",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "size": "mobile",
+      "action": "open",
+      "ms": 1048.8502880000015,
+      "requests": [
+        {
+          "path": "/api/pilot",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        },
+        {
+          "path": "/api/intake",
+          "method": "POST",
+          "action": "list"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "POST"
+        }
+      ]
+    },
+    {
+      "size": "mobile",
+      "action": "save",
+      "ms": 765.9428499999995,
+      "requests": [
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "POST",
+          "action": "save_section"
+        }
+      ]
+    },
+    {
+      "size": "mobile",
+      "action": "finalize",
+      "ms": 497.4974890000012,
+      "requests": [
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "POST",
+          "action": "finalize_session"
+        },
+        {
+          "path": "/api/patients/demo/visit",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical/summary",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "size": "mobile",
+      "action": "return",
+      "ms": 242.31496000000334,
+      "requests": [
+        {
+          "path": "/api/pilot",
+          "method": "GET"
+        },
+        {
+          "path": "/api/calendar/events",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/demo/runtime",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}

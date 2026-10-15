@@ -1,0 +1,149 @@
+NOIMA — Επαλήθευση ροής επίσκεψης, 15/10/2026
+
+Branch: fix/visit-workflow-audit-20261015
+PR: https://github.com/xristoslymper-svg/Noima/pull/105
+Ακριβές commit κώδικα και δοκιμών: c819796a826def73398d4d6bfed895e2efd22034
+Το επόμενο commit προσθέτει μόνο αυτή την αναφορά και τα συνθετικά evidence.
+Ιστορική βάση audit: 27e61cefd3a7bb568a73a02a4e08ebf70a9a762a.
+Η εργασία συνεχίστηκε από το ήδη υπάρχον PR, αρχικό head 3ef29f41897766258f3585db089f45da0ad753bb.
+Δεν έγινε reset, clean, stash, revert, merge στο main ή production deployment/migration.
+Οι άσχετες τοπικές αλλαγές στο αρχικό checkout παρέμειναν ανέπαφες.
+Οι εφαρμογές και δοκιμές εκτελέστηκαν στο GitHub CI, όχι στον υπολογιστή του χρήστη.
+
+ΑΡΧΙΚΗ ΚΑΤΑΣΤΑΣΗ ΚΑΙ ΑΠΟΤΕΛΕΣΜΑ ΑΝΑ FINDING
+
+REL-A01 — αρχικά «μερικώς διορθωμένο».
+Υπήρχαν επιβεβαίωση αντικατάστασης και αντίγραφο ανάκτησης στη σύντομη μορφή.
+Προστέθηκαν η ανάκτηση στην αναλυτική μορφή, έλεγχος patient/session/version
+και αποκλεισμός αντικατάστασης όσο εκκρεμεί υπαγόρευση/AI review. Διατηρείται
+το υπάρχον sessionStorage recovery με όριο 24 ωρών και εμφανές, αντιγράψιμο
+αντίγραφο. Αποτυχία storage δεν επιτρέπει αντικατάσταση. Retry δεν παρακάμπτει conflict.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε (A, B: retry, consent, reload, δύο tabs, storage failure).
+
+UX-A02 — αρχικά «μερικώς διορθωμένο».
+Υπήρχε κοινή πραγματική οριστικοποίηση. Διατηρήθηκε και συμπληρώθηκε η μεταφορά
+focus στο συγκεκριμένο blocker, μετά την επανενεργοποίηση της αναλυτικής φόρμας.
+Οι validators, ownership, patient/session, completed_at και versions παραμένουν.
+Ένα mutation σε διπλό click/reload· μετά από committed write και αποτυχημένο
+refresh εκτελείται έλεγχος ολοκλήρωσης χωρίς δεύτερο mutation.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε (A/B/C, αρχική και δύο μορφές επανεξέτασης).
+
+UX-A03 — αρχικά «μερικώς διορθωμένο».
+Υπήρχε κοινός selector στην επίσκεψη. Επεκτάθηκε σε registry/overview.
+Επόμενο είναι μόνο scheduled ραντεβού με start >= now, εκτός του ενεργού
+appointment/session όταν υπάρχει αυτό το context. Άλλα μελλοντικά συνδεδεμένα
+sessions διατηρούνται. Ίδια ημέρα, πρόωρο άνοιγμα, cancelled/completed και
+μεταβάσεις θερινής/χειμερινής ώρας Europe/Athens καλύπτονται με regressions.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε (A/B/C).
+
+UX-A04 — αρχικά «μερικώς διορθωμένο».
+Επαναχρησιμοποιήθηκε η μία υπάρχουσα «Διεκπεραίωση επίσκεψης» και το payment API.
+Η πληρωμή αφορά τη μοναδική ρητά συνδεδεμένη επίσκεψη. Η κράτηση απαιτεί
+επιβεβαιωμένα event ID, patient, status, type και ώρες. Αμφίβολη απάντηση ή
+αποτυχία refresh κλειδώνει νέα υποβολή και προσφέρει read-only επαλήθευση.
+Αποτυχία πληρωμής/κράτησης δεν αλλάζει completed_at, version ή κλινικό περιεχόμενο.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε (A/B/C, περιλαμβάνει reload και ήδη paid/scheduled).
+
+UX-A05 — αρχικά «μερικώς διορθωμένο».
+Υπήρχε ασφαλές calendar return context. Συμπληρώθηκε η ρητή αποθήκευση origin
+για το πραγματικό κουμπί μετάβασης ημερολογίου, όχι μόνο για anchor links.
+Επιστρέφουν ημερομηνία, day/week, φίλτρο και scroll. Direct link οδηγεί /calendar.
+Το context περιέχει μόνο επιτρεπόμενα navigation πεδία και δεσμεύεται στο workspace.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε (A/B: πραγματικό κουμπί, week scroll 300px· C: fallback).
+
+QA-A06 — αρχικά «μερικώς διορθωμένο».
+Υπήρχαν έξι βασικά browser σενάρια ανά viewport και έξι αποτυχημένα παλιά tests.
+Διορθώθηκαν selectors/harnesses σύμφωνα με το σημερινό UI, χωρίς skip ή χαλάρωση
+assertions. Προστέθηκαν αποτυχίες, συγκρούσεις, focus, πραγματικό calendar origin
+και νέο CI με Next.js + Supabase Auth/PostgREST + όλα τα repository migrations.
+Τα CI paths καλύπτουν calendar, patient UI, APIs, lib, migrations και tests.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε, με τα παρακάτω σαφή επίπεδα κάλυψης.
+
+PERF-A07 — αρχικά «μερικώς διορθωμένο».
+Υπήρχε η αφαίρεση αναγκαστικού reload από καθαρή/μη τελική πλοήγηση.
+Διατηρήθηκε. Μετρήθηκαν requests και χρόνοι στην πραγματική εφαρμογή του CI.
+Παρατηρούνται πολλαπλές visit/summary αναγνώσεις στο άνοιγμα/οριστικοποίηση.
+Το άθροισμα περιλαμβάνει shell, child reload, pre-write baseline, verification,
+parent refresh και summary. Δεν αποδεικνύει ότι όλα είναι πλεονάζοντα.
+Δεν αφαιρέθηκε verification read ούτε έγινε επιπλέον performance refactor.
+Κατάσταση: Διορθώθηκε και επαληθεύτηκε ως προς τη μέτρηση και τεκμηρίωση.
+
+ΑΠΟΤΕΛΕΣΜΑΤΑ ΣΤΟ c819796
+
+A. npm run typecheck, npm run lint, npm test, npm run build: PASS.
+459/459 tests, 0 failed. Το npm test περιλαμβάνει τις database δοκιμές.
+Το ξεχωριστό npm run test:db επίσης πέρασε 61/61 (υποσύνολο, όχι 61 επιπλέον).
+https://github.com/xristoslymper-svg/Noima/actions/runs/38770517910
+
+B. Browser integration: πραγματικά React components και migrated PGlite RPCs,
+με συνθετικό HTTP/auth adapter. 32/32 visit-workflow checks σε 1440x1000 και
+390x844. Επιπλέον πέρασαν clinical-cleanup, warm-patient-workspace και
+clinical-reliability. Πέρασαν και τα υπάρχοντα recorder/copilot CI gates.
+https://github.com/xristoslymper-svg/Noima/actions/runs/38770517896
+
+C. Browser -> πραγματικά Next handlers -> Supabase Auth/PostgREST/RPCs σε
+αναλώσιμο GitHub runner: PASS και στα δύο viewports. Δημιουργία synthetic
+λογαριασμών/ραντεβού μέσω APIs, UI save/finalize/payment/booking, έλεγχος πραγματικών
+DB identities, mutation counts, completed_at/version, reload, compact/detailed,
+«Συνέχεια αργότερα» -> Εκκρεμότητες -> ίδιο session, απόρριψη άλλου workspace.
+Η κλινική οριστικοποίηση πέρασε με EXTERNAL_AI_ENABLED=false.
+https://github.com/xristoslymper-svg/Noima/actions/runs/38770517881
+
+Μετρήσεις C (ένα δείγμα ανά viewport, όχι production latency ή benchmark):
+Ενέργεια          Desktop ms / requests      Mobile ms / requests
+Άνοιγμα           1126 / 8                   1049 / 8
+Save              769 / 1                    766 / 1
+Οριστικοποίηση     562 / 8                    497 / 8
+Επιστροφή         264 / 3                    242 / 3
+Άνοιγμα: έως διαθέσιμο κουμπί οριστικοποίησης. Save: έως mutation acknowledgement,
+συμπεριλαμβάνει debounce. Οριστικοποίηση: έως επαληθευμένο success. Επιστροφή:
+έως διαθέσιμο date control. Τα ασύγχρονα reads μπορεί να ανήκουν στο επόμενο
+παράθυρο μέτρησης. Μετριούνται browser /api requests, όχι εσωτερικά DB requests.
+Το docs/visit-workflow-evidence-20261015/real-api-report.json διατηρεί
+τις διαδρομές/ενέργειες, χωρίς payloads ή IDs.
+
+SCREENSHOTS, ΑΡΧΕΙΑ ΚΑΙ ΑΝΑΠΑΡΑΓΩΓΗ
+
+Στον φάκελο docs/visit-workflow-evidence-20261015 αποθηκεύονται επιλεγμένα
+screenshots από τα παραπάνω CI runs και το JSON με τις μετρήσεις.
+Ελέγχθηκαν desktop/mobile διεκπεραίωση, αναλυτική επανεξέταση, recovery/storage
+failure και blocker focus. Δεν βρέθηκε horizontal overflow ή κάλυψη των
+διοικητικών κουμπιών. Τα browser assertions ελέγχουν overflow και activeElement.
+Τα πλήρη CI artifacts διατηρούνται 7 ημέρες· τα επιλεγμένα evidence στο Git παραμένουν.
+
+Κύρια αρχεία: components/patients/{useClinicalDraft,ClinicalDraftRecovery,
+FollowupDraft,FollowupClosure,PatientSession,PatientWorkspace,VisitAdministration,
+VisitNextAppointment}, components/calendar/useCalendarPosition.ts,
+app/calendar/page.tsx, lib/calendar/{upcoming,appointment-context,return-context,
+confirmed-booking}, lib/clinical/{followup-finalization,patient-record},
+lib/patients/demo-runtime.ts, lib/overview/record-search.ts, tests/*,
+browser-tests/{visit-workflow,workflow-postgres,visit-application-api,
+start-isolated-supabase}.mjs και .github/workflows/{quality,clinical-ui,visit-api}.yml.
+Πλήρης λίστα: git diff --name-only 27e61cefd3a7bb568a73a02a4e08ebf70a9a762a c819796a826def73398d4d6bfed895e2efd22034
+
+Αναπαραγωγή σε απομονωμένο CI checkout αυτού του branch:
+npm ci
+npm run typecheck
+npm run lint
+npm test
+npm run test:db
+npm run build
+npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+npx playwright install --with-deps chromium
+node browser-tests/visit-workflow.mjs
+node browser-tests/clinical-cleanup.mjs
+node browser-tests/warm-patient-workspace.mjs
+node browser-tests/clinical-reliability.mjs
+Για C ακολουθήστε ολόκληρο το .github/workflows/visit-api.yml σε GitHub runner.
+Το script απορρίπτει remote DB URLs και περιβάλλον εκτός GitHub Actions.
+
+DEPLOYMENT ΚΑΙ ΟΡΙΑ
+
+Vercel feature preview: επιτυχές deployment του c819796 και HTTP 200 στο /login.
+https://noima-git-fix-visit-workflow-audit-20261015-xristoslymper-3481.vercel.app
+Δεν εκτελέστηκε authenticated κλινική ροή στη hosted βάση του Preview ή production.
+Το C αφορά πραγματική εφαρμογή και πραγματικά APIs μέσα στο απομονωμένο CI.
+Δεν δοκιμάστηκαν πραγματικές αποστολές SMS/email, εξωτερικό LLM, Safari/Firefox
+ή το προαιρετικό mobile V2 experiment (default gate off).
+Δεν υπάρχουν production δεδομένα, credentials, cookies ή traces στα evidence.
+Δεν προστέθηκαν migrations ούτε άλλαξαν authorization/masking κανόνες.

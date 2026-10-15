@@ -41,7 +41,7 @@ try{
   await post('/api/patients/demo/runtime',{action:'save_risk',session_id:sessionId,risk:{suicidal_ideation:'negative',intent:'negative',plan:'negative',self_harm:'negative',attempt_history:'negative'},expected_version:null});
   const url=origin+'/patients/demo/'+patientId+'?tab=record&session='+sessionId;
   let at=performance.now(),offset=calls.length;await page.goto(url);await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).waitFor();timings.push({size,action:'open',ms:performance.now()-at,requests:calls.slice(offset)});
-  const field=page.getByRole('textbox',{name:'Λόγος προσέλευσης & παρούσα εικόνα',exact:true});
+  const field=page.getByRole('textbox',{name:'Λόγος προσέλευσης & παρούσα εικόνα *',exact:true});
   at=performance.now();offset=calls.length;await field.fill('QA UPDATED THROUGH REAL API');
   await page.waitForResponse(async r=>r.url().endsWith('/api/patients/demo/runtime')&&r.request().method()==='POST'&&r.request().postDataJSON()?.action==='save_section'&&r.ok());
   timings.push({size,action:'save',ms:performance.now()-at,requests:calls.slice(offset)});

@@ -96,6 +96,10 @@ try{
 
   await check('current-appointment-excluded-and-calendar-return','follow_up',async({page,open,info})=>{
    await open();await page.getByText('Δεν έχει προγραμματιστεί επόμενο ραντεβού.',{exact:true}).waitFor();
+   // A compact three-hour calendar has no vertical scroll range. Seed morning
+   // and evening events so the saved 300px position is physically reachable.
+   const current=(await db.state()).appointments.find(a=>a.id===info.eventId);
+   for(const hour of [6,19]){const start=new Date(current.scheduled_start);start.setUTCHours(hour,0,0,0);await db.dispatch('/api/calendar/command/apply',new URLSearchParams(),{tester:db.tester,action:'create',patient_id:info.patientId,start_iso:start.toISOString(),end_iso:new Date(+start+3000000).toISOString(),appointment_type:'follow_up'})}
    const position={workspace:db.tester,date:info.date,view:'week',filter:'scheduled',top:300,left:0,pageTop:0};await page.evaluate(position=>history.replaceState({...history.state,noimaVisitCalendar:position},''),position);await page.getByRole('button',{name:'Επιστροφή στο πρόγραμμα',exact:true}).click();await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).waitFor();assert.equal(await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).inputValue(),info.date);assert.equal(await page.getByLabel('Κατάσταση ραντεβού',{exact:true}).inputValue(),'scheduled');assert.equal(await page.evaluate(()=>history.state.noimaCalendar.date),info.date);assert.equal(await page.evaluate(()=>sessionStorage.getItem('noima-calendar-resume')),null);
    await page.waitForFunction(()=>Math.abs((document.querySelector('.calendar-week-card')?.scrollTop??-1)-300)<2);
    assert.equal(await page.evaluate(()=>history.state.noimaCalendar.view),'week');

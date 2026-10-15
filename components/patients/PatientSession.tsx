@@ -79,6 +79,7 @@ export default function PatientSession({
  const [dirtyCount,setDirtyCount]=useState(0);
  const [flushing,setFlushing]=useState(false);
  const [flushError,setFlushError]=useState('');
+ const [focusError,setFocusError]=useState<unknown>(null);
  const [refreshError,setRefreshError]=useState('');
  const [showFinalizeGuidance,setShowFinalizeGuidance]=useState(false);
  const [finishingLater,setFinishingLater]=useState(false);
@@ -156,6 +157,8 @@ export default function PatientSession({
   setFinishingLater(true);
   try{await flushAll();await onFinishLater(draft.id)}catch{}finally{setFinishingLater(false)}
  }
+ // Wait for React to enable the editor after flush before moving focus.
+ useEffect(()=>{if(!focusError||flushing||finalizing||finishingLater)return;const id=draft?.id;if(id){focusFollowupBlocker(focusError,id);setFocusError(null)}},[focusError,flushing,finalizing,finishingLater,draft?.id]);
  async function finalizeSafely(){
   if(finishing.current)return;finishing.current=true;
   try{
@@ -167,7 +170,7 @@ export default function PatientSession({
    if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
    await onFinalize(draft.id);
   }catch(cause){
-   setFlushError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η οριστικοποίηση.');if(draft)focusFollowupBlocker(cause,draft.id);
+   setFlushError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η οριστικοποίηση.');setFocusError(cause);
   }finally{finishing.current=false}
  }
 

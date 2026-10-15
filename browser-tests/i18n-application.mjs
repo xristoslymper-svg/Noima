@@ -1,6 +1,45 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 
+export async function assertLoginPresentation(page){
+ const layout=await page.locator('.pilot-card').evaluate(card=>{
+  const brand=card.querySelector('.brand-mark').getBoundingClientRect();
+  const language=card.querySelector('.language-setting select').getBoundingClientRect();
+  const field=card.querySelector('input');
+  const selectStyle=getComputedStyle(card.querySelector('.language-setting select')),fieldStyle=getComputedStyle(field);
+  return {sameRow:language.top>=brand.top-1&&language.bottom<=brand.bottom+8,overlap:language.left<brand.right,
+   select:[selectStyle.backgroundColor,selectStyle.borderColor,selectStyle.borderRadius],field:[fieldStyle.backgroundColor,fieldStyle.borderColor,fieldStyle.borderRadius]};
+ });
+ assert.equal(layout.sameRow,true,'The login selector must share the original logo row');
+ assert.equal(layout.overlap,false,'The login selector must not overlap the logo');
+ assert.deepEqual(layout.select,layout.field,'The login selector must use the existing input palette and border treatment');
+}
+
+export async function assertWorkspacePresentation(page){
+ const profile=page.locator('button.profile').first();
+ if(await profile.count()){
+  const presentation=await profile.evaluate(button=>{
+   // Compare against the original profile anchor under the same CSS/ancestors.
+   // The reference is hidden and out of flow; it does not touch React state.
+   const reference=document.createElement('a');reference.className='profile';reference.href='/account';reference.innerHTML=button.innerHTML;
+   reference.style.position='absolute';reference.style.visibility='hidden';button.parentElement.append(reference);
+   try{const actual=getComputedStyle(button),original=getComputedStyle(reference);
+    const properties=['color','backgroundColor','fontFamily','fontSize','fontWeight','lineHeight','gap','paddingTop','paddingRight','paddingBottom','paddingLeft'];
+    return {actual:properties.map(key=>actual[key]),original:properties.map(key=>original[key]),width:button.getBoundingClientRect().width,naturalWidth:reference.getBoundingClientRect().width};
+   }finally{reference.remove()}
+  });
+  assert.deepEqual(presentation.actual,presentation.original,'Profile appearance must match the pre-i18n link');
+  assert.ok(presentation.width<=presentation.naturalWidth+1,'The profile must not stretch across its header');
+ }
+ const visitHeader=page.locator('dialog[open] header').filter({has:page.locator('#record-dialog-title')});
+ if(await visitHeader.count()){
+  const first=visitHeader.locator('button').first();
+  assert.match(await first.textContent(),/Επιστροφή στο πρόγραμμα|Return to schedule/,'Keep the existing first-button treatment on Return to schedule');
+  const size=await first.evaluate(button=>({button:parseFloat(getComputedStyle(button).fontSize),root:parseFloat(getComputedStyle(document.documentElement).fontSize)}));
+  assert.ok(Math.abs(size.button-size.root*.85)<.1,'Return to schedule must keep its original font size');
+ }
+}
+
 export async function switchLanguage(page,locale){
  const old=await page.locator('html').getAttribute('lang');
  const compact=page.locator('dialog[open] button.profile-compact');
@@ -37,6 +76,7 @@ export async function unsavedLocaleSwitch({page,field,text,action,client,patient
   const before=await snapshot();
   const mseAxis=page.locator('.mse-axis').first();
   if(await mseAxis.count())await mseAxis.evaluate(node=>{node.dataset.localeAxis='unchanged'});
+  await assertWorkspacePresentation(page);
   await page.screenshot({path:resolve(out,`${size}-${mode}-el.png`)});
   await switchLanguage(page,'en');
   assert.equal(page.url(),url);assert.equal(new URL(page.url()).searchParams.get('session'),sessionId);
@@ -48,6 +88,7 @@ export async function unsavedLocaleSwitch({page,field,text,action,client,patient
   assert.deepEqual(labels.filter(label=>/[α-ωΑ-Ω]/u.test(label.replaceAll('Ελληνικά','').replaceAll('Ψ',''))),[],'English controls must not contain untranslated Greek');
   assert.doesNotMatch(await page.locator('body').innerText(),/\b(?:clinical|visits|settings|errors|common)\.[a-zA-Z]+\b/);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  await assertWorkspacePresentation(page);
   await page.screenshot({path:resolve(out,`${size}-${mode}-en.png`)});
   await switchLanguage(page,'el');assert.equal(await editor.inputValue(),text);assert.deepEqual(await snapshot(),before);
  }finally{release();await saved;await page.unroute('**/api/patients/demo/runtime',handler)}

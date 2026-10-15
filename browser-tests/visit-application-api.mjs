@@ -1,4 +1,4 @@
-import {unsavedLocaleSwitch,localePersistenceAndRecipient} from './i18n-application.mjs';
+import {unsavedLocaleSwitch,localePersistenceAndRecipient,assertLoginPresentation,assertWorkspacePresentation} from './i18n-application.mjs';
 // C: browser -> actual Next.js handlers -> local Supabase Auth/PostgREST/RPCs.
 // Only run on a disposable GitHub runner. Never accepts a remote database URL.
 import assert from 'node:assert/strict';
@@ -31,9 +31,9 @@ try{
   const context=await browser.newContext({viewport,locale:'en-US'}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.route('**/*',r=>[origin,new URL(api).origin].includes(new URL(r.request().url()).origin)?r.continue():r.abort());
   await page.goto(origin+'/login');assert.equal(await page.locator('html').getAttribute('lang'),'el');
-  await page.screenshot({path:resolve(out,size+'-login-el.png')});
+  await assertLoginPresentation(page);await page.screenshot({path:resolve(out,size+'-login-el.png')});
   await page.getByLabel('Γλώσσα',{exact:true}).selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');await page.reload();assert.equal(await page.locator('html').getAttribute('lang'),'en');
-  await page.screenshot({path:resolve(out,size+'-login-en.png')});
+  await assertLoginPresentation(page);await page.screenshot({path:resolve(out,size+'-login-en.png')});
   await page.getByLabel('Language',{exact:true}).selectOption('el');await page.waitForFunction(()=>document.documentElement.lang==='el');
   const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200,`Application login: ${(await login.json()).error??'ok'}`);
   const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.postDataJSON()?.action})});
@@ -71,6 +71,7 @@ try{
   assert.equal(calls.filter(c=>c.action==='finalize_session').length,1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:resolve(out,size+'-completed.png')});
   at=performance.now();offset=calls.length;await page.getByRole('button',{name:'Επιστροφή στο πρόγραμμα',exact:true}).click();await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).waitFor();timings.push({size,action:'return',ms:performance.now()-at,requests:calls.slice(offset)});assert.equal(new URL(page.url()).pathname,'/calendar');
+  await assertWorkspacePresentation(page);await page.screenshot({path:resolve(out,size+'-profile-alignment.png')});
   for(const [index,mode] of ['compact','detailed'].entries()){
    const date=new Date(+started+(index+1)*7*86400000);
    const appointment=await post('/api/calendar/command/apply',{action:'create',patient_id:patientId,start_iso:date.toISOString(),end_iso:new Date(+date+3000000).toISOString(),appointment_type:'follow_up'});

@@ -22,6 +22,8 @@ Missing messages produce a readable translated fallback rather than a raw key. D
 
 ## Language selectors
 
+The original application stylesheets are unchanged from the pre-i18n base. Only `app/language-controls.css` adds the language controls. The profile retains its original intrinsic dimensions; its button reset does not stretch the header. Login shares its existing logo row with the compact selector, using the existing input palette and borders. The visit's return button remains first so its original styling still applies, followed by the required settings button. AI language details are tooltips on existing elements rather than additional visible rows. The selected language continues to be explicit in new AI requests.
+
 - **Profile → Settings → Language** shows `Ελληνικά` and `English`. The native select supports keyboard interaction and has a label, disabled saving state and live success/error feedback.
 - The visit dialog contains a compact Profile/Settings control, so language remains accessible while its native modal makes the underlying page inert.
 - Login has the same compact selector. Account preference takes precedence after sign-in; a cookie is the fallback for an account without an explicit preference.

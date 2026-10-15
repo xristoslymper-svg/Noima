@@ -6,6 +6,7 @@ import "./mobile.css";
 import "./initial-assessment.css";
 import "./clinical-editor.css";
 import "./noima-ui.css";
+import "./language-controls.css";
 import {getLocale, getMessages} from 'next-intl/server';
 import LocaleProvider, {PilotNotice} from '@/i18n/LocaleProvider';
 import AccountSessionBoundary from '@/components/AccountSessionBoundary';

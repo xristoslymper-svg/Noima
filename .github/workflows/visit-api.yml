@@ -1,0 +1,54 @@
+name: Isolated visit application APIs
+on:
+  push:
+    branches: ['fix/visit-workflow-*']
+  pull_request:
+    paths:
+      - 'components/patients/**'
+      - 'components/calendar/**'
+      - 'app/api/**'
+      - 'app/calendar/**'
+      - 'app/patients/**'
+      - 'lib/**'
+      - 'supabase/**'
+      - 'browser-tests/**'
+      - 'tests/**'
+      - 'package*.json'
+      - '.github/workflows/visit-api.yml'
+permissions:
+  contents: read
+concurrency:
+  group: visit-api-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-real-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLINICAL_DATA_MODE: synthetic
+      EXTERNAL_AI_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright@1.57.0
+      - run: npx playwright install --with-deps chromium
+      - name: Start disposable Supabase with repository migrations
+        run: |
+          npx supabase start --help
+          docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' workflow-ci
+          npx supabase start --network-id workflow-ci -x studio,imgproxy,realtime,storage-api,edge-runtime,logflare,vector,supavisor
+      - name: Build and exercise real application APIs with synthetic users
+        run: node browser-tests/visit-application-api.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: visit-application-api-evidence
+          path: test-results/visit-application-api
+          retention-days: 7

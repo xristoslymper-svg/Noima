@@ -11,7 +11,7 @@ export async function createWorkflowDatabase(){
  function transaction(fn){const task=queue.then(async()=>{await db.exec('begin; set local role authenticated');await sql("select set_config('request.jwt.claim.sub',$1,true)",[owner]);try{const value=await fn();await db.exec('commit');return value}catch(e){await db.exec('rollback');throw e}});queue=task.catch(()=>{});return task;}
  const [{identity}]=await transaction(()=>sql('select pilot_identity() identity')),tester=identity.workspace_id;
  await transaction(()=>sql('select demo_tester_bootstrap($1)',[tester]));
- let patient,session,event,index=0;const requests=[],faults={save:0,refresh:0,refreshAfterFinalize:false};
+ let patient,session,event,index=0;const requests=[],faults={save:0,refresh:0,refreshAfterFinalize:false,payment:0,booking:0,refreshAfterBooking:false};
  async function bundle(){
   const tables=['demo_patients','demo_sessions','demo_session_sections','demo_risk_assessments','demo_patient_history','demo_calendar_events'];
   const values=[];for(const table of tables)values.push(await sql('select * from '+table+' where '+(table==='demo_patients'?'id':'patient_id')+'=$1 and tester_id=$2',[patient.id,tester]));
@@ -19,7 +19,7 @@ export async function createWorkflowDatabase(){
   return {patient:patients[0],sessions,sections,risks,history:histories[0]||null,appointments,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],corrections:[],assessments:[],contextRevisions:[]};
  }
  async function seed(type='initial_assessment'){
-  Object.assign(faults,{save:0,refresh:0,refreshAfterFinalize:false});requests.length=0;index++;
+  Object.assign(faults,{save:0,refresh:0,refreshAfterFinalize:false,payment:0,booking:0,refreshAfterBooking:false});requests.length=0;index++;
   await transaction(async()=>{
    [patient]=await sql('select * from demo_patient_create_v2($1,$2)',[tester,'QA Workflow '+index]);
    const day=new Date();day.setUTCDate(day.getUTCDate()+index+1);day.setUTCHours(10,0,0,0);
@@ -33,6 +33,8 @@ export async function createWorkflowDatabase(){
  }
  async function dispatch(path,query,body){
   requests.push({path,...body});
+  if(path==='/api/calendar/payment'&&faults.payment>0){faults.payment--;throw Error('Synthetic payment failure')}
+  if(path==='/api/calendar/command/apply'&&faults.booking>0){faults.booking--;throw Error('Synthetic booking failure')}
   if(body?.action==='save_closure'&&faults.save>0){faults.save--;throw new Error('Synthetic transient save failure')}
   if(['/api/patients/demo/visit','/api/patients/demo/runtime'].includes(path)&&!body&&faults.refresh>0){faults.refresh--;throw new Error('Synthetic refresh failure after commit')}
   return transaction(async()=>{

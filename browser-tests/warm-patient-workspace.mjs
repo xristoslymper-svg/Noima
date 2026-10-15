@@ -7,7 +7,7 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 const out=resolve('test-results/warm-patient-workspace');mkdirSync(out,{recursive:true});
 const bundle=JSON.parse(readFileSync('browser-tests/fixtures/warm-patient.json','utf8'));
-await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bundle:true,outfile:resolve(out,'fixture.js'),jsx:'automatic',define:{'process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_MOBILE_V2':'"false"'},alias:{'@':process.cwd()},loader:{'.module.css':'local-css'},plugins:[{name:'synthetic-navigation',setup(b){
+await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bundle:true,outfile:resolve(out,'fixture.js'),jsx:'automatic',define:{'process.env':'{}','process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_NOIMA_MOBILE_V2':'"0"'},alias:{'@':process.cwd()},loader:{'.module.css':'local-css'},plugins:[{name:'synthetic-navigation',setup(b){
  b.onResolve({filter:/^next\/(link|navigation)$/},args=>({path:args.path,namespace:'synthetic-navigation'}));
  b.onLoad({filter:/.*/,namespace:'synthetic-navigation'},args=>({loader:'jsx',resolveDir:process.cwd(),contents:args.path==='next/link'?"import React from 'react';export default function Link({children,...props}){return <a {...props}>{children}</a>}":"export const usePathname=()=>location.pathname;export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push:u=>location.assign(u),replace:u=>location.replace(u),refresh:()=>location.reload()});"}));
 }}]});
@@ -16,7 +16,6 @@ const server=createServer(async(req,res)=>{
  const url=new URL(req.url,'http://localhost');
  if(url.pathname.startsWith('/api/')){
   res.setHeader('content-type','application/json');res.setHeader('cache-control','no-store');
-  // These are different endpoint contracts, not interchangeable patient bundles.
   if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
   if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
   if(req.method!=='GET'){
@@ -31,9 +30,11 @@ const server=createServer(async(req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});const results=[];
 try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
- const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
  for(const tab of ['summary','timeline','treatment','history','record']){
-  await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.getByRole('heading',{name:'Ira Pira',exact:true}).waitFor();await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor();if(tab==='record')await page.locator('.visit-workspace').waitFor();
+  await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);
+  // The native record dialog correctly makes the background inaccessible to role queries.
+  await page.locator('.patient-hero h1').waitFor();assert.equal(await page.locator('.patient-hero h1').innerText(),'Ira Pira');await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor();if(tab==='record')await page.locator('dialog[open] .visit-workspace').waitFor();
   assert.deepEqual(errors,[],'workspace must remain mounted without browser exceptions');
   const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');if(!w||!nav||!nav.nextElementSibling)throw new Error('Expected patient workspace is missing');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);

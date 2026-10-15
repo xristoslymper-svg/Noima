@@ -41,6 +41,14 @@ try{
   });
   await check('compact-followup-finalizes-once','follow_up',async({open,finalize,info})=>{await open();await finalize();assert.equal(db.requests.filter(r=>r.action==='finalize_closure').length,1);assert.equal((await db.state()).sessions.find(s=>s.id===info.sessionId).closure_draft,null)});
   await check('detailed-followup-finalizes-once','follow_up',async({page,open,finalize})=>{await open();await page.getByRole('button',{name:'Αναλυτική καταγραφή',exact:false}).click();await page.getByRole('button',{name:'Σύντομη καταγραφή',exact:true}).waitFor();await finalize();assert.equal(db.requests.filter(r=>r.action==='finalize_closure').length,1)});
+  for(const mode of ['compact','detailed'])await check(mode+'-blocker-focus','follow_up',async({page,open,info})=>{
+   await open();if(mode==='detailed')await page.getByRole('button',{name:'Αναλυτική καταγραφή',exact:false}).click();
+   const field=page.locator('[id="'+info.sessionId+'-closure-clinical_state_summary"]');await field.fill('');
+   await page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true}).click();
+   await page.getByRole('alert').filter({hasText:'Χρειάζεται καταγραφή: Κλινική εικόνα.'}).waitFor();
+   await page.waitForFunction(id=>document.activeElement?.id===id,info.sessionId+'-closure-clinical_state_summary');
+   assert.equal((await db.state()).sessions.find(s=>s.id===info.sessionId).status,'draft');assert.equal(db.requests.filter(r=>r.action==='finalize_closure').length,0);
+  });
   await check('recovery-requires-consent-and-preserves-local','follow_up',async({page,open,info})=>{
    await open();db.faults.save=100;const field=page.getByRole('textbox',{name:'Κλινική εικόνα',exact:true});await field.fill('QA UNSAVED LOCAL TEXT');const load=page.getByRole('button',{name:'Φόρτωση αποθηκευμένου προχείρου…',exact:true});await load.waitFor();await load.click();assert.equal(await field.inputValue(),'QA UNSAVED LOCAL TEXT');await page.getByRole('button',{name:'Ακύρωση φόρτωσης',exact:true}).click();assert.equal(await field.inputValue(),'QA UNSAVED LOCAL TEXT');await load.click();await page.getByRole('button',{name:'Διατήρηση αντιγράφου και φόρτωση',exact:true}).click();
    await page.waitForFunction(id=>document.getElementById(id)?.value==='QA saved state',info.sessionId+'-closure-clinical_state_summary');
@@ -89,6 +97,8 @@ try{
   await check('current-appointment-excluded-and-calendar-return','follow_up',async({page,open,info})=>{
    await open();await page.getByText('Δεν έχει προγραμματιστεί επόμενο ραντεβού.',{exact:true}).waitFor();
    const position={workspace:db.tester,date:info.date,view:'week',filter:'scheduled',top:300,left:0,pageTop:0};await page.evaluate(position=>history.replaceState({...history.state,noimaVisitCalendar:position},''),position);await page.getByRole('button',{name:'Επιστροφή στο πρόγραμμα',exact:true}).click();await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).waitFor();assert.equal(await page.getByLabel('Μετάβαση σε ημερομηνία',{exact:true}).inputValue(),info.date);assert.equal(await page.getByLabel('Κατάσταση ραντεβού',{exact:true}).inputValue(),'scheduled');assert.equal(await page.evaluate(()=>history.state.noimaCalendar.date),info.date);assert.equal(await page.evaluate(()=>sessionStorage.getItem('noima-calendar-resume')),null);
+   await page.waitForFunction(()=>Math.abs((document.querySelector('.calendar-week-card')?.scrollTop??-1)-300)<2);
+   assert.equal(await page.evaluate(()=>history.state.noimaCalendar.view),'week');
   });
  }
 }finally{await browser.close();await new Promise(r=>server.close(r));await db.close()}

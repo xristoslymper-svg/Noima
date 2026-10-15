@@ -34,7 +34,7 @@ try{
   async function post(path,data){const r=await context.request.post(origin+path,{headers:{origin},data});const body=await r.json();assert.equal(r.ok(),true,`${path}: ${body.error}`);return body}
   const started=new Date();started.setUTCDate(started.getUTCDate()+2+(size==='mobile'?1:0));started.setUTCHours(10,0,0,0);
   // A new-patient appointment and session are created through the real routes.
-  const created=await post('/api/calendar/command/apply',{action:'create',create_new_patient:true,request_id:randomUUID(),patient_name:'QA Synthetic '+size,start_iso:started.toISOString(),end_iso:new Date(+started+3000000).toISOString(),appointment_type:'initial_assessment'});
+  const created=await post('/api/calendar/command/apply',{action:'create',create_new_patient:true,request_id:randomUUID(),patient_name:'QA Synthetic '+size,start_iso:started.toISOString(),end_iso:new Date(+started+3000000).toISOString(),appointment_type:'initial_assessment',sms_reminder_enabled:false});
   const patientId=created.event.patient_id,appointmentId=created.event.id;
   const opened=await post('/api/calendar/appointment',{event_id:appointmentId});const sessionId=opened.session.id;
   for(const section of ['interview','mse','assessment','plan','review'])await post('/api/patients/demo/runtime',{action:'save_section',session_id:sessionId,section_key:section,content:'QA '+section,source:'manual',expected_version:null});
@@ -88,6 +88,10 @@ try{
   assert.equal((await owner.client.from('demo_calendar_events').select('payment_status').eq('id',appointmentId).single()).data.payment_status,'paid');
   await unauthorized.close();await context.close();results.push({size,status:'passed',scenario:'new appointment -> real save/finalize/payment/booking -> reload -> calendar; cross-workspace read/write rejected'});
  }
+}catch(error){
+ // These contexts can only reach the disposable synthetic application.
+ for(const [index,context] of (browser?.contexts()??[]).entries())for(const [tab,page] of context.pages().entries())await page.screenshot({path:resolve(out,`failure-${index}-${tab}.png`)}).catch(()=>{});
+ throw error;
 }finally{
  writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'C: real Next.js application, Supabase Auth/PostgREST and repository migrations in disposable GitHub CI; synthetic users and records only',results,timings},null,2));
  await browser?.close();server.kill('SIGTERM');

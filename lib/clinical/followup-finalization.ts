@@ -10,7 +10,7 @@ export function focusFollowupBlocker(cause:unknown,sessionId:string){
  if(!(cause instanceof FollowupFinalizationError))return;
  requestAnimationFrame(()=>{
   const field=cause.field?document.getElementById(sessionId+'-closure-'+cause.field):null;
-  const section=document.querySelector<HTMLElement>(`[data-visit-part="${cause.anchor}"], [data-mobile-section="${cause.anchor}"], .visit-source-conflicts`);
+  const section=document.querySelector<HTMLElement>(cause.anchor==='consistency'?'.visit-source-conflicts':`[data-visit-part="${cause.anchor}"], [data-mobile-section="${cause.anchor}"]`);
   const target=field||section?.querySelector<HTMLElement>('textarea, input, button, select')||section;
   if(target){for(let parent=target.parentElement;parent;parent=parent.parentElement)if(parent instanceof HTMLDetailsElement)parent.open=true;target.scrollIntoView({block:'center'});target.focus({preventScroll:true})}
  });

@@ -7,6 +7,7 @@ import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
 import ClinicalTextField from '@/components/dictation/ClinicalTextField';
 import ClinicalDraftRecovery from './ClinicalDraftRecovery';
+import {FollowupFinalizationError} from '@/lib/clinical/followup-finalization';
 
 type Tracking={registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void};
 type Draft=ReturnType<typeof useClinicalDraft<ContinuityDraft>>;
@@ -29,7 +30,7 @@ export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onD
  function checkConsistency(fresh:PatientBundle){
   const found=followupFieldConflicts(draft.currentValue(),session.id,fresh.sections);
   setConflicts(found);
-  if(found.length)throw new Error('Υπάρχουν διαφορετικές παλαιότερες αναλυτικές σημειώσεις. Επιλέξτε ποια καταγραφή θα διατηρηθεί πριν ολοκληρώσετε.');
+  if(found.length)throw new FollowupFinalizationError('Υπάρχουν διαφορετικές παλαιότερες αναλυτικές σημειώσεις. Επιλέξτε ποια καταγραφή θα διατηρηθεί πριν ολοκληρώσετε.','consistency');
  }
  async function resolve(conflict:Conflict,source:'shared'|'detailed'){
   setBusy(true);setError('');

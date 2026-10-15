@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -6,7 +7,7 @@ import ts from 'typescript';
 import {readFileSync} from 'node:fs';
 const compiled=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const runtime=compiled('lib/patients/demo-runtime.ts'),summary=compiled('app/api/clinical/summary/route.ts');
-function load(source,mocks,globals={}){const m={exports:{}};vm.runInNewContext(source,{module:m,exports:m.exports,require:id=>{if(!(id in mocks))throw Error(id);return mocks[id]},process:{env:{}},URL,Response,Request,Date,Intl,JSON,...globals});return m.exports}
+function load(source,mocks,globals={}){const m={exports:{}};vm.runInNewContext(source,{module:m,exports:m.exports,require:(id)=>(intlTestModule(id)??(id=>{if(!(id in mocks))throw Error(id);return mocks[id]})(id)),process:{env:{}},URL,Response,Request,Date,Intl,JSON,...globals});return m.exports}
 const plain=value=>JSON.parse(JSON.stringify(value));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const diagnosis=code=>({kind:'assessment',fields:[{key:'diagnosis',codes:code?[{code}]:[]}]});

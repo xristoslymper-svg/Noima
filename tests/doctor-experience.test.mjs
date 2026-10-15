@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -27,7 +28,7 @@ function mount({bundle=fixture(),response={ok:true,json:async()=>({})},reload=as
  const cells=[],effects=[],cleanups=new Map(),flushers=new Map(),requests=[],dirty=[];let cursor=0;
  const hooks={useId:()=> 'appointment-form',useMemo:f=>f(),useRef(initial){const i=cursor++;return cells[i]??=( {current:initial})},useState(initial){const i=cursor++;if(!(i in cells))cells[i]=initial;return[cells[i],value=>{cells[i]=typeof value==='function'?value(cells[i]):value}]},useEffect(fn){const i=cursor++;effects.push(()=>{cleanups.get(i)?.();cleanups.set(i,fn())})}};
  const module={exports:{}};
- vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/calendar/confirmed-booking'?booking:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name)});
+ vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:(id)=>(intlTestModule(id)??(name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/calendar/confirmed-booking'?booking:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name))(id))});
  const props={bundle,reload,registerFlusher:(key,fn)=>{flushers.set(key,fn);return()=>flushers.delete(key)},onDirtyChange:(_,value)=>dirty.push(value)};
  return {requests,dirty,flush:()=>flushers.get('appointment')(),render(){cursor=0;const tree=module.exports.default(props);effects.splice(0).forEach(fn=>fn());return tree}};
 }
@@ -63,7 +64,7 @@ test('successful save collapses only after refresh; failed refresh cannot resubm
 
 const summaryModule={exports:{}};
 const summaryMocks={'@/components/mobile/mobile-v2':{mobileV2Enabled:false},'@/components/mobile/MobileClinical.module.css':{},'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':()=>React.createElement('section',{},'ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'),'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
-new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))(name=>name in summaryMocks?summaryMocks[name]:require(name),summaryModule,summaryModule.exports);
+new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))((id)=>(intlTestModule(id)??(name=>name in summaryMocks?summaryMocks[name]:require(name))(id)),summaryModule,summaryModule.exports);
 function renderSummary(bundle){return renderToStaticMarkup(React.createElement(summaryModule.exports.default,{bundle,reload:async()=>{},onVisit:()=>{},onMeasurements:()=>{},onTreatment:()=>{},onHistory:()=>{}}))}
 test('real summary presentation places existing active issues first and current information before self-report',()=>{
  const bundle=fixture();bundle.medicationSideEffects=[{id:'effect',medication_id:'med',effect_text:'Υποθετική παρενέργεια',noted_on:'2026-01-01'}];

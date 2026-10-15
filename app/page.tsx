@@ -1,4 +1,10 @@
 "use client";
+import {useSystemMessage} from '@/i18n/system-message';
+
+import {useLocale} from 'next-intl';
+
+import {useTranslations} from 'next-intl';
+
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
 import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
@@ -48,19 +54,33 @@ type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;p
 type OverviewPayload={events?:OverviewEvent[];tasks?:TodoTask[];psychometrics?:OverviewPsychometric[];intakes?:OverviewIntake[]};
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
-const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
-const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
-const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
-const reviewWhen=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 
-const nav = [
-  [Home, "Επισκόπηση", "/"],
-  [CalendarDays, "Ημερολόγιο", "/calendar"],
-  [Users, "Ασθενείς", "/patients"],
-  [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
-] as const;
+
+
+
+
+
 
 export default function Page() {
+ const systemMessage=useSystemMessage();
+
+const t=useTranslations();
+const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email",t('common.paper'),t('common.link')].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?t('common.paper'):provenance.includes("patient_link")?t('common.link'):"Noima";
+
+ const locale=useLocale();
+
+const overviewTime=(iso:string)=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const overviewDayLabel=()=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase(locale);
+const reviewWhen=(iso:string)=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const nav = [
+  [Home, t('navigation.overview'), "/"],
+  [CalendarDays, t('navigation.calendar'), "/calendar"],
+  [Users, t('navigation.patients'), "/patients"],
+  [BookOpen, t('navigation.library'), "/psychometrics"],
+] as const;
+
+ 
+
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mobileNav,setMobileNav]=useMobileNavigation();
   const [selectedPatientId,setSelectedPatientId]=useState<string|null>(null);
@@ -97,7 +117,7 @@ export default function Page() {
         setSchedule(events);setTasks(data.tasks||[]);setPsychometricsForReview(data.psychometrics||[]);setIntakesForReview(data.intakes||[]);
         setSelectedPatientId(current=>current&&ids.includes(current)?current:restoreOverviewSelection(entryState,tester,todayKey,ids)||ids[0]||null);
         hasSnapshot.current=true;setOverviewState('ready');setOverviewRefreshError(false);setNowMs(Date.now());setBundleRetry(n=>n+1);
-        if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
+        if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json','x-noima-output-locale':locale},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
       },
       error:()=>{if(hasSnapshot.current)setOverviewRefreshError(true);else setOverviewState('error');}
     });
@@ -151,7 +171,7 @@ export default function Page() {
       const data=await response.json();
       if(!response.ok||!data.event)throw new Error(data.error||"payment");
       setSchedule(current=>current.map(item=>item.id===event.id?{...item,...data.event}:item));
-    }catch(error){setWidgetError(error instanceof Error?error.message:"Η πληρωμή δεν ενημερώθηκε.")}
+    }catch(error){setWidgetError(error instanceof Error?error.message:t('errors.paymentUpdate'))}
     finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
@@ -161,7 +181,7 @@ export default function Page() {
       const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"create",title})});
       const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
       setTasks(current=>[data.task as TodoTask,...current]);setTaskTitle("");
-    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν αποθηκεύτηκε.")}
+    }catch(error){setWidgetError(error instanceof Error?error.message:t('errors.taskSave'))}
     finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
@@ -171,26 +191,26 @@ export default function Page() {
       const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"set_status",id:task.id,status:"completed"})});
       const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
       setTasks(current=>current.map(item=>item.id===task.id?data.task as TodoTask:item));
-    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν ενημερώθηκε.")}
+    }catch(error){setWidgetError(error instanceof Error?error.message:t('errors.taskUpdate'))}
     finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
   return (
     <main className={`app-shell overview-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="overview"/>
-      <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button>
+      <aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label={t('accessibility.mainNavigation')} className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label={t('accessibility.closeMenu')}><X size={20}/></button>
         <div className="brand">
-          <Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link>
-          <div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div>
+          <Link href="/" className="brand-mark" aria-label={t('accessibility.goToOverview')} title={t('navigation.overview')}>Ψ</Link>
+          <div className="brand-copy"><div className="brand-sub">{t('navigation.tagline')}</div></div>
         </div>
 
         <nav className="nav">
-          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={label}><Icon size={19}/><span>{label}</span></Link>)}
+          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={href}><Icon size={19}/><span>{label}</span></Link>)}
         </nav>
         
       </aside>
-      {mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}
+      {mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label={t('accessibility.closeMenu')} onClick={()=>setMobileNav(false)}/>}
       <section className="workspace">
-        <header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button>
+        <header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label={t('accessibility.openMenu')}><Menu size={21}/></button>
           
           <OverviewShortcuts/><PilotProfile/>
         </header>
@@ -199,46 +219,46 @@ export default function Page() {
           <div className="page-heading">
             <div>
               <p className="eyebrow">{overviewDayLabel()}</p>
-              <h1>Η ημέρα σας, με μια ματιά</h1>
-              <p>Ραντεβού, ασθενείς και εκκρεμότητες σε ένα μέρος.</p>
+              <h1>{t('dashboard.heading')}</h1>
+              <p>{t('dashboard.description')}</p>
             </div>
           </div>
 
-          {overviewRefreshError&&<div className="record-state error" role="alert">Τα δεδομένα δεν ανανεώθηκαν. Εμφανίζεται η τελευταία διαθέσιμη εικόνα. <button onClick={()=>void revalidator.current?.refresh()}>Δοκιμή ξανά</button></div>}
-          {overviewState==='error'&&<div className="record-state error" role="alert">Δεν φορτώθηκαν τα σημερινά δεδομένα. Δεν εμφανίζονται μηδενικές τιμές ως πραγματικό πρόγραμμα. <button onClick={()=>setOverviewRetry(n=>n+1)}>Δοκιμή ξανά</button></div>}
+          {overviewRefreshError&&<div className="record-state error" role="alert">{t('dashboard.refreshFailed')} <button onClick={()=>void revalidator.current?.refresh()}>{t('common.retry')}</button></div>}
+          {overviewState==='error'&&<div className="record-state error" role="alert">{t('dashboard.loadFailed')} <button onClick={()=>setOverviewRetry(n=>n+1)}>{t('common.retry')}</button></div>}
           <section className="metric-grid">
-            <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} tone="sage" />
+            <Metric icon={<CalendarDays />} label={t('dashboard.upcomingToday')} value={overviewState==='ready'?String(upcomingToday.length):'—'} tone="sage" />
             <TodoMetric
               value={overviewState==='ready'?String(openTasks.length):'—'}
               onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
             />
-            <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
-            <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
+            <Metric icon={<TestTube2 />} label={t('dashboard.patientSubmissions')} value={overviewState==='ready'?String(reviewSubmissions.length):'—'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
+            <Metric icon={<CreditCard />} label={t('billing.payments')} value={overviewState==='ready'?String(pendingPayments.length):'—'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
           </section>
 
           <section className={todaySchedule.length&&selectedPatientId?"main-grid":"main-grid single"}>
             <div className="card sessions">
-              <span className="kicker sessions-title">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span>
-              {overviewState==='loading'?<div className="agenda-empty-state">Φόρτωση προγράμματος…</div>:overviewState==='error'?<div className="agenda-empty-state">Το πρόγραμμα δεν είναι προσωρινά διαθέσιμο.</div>:todaySchedule.length?todaySchedule.map(event => {
+              <span className="kicker sessions-title">{t('dashboard.daySchedule')}</span>
+              {overviewState==='loading'?<div className="agenda-empty-state">{t('calendar.loadingSchedule')}</div>:overviewState==='error'?<div className="agenda-empty-state">{t('calendar.scheduleUnavailable')}</div>:todaySchedule.length?todaySchedule.map(event => {
                 const selectable=Boolean(event.patient_id);
                 return <div className={selectedPatientId === event.patient_id ? "session-row selected-patient" : "session-row"} key={event.id}>
                   <div className="time">{overviewTime(event.scheduled_start)}</div>
                   <div className="patient-avatar">{event.patient_name[0]}</div>
                   <div className="session-info">
-                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>event.patient_id&&selectPatient(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?"Νέος":"Επανεξέταση"}</span></div>
+                    <div className="patient-name-line"><button className={selectedPatientId === event.patient_id ? "patient-name selected" : "patient-name"} disabled={!selectable} onClick={()=>event.patient_id&&selectPatient(event.patient_id)}>{event.patient_name}</button><span className={event.appointment_type==="initial_assessment"?"visit-type-badge new":"visit-type-badge"}>{event.appointment_type==="initial_assessment"?t('patients.new'):t('visits.followup')}</span></div>
                     <span>{event.detail||event.readiness_label}</span>
                   </div>
 
-                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου"><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label="Άνοιγμα ασθενών" title="Άνοιγμα ασθενών"><FolderOpen size={22}/></Link>}
+                  {event.patient_id?<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={t('patients.openRecord')+event.patient_name} title={t('patients.openRecord')}><FolderOpen size={22}/></Link>:<Link href="/patients" className="folder-icon-button" aria-label={t('patients.openPatients')} title={t('patients.openPatients')}><FolderOpen size={22}/></Link>}
                 </div>
-              }):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
+              }):<div className="agenda-empty-state">{t('calendar.noAppointmentsToday')}</div>}
             </div>
 
             {todaySchedule.length>0&&selectedBundle&&<div className="card ai-brief" key={selectedPatientId||"none"}>
               <div className="card-head"><span className="status-dot">{selectedBundle.patient.first_name+' '+selectedBundle.patient.last_name}</span></div>
               <ClinicalSummary compact overview bundle={selectedBundle} onSessions={id=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=record'+(id?'&session='+id:'')}} onMedications={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=medications'}} onPsychometrics={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=psychometrics'}} onHistory={()=>{window.location.href='/patients/demo/'+selectedBundle.patient.id+'?tab=history'}}/>
             </div>}
-            {todaySchedule.length>0&&selectedPatientId&&!selectedBundle&&<div className="card ai-brief" role="status">{bundleFailure===selectedPatientId?<><p>Η κλινική εικόνα δεν φορτώθηκε.</p><button onClick={()=>setBundleRetry(n=>n+1)}>Δοκιμή ξανά</button></>:<p>Φόρτωση κλινικής εικόνας…</p>}</div>}
+            {todaySchedule.length>0&&selectedPatientId&&!selectedBundle&&<div className="card ai-brief" role="status">{bundleFailure===selectedPatientId?<><p>{t('errors.clinicalOverviewLoad')}</p><button onClick={()=>setBundleRetry(n=>n+1)}>{t('common.retry')}</button></>:<p>{t('clinical.overviewLoading')}</p>}</div>}
           </section>
 
         </div>
@@ -247,67 +267,67 @@ export default function Page() {
       {calendarOpen && <div className="calendar-overlay" onClick={()=>setCalendarOpen(false)}>
         <section className="calendar-panel" onClick={e=>e.stopPropagation()}>
           <div className="calendar-panel-head">
-            <div><span className="kicker">ΠΡΟΓΡΑΜΜΑ ΗΜΕΡΑΣ</span><h2>{overviewDayLabel()}</h2><p>Τα ίδια αποθηκευμένα ραντεβού που εμφανίζονται στο ημερολόγιο.</p></div>
-            <button className="calendar-close" onClick={()=>setCalendarOpen(false)} aria-label="Κλείσιμο"><X size={20}/></button>
+            <div><span className="kicker">{t('dashboard.daySchedule')}</span><h2>{overviewDayLabel()}</h2><p>{t('dashboard.sharedScheduleHelp')}</p></div>
+            <button className="calendar-close" onClick={()=>setCalendarOpen(false)} aria-label={t('common.close')}><X size={20}/></button>
           </div>
 
-          <div className="calendar-runtime-link"><CalendarDays size={15}/><span>Η προβολή χρησιμοποιεί το ίδιο ημερολόγιο με την πλήρη προβολή.</span><Link href="/calendar" onClick={()=>setCalendarOpen(false)}>Πλήρες ημερολόγιο</Link></div>
+          <div className="calendar-runtime-link"><CalendarDays size={15}/><span>{t('dashboard.calendarHelp')}</span><Link href="/calendar" onClick={()=>setCalendarOpen(false)}>{t('calendar.fullCalendar')}</Link></div>
 
           <div className="calendar-body">
             <div className="calendar-agenda">
-              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} ραντεβού</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><Link href="/calendar?new=1" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
+              <div className="agenda-title"><div><h3>{t('calendar.today')}</h3><span>{t('calendar.appointmentCount',{count:todaySchedule.length})}</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/>  {t('calendar.voiceCommand')}</Link><Link href="/calendar?new=1" className="add-appointment" onClick={()=>setCalendarOpen(false)}>{t('calendar.addAppointment')}</Link></div></div>
               {todaySchedule.length?todaySchedule.map(event=><div className="agenda-event" key={event.id}>
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>
                 <div className="agenda-info"><strong>{event.patient_name}</strong><span>{event.detail||event.readiness_label}</span><small><Clock size={13}/> {overviewTime(event.scheduled_start)}–{overviewTime(event.scheduled_end)}</small></div>
-                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={"Άνοιγμα φακέλου "+event.patient_name} title="Άνοιγμα φακέλου" onClick={()=>setCalendarOpen(false)}><FolderOpen size={20}/></Link>}
-              </div>):<div className="agenda-empty-state">Δεν υπάρχουν ραντεβού σήμερα.</div>}
+                {event.patient_id&&<Link href={"/patients/demo/"+event.patient_id+"?appointment="+event.id} className="folder-icon-button" aria-label={t('patients.openRecord')+event.patient_name} title={t('patients.openRecord')} onClick={()=>setCalendarOpen(false)}><FolderOpen size={20}/></Link>}
+              </div>):<div className="agenda-empty-state">{t('calendar.noAppointmentsToday')}</div>}
             </div>
 
             <aside className="calendar-integrations">
               <span className="kicker">PILOT</span>
-              <h3>Χρησιμοποιήστε το ημερολόγιο του Ψ</h3>
-              <p>Οι εξωτερικές συνδέσεις ημερολογίου δεν είναι μέρος αυτής της δοκιμής, ώστε κάθε ενέργεια που βλέπετε εδώ να είναι πραγματικά λειτουργική.</p>
-              <div className="integration-note"><Check size={15}/><span>Δημιουργία, μετακίνηση, ακύρωση και φωνητικές εντολές λειτουργούν στο κοινό demo calendar.</span></div>
+              <h3>{t('dashboard.calendarTrialTitle')}</h3>
+              <p>{t('dashboard.calendarTrialHelp')}</p>
+              <div className="integration-note"><Check size={15}/><span>{t('dashboard.calendarCapabilities')}</span></div>
             </aside>
           </div>
         </section>
       </div>}
 
       {widgetOpen&&<div className="dashboard-widget-overlay" onClick={()=>setWidgetOpen(null)}>
-        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Υποβολές ασθενών":"Εκκρεμότητες"} onClick={e=>e.stopPropagation()}>
+        <section className="dashboard-widget-sheet" role="dialog" aria-modal="true" aria-label={widgetOpen==="payments"?t('billing.payments'):widgetOpen==="psychometrics"?t('dashboard.patientSubmissions'):t('dashboard.pendingTasks')} onClick={e=>e.stopPropagation()}>
           <header className="dashboard-widget-head">
-            <div><span className="kicker">ΑΡΧΙΚΗ</span><h2>{widgetOpen==="payments"?"Πληρωμές":widgetOpen==="psychometrics"?"Υποβολές ασθενών":"Εκκρεμότητες"}</h2></div>
-            <button onClick={()=>setWidgetOpen(null)} aria-label="Κλείσιμο"><X size={18}/></button>
+            <div><span className="kicker">{t('navigation.home')}</span><h2>{widgetOpen==="payments"?t('billing.payments'):widgetOpen==="psychometrics"?t('dashboard.patientSubmissions'):t('dashboard.pendingTasks')}</h2></div>
+            <button onClick={()=>setWidgetOpen(null)} aria-label={t('common.close')}><X size={18}/></button>
           </header>
-          {widgetError&&<div className="save-state error" role="alert">{widgetError}</div>}
+          {widgetError&&<div className="save-state error" role="alert">{systemMessage(widgetError)}</div>}
 
           {widgetOpen==="payments"&&<div className="dashboard-widget-list">
             {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>
-              <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
-              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>Σήμανση ως πληρωμένο</span><Check size={15}/></button>
-            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμείς πληρωμές.</div>}
+              <div><strong>{event.patient_name}</strong><span>{new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short"}).format(new Date(event.scheduled_start))} · {overviewTime(event.scheduled_start)}</span></div>
+              <button disabled={widgetBusy} onClick={()=>void markPaymentPaid(event)}><span>{t('billing.markPaid')}</span><Check size={15}/></button>
+            </div>):<div className="dashboard-widget-empty">{t('billing.noPendingPayments')}</div>}
           </div>}
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
             {reviewSubmissions.length?reviewSubmissions.map(submission=><div className="dashboard-widget-row review-submission-row" key={submission.key}>
-              <div><div className="review-submission-title"><strong>{submission.patient_name||"Νέα συμπλήρωση"}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?"Χρειάζεται ταυτοποίηση":"Παραλήφθηκε"}</span></div><span>{submission.tools.map(tool=>tool==="history"?"Αρχικό ιστορικό":tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
+              <div><div className="review-submission-title"><strong>{submission.patient_name||t('dashboard.newSubmission')}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?t('patients.identificationRequired'):t('common.received')}</span></div><span>{submission.tools.map(tool=>tool==="history"?t('history.initialHistory'):tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
               {submission.status==="conflict"&&submission.intake_id
-                ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>Ταυτοποίηση <ChevronRight size={15}/></button>
+                ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>{t('patients.identify')} <ChevronRight size={15}/></button>
                 :submission.patient_id?<div className="review-row-actions">
-                  {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>Δείτε ιστορικό</Link>}
-                  {submission.assessmentIds.map(assessment=><Link key={assessment.id} href={"/patients/demo/"+submission.patient_id+"?tab=treatment&section=measurements&assessment="+encodeURIComponent(assessment.id)}>{assessment.instrument} · Αποτέλεσμα</Link>)}
+                  {submission.has_history&&<Link href={"/patients/demo/"+submission.patient_id+"?tab=history"}>{t('history.viewHistory')}</Link>}
+                  {submission.assessmentIds.map(assessment=><Link key={assessment.id} href={"/patients/demo/"+submission.patient_id+"?tab=treatment&section=measurements&assessment="+encodeURIComponent(assessment.id)}>{assessment.instrument}  {t('psychometrics.resultSuffix')}</Link>)}
                  </div>:null}
-            </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν υποβολές ασθενών.</div>}
+            </div>):<div className="dashboard-widget-empty">{t('dashboard.noSubmissions')}</div>}
           </div>}
 
           {widgetOpen==="todo"&&<>
-            <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>Προσθήκη</button></div>
+            <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder={t('dashboard.taskPlaceholder')} maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>{t('common.add')}</button></div>
             <div className="dashboard-widget-list">
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
-                <div><strong>{task.title}</strong><span>{task.source_session_id?"Πρόχειρη καταγραφή":"Εργασία"}{task.due_at?" · "+new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
-                {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=record&session="+task.source_session_id} aria-label={"Συνέχεια "+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>}
-              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμότητες.</div>}
+                <div><strong>{task.title}</strong><span>{task.source_session_id?t('visits.draftRecord'):t('dashboard.task')}{task.due_at?" · "+new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
+                {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=record&session="+task.source_session_id} aria-label={t('common.continue')+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={t('common.complete')+task.title}><Check size={16}/></button>}
+              </div>):<div className="dashboard-widget-empty">{t('dashboard.noPendingTasks')}</div>}
             </div>
           </>}
         </section>
@@ -318,8 +338,10 @@ export default function Page() {
 }
 
 function TodoMetric({value,onOpen}:{value:string;onOpen:()=>void}){
-  return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label="Άνοιγμα εκκρεμοτήτων">
-    <div className="metric-icon"><ListTodo size={22}/></div><span>Εκκρεμότητες</span><strong>{value}</strong>
+ const t=useTranslations();
+
+  return <button type="button" className="metric rose metric-action" onClick={onOpen} aria-label={t('accessibility.openPendingTasks')}>
+    <div className="metric-icon"><ListTodo size={22}/></div><span>{t('dashboard.pendingTasks')}</span><strong>{value}</strong>
   </button>;
 }
 

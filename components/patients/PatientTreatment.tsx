@@ -1,4 +1,7 @@
 'use client';
+import {useOptionLabel} from '@/i18n/option-labels';
+import {useLocale,useTranslations} from 'next-intl';
+
 import {useEffect,useRef,type MutableRefObject} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {completedVisitNotes} from '@/lib/clinical/completed-visit-notes';
@@ -9,14 +12,18 @@ import {recordDate} from './PatientRecordSummary';
 import styles from './PatientRecord.module.css';
 
 export default function PatientTreatment({bundle,reload,beforeNavigate,measurementsOpen,selectedAssessmentId}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;measurementsOpen:boolean;selectedAssessmentId:string|null}){
- const record=patientRecord(bundle),notes=completedVisitNotes(bundle,record.latestVisit);
+ const t=useTranslations();
+ const displayLabel=useOptionLabel();
+ const locale=useLocale();
+
+ const record=patientRecord(bundle,undefined,undefined,displayLabel),notes=completedVisitNotes(bundle,record.latestVisit);
  const measurementsRef=useRef<HTMLDetailsElement>(null);
  useEffect(()=>{if(measurementsOpen&&!selectedAssessmentId)measurementsRef.current?.scrollIntoView({block:'start'})},[measurementsOpen,selectedAssessmentId]);
  return <div className={styles.record}><MedicationsPanel bundle={bundle} reload={reload} beforeNavigate={beforeNavigate} currentOnly/>
-  <section className={styles.section}><span className="kicker">ΑΝΟΧΗ</span><h2>Ενεργές παρενέργειες</h2>{record.activeEffects.length?<ul className={styles.list}>{record.activeEffects.map(effect=><li key={effect.id}><strong>{effect.effect_text}</strong> · {bundle.medications.find(m=>m.id===effect.medication_id)?.medication_name||'Αγωγή'}<p>{({mild:'Ήπια',moderate:'Μέτρια',severe:'Σοβαρή'} as const)[effect.severity]}{effect.impact?' · '+effect.impact:''}</p><p className={styles.muted}>Από {recordDate(effect.noted_on)} · {effect.resolved_on?`Καταγεγραμμένη λήξη ${recordDate(effect.resolved_on)}`:'Χωρίς καταγεγραμμένη λήξη'}</p></li>)}</ul>:<p className={styles.muted}>Δεν υπάρχουν καταγεγραμμένες ανοιχτές παρενέργειες. Η απουσία καταγραφής δεν τεκμηριώνει καλή ανοχή.</p>}</section>
-  {notes&&(notes.adherence||notes.effects)&&<section className={styles.section}><span className="kicker">ΑΝΑΣΚΟΠΗΣΗ ΑΓΩΓΗΣ ΣΤΗΝ ΕΠΙΣΚΕΨΗ</span>{notes.adherence&&<p><strong>Λήψη αγωγής:</strong> {notes.adherence}</p>}{notes.effects&&<p><strong>Συνολική ανοχή / παρενέργειες:</strong> {notes.effects}</p>}<p className={styles.muted}>Τελευταία ολοκληρωμένη επίσκεψη · {recordDate(notes.date)}{notes.corrected?' · με καταγεγραμμένες διορθώσεις':''}</p></section>}
-  <section className={styles.section}><span className="kicker">ΠΑΡΑΚΟΛΟΥΘΗΣΗ</span><h2>Μετρήσεις και εξέλιξη</h2>{record.latestScores.length?record.latestScores.map(({current,previous})=><p key={current.id}><strong>{current.instrument}: {previous?`${previous.score} → ${current.score}`:current.score}</strong><br/><span className={styles.muted}>{previous?`${recordDate(previous.completed_at!)} → `:''}{recordDate(current.completed_at!)}</span></p>):<p className={styles.muted}>Δεν υπάρχουν ολοκληρωμένες μετρήσεις.</p>}
-   <details ref={measurementsRef} key={measurementsOpen?'requested-'+(selectedAssessmentId||'all'):'default'} open={measurementsOpen||undefined} className={styles.details} id="patient-measurements"><summary>Αποτελέσματα και απαντήσεις ερωτηματολογίων</summary><PatientPsychometrics bundle={bundle} reload={reload} selectedAssessmentId={selectedAssessmentId||undefined}/></details>
+  <section className={styles.section}><span className="kicker">{t('medications.tolerabilityKicker')}</span><h2>{t('medications.activeSideEffects')}</h2>{record.activeEffects.length?<ul className={styles.list}>{record.activeEffects.map(effect=><li key={effect.id}><strong>{effect.effect_text}</strong> · {bundle.medications.find(m=>m.id===effect.medication_id)?.medication_name||t('medications.medication')}<p>{({mild:t('clinical.mild'),moderate:t('clinical.moderate'),severe:t('clinical.severe')} as const)[effect.severity]}{effect.impact?' · '+effect.impact:''}</p><p className={styles.muted}>{t('medications.sincePrefix')} {recordDate(effect.noted_on,locale)} · {effect.resolved_on?t('medications.recordedEnd',{date:recordDate(effect.resolved_on,locale)}):t('medications.noRecordedEnd')}</p></li>)}</ul>:<p className={styles.muted}>{t('medications.noOpenSideEffectsHelp')}</p>}</section>
+  {notes&&(notes.adherence||notes.effects)&&<section className={styles.section}><span className="kicker">{t('medications.visitReviewKicker')}</span>{notes.adherence&&<p><strong>{t('medications.adherencePrefix')}</strong> {notes.adherence}</p>}{notes.effects&&<p><strong>{t('medications.overallTolerabilityPrefix')}</strong> {notes.effects}</p>}<p className={styles.muted}>{t('visits.lastCompletedPrefix')} {recordDate(notes.date,locale)}{notes.corrected?t('visits.withCorrectionsSuffix'):''}</p></section>}
+  <section className={styles.section}><span className="kicker">{t('psychometrics.monitoringKicker')}</span><h2>{t('psychometrics.measuresProgress')}</h2>{record.latestScores.length?record.latestScores.map(({current,previous})=><p key={current.id}><strong>{current.instrument}: {previous?`${previous.score} → ${current.score}`:current.score}</strong><br/><span className={styles.muted}>{previous?`${recordDate(previous.completed_at!,locale)} → `:''}{recordDate(current.completed_at!,locale)}</span></p>):<p className={styles.muted}>{t('psychometrics.noCompletedMeasures')}</p>}
+   <details ref={measurementsRef} key={measurementsOpen?'requested-'+(selectedAssessmentId||'all'):'default'} open={measurementsOpen||undefined} className={styles.details} id="patient-measurements"><summary>{t('psychometrics.resultsAnswers')}</summary><PatientPsychometrics bundle={bundle} reload={reload} selectedAssessmentId={selectedAssessmentId||undefined}/></details>
   </section>
  </div>;
 }

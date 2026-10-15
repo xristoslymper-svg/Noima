@@ -1,3 +1,4 @@
+import {withOutputLanguage} from '../../i18n/output-language.ts';
 import {maskProviderPayload} from '../clinical/text-masking.ts';
 export type Usage={input_tokens:number;output_tokens:number;calls:number};
 export function assertCopilotPrivacy(model=process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL){
@@ -12,7 +13,7 @@ async function generate(instructions:string,input:unknown,usage:Usage,schema?:Re
  if(encoded.length>COPILOT_CONTEXT_LIMIT)throw new Error('copilot_context_limit');
  const response=await fetch((process.env.OPENAI_BASE_URL||'https://api.openai.com/v1')+'/responses',{
  method:'POST',signal:AbortSignal.timeout(45000),headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},
- body:JSON.stringify({model:process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL,store:false,max_output_tokens:3000,instructions,input:encoded,...(schema?{text:{format:{type:'json_schema',name:'copilot_result',strict:true,schema}}}:{})})});
+ body:JSON.stringify({model:process.env.OPENAI_COPILOT_MODEL||process.env.OPENAI_CLINICAL_MODEL,store:false,max_output_tokens:3000,instructions:withOutputLanguage(instructions),input:encoded,...(schema?{text:{format:{type:'json_schema',name:'copilot_result',strict:true,schema}}}:{})})});
  if(!response.ok)throw new Error('copilot_provider_failed');
  const value=await response.json();
  usage.calls++;usage.input_tokens+=value.usage?.input_tokens||0;usage.output_tokens+=value.usage?.output_tokens||0;

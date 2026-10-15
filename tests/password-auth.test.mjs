@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -11,7 +12,7 @@ function route({emailEnabled=true,user={id:'verified-doctor'},recovery=false,sen
   getUser:async()=>({data:{user},error:null}),getClaims:async()=>({data:{claims:{amr:[{method:recovery?'recovery':'oauth'}]}},error:null}),
   updateUser:async input=>{calls.push(['update',input]);return {error:null}},signOut:async()=>{calls.push(['signout']);return {error:null}}
  }};
- vm.runInNewContext(source,{module,exports:module.exports,Response,URL,require:id=>id==='next/headers'?{cookies:async()=>({delete:key=>calls.push(['delete_cookie',key])})}:id.includes('auth-email')?{authEmailEnabled:emailEnabled}:{pilotClient:async()=>client}});
+ vm.runInNewContext(source,{module,exports:module.exports,Response,URL,require:(id)=>(intlTestModule(id)??(id=>id==='next/headers'?{cookies:async()=>({delete:key=>calls.push(['delete_cookie',key])})}:id.includes('auth-email')?{authEmailEnabled:emailEnabled}:{pilotClient:async()=>client})(id))});
  return {...module.exports,calls};
 }
 const post=body=>new Request('https://noima.example.invalid/api/auth/password',{method:'POST',headers:{Origin:'https://noima.example.invalid','Content-Type':'application/json'},body:JSON.stringify(body)});

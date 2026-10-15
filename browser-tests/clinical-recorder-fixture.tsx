@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 // Test-only fixture: production field and visit stylesheet in a native modal.
 // The modal uses the same showModal/top-layer behavior as VisitWorkspace.
 import React,{useCallback,useEffect,useRef,useState} from 'react';
@@ -33,4 +34,4 @@ function Fixture(){
   <button className="test-only" type="button" onClick={()=>setFooterHeight(value=>value===88?148:88)}>QA αλλαγή ύψους μπάρας</button>
  </dialog>;
 }
-createRoot(document.getElementById('root')!).render(<Fixture/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{<Fixture/>}</LocaleFixture>);

@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -28,7 +29,7 @@ const requireMock=name=>{
  if(name==='@/lib/clinic-time')return {formatClinicDateTime:value=>value};
  return {};
 };
-vm.runInNewContext(js,{exports:mod.exports,module:mod,require:requireMock,React,Date,Intl});
+vm.runInNewContext(js,{exports:mod.exports,module:mod,require:(id)=>(intlTestModule(id)??(requireMock)(id)),React,Date,Intl});
 const render=(kind,document)=>{
  draftState.current=document;
  const result=renderToStaticMarkup(React.createElement(mod.exports.default,{

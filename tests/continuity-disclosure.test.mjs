@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -5,7 +6,7 @@ import ts from 'typescript';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import * as findings from '../lib/clinical/risk-findings.ts';
-function load(file,mocks){const compiled=ts.transpileModule(readFileSync('components/patients/'+file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;const m={exports:{}};new Function('require','module','exports',compiled)(n=>mocks[n],m,m.exports);return m.exports.default;}
+function load(file,mocks){const compiled=ts.transpileModule(readFileSync('components/patients/'+file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;const m={exports:{}};new Function('require','module','exports',compiled)((id)=>(intlTestModule(id)??(n=>mocks[n])(id)),m,m.exports);return m.exports.default;}
 test('disclosure preserves user open and close intent across autosave props; another visit starts fresh',()=>{
  function mounted(){let value,initialized=false;const hooks={useState:initial=>{if(!initialized){value=initial;initialized=true}return [value,next=>value=next]}};return load('StableDetails.tsx',{'react':hooks,'react/jsx-runtime':{jsx:(type,props)=>({type,props})}})}
  const Details=mounted();let view=Details({initialOpen:false,children:'field'});view.props.onToggle({currentTarget:{open:true}});

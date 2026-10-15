@@ -52,7 +52,7 @@ export function reconcileRecord(previous:PatientBundle|null,incoming:PatientBund
  const partial=mode==='visit';
  const sessions=mergeRows(previous.sessions,incoming.sessions,row=>row.id,reconcileSession,partial);
  const patient=newerVersion(previous.patient,incoming.patient);
- if(mode==='shell')return {...previous,patient,sessions,appointments:incoming.appointments};
+ if(mode==='shell')return {...previous,patient,sessions,appointments:mergeRows(previous.appointments,incoming.appointments,row=>row.id,(old,row)=>newerVersion(old,{...old,...row}))};
  const base=partial?previous:incoming;
  return {...base,patient,sessions,
   sections:mergeRows(previous.sections,incoming.sections,row=>row.id,newerVersion,partial),

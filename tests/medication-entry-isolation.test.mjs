@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -11,7 +12,7 @@ function entry(id){
  const cells=[];let cursor=0;const posts=[];
  const hooks={useState(v){const i=cursor++;if(!(i in cells))cells[i]=v;return [cells[i],v=>cells[i]=v]},useEffect(){},useCallback:f=>f};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{}});
+ vm.runInNewContext(source,{module,exports:module.exports,require:(id)=>(intlTestModule(id)??(name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{})(id))});
  const render=()=>{cursor=0;return module.exports.SideEffectEntry({medication:{id,medication_name:'Synthetic '+id},sessionId:'visit',today:'2026-10-12',firstAssessment:true,reload:async()=>{}})};
  return {render,posts};
 }

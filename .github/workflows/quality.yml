@@ -34,13 +34,11 @@ jobs:
 
       - name: Record tested source
         run: |
-          mkdir -p test-results/quality/source
+          mkdir -p test-results/quality
           git rev-parse HEAD > test-results/quality/provenance.txt
           git status --porcelain >> test-results/quality/provenance.txt
-          for file in tests/record-reconciliation.test.mjs tests/appointment-context.test.mjs components/patients/PatientWorkspace.tsx components/calendar/useCalendarPosition.ts; do
-            sha256sum "$file" >> test-results/quality/provenance.txt
-            cp --parents "$file" test-results/quality/source/
-          done
+          sha256sum tests/record-reconciliation.test.mjs tests/appointment-context.test.mjs components/patients/PatientWorkspace.tsx components/calendar/useCalendarPosition.ts >> test-results/quality/provenance.txt
+          tar -czf test-results/quality/source.tar.gz tests/record-reconciliation.test.mjs tests/appointment-context.test.mjs components/patients/PatientWorkspace.tsx components/calendar/useCalendarPosition.ts
           cat test-results/quality/provenance.txt
 
       - name: Install

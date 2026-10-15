@@ -1,4 +1,6 @@
 'use client';
+import {useOptionLabel} from '@/i18n/option-labels';
+import {useEvidenceLabel} from '@/i18n/evidence-label';
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
@@ -13,13 +15,15 @@ import styles from './PrevisitBriefing.module.css';
 /** Stable reading order; all facts and the compact safety status retain evidence. */
 export default function PrevisitBriefingView({card,brief,patientId}:{card:ClinicalCard;brief:PrevisitBriefing;patientId:string}){
  const t=useTranslations();
+ const evidenceLabel=useEvidenceLabel();
+ const displayLabel=useOptionLabel();
 
  const locale=useLocale();
 
  const date=(value?:string|null)=>value?formatClinicDate(value, locale):'';
  function sources(items:Pick<BriefItem,'source_ids'>[],label=t('clinical.sources')){
   const evidence=[...new Set(items.flatMap(i=>i.source_ids))].map(id=>card.sources.find(s=>s.id===id)).filter(s=>s!==undefined);
-  return evidence.length>0&&<details className={styles.sources}><summary>{label}</summary>{evidence.map(s=><Link key={s.id} href={'/patients/demo/'+encodeURIComponent(patientId)+'?tab='+s.target+(s.session_id?'&session='+encodeURIComponent(s.session_id):'')}>{s.label}</Link>)}</details>;
+  return evidence.length>0&&<details className={styles.sources}><summary>{label}</summary>{evidence.map(s=><Link key={s.id} href={'/patients/demo/'+encodeURIComponent(patientId)+'?tab='+s.target+(s.session_id?'&session='+encodeURIComponent(s.session_id):'')}>{evidenceLabel(s)}</Link>)}</details>;
  }
  function row(label:string,items:BriefItem[],empty:string){return <li><strong>{label}:</strong> <span>{items.length?items.map((item,i)=><span className={styles.fact} key={i}>{item.text}{item.date&&item.date!==card.date&&<small>  {t('clinical.recordEntrySuffix')} {date(item.date)}</small>}{i<items.length-1?'; ':''}</span>):<span className={styles.empty}>{empty}</span>}</span>{sources(items)}</li>}
  function paragraphs(items:BriefItem[]){return items.map((item,i)=><p key={i}>{item.text}{item.date&&item.date!==card.date&&<small className={styles.sourceDate}>{t('clinical.recordEntry')} {date(item.date)}</small>}</p>)}
@@ -31,7 +35,7 @@ export default function PrevisitBriefingView({card,brief,patientId}:{card:Clinic
  const ideationLabel={yes:t('common.yes'),no:t('common.no'),unknown:t('common.unknown'),not_assessed:t('clinical.notEvaluated'),missing:t('clinical.notRecorded'),review:t('clinical.toConfirm')}[brief.ideation.value];
  const riskNotes=card.alerts.filter(f=>['risk','risk-note','risk-missing'].includes(f.key));
  const otherAlerts=card.alerts.filter(f=>!['risk','risk-note','risk-missing'].includes(f.key));
- const alertLabel=(key:string,label:string)=>key.startsWith('past-attempt:')?t('clinical.recordedAttemptHistory'):key.startsWith('risk-review:')?t('clinical.riskSourceMismatch'):key.startsWith('review:')?t('psychometrics.phqItemNinePending'):key.startsWith('effect:')?t('medications.sideEffectReviewRequired'):key==='history:allergies'?t('history.recordedAllergies'):label;
+ const alertLabel=(key:string,label:string)=>key.startsWith('past-attempt:')?t('clinical.recordedAttemptHistory'):key.startsWith('risk-review:')?t('clinical.riskSourceMismatch'):key.startsWith('review:')?t('psychometrics.phqItemNinePending'):key.startsWith('effect:')?t('medications.sideEffectReviewRequired'):key==='history:allergies'?t('history.recordedAllergies'):displayLabel(label);
  return <article className={styles.brief} aria-label={t('clinical.briefing')} data-previsit-briefing="true">
   <ul className={styles.facts} aria-label={t('clinical.diagnosisDifferentialMedication')}>
    {row(t('clinical.icdDiagnosis'),brief.diagnoses,t('clinical.notRecordedSentence'))}

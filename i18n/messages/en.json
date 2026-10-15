@@ -1598,7 +1598,22 @@
     "proposalSend": "Send {instruments} · {patient} · To: {recipient}{appointment} · Personal link, valid for 14 days. Recipient language: Greek. Sent immediately after confirmation.",
     "proposalAppointment": " · Appointment {date}",
     "actionVerified": "The change was saved and verified in the database.",
-    "patientRecordSource": "Patient record"
+    "patientRecordSource": "Patient record",
+    "sourceLabels": {
+      "session_section": "Clinical record",
+      "structured_risk": "Risk assessment",
+      "structured_medication": "Medication",
+      "medication_event": "Medication change",
+      "medication_revision": "Medication correction",
+      "structured_side_effect": "Side effect",
+      "psychometric": "Psychometric measure",
+      "history": "History",
+      "addendum": "Addendum",
+      "structured_correction": "Structured correction",
+      "appointment": "Appointment",
+      "confirmed_context": "Confirmed context",
+      "patient_context": "Patient details / presenting concern"
+    }
   },
   "history": {
     "initialHistory": "Initial history",

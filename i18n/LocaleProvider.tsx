@@ -1,6 +1,7 @@
 'use client';
 import {createContext, useContext, useEffect, useRef, useState, type ReactNode} from 'react';
 import {NextIntlClientProvider, useTranslations} from 'next-intl';
+import {usePathname} from 'next/navigation';
 import {clinicalTimeZone, type Locale} from './config';
 import {loadMessages, type Messages} from './messages';
 
@@ -37,5 +38,7 @@ export default function LocaleProvider({initialLocale, initialMessages, children
 
 export function PilotNotice({realData}: {realData: boolean}) {
   const t = useTranslations('common');
+  const path=usePathname();
+  if(!realData&&['/assessment','/intake','/tablet'].includes(path))return null;
   return <><div className="fictional-pilot-notice">{t('pilotNotice')}</div>{realData && <main className="record-state">{t('realDataUnavailable')}</main>}</>;
 }

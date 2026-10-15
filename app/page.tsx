@@ -204,7 +204,7 @@ const nav = [
         </div>
 
         <nav className="nav">
-          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={label}><Icon size={19}/><span>{label}</span></Link>)}
+          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={href}><Icon size={19}/><span>{label}</span></Link>)}
         </nav>
         
       </aside>

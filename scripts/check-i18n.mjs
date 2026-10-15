@@ -27,6 +27,12 @@ export function auditDictionaries(root=process.cwd()){
    ts.forEachChild(n,collect);
   }collect(ast);
   function visit(n){
+   if(ts.isJsxText(n)&&/[Α-Ωα-ω]/u.test(n.text.replaceAll('Ψ',''))){
+    errors.push(relative(root,file)+': untranslated Greek JSX text '+n.text.trim());
+   }
+   if(ts.isJsxAttribute(n)&&['title','placeholder','aria-label','alt'].includes(n.name.getText(ast))&&n.initializer&&ts.isStringLiteral(n.initializer)&&/[Α-Ωα-ω]/u.test(n.initializer.text)){
+    errors.push(relative(root,file)+': untranslated Greek '+n.name.getText(ast));
+   }
    if(ts.isStringLiteral(n)||ts.isNoSubstitutionTemplateLiteral(n)){
     if(allKeys.has(n.text))used.add(n.text);
     if(ts.isCallExpression(n.parent)&&n.parent.arguments[0]===n&&n.parent.expression.getText(ast)==='t'){

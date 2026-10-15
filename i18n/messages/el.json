@@ -1598,7 +1598,22 @@
     "proposalSend": "Αποστολή {instruments} · {patient} · Προς: {recipient}{appointment} · Προσωπικός σύνδεσμος, ισχύς 14 ημερών. Γλώσσα παραλήπτη: Ελληνικά. Άμεση αποστολή μετά την επιβεβαίωση.",
     "proposalAppointment": " · Ραντεβού {date}",
     "actionVerified": "Η αλλαγή αποθηκεύτηκε και επαληθεύτηκε στη βάση.",
-    "patientRecordSource": "Φάκελος ασθενή"
+    "patientRecordSource": "Φάκελος ασθενή",
+    "sourceLabels": {
+      "session_section": "Κλινική καταγραφή",
+      "structured_risk": "Εκτίμηση κινδύνου",
+      "structured_medication": "Αγωγή",
+      "medication_event": "Αλλαγή αγωγής",
+      "medication_revision": "Διόρθωση αγωγής",
+      "structured_side_effect": "Παρενέργεια",
+      "psychometric": "Ψυχομετρική μέτρηση",
+      "history": "Ιστορικό",
+      "addendum": "Προσθήκη",
+      "structured_correction": "Δομημένη διόρθωση",
+      "appointment": "Ραντεβού",
+      "confirmed_context": "Επιβεβαιωμένο πλαίσιο",
+      "patient_context": "Στοιχεία / λόγος προσέλευσης"
+    }
   },
   "history": {
     "initialHistory": "Αρχικό ιστορικό",

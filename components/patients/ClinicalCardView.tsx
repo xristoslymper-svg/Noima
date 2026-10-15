@@ -1,4 +1,6 @@
 'use client';
+import {useOptionLabel} from '@/i18n/option-labels';
+import {useEvidenceLabel} from '@/i18n/evidence-label';
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
@@ -14,6 +16,8 @@ import {overviewAttention} from '@/lib/overview/attention';
 // Whole sentences only: long records stay available behind an explicit disclosure.
 export default function ClinicalCardView({card,patientId,compact=false,overview=false}:{card:ClinicalCard;patientId:string;compact?:boolean;overview?:boolean}){
  const t=useTranslations();
+ const evidenceLabel=useEvidenceLabel();
+ const displayLabel=useOptionLabel();
 
  const locale=useLocale();
 
@@ -24,14 +28,14 @@ export default function ClinicalCardView({card,patientId,compact=false,overview=
  function attentionGroup(title:string,items:ClinicalCard['alerts'],secondary=false){
   return items.length>0&&<section className="clinical-card-attention" style={secondary?{background:'transparent',borderLeftColor:'#8b9d8e',color:'#435c4d'}:undefined} aria-label={title}><strong>{title}</strong>{items.map(f=><div key={f.key}><p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{f.text}</p>{sourceLinks([f])}</div>)}</section>;
  }
- function sourceLinks(items:CardItem[]){const ids=[...new Set(items.flatMap(i=>i.source_ids))];return ids.length>0&&<details className="clinical-card-sources"><summary>{t('clinical.sources')}</summary>{ids.map(id=>{const s=card.sources.find(s=>s.id===id);return s?<Link key={id} href={'/patients/demo/'+patientId+'?tab='+s.target+(s.session_id?'&session='+s.session_id:'')}>{s.label}</Link>:null})}</details>}
+ function sourceLinks(items:CardItem[]){const ids=[...new Set(items.flatMap(i=>i.source_ids))];return ids.length>0&&<details className="clinical-card-sources"><summary>{t('clinical.sources')}</summary>{ids.map(id=>{const s=card.sources.find(s=>s.id===id);return s?<Link key={id} href={'/patients/demo/'+patientId+'?tab='+s.target+(s.session_id?'&session='+s.session_id:'')}>{evidenceLabel(s)}</Link>:null})}</details>}
  function block(title:string,items:CardItem[],empty:string,budget:number){
   const {preview,rest}=clinicalCardPreview(items,budget);
   return <section className="clinical-card-section"><h3>{title}</h3>{preview.map((item,i)=><p key={i}>{item.text}</p>)}{!items.length&&<p className="clinical-card-empty">{empty}</p>}{rest.length>0&&<details className="clinical-card-details"><summary>{preview.length?t('common.more'):t('visits.openRecord')} · {rest.length}</summary>{rest.map((item,i)=><p key={i}>{item.text}</p>)}</details>}{!compact&&sourceLinks(items)}</section>;
  }
  return <div className={'clinical-card'+(compact?' clinical-card-compact':'')}>
   <p className="clinical-card-date">{card.date?t('visits.lastCompletedPrefix')+formatClinicDateTime(card.date, locale):t('visits.noCompletedVisit')}</p>
-  {!overview&&card.alerts.length>0&&<section className="clinical-card-attention" aria-label={t('clinical.attentionPoints')}><strong>{t('clinical.attentionRequired')}</strong>{card.alerts.map(f=><details key={f.key}><summary>{f.label} · {f.text.split(/(?<=[.!?])\s/u)[0]}</summary><p>{f.text}</p>{sourceLinks([f])}</details>)}</section>}
+  {!overview&&card.alerts.length>0&&<section className="clinical-card-attention" aria-label={t('clinical.attentionPoints')}><strong>{t('clinical.attentionRequired')}</strong>{card.alerts.map(f=><details key={f.key}><summary>{displayLabel(f.label)} · {f.text.split(/(?<=[.!?])\s/u)[0]}</summary><p>{f.text}</p>{sourceLinks([f])}</details>)}</section>}
   {attention&&<>
    {attentionGroup(t('clinical.findingsForReview'),attention.concern)}
    {attentionGroup(t('clinical.notesPendingChecks'),attention.review)}

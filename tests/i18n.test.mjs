@@ -8,6 +8,7 @@ import {pilotScope} from '../lib/pilot/request-scope.ts';
 import {withOutputLanguage} from '../i18n/output-language.ts';
 import {errorJson} from '../i18n/errors.ts';
 import {auditDictionaries} from '../scripts/check-i18n.mjs';
+import {intlTestModule} from './helpers/i18n.mjs';
 const dictionaries=Object.fromEntries(['el','en'].map(locale=>[locale,JSON.parse(readFileSync(new URL('../i18n/messages/'+locale+'.json',import.meta.url),'utf8'))]));
 const translator=locale=>createTranslator({locale,messages:dictionaries[locale],onError:error=>{throw error}});
 test('Greek is the default and an account preference wins over an explicit cookie',()=>{
@@ -41,6 +42,17 @@ test('API localization keeps established codes and fallback text unchanged',asyn
  const value=await response.json();
  assert.equal(response.status,409);assert.equal(value.error,text);assert.equal(value.code,'existing_conflict');assert.equal(value.message_key,'errors.invalidAppointment');
  assert.equal(translator('en')(value.message_key),'Invalid appointment.');
+});
+test('validation and finalization errors render in both languages without touching clinical text',()=>{
+ const el=intlTestModule('@/i18n/system-message','el').useSystemMessage();
+ const en=intlTestModule('@/i18n/system-message','en').useSystemMessage();
+ assert.equal(el('Answer all the questions.'),'Απαντήστε σε όλες τις ερωτήσεις.');
+ assert.equal(en('Απαντήστε σε όλες τις ερωτήσεις.'),'Answer all the questions.');
+ assert.equal(en('Χρειάζεται καταγραφή: Θεραπευτικό πλάνο.'),'Recording required: Treatment plan.');
+ const pending='Υπάρχουν 2 ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα.';
+ assert.match(en(pending),/^2 MSE domains/);
+ const clinical='Δεν αναφέρει νέες παρενέργειες — patient authored.';
+ assert.equal(en(clinical),clinical);assert.equal(el(clinical),clinical);
 });
 test('concurrent AI output languages are isolated and never alter supplied source text',async()=>{
  const input='Δεν αναφέρει αυτοκτονικό ιδεασμό. Drug 10 mg';const original=input;

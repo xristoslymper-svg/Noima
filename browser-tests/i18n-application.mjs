@@ -35,10 +35,13 @@ export async function unsavedLocaleSwitch({page,field,text,action,client,patient
   await field.fill(text);await field.evaluate(node=>{node.dataset.localeDraft='unchanged'});
   await Promise.race([started,new Promise((_,reject)=>setTimeout(()=>reject(Error('Draft save was not attempted')),15000))]);
   const before=await snapshot();
+  const mseAxis=page.locator('.mse-axis').first();
+  if(await mseAxis.count())await mseAxis.evaluate(node=>{node.dataset.localeAxis='unchanged'});
   await page.screenshot({path:resolve(out,`${size}-${mode}-el.png`)});
   await switchLanguage(page,'en');
   assert.equal(page.url(),url);assert.equal(new URL(page.url()).searchParams.get('session'),sessionId);
   const editor=page.locator('[data-locale-draft="unchanged"]');assert.equal(await editor.count(),1);assert.equal(await editor.inputValue(),text);
+  if(await mseAxis.count())assert.equal(await page.locator('[data-locale-axis="unchanged"]').count(),1,'The MSE controls must retain the same DOM nodes');
   assert.deepEqual(await snapshot(),before,'Locale must not write clinical records, versions, risk or identity');
   await page.getByRole('button',{name:'Finalize clinical record',exact:true}).waitFor();
   const labels=await page.locator('dialog[open] button,dialog[open] label,dialog[open] h1,dialog[open] h2,dialog[open] h3').allTextContents();

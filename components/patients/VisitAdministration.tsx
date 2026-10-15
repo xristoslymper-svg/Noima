@@ -11,8 +11,8 @@ export default function VisitAdministration({bundle,sessionId,reload,registerFlu
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[]);
  useEffect(()=>registerFlusher('visit-payment',async()=>{if(flight.current)throw new Error('Η καταχώριση πληρωμής βρίσκεται σε εξέλιξη.')}),[registerFlusher]);
  useEffect(()=>{onDirtyChange('visit-payment',busy);return()=>onDirtyChange('visit-payment',false)},[busy,onDirtyChange]);
- const useConfirmed=confirmed&&appointment&&confirmed.id===appointment.id&&(!appointment?.updated_at||Date.parse(confirmed.updatedAt)>=Date.parse(appointment.updated_at));
- const status=useConfirmed?confirmed!.status:appointment?.payment_status;
+ const hasConfirmedPayment=confirmed&&appointment&&confirmed.id===appointment.id&&(!appointment.updated_at||Date.parse(confirmed.updatedAt)>=Date.parse(appointment.updated_at));
+ const status=hasConfirmedPayment?confirmed!.status:appointment?.payment_status;
  async function save(next:Payment){if(!appointment||flight.current||disabled||next===status)return;flight.current=true;setBusy(true);setError('');let committed=false;
   try{const response=await fetch('/api/calendar/payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),event_id:appointment.id,status:next})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Δεν αποθηκεύτηκε η πληρωμή.');const event=data.event;
    if(!event||event.id!==appointment.id||event.patient_id!==bundle.patient.id||event.session_id!==sessionId||event.payment_status!==next||!Number.isFinite(Date.parse(event.updated_at)))throw new Error('Δεν επιβεβαιώθηκε η πληρωμή του συγκεκριμένου ραντεβού. Ανανεώστε πριν επαναλάβετε.');

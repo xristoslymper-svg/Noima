@@ -13,11 +13,17 @@ export default function ClinicalDraftRecovery({draft,reload,sessionId,disabled=f
   if(!session||session.status!=='draft'||!validContinuity(session.closure_draft)||!Number.isSafeInteger(session.closure_version))throw new Error('Δεν φορτώθηκε έγκυρη πρόχειρη έκδοση. Το κείμενό σας διατηρείται.');
   draft.acceptServerPreservingLocal(session.closure_draft,session.closure_version!);setConfirm(false);
  }catch(cause){setError(cause instanceof Error?cause.message:'Δεν ολοκληρώθηκε η ανάκτηση. Το κείμενό σας διατηρείται.')}finally{flight.current=false;setBusy(false)}}
- if(!draft.error&&!draft.olderRecovery&&!error)return null;
+ // A save temporarily clears its error. Never remove an open consent prompt.
+ if(!draft.error&&!draft.olderRecovery&&!error&&!confirm&&!busy)return null;
  const blocked=disabled||busy||draft.saving;
  const labels:Record<string,string>={transcript:'Σημειώσεις',clinical_state_summary:'Κλινική εικόνα',treatment_decision:'Απόφαση / παρεμβάσεις',next_review_focus:'Επανεκτίμηση',adherence:'Λήψη αγωγής',pinned_context:'Σημαντικά θέματα'};
  const backup=draft.olderRecovery?Object.entries(labels).map(([key,label])=>label+'\n'+String(draft.olderRecovery?.[key as keyof ContinuityDraft]||'')).join('\n\n'):'';
- return <section className="save-state" aria-label="Ανάκτηση προχείρου">
+ return <section className="save-state" aria-label="Ανάκτηση προχείρου" onPointerDown={event=>{
+  // Keep the failed field focused until the explicit recovery action runs.
+  // Otherwise its blur handler retries a save and removes the clicked control
+  // between pointer-down and click. Keyboard activation remains unchanged.
+  if((event.target as HTMLElement).closest('button'))event.preventDefault();
+ }}>
   {draft.error&&<><p role="alert">{draft.error}</p><div>
    {!draft.hasConflict&&<button type="button" disabled={blocked} onClick={()=>void run(false)}>Επανάληψη αποθήκευσης</button>}
    <button type="button" disabled={blocked} onClick={()=>setConfirm(true)}>Φόρτωση αποθηκευμένου προχείρου…</button>

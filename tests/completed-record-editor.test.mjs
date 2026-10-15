@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -13,7 +14,7 @@ function mount(){
  const cells=[];let cursor=0;const writes=[];
  const hooks={useMemo:f=>f(),useEffect:()=>{},useState(initial){const index=cursor++;if(!(index in cells))cells[index]=initial;return [cells[index],value=>{cells[index]=typeof value==='function'?value(cells[index]):value}]},useRef(initial){const index=cursor++;if(!(index in cells))cells[index]={current:initial};return cells[index]}};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,crypto,console,require:id=>id==='react'?hooks:id==='react/jsx-runtime'?jsx:id.includes('visit-document')?document:id.includes('corrections')?corrections:id.includes('demo-client')?{demoPost:async input=>writes.push(input)}:id.includes('clinic-time')?{formatClinicDateTime:()=>''}:{default:()=>null}});
+ vm.runInNewContext(source,{module,exports:module.exports,crypto,console,require:(id)=>(intlTestModule(id)??(id=>id==='react'?hooks:id==='react/jsx-runtime'?jsx:id.includes('visit-document')?document:id.includes('corrections')?corrections:id.includes('demo-client')?{demoPost:async input=>writes.push(input)}:id.includes('clinic-time')?{formatClinicDateTime:()=>''}:{default:()=>null})(id))});
  return {writes,render(props){cursor=0;return module.exports.default(props)}};
 }
 function nodes(tree){if(!tree)return [];if(Array.isArray(tree))return tree.flatMap(nodes);return typeof tree==='object'&&tree.props?[tree,...nodes(tree.props.children)]:[]}

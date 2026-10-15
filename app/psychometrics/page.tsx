@@ -1,4 +1,8 @@
 "use client";
+import {useOptionLabel} from '@/i18n/option-labels';
+
+import {useTranslations} from 'next-intl';
+
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
 import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
@@ -18,7 +22,8 @@ const pclOptions=[{label:"Not at all",score:0},{label:"A little bit",score:1},{l
 const asrsOptions=[{label:"Never",score:0},{label:"Rarely",score:1},{label:"Sometimes",score:2},{label:"Often",score:3},{label:"Very often",score:4}];
 const asrs=["How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?","How often do you have difficulty getting things in order when you have to do a task that requires organization?","How often do you have problems remembering appointments or obligations?","When you have a task that requires a lot of thought, how often do you avoid or delay getting started?","How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?","How often do you feel overly active and compelled to do things, like you were driven by a motor?"];
 const pcl=["Repeated, disturbing, and unwanted memories of the stressful experience?","Repeated, disturbing dreams of the stressful experience?","Suddenly feeling or acting as if the stressful experience were actually happening again (as if you were actually back there reliving it)?","Feeling very upset when something reminded you of the stressful experience?","Having strong physical reactions when something reminded you of the stressful experience (for example, heart pounding, trouble breathing, sweating)?","Avoiding memories, thoughts, or feelings related to the stressful experience?","Avoiding external reminders of the stressful experience (for example, people, places, conversations, activities, objects, or situations)?","Trouble remembering important parts of the stressful experience?","Having strong negative beliefs about yourself, other people, or the world (for example, having thoughts such as: I am bad, there is something seriously wrong with me, no one can be trusted, the world is completely dangerous)?","Blaming yourself or someone else for the stressful experience or what happened after it?","Having strong negative feelings such as fear, horror, anger, guilt, or shame?","Loss of interest in activities that you used to enjoy?","Feeling distant or cut off from other people?","Trouble experiencing positive feelings (for example, being unable to feel happiness or have loving feelings for people close to you)?","Irritable behavior, angry outbursts, or acting aggressively?","Taking too many risks or doing things that could cause you harm?","Being “superalert” or watchful or on guard?","Feeling jumpy or easily startled?","Having difficulty concentrating?","Trouble falling or staying asleep?"];
-const categories=["Όλα","Κατάθλιψη","Άγχος","ADHD","PTSD","Διπολική","OCD","Ουσίες","Ύπνος","Άλλα"] as const;
+const categoryIds={"Όλα":"all","Κατάθλιψη":"depression","Άγχος":"anxiety","ADHD":"ADHD","PTSD":"PTSD","Διπολική":"bipolar","OCD":"OCD","Ουσίες":"substances","Ύπνος":"sleep","Άλλα":"other"} as const;
+const categories=Object.keys(categoryIds) as (keyof typeof categoryIds)[];
 const instruments:Instrument[]=[
  {code:"PHQ-9",title:"Ερωτηματολόγιο Υγείας Ασθενούς",area:"Κατάθλιψη",minutes:"2–5 λεπτά",source:"Επίσημη ελληνική έκδοση PHQ",period:"Τις τελευταίες 2 εβδομάδες",language:"EL",items:phq,options:frequency,interpret:n=>n<5?"Ελάχιστη συμπτωματολογία":n<10?"Ήπια":n<15?"Μέτρια":n<20?"Μετρίως σοβαρή":"Σοβαρή"},
  {code:"GAD-7",title:"Generalized Anxiety Disorder",area:"Άγχος",minutes:"2–3 λεπτά",source:"Επίσημη ελληνική έκδοση GAD-7",period:"Τις τελευταίες 2 εβδομάδες",language:"EL",items:gad,options:frequency,interpret:n=>n<5?"Ελάχιστη συμπτωματολογία":n<10?"Ήπια":n<15?"Μέτρια":"Σοβαρή"},
@@ -30,8 +35,12 @@ const instruments:Instrument[]=[
 ];
 
 export default function Psychometrics(){
+ const displayLabel=useOptionLabel();
+
+ const t=useTranslations();
+
  const [mobileNav,setMobileNav]=useMobileNavigation();
- const [query,setQuery]=useState(""); const [category,setCategory]=useState<string>("Όλα"); const [active,setActive]=useState<Instrument|null>(null); const [answers,setAnswers]=useState<Record<number,number>>({}); const [launcherRequest,setLauncherRequest]=useState<{tools:string[];channel:"tablet"|"email"|"print"}|null>(null); const [historyPreview,setHistoryPreview]=useState(false); const [customOpen,setCustomOpen]=useState(false); const [custom,setCustom]=useState({title:"",area:"",period:"",questions:[""]}); const [customInstruments,setCustomInstruments]=useState<Instrument[]>([]);
+ const [query,setQuery]=useState(""); const [category,setCategory]=useState<string>("all"); const [active,setActive]=useState<Instrument|null>(null); const [answers,setAnswers]=useState<Record<number,number>>({}); const [launcherRequest,setLauncherRequest]=useState<{tools:string[];channel:"tablet"|"email"|"print"}|null>(null); const [historyPreview,setHistoryPreview]=useState(false); const [customOpen,setCustomOpen]=useState(false); const [custom,setCustom]=useState({title:"",area:"",period:"",questions:[""]}); const [customInstruments,setCustomInstruments]=useState<Instrument[]>([]);
  const modalOpen=Boolean(active)||historyPreview||customOpen;
  useEffect(()=>{
   if(!modalOpen)return;
@@ -48,39 +57,40 @@ export default function Psychometrics(){
   return()=>{document.body.style.overflow=previousOverflow;document.removeEventListener('keydown',onKeyDown)};
  },[modalOpen,customOpen,historyPreview,active]);
  const allInstruments=[...instruments,...customInstruments];
- const categoryMatches=(x:Instrument)=>category==="Όλα"||(category==="Άγχος"&&x.area.includes("Άγχος"))||(category==="Κατάθλιψη"&&x.area.includes("Κατάθλιψη"))||x.area===category;
+ const categoryMatches=(x:Instrument)=>category==="all"||x.area.split("/").some(area=>(categoryIds[area.trim() as keyof typeof categoryIds]||area.trim())===category);
  const categoryInstruments=allInstruments.filter(categoryMatches);
- const visible=categoryInstruments.filter(x=>(x.code+" "+x.area+" "+x.title).toLowerCase().includes(query.trim().toLowerCase()));
- const emptyCategory=category!=="Όλα"&&categoryInstruments.length===0;
- const openCustom=()=>{if(category!=="Όλα"&&!custom.area.trim())setCustom(v=>({...v,area:category}));setCustomOpen(true)};
- const clinicalHashtags=(area:string)=>area.split("/").map(value=>"#"+value.trim().replace(/^#+/,"")).join(" ");
+ const visible=categoryInstruments.filter(x=>(x.code+" "+x.area+" "+x.title+" "+displayLabel(x.area)+" "+displayLabel(x.title)).toLowerCase().includes(query.trim().toLowerCase()));
+ const emptyCategory=category!=="all"&&categoryInstruments.length===0;
+ const openCustom=()=>{if(category!=="all"&&!custom.area.trim())setCustom(v=>({...v,area:categoryName}));setCustomOpen(true)};
+ const categoryName=displayLabel(categories.find(label=>categoryIds[label]===category)||category);
+ const clinicalHashtags=(area:string)=>area.split("/").map(value=>"#"+displayLabel(value.trim()).replace(/^#+/,"")).join(" ");
  const open=(i:Instrument)=>{setActive(i);setAnswers({})}; const launch=(tools:string[],channel:"tablet"|"email"|"print")=>setLauncherRequest({tools,channel}); const score=Object.values(answers).reduce((a,b)=>a+b,0); const complete=active?Object.keys(answers).length===active.items.length:false;
- return <main className={`app-shell secondary-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="library"/><aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label="Κύρια πλοήγηση" className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label="Κλείσιμο μενού"><X size={20}/></button><div className="brand"><Link href="/" className="brand-mark" aria-label="Μετάβαση στην Επισκόπηση" title="Επισκόπηση">Ψ</Link><div className="brand-copy"><div className="brand-sub">Για μια οργανωμένη κλινική πράξη</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>Επισκόπηση</span></Link><Link href="/calendar" className="nav-item"><CalendarDays size={19}/><span>Ημερολόγιο</span></Link><Link href="/patients" className="nav-item"><Users size={19}/><span>Ασθενείς</span></Link><Link href="/psychometrics" className="nav-item active"><BookOpen size={19}/><span>Βιβλιοθήκη</span></Link></nav></aside>{mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label="Κλείσιμο μενού" onClick={()=>setMobileNav(false)}/>}<section className="workspace"><header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label="Άνοιγμα μενού"><Menu size={21}/></button><PilotProfile/></header><div className="secondary-content psy-page"><div className="psy-content library-redesign"><div className="library-heading">
+ return <main className={`app-shell secondary-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="library"/><aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label={t('accessibility.mainNavigation')} className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label={t('accessibility.closeMenu')}><X size={20}/></button><div className="brand"><Link href="/" className="brand-mark" aria-label={t('accessibility.goToOverview')} title={t('navigation.overview')}>Ψ</Link><div className="brand-copy"><div className="brand-sub">{t('navigation.tagline')}</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>{t('navigation.overview')}</span></Link><Link href="/calendar" className="nav-item"><CalendarDays size={19}/><span>{t('navigation.calendar')}</span></Link><Link href="/patients" className="nav-item"><Users size={19}/><span>{t('navigation.patients')}</span></Link><Link href="/psychometrics" className="nav-item active"><BookOpen size={19}/><span>{t('navigation.library')}</span></Link></nav></aside>{mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label={t('accessibility.closeMenu')} onClick={()=>setMobileNav(false)}/>}<section className="workspace"><header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label={t('accessibility.openMenu')}><Menu size={21}/></button><PilotProfile/></header><div className="secondary-content psy-page"><div className="psy-content library-redesign"><div className="library-heading">
   <div>
-    <h1>Βιβλιοθήκη</h1>
-    <p>Ιστορικό και κλινικά εργαλεία για χρήση με τους ασθενείς σου.</p>
+    <h1>{t('navigation.library')}</h1>
+    <p>{t('psychometrics.libraryDescription')}</p>
   </div>
   <div className="library-utility-actions">
-    <Link href="/scan" className="library-utility"><UploadCloud size={15}/> Εισαγωγή από έντυπο</Link>
+    <Link href="/scan" className="library-utility"><UploadCloud size={15}/>  {t('documents.importPaper')}</Link>
   </div>
  </div>
 
- <div className="library-searchbar"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Αναζήτηση εργαλείου"/></div>
+ <div className="library-searchbar"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t('psychometrics.searchTool')}/></div>
 
  <section className="library-family">
   <div className="library-family-heading">
-    <div><span>Ιστορικό</span><small>Έντυπα πριν και κατά την πρώτη επίσκεψη</small></div>
+    <div><span>{t('history.title')}</span><small>{t('psychometrics.historyFormsDescription')}</small></div>
   </div>
   <div className="history-tool-grid">
-   <article className="instrument-card library-instrument-card compact-psychometric-card compact-history-card" role="button" tabIndex={0} aria-label="Προεπισκόπηση αρχικού ιστορικού" onClick={()=>setHistoryPreview(true)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setHistoryPreview(true)}}}>
-    <div className="instrument-top"><span className="instrument-area-chip">Πρώτη επίσκεψη</span><span className="instrument-time"><Clock3 size={12}/>7–10 λεπτά</span></div>
-    <h2>Αρχικό ιστορικό</h2>
-    <p>Δομημένο ερωτηματολόγιο πριν από την πρώτη επίσκεψη.</p>
-    <div className="instrument-meta"><span>8 ενότητες</span></div>
+   <article className="instrument-card library-instrument-card compact-psychometric-card compact-history-card" role="button" tabIndex={0} aria-label={t('psychometrics.previewHistory')} onClick={()=>setHistoryPreview(true)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setHistoryPreview(true)}}}>
+    <div className="instrument-top"><span className="instrument-area-chip">{t('psychometrics.firstVisit')}</span><span className="instrument-time"><Clock3 size={12}/>{t('psychometrics.sevenToTenMinutes')}</span></div>
+    <h2>{t('history.initialHistory')}</h2>
+    <p>{t('psychometrics.historyDescription')}</p>
+    <div className="instrument-meta"><span>{t('psychometrics.eightSections')}</span></div>
     <div className="instrument-actions library-card-actions icon-only-actions" onClick={e=>e.stopPropagation()}>
-      <button title="Tablet" aria-label="Αποστολή αρχικού ιστορικού σε tablet" onClick={e=>{e.stopPropagation();launch(["history"],"tablet")}}><Tablet size={15}/></button>
-      <button title="Email" aria-label="Αποστολή αρχικού ιστορικού με email" onClick={e=>{e.stopPropagation();launch(["history"],"email")}}><Mail size={15}/></button>
-      <button title="Εκτύπωση" aria-label="Εκτύπωση αρχικού ιστορικού" onClick={e=>{e.stopPropagation();launch(["history"],"print")}}><Printer size={15}/></button>
+      <button title="Tablet" aria-label={t('psychometrics.historyToTablet')} onClick={e=>{e.stopPropagation();launch(["history"],"tablet")}}><Tablet size={15}/></button>
+      <button title="Email" aria-label={t('psychometrics.historyByEmail')} onClick={e=>{e.stopPropagation();launch(["history"],"email")}}><Mail size={15}/></button>
+      <button title={t('documents.print')} aria-label={t('psychometrics.printHistory')} onClick={e=>{e.stopPropagation();launch(["history"],"print")}}><Printer size={15}/></button>
     </div>
    </article>
   </div>
@@ -88,86 +98,90 @@ export default function Psychometrics(){
 
  <section className="library-family psychometric-family">
   <div className="library-family-heading library-psych-heading">
-    <div><span>Ψυχομετρικά</span><small>Βρες γρήγορα το κατάλληλο εργαλείο ανά κλινική περιοχή</small></div>
+    <div><span>{t('psychometrics.title')}</span><small>{t('psychometrics.findByArea')}</small></div>
     <div className="library-psych-actions">
-      <small className="library-clinical-note">Screening & παρακολούθηση · όχι αυτόνομη διάγνωση</small>
-      <button className={"library-new-test"+(emptyCategory?" attention":"")} onClick={openCustom} aria-label={emptyCategory?`Προσθήκη νέου τεστ για ${category}`:"Προσθήκη νέου τεστ"}><Plus size={15}/> Νέο τεστ</button>
+      <small className="library-clinical-note">{t('psychometrics.screeningPurpose')}</small>
+      <button className={"library-new-test"+(emptyCategory?" attention":"")} onClick={openCustom} aria-label={emptyCategory?t('psychometrics.addTestFor',{area:categoryName}):t('psychometrics.addNewTest')}><Plus size={15}/>  {t('psychometrics.newTest')}</button>
     </div>
   </div>
-  <div className="category-tabs library-category-tabs">{categories.map(cat=><button key={cat} className={category===cat?"active":""} onClick={()=>setCategory(cat)}>{cat}</button>)}</div>
-  {visible.length?<section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card compact-psychometric-card" key={i.code} role="button" tabIndex={0} aria-label={`Προεπισκόπηση ${i.code}`} onClick={()=>open(i)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(i)}}}>
-    <div className="instrument-top"><span className="instrument-area-chip clinical-hashtag">{clinicalHashtags(i.area)}</span><span className="instrument-time"><Clock3 size={12}/>{i.minutes}</span></div>
-    <h2>{i.code}</h2>
-    <p>{i.title}</p>
-    <div className="instrument-meta"><span>{i.items.length} ερωτήσεις · {i.language}</span></div>
+  <div className="category-tabs library-category-tabs">{categories.map(cat=><button key={cat} className={category===categoryIds[cat]?"active":""} onClick={()=>setCategory(categoryIds[cat])}>{displayLabel(cat)}</button>)}</div>
+  {visible.length?<section className="psy-grid">{visible.map(i=>{const assignable=['PHQ-9','GAD-7'].includes(i.code);return <article className="instrument-card library-instrument-card compact-psychometric-card" key={i.code} role="button" tabIndex={0} aria-label={t('psychometrics.previewInstrument',{code:i.code})} onClick={()=>open(i)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(i)}}}>
+    <div className="instrument-top"><span className="instrument-area-chip clinical-hashtag">{clinicalHashtags(i.area)}</span><span className="instrument-time"><Clock3 size={12}/>{displayLabel(i.minutes)}</span></div>
+    <h2>{i.code.startsWith('custom-')?t('psychometrics.customCodePrefix')+i.code.slice(7):i.code}</h2>
+    <p>{displayLabel(i.title)}</p>
+    <div className="instrument-meta"><span>{t('psychometrics.questionCount',{count:i.items.length})} · {i.language}</span></div>
     <div className="instrument-actions library-card-actions icon-only-actions" onClick={e=>e.stopPropagation()}>
-      <button disabled={!assignable} title={assignable?"Tablet":"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} aria-label={assignable?`Αποστολή ${i.code} σε tablet`:`Tablet μη διαθέσιμο για ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"tablet")}}><Tablet size={15}/></button>
-      <button disabled={!assignable} title={assignable?"Email":"Η ηλεκτρονική ανάθεση δεν υποστηρίζεται ακόμη για αυτό το εργαλείο"} aria-label={assignable?`Αποστολή ${i.code} με email`:`Email μη διαθέσιμο για ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"email")}}><Mail size={15}/></button>
-      <button title="Εκτύπωση" aria-label={`Εκτύπωση ${i.code}`} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"print");else{setActive(i);setAnswers({});setTimeout(()=>window.print(),100)}}}><Printer size={15}/></button>
+      <button disabled={!assignable} title={assignable?"Tablet":t('psychometrics.assignmentUnsupported')} aria-label={assignable?t('psychometrics.sendToTablet',{code:i.code}):t('psychometrics.tabletUnavailable',{code:i.code})} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"tablet")}}><Tablet size={15}/></button>
+      <button disabled={!assignable} title={assignable?"Email":t('psychometrics.assignmentUnsupported')} aria-label={assignable?t('psychometrics.sendByEmail',{code:i.code}):t('psychometrics.emailUnavailable',{code:i.code})} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"email")}}><Mail size={15}/></button>
+      <button title={t('documents.print')} aria-label={t('psychometrics.printInstrument',{code:i.code})} onClick={e=>{e.stopPropagation();if(assignable)launch([i.code],"print");else{setActive(i);setAnswers({});setTimeout(()=>window.print(),100)}}}><Printer size={15}/></button>
     </div>
-   </article>})}</section>:<div className={"library-empty-state"+(emptyCategory?" empty-category":"")} role="status"><strong>{emptyCategory?`Δεν υπάρχει ακόμη τεστ για #${category}`:"Δεν βρέθηκε εργαλείο"}</strong><span>{emptyCategory?"Το «Νέο τεστ» επάνω δεξιά έχει επισημανθεί για να προσθέσεις εργαλείο σε αυτή την κλινική περιοχή.":"Δοκίμασε διαφορετική αναζήτηση ή άλλη κλινική περιοχή."}</span></div>}
+   </article>})}</section>:<div className={"library-empty-state"+(emptyCategory?" empty-category":"")} role="status"><strong>{emptyCategory?t('psychometrics.noTestFor',{area:categoryName}):t('psychometrics.noToolFound')}</strong><span>{emptyCategory?t('psychometrics.emptyCategoryHelp'):t('psychometrics.searchHelp')}</span></div>}
  </section>
  </div>
  {launcherRequest&&<IntakeLauncher defaultTools={launcherRequest.tools} initialChannel={launcherRequest.channel} lockTools onClose={()=>setLauncherRequest(null)}/>}
- {historyPreview&&<div className="instrument-overlay history-preview-overlay" onClick={()=>setHistoryPreview(false)}><section className="library-history-preview real-history-preview" role="dialog" aria-modal="true" aria-labelledby="history-preview-title" onClick={e=>e.stopPropagation()}><button className="history-preview-close" onClick={()=>setHistoryPreview(false)} aria-label="Κλείσιμο προεπισκόπησης"><X size={18}/></button><span className="kicker">ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΕΡΩΤΗΜΑΤΟΛΟΓΙΟΥ</span><h2 id="history-preview-title">Αρχικό ιστορικό</h2><p>Αυτή είναι η μορφή που βλέπει ο ασθενής. Οι περισσότερες απαντήσεις δίνονται με επιλογές και εμφανίζονται πρόσθετες ερωτήσεις μόνο όταν χρειάζεται.</p><div className="history-preview-meta"><span>7–10 λεπτά</span><span>8 ενότητες</span><span>Κυρίως επιλογές</span></div><HistoryQuestionnairePreview/></section></div>}
- {customOpen&&<div className="instrument-overlay" onClick={()=>setCustomOpen(false)}><section className="custom-test-sheet" onClick={e=>e.stopPropagation()}><header><div><span className="kicker">ΔΟΚΙΜΑΣΤΙΚΗ ΔΗΜΙΟΥΡΓΙΑ</span><h2>Προεπισκόπηση δικού μου τεστ</h2><p>Δημιουργήστε ένα ερωτηματολόγιο που χρησιμοποιείτε ήδη. Σε αυτή την έκδοση παραμένει μόνο στην τρέχουσα συνεδρία και δεν αποθηκεύεται μόνιμα.</p></div><button onClick={()=>setCustomOpen(false)}><X size={19}/></button></header><div className="custom-fields"><label>Όνομα τεστ<input value={custom.title} onChange={e=>setCustom(v=>({...v,title:e.target.value}))} placeholder="π.χ. Κλίμακα παρακολούθησης ύπνου"/></label><label>Κλινική περιοχή / hashtag<input value={custom.area} onChange={e=>setCustom(v=>({...v,area:e.target.value}))} placeholder="π.χ. #Ύπνος"/></label><label>Χρονικό πλαίσιο<input value={custom.period} onChange={e=>setCustom(v=>({...v,period:e.target.value}))} placeholder="π.χ. Τις τελευταίες 7 ημέρες"/></label><div className="custom-q-head"><strong>Ερωτήσεις</strong><span>Απαντήσεις: 0 Καθόλου · 1 Μερικές μέρες · 2 Συχνά · 3 Σχεδόν κάθε μέρα</span></div>{custom.questions.map((q,i)=><div className="custom-q" key={i}><span>{i+1}</span><textarea value={q} onChange={e=>setCustom(v=>({...v,questions:v.questions.map((x,j)=>j===i?e.target.value:x)}))} placeholder="Γράψτε την ερώτηση ακριβώς όπως θέλετε να εμφανίζεται"/>{custom.questions.length>1&&<button onClick={()=>setCustom(v=>({...v,questions:v.questions.filter((_,j)=>j!==i)}))}><Trash2 size={15}/></button>}</div>)}<button className="add-question" onClick={()=>setCustom(v=>({...v,questions:[...v.questions,""]}))}><Plus size={15}/> Προσθήκη ερώτησης</button><div className="custom-caution"><ShieldCheck size={16}/><span>Για προστατευμένα ή αδειοδοτούμενα εργαλεία, ο ιατρός είναι υπεύθυνος να διαθέτει τα απαραίτητα δικαιώματα χρήσης.</span></div></div><footer><button className="secondary-custom" onClick={()=>setCustomOpen(false)}>Ακύρωση</button><button disabled={!custom.title.trim()||!custom.area.trim()||custom.questions.some(q=>!q.trim())} onClick={()=>{const cleanArea=custom.area.trim().replace(/^#+/,"").trim();const n:Instrument={code:"ΔΙΚΟ ΜΟΥ "+(customInstruments.length+1),title:custom.title.trim(),area:cleanArea,minutes:`${Math.max(1,Math.ceil(custom.questions.length/3))}–${Math.max(2,Math.ceil(custom.questions.length/2))} λεπτά`,source:"Προσωπικό εργαλείο ιατρού",period:custom.period.trim()||"Τρέχουσα αξιολόγηση",language:"EL",items:custom.questions.map(q=>q.trim()),options:frequency,interpret:n=>`Συνολική βαθμολογία ${n}`};setCustomInstruments(v=>[...v,n]);setCustom({title:"",area:"",period:"",questions:[""]});setCustomOpen(false)}}>Προσθήκη στην προεπισκόπηση</button></footer></section></div>}
- {active&&<div className="instrument-overlay" onClick={()=>setActive(null)}><section className="instrument-sheet" onClick={e=>e.stopPropagation()}><header><div><span className="instrument-code">{active.code}</span><h2>{active.title}</h2><p>{active.period} — {active.code==="PCL-5"?"how much were you bothered by the following problems?":active.language==="EN"?"select the response that best describes your experience.":"πόσο συχνά σας ενόχλησαν τα παρακάτω προβλήματα;"}</p></div><button className="instrument-floating-close" onClick={()=>setActive(null)} aria-label="Κλείσιμο τεστ"><X size={19}/></button></header><div className="assessment-patient"><UserRound size={16}/><span>Προεπισκόπηση βιβλιοθήκης — δεν συνδέεται με ασθενή και δεν αποθηκεύεται. Η διαθεσιμότητα Tablet / Email / Εκτύπωσης φαίνεται στην κάρτα του εργαλείου.</span></div><div className="instrument-preview-meta"><span>{clinicalHashtags(active.area)}</span><span>{active.language}</span><span>{active.source}</span></div>{active.notice&&<p className="instrument-license-note">{active.notice}</p>}<div className="instrument-progress"><div style={{width:`${(Object.keys(answers).length/active.items.length)*100}%`}}/><span>{Object.keys(answers).length} / {active.items.length}</span></div><div className="instrument-questions">{active.items.map((q,idx)=><div className="instrument-question" key={q}><strong><span>{idx+1}</span>{q}</strong><div>{active.options.map(o=><button className={answers[idx]===o.score?"selected":""} key={o.score} onClick={()=>setAnswers(v=>({...v,[idx]:o.score}))}><i>{o.score}</i>{o.label}</button>)}</div>{active.code==="PHQ-9"&&idx===8&&answers[idx]!==undefined&&answers[idx]>0&&<div className="risk-answer-note"><ShieldCheck size={15}/> Θετική απάντηση στο λήμμα 9 — απαιτείται κλινική αξιολόγηση αυτοκτονικού κινδύνου.</div>}</div>)}</div><footer className="preview-score-footer">{complete?<div className="score-result"><span>Συνολική βαθμολογία</span><strong>{score}</strong><b>{active.interpret(score)}</b></div>:<span>Απαντήστε σε όλες τις ερωτήσεις για υπολογισμό βαθμολογίας.</span>}</footer></section></div>}
+ {historyPreview&&<div className="instrument-overlay history-preview-overlay" onClick={()=>setHistoryPreview(false)}><section className="library-history-preview real-history-preview" role="dialog" aria-modal="true" aria-labelledby="history-preview-title" onClick={e=>e.stopPropagation()}><button className="history-preview-close" onClick={()=>setHistoryPreview(false)} aria-label={t('accessibility.closePreview')}><X size={18}/></button><span className="kicker">{t('psychometrics.questionnairePreviewKicker')}</span><h2 id="history-preview-title">{t('history.initialHistory')}</h2><p>{t('psychometrics.patientPreviewDescription')}</p><div className="history-preview-meta"><span>{t('psychometrics.sevenToTenMinutes')}</span><span>{t('psychometrics.eightSections')}</span><span>{t('psychometrics.mostlyChoices')}</span></div><HistoryQuestionnairePreview/></section></div>}
+ {customOpen&&<div className="instrument-overlay" onClick={()=>setCustomOpen(false)}><section className="custom-test-sheet" onClick={e=>e.stopPropagation()}><header><div><span className="kicker">{t('psychometrics.trialCreationKicker')}</span><h2>{t('psychometrics.customTestPreview')}</h2><p>{t('psychometrics.customTestHelp')}</p></div><button onClick={()=>setCustomOpen(false)}><X size={19}/></button></header><div className="custom-fields"><label>{t('psychometrics.testName')}<input value={custom.title} onChange={e=>setCustom(v=>({...v,title:e.target.value}))} placeholder={t('psychometrics.testNamePlaceholder')}/></label><label>{t('psychometrics.areaHashtag')}<input value={custom.area} onChange={e=>setCustom(v=>({...v,area:e.target.value}))} placeholder={t('psychometrics.areaPlaceholder')}/></label><label>{t('psychometrics.timeFrame')}<input value={custom.period} onChange={e=>setCustom(v=>({...v,period:e.target.value}))} placeholder={t('psychometrics.timeFramePlaceholder')}/></label><div className="custom-q-head"><strong>{t('psychometrics.questions')}</strong><span>{t('psychometrics.customAnswerScale')}</span></div>{custom.questions.map((q,i)=><div className="custom-q" key={i}><span>{i+1}</span><textarea value={q} onChange={e=>setCustom(v=>({...v,questions:v.questions.map((x,j)=>j===i?e.target.value:x)}))} placeholder={t('psychometrics.questionPlaceholder')}/>{custom.questions.length>1&&<button onClick={()=>setCustom(v=>({...v,questions:v.questions.filter((_,j)=>j!==i)}))}><Trash2 size={15}/></button>}</div>)}<button className="add-question" onClick={()=>setCustom(v=>({...v,questions:[...v.questions,""]}))}><Plus size={15}/>  {t('psychometrics.addQuestion')}</button><div className="custom-caution"><ShieldCheck size={16}/><span>{t('psychometrics.licenceResponsibility')}</span></div></div><footer><button className="secondary-custom" onClick={()=>setCustomOpen(false)}>{t('common.cancel')}</button><button disabled={!custom.title.trim()||!custom.area.trim()||custom.questions.some(q=>!q.trim())} onClick={()=>{const cleanArea=custom.area.trim().replace(/^#+/,"").trim();const n:Instrument={code:"custom-"+(customInstruments.length+1),title:custom.title.trim(),area:cleanArea,minutes:t('history.durationMinutes',{min:Math.max(1,Math.ceil(custom.questions.length/3)),max:Math.max(2,Math.ceil(custom.questions.length/2))}),source:t('psychometrics.personalToolSource'),period:custom.period.trim()||t('psychometrics.currentAssessment'),language:"EL",items:custom.questions.map(q=>q.trim()),options:frequency,interpret:n=>t('psychometrics.scoreValue',{score:n})};setCustomInstruments(v=>[...v,n]);setCustom({title:"",area:"",period:"",questions:[""]});setCustomOpen(false)}}>{t('psychometrics.addToPreview')}</button></footer></section></div>}
+ {active&&<div className="instrument-overlay" onClick={()=>setActive(null)}><section className="instrument-sheet" onClick={e=>e.stopPropagation()}><header><div><span className="instrument-code">{active.code.startsWith('custom-')?t('psychometrics.customCodePrefix')+active.code.slice(7):active.code}</span><h2>{displayLabel(active.title)}</h2><p>{active.period} — {active.code==="PCL-5"?"how much were you bothered by the following problems?":active.language==="EN"?"select the response that best describes your experience.":t('psychometrics.frequencyQuestion')}</p></div><button className="instrument-floating-close" onClick={()=>setActive(null)} aria-label={t('accessibility.closeTest')}><X size={19}/></button></header><div className="assessment-patient"><UserRound size={16}/><span>{t('psychometrics.libraryPreviewNote')}</span></div><div className="instrument-preview-meta"><span>{clinicalHashtags(active.area)}</span><span>{active.language}</span><span>{displayLabel(active.source)}</span></div>{active.notice&&<p className="instrument-license-note">{active.notice}</p>}<div className="instrument-progress"><div style={{width:`${(Object.keys(answers).length/active.items.length)*100}%`}}/><span>{Object.keys(answers).length} / {active.items.length}</span></div><div className="instrument-questions">{active.items.map((q,idx)=><div className="instrument-question" key={q}><strong><span>{idx+1}</span>{q}</strong><div>{active.options.map(o=><button className={answers[idx]===o.score?"selected":""} key={o.score} onClick={()=>setAnswers(v=>({...v,[idx]:o.score}))}><i>{o.score}</i>{o.label}</button>)}</div>{active.code==="PHQ-9"&&idx===8&&answers[idx]!==undefined&&answers[idx]>0&&<div className="risk-answer-note"><ShieldCheck size={15}/>  {t('psychometrics.itemNineClinicalReview')}</div>}</div>)}</div><footer className="preview-score-footer">{complete?<div className="score-result"><span>{t('psychometrics.totalScore')}</span><strong>{score}</strong><b>{displayLabel(active.interpret(score))}</b></div>:<span>{t('psychometrics.answerAllForScore')}</span>}</footer></section></div>}
  </div></section></main>
 }
 
 function PreviewChoice({children}:{children:ReactNode}){return <span className="history-preview-choice">{children}</span>}
 function PreviewQuestion({title,children}:{title:string;children:ReactNode}){return <div className="history-preview-question"><strong>{title}</strong><div className="history-preview-options">{children}</div></div>}
 function HistoryQuestionnairePreview(){
+ const displayLabel=useOptionLabel();
+
+ const t=useTranslations();
+
  return <div className="history-questionnaire-preview">
   <section>
-   <div className="history-preview-section-head"><span>1</span><div><strong>Τι σας φέρνει σήμερα;</strong><small>Μπορείτε να επιλέξετε περισσότερα από ένα.</small></div></div>
-   <div className="history-preview-chip-grid">{reasonOptions.map(x=><PreviewChoice key={x}>{x}</PreviewChoice>)}</div>
-   <PreviewQuestion title="Πόσο καιρό περίπου σας απασχολεί;"><PreviewChoice>Λιγότερο από 1 μήνα</PreviewChoice><PreviewChoice>1–6 μήνες</PreviewChoice><PreviewChoice>6–12 μήνες</PreviewChoice><PreviewChoice>Πάνω από 1 χρόνο</PreviewChoice></PreviewQuestion>
-   <label className="history-preview-textarea">Αν θέλετε, με λίγα λόγια τι σας φέρνει σήμερα <span>προαιρετικό</span><div/></label>
+   <div className="history-preview-section-head"><span>1</span><div><strong>{t('history.reasonQuestion')}</strong><small>{t('history.selectMultiple')}</small></div></div>
+   <div className="history-preview-chip-grid">{reasonOptions.map(x=><PreviewChoice key={x}>{displayLabel(x)}</PreviewChoice>)}</div>
+   <PreviewQuestion title={t('history.durationQuestion')}><PreviewChoice>{t('history.lessThanMonth')}</PreviewChoice><PreviewChoice>{t('history.oneToSixMonths')}</PreviewChoice><PreviewChoice>{t('history.sixToTwelveMonths')}</PreviewChoice><PreviewChoice>{t('history.moreThanYear')}</PreviewChoice></PreviewQuestion>
+   <label className="history-preview-textarea">{t('history.reasonNote')} <span>{t('common.optionalLower')}</span><div/></label>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>2</span><div><strong>Προηγούμενη φροντίδα</strong><small>Ψυχιατρική και ψυχολογική παρακολούθηση.</small></div></div>
-   <PreviewQuestion title="Έχετε επισκεφθεί στο παρελθόν ψυχίατρο;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Έχετε κάνει ψυχοθεραπεία ή παρακολούθηση από ψυχολόγο;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Σας έχει δοθεί ποτέ ψυχιατρική διάγνωση;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice><PreviewChoice>Δεν γνωρίζω</PreviewChoice></PreviewQuestion>
-   <div className="history-preview-subchoices">{diagnosisOptions.slice(0,7).map(x=><PreviewChoice key={x}>{x}</PreviewChoice>)}<PreviewChoice>+ άλλες</PreviewChoice></div>
+   <div className="history-preview-section-head"><span>2</span><div><strong>{t('history.previousCare')}</strong><small>{t('history.psychiatricPsychologicalCare')}</small></div></div>
+   <PreviewQuestion title={t('history.psychiatristQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.psychotherapyQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.diagnosisQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice><PreviewChoice>{t('history.doNotKnow')}</PreviewChoice></PreviewQuestion>
+   <div className="history-preview-subchoices">{diagnosisOptions.slice(0,7).map(x=><PreviewChoice key={x}>{displayLabel(x)}</PreviewChoice>)}<PreviewChoice>{t('history.moreOptions')}</PreviewChoice></div>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>3</span><div><strong>Αγωγή & νοσηλείες</strong><small>Προηγούμενη και τρέχουσα θεραπεία.</small></div></div>
-   <PreviewQuestion title="Έχετε πάρει στο παρελθόν φάρμακα για την ψυχική υγεία;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice><PreviewChoice>Δεν θυμάμαι</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Παίρνετε αυτή τη στιγμή φάρμακα;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Έχετε νοσηλευτεί ποτέ για λόγους ψυχικής υγείας;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Έχετε αυτοτραυματιστεί ποτέ;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice><PreviewChoice>Προτιμώ να το συζητήσω με τον γιατρό</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Έχετε κάνει ποτέ απόπειρα αυτοκτονίας;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice><PreviewChoice>Προτιμώ να το συζητήσω με τον γιατρό</PreviewChoice></PreviewQuestion>
+   <div className="history-preview-section-head"><span>3</span><div><strong>{t('history.medicationAdmissionsStep')}</strong><small>{t('history.previousCurrentTreatment')}</small></div></div>
+   <PreviewQuestion title={t('history.pastMedicationQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice><PreviewChoice>{t('history.cannotRecall')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.currentMedicationQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.admissionQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.selfHarmQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice><PreviewChoice>{t('history.preferDiscuss')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.attemptQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice><PreviewChoice>{t('history.preferDiscuss')}</PreviewChoice></PreviewQuestion>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>4</span><div><strong>Σωματική υγεία</strong><small>Σημαντικά προβλήματα υγείας και αλλεργίες.</small></div></div>
-   <div className="history-preview-matrix">{medicalOptions.map(x=><div key={x}><span>{x}</span><div><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></div></div>)}</div>
+   <div className="history-preview-section-head"><span>4</span><div><strong>{t('history.physicalHealth')}</strong><small>{t('history.healthAllergiesDescription')}</small></div></div>
+   <div className="history-preview-matrix">{medicalOptions.map(x=><div key={x}><span>{displayLabel(x)}</span><div><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></div></div>)}</div>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>5</span><div><strong>Χρήση ουσιών</strong><small>Τρέχουσα ή προηγούμενη χρήση.</small></div></div>
-   <div className="history-preview-matrix">{substanceOptions.map(x=><div key={x}><span>{x}</span><div><PreviewChoice>Ποτέ</PreviewChoice><PreviewChoice>Παλαιότερα</PreviewChoice><PreviewChoice>Τώρα</PreviewChoice></div></div>)}</div>
+   <div className="history-preview-section-head"><span>5</span><div><strong>{t('history.substanceUse')}</strong><small>{t('history.currentPreviousUse')}</small></div></div>
+   <div className="history-preview-matrix">{substanceOptions.map(x=><div key={x}><span>{displayLabel(x)}</span><div><PreviewChoice>{t('history.never')}</PreviewChoice><PreviewChoice>{t('history.previously')}</PreviewChoice><PreviewChoice>{t('history.currently')}</PreviewChoice></div></div>)}</div>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>6</span><div><strong>Οικογενειακό ιστορικό</strong><small>Ψυχιατρικό ιστορικό στην οικογένεια.</small></div></div>
-   <div className="history-preview-family">{familyConditions.slice(0,5).map(x=><div key={x}><strong>{x}</strong><span>{familyRelations.slice(0,4).join(' · ')} · …</span></div>)}</div>
+   <div className="history-preview-section-head"><span>6</span><div><strong>{t('history.familyHistory')}</strong><small>{t('history.familyHistoryDescription')}</small></div></div>
+   <div className="history-preview-family">{familyConditions.slice(0,5).map(x=><div key={x}><strong>{displayLabel(x)}</strong><span>{familyRelations.slice(0,4).join(' · ')} · …</span></div>)}</div>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>7</span><div><strong>Καθημερινότητα</strong><small>Σχέσεις, διαμονή, εργασία και υποστήριξη.</small></div></div>
-   <PreviewQuestion title="Οικογενειακή / σχεσιακή κατάσταση"><PreviewChoice>Μόνος/η</PreviewChoice><PreviewChoice>Σε σχέση</PreviewChoice><PreviewChoice>Έγγαμος/η</PreviewChoice><PreviewChoice>Χωρισμένος/η</PreviewChoice></PreviewQuestion>
-   <PreviewQuestion title="Έχετε ανθρώπους που σας στηρίζουν;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice></PreviewQuestion>
+   <div className="history-preview-section-head"><span>7</span><div><strong>{t('history.dailyLife')}</strong><small>{t('history.dailyLifeDescription')}</small></div></div>
+   <PreviewQuestion title={t('history.familyRelationshipStatus')}><PreviewChoice>{t('history.single')}</PreviewChoice><PreviewChoice>{t('history.inRelationship')}</PreviewChoice><PreviewChoice>{t('history.married')}</PreviewChoice><PreviewChoice>{t('history.separated')}</PreviewChoice></PreviewQuestion>
+   <PreviewQuestion title={t('history.supportQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice></PreviewQuestion>
   </section>
 
   <section>
-   <div className="history-preview-section-head"><span>8</span><div><strong>Τραύμα & κάτι ακόμη</strong><small>Προαιρετικές πληροφορίες πριν την επίσκεψη.</small></div></div>
-   <PreviewQuestion title="Έχετε βιώσει γεγονός που θεωρείτε σοβαρά τραυματικό;"><PreviewChoice>Ναι</PreviewChoice><PreviewChoice>Όχι</PreviewChoice><PreviewChoice>Προτιμώ να το συζητήσω μόνο με τον γιατρό</PreviewChoice></PreviewQuestion>
-   <label className="history-preview-textarea">Υπάρχει κάτι άλλο σημαντικό που θέλετε να γνωρίζει ο γιατρός; <span>προαιρετικό</span><div/></label>
+   <div className="history-preview-section-head"><span>8</span><div><strong>{t('history.traumaOther')}</strong><small>{t('history.optionalBeforeVisit')}</small></div></div>
+   <PreviewQuestion title={t('history.traumaQuestion')}><PreviewChoice>{t('common.yes')}</PreviewChoice><PreviewChoice>{t('common.no')}</PreviewChoice><PreviewChoice>{t('history.preferPrivateDiscussion')}</PreviewChoice></PreviewQuestion>
+   <label className="history-preview-textarea">{t('history.otherImportantQuestion')} <span>{t('common.optionalLower')}</span><div/></label>
   </section>
  </div>
 }

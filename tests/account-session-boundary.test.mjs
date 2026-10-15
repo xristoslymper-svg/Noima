@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -15,7 +16,7 @@ async function boundary({path='/patients',responses=[Response.json(account)],sto
  const window={location:{replace:url=>navigation.push(['replace',url]),reload:()=>navigation.push(['reload'])},addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
  const document={visibilityState:'visible',addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,window,document,sessionStorage,AbortController,fetch:async(url,options)=>{requests.push({url,options});const result=responses.shift();if(result instanceof Error)throw result;return result},require:id=>id==='react'?react:id==='react/jsx-runtime'?{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})}:id==='next/navigation'?{usePathname:()=>path}:helpers.exports});
+ vm.runInNewContext(source,{module,exports:module.exports,window,document,sessionStorage,AbortController,fetch:async(url,options)=>{requests.push({url,options});const result=responses.shift();if(result instanceof Error)throw result;return result},require:(id)=>(intlTestModule(id)??(id=>id==='react'?react:id==='react/jsx-runtime'?{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})}:id==='next/navigation'?{usePathname:()=>path}:helpers.exports)(id))});
  const rendered=module.exports.default({children:'clinical-content'});
  const cleanup=effects[0]();
  const settle=()=>new Promise(resolve=>setImmediate(resolve));await settle();

@@ -264,13 +264,23 @@ const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||val
 }
 
 function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:string)=>void}){
- const t=useTranslations();
+const t=useTranslations();
+
+ const locale=useLocale();
+ const fmt=(value?:string|null)=>value?formatClinicDateTime(value,locale):'—';
+
+ 
 
  return <div className="completed-session-list">{sessions.map(session=><button className="completed-session-row" key={session.id} onClick={()=>onSelect(session.id)}><CheckCircle2 size={18}/><div><strong>{session.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followupSession')}</strong><span>{t('visits.finalizedPrefix')} {fmt(session.completed_at)}</span></div><span className="open-session-label">{t('common.open')}</span></button>)}</div>;
 }
 
 function CompletedSessionView({session,bundle,onBack,reload,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
- const t=useTranslations();
+const t=useTranslations();
+
+ const locale=useLocale();
+ const fmt=(value?:string|null)=>value?formatClinicDateTime(value,locale):'—';
+
+ 
 
  return <>{session.continuity?.approved_at&&<section className="visit-part"><header><h3>{t('clinical.confirmedMemory')}</h3></header><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.clinical_state_summary}</p><p><strong>{t('clinical.treatmentDecisionPrefix')}</strong> {session.continuity.treatment_decision}</p><p><strong>{t('clinical.nextReviewPrefix')}</strong> {session.continuity.next_review_focus}</p><p><strong>{t('medications.adherencePrefix')}</strong> {session.continuity.adherence}</p>{session.continuity.pinned_context&&<p>📌 {session.continuity.pinned_context}</p>}<p className="visit-hint">{t('clinical.confirmedPrefix')} {fmt(session.continuity.approved_at)} · {session.continuity.source==='ai_assisted'?t('clinical.aiReviewedByClinician'):t('clinical.manualEntry')}</p><details><summary>{t('clinical.originalClinicianText')}</summary><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.transcript||t('clinical.noSeparateOriginal')}</p></details></section>}<CompletedRecordEditor key={session.id} session={session} bundle={bundle} reload={reload} onBack={onBack} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>;
 }

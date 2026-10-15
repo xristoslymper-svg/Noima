@@ -3,8 +3,10 @@ import {useTranslations} from 'next-intl';
 
 import {medicationTimes,selectedMedicationTimes,toggleMedicationTime} from '@/lib/clinical/medication-frequency';
 
-export default function MedicationFrequency({value,onChange,disabled,label=t('medications.frequency')}:{value:string;onChange:(value:string)=>void;disabled?:boolean;label?:string}){
+export default function MedicationFrequency({value,onChange,disabled,label}:{value:string;onChange:(value:string)=>void;disabled?:boolean;label?:string}){
  const t=useTranslations();
+if (label === undefined) label=t('medications.frequency');
+
 
  const selected=selectedMedicationTimes(value);
  return <div className="med-frequency">

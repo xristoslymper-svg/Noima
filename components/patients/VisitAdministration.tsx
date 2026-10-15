@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import VisitNextAppointment from './VisitNextAppointment';
+import styles from './VisitAdministration.module.css';
 type Payment='unknown'|'pending'|'paid'|'not_applicable';
 const choices:[Payment,string][]=[['paid','Πληρωμένο'],['pending','Εκκρεμεί'],['not_applicable','Χωρίς χρέωση'],['unknown','Δεν έχει σημειωθεί']];
 export default function VisitAdministration({bundle,sessionId,reload,registerFlusher,onDirtyChange,disabled=false}:{bundle:PatientBundle;sessionId:string;reload:()=>Promise<unknown>;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;disabled?:boolean}){
@@ -23,7 +24,7 @@ export default function VisitAdministration({bundle,sessionId,reload,registerFlu
  return <section className="visit-part" aria-label="Διεκπεραίωση επίσκεψης"><header><h3>Διεκπεραίωση επίσκεψης</h3></header><div className="visit-part-surface">
   <p className="visit-hint">Η κλινική καταγραφή παραμένει οριστικοποιημένη. Οι παρακάτω ενέργειες είναι προαιρετικές.</p>
   <fieldset disabled={disabled||busy} style={{border:0,padding:0,margin:0,minWidth:0}}><div className="visit-related-fields"><section aria-label="Πληρωμή επίσκεψης"><h4>Πληρωμή</h4>
-   {appointment?<><p role="status">{busy?'Αποθήκευση πληρωμής…':choices.find(([value])=>value===status)?.[1]||'Ανανέωση κατάστασης πληρωμής…'}</p><div role="group" aria-label="Κατάσταση πληρωμής">{choices.map(([value,label])=><button type="button" key={value} aria-pressed={status===value} onClick={()=>void save(value)}>{label}</button>)}</div></>:<p>{linked.length>1?'Χρειάζεται έλεγχος σύνδεσης ραντεβού πριν καταχωριστεί πληρωμή.':'Δεν υπάρχει συνδεδεμένο ραντεβού για καταχώριση πληρωμής.'}</p>}
+   {appointment?<><p role="status">{busy?'Αποθήκευση πληρωμής…':choices.find(([value])=>value===status)?.[1]||'Ανανέωση κατάστασης πληρωμής…'}</p><div className={styles.paymentOptions} role="group" aria-label="Κατάσταση πληρωμής">{choices.map(([value,label])=><button type="button" key={value} aria-pressed={status===value} onClick={()=>void save(value)}>{label}</button>)}</div></>:<p>{linked.length>1?'Χρειάζεται έλεγχος σύνδεσης ραντεβού πριν καταχωριστεί πληρωμή.':'Δεν υπάρχει συνδεδεμένο ραντεβού για καταχώριση πληρωμής.'}</p>}
    {error&&<p role="alert">{error}</p>}
   </section><VisitNextAppointment bundle={bundle} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div></fieldset>
  </div></section>;

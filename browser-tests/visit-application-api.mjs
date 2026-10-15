@@ -54,7 +54,12 @@ try{
   await area.getByRole('button',{name:'Πληρωμένο',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Κατάσταση πληρωμής"] button[aria-pressed="true"]')?.textContent==='Πληρωμένο');
   const paid=(await owner.client.from('demo_calendar_events').select('*').eq('id',appointmentId).single()).data;assert.equal(paid.payment_status,'paid');assert.equal(paid.session_id,sessionId);assert.equal(paid.patient_id,patientId);
   await area.getByRole('button',{name:'Προγραμματισμός',exact:true}).click();await area.getByRole('button',{name:'Σε 4 εβδομάδες',exact:true}).click();await area.getByLabel('Ώρα Αθήνας',{exact:true}).fill(size==='mobile'?'11:00':'09:00');await area.getByRole('button',{name:'Προγραμματισμός',exact:true}).click();await area.getByText('Το ραντεβού αποθηκεύτηκε.',{exact:true}).waitFor();
-  await page.reload();await area.waitFor();assert.equal(await area.getByRole('button',{name:'Πληρωμένο',exact:true}).getAttribute('aria-pressed'),'true');
+  await page.reload();await area.waitFor();
+  // The visit shell precedes the longitudinal appointment read. Wait for its
+  // existing readiness gate, then assert the persisted payment without polling
+  // for the desired value or accepting the temporary loading state.
+  await area.locator('fieldset:not([disabled])').waitFor();
+  assert.equal(await area.getByRole('button',{name:'Πληρωμένο',exact:true}).getAttribute('aria-pressed'),'true');
   const events=(await owner.client.from('demo_calendar_events').select('*').eq('patient_id',patientId)).data;assert.equal(events.length,2);assert.equal(events.filter(e=>e.status==='scheduled').length,1);
   const after=(await owner.client.from('demo_sessions').select('*').eq('id',sessionId).single()).data;assert.equal(after.version,session.version);assert.equal(after.completed_at,session.completed_at);
   assert.equal(calls.filter(c=>c.action==='finalize_session').length,1);

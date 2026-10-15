@@ -2,8 +2,9 @@ NOIMA — Επαλήθευση ροής επίσκεψης, 15/10/2026
 
 Branch: fix/visit-workflow-audit-20261015
 PR: https://github.com/xristoslymper-svg/Noima/pull/105
-Ακριβές commit κώδικα και δοκιμών: c819796a826def73398d4d6bfed895e2efd22034
-Το επόμενο commit προσθέτει μόνο αυτή την αναφορά και τα συνθετικά evidence.
+Επαληθευμένο snapshot εφαρμογής και δοκιμών: c819796a826def73398d4d6bfed895e2efd22034
+Μεταγενέστερα commits προσθέτουν αναφορά/evidence και αναμονή του υπάρχοντος
+readiness gate στη δοκιμή πληρωμής μετά από reload. Ο κώδικας εφαρμογής δεν αλλάζει.
 Ιστορική βάση audit: 27e61cefd3a7bb568a73a02a4e08ebf70a9a762a.
 Η εργασία συνεχίστηκε από το ήδη υπάρχον PR, αρχικό head 3ef29f41897766258f3585db089f45da0ad753bb.
 Δεν έγινε reset, clean, stash, revert, merge στο main ή production deployment/migration.

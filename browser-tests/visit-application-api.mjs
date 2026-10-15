@@ -13,7 +13,9 @@ const api=config.API_URL,key=config.ANON_KEY;
 assert.equal(new URL(api).hostname,'127.0.0.1');assert.equal(new URL(api).port,'54321');
 const env={...process.env,NEXT_PUBLIC_SUPABASE_URL:api,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:key,CLINICAL_DATA_MODE:'synthetic',EXTERNAL_AI_ENABLED:'false',NEXT_PUBLIC_NOIMA_MOBILE_V2:'0'};
 execFileSync('npm',['run','build'],{env,stdio:'inherit'});
-const server=spawn('npm',['run','start','--','--hostname','127.0.0.1','--port','3100'],{env,stdio:'ignore'}),origin='http://127.0.0.1:3100';
+// NextURL canonicalizes loopback hosts to localhost; use that same origin so
+// browser requests exercise the unchanged same-origin protection correctly.
+const server=spawn('npm',['run','start','--','--hostname','localhost','--port','3100'],{env,stdio:'ignore'}),origin='http://localhost:3100';
 const admin=createClient(api,config.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const out=resolve('test-results/visit-application-api');mkdirSync(out,{recursive:true});const results=[],timings=[];
 let browser;
@@ -27,7 +29,7 @@ try{
  for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
   const context=await browser.newContext({viewport}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.route('**/*',r=>[origin,new URL(api).origin].includes(new URL(r.request().url()).origin)?r.continue():r.abort());
-  const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200);
+  const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200,`Application login: ${(await login.json()).error??'ok'}`);
   const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.postDataJSON()?.action})});
   async function post(path,data){const r=await context.request.post(origin+path,{headers:{origin},data});const body=await r.json();assert.equal(r.ok(),true,`${path}: ${body.error}`);return body}
   const started=new Date();started.setUTCDate(started.getUTCDate()+2+(size==='mobile'?1:0));started.setUTCHours(10,0,0,0);

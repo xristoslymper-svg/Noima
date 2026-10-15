@@ -5,12 +5,12 @@ import {validContinuity} from '@/lib/clinical/continuity';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import type {useClinicalDraft} from './useClinicalDraft';
 type Draft=ReturnType<typeof useClinicalDraft<ContinuityDraft>>;
-export default function ClinicalDraftRecovery({draft,reload,sessionId,disabled=false}:{draft:Draft;reload:()=>Promise<unknown>;sessionId:string;disabled?:boolean}){
+export default function ClinicalDraftRecovery({draft,reload,sessionId,patientId,disabled=false}:{draft:Draft;reload:()=>Promise<unknown>;sessionId:string;patientId:string;disabled?:boolean}){
  const [confirm,setConfirm]=useState(false),[discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');const flight=useRef(false);
  async function run(loadServer:boolean){if(flight.current||disabled||draft.saving)return;flight.current=true;setBusy(true);setError('');try{
   if(!loadServer){await draft.flush();return}
   const fresh=await reload() as PatientBundle|null;const session=fresh?.sessions.find(s=>s.id===sessionId&&s.patient_id===fresh.patient.id);
-  if(!session||session.status!=='draft'||!validContinuity(session.closure_draft)||!Number.isSafeInteger(session.closure_version))throw new Error('Δεν φορτώθηκε έγκυρη πρόχειρη έκδοση. Το κείμενό σας διατηρείται.');
+  if(fresh?.patient.id!==patientId||!session||session.patient_id!==patientId||session.status!=='draft'||!validContinuity(session.closure_draft)||!Number.isSafeInteger(session.closure_version)||(session.closure_version as number)<0)throw new Error('Δεν φορτώθηκε έγκυρη πρόχειρη έκδοση. Το κείμενό σας διατηρείται.');
   draft.acceptServerPreservingLocal(session.closure_draft,session.closure_version!);setConfirm(false);
  }catch(cause){setError(cause instanceof Error?cause.message:'Δεν ολοκληρώθηκε η ανάκτηση. Το κείμενό σας διατηρείται.')}finally{flight.current=false;setBusy(false)}}
  // A save temporarily clears its error. Never remove an open consent prompt.

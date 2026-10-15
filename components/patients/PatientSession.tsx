@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
 import FollowupClosure from './FollowupClosure';
-import {followupFinalizationVersion} from '@/lib/clinical/followup-finalization';
+import {followupFinalizationVersion,focusFollowupBlocker} from '@/lib/clinical/followup-finalization';
 import VisitAdministration from './VisitAdministration';
 import RiskEditor from './RiskTreeEditor';
 import StructuredVisitEditor from './StructuredVisitEditor';
@@ -12,7 +12,7 @@ import VisitHistory from './VisitHistory';
 import VisitNextAppointment from './VisitNextAppointment';
 import VisitScores from './VisitScores';
 import MedicationTable from './MedicationTable';
-import {FollowupDraftProvider,FollowupField} from './FollowupDraft';
+import {FollowupDraftProvider,FollowupField,FollowupRecovery} from './FollowupDraft';
 import {followupFields} from '@/lib/clinical/followup-fields';
 import SectionEditor from './SectionEditor';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
@@ -167,7 +167,7 @@ export default function PatientSession({
    if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
    await onFinalize(draft.id);
   }catch(cause){
-   setFlushError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η οριστικοποίηση.');
+   setFlushError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η οριστικοποίηση.');if(draft)focusFollowupBlocker(cause,draft.id);
   }finally{finishing.current=false}
  }
 
@@ -231,6 +231,7 @@ export default function PatientSession({
   </fieldset>
 
   <p className="visit-hint">Οι κλινικές σημειώσεις αποθηκεύονται ως πρόχειρο όσο εργάζεστε. Η οριστικοποίηση κλείνει την καταγραφή και εντάσσει τις σημειώσεις στη σύνοψη του φακέλου.</p>
+  {draft.session_type==='follow_up'&&<FollowupRecovery disabled={flushing||finalizing||finishingLater}/> }
   <div className="finalize-bar">
    <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing?'Αποθήκευση πρόχειρου…':finalizing?'Οριστικοποίηση…':'Οριστικοποίηση καταγραφής'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}

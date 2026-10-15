@@ -16,6 +16,13 @@ test('calendar and record use the same definition of upcoming',()=>assert.deepEq
 test('cancelled, completed and invalid dates never become the next appointment',()=>assert.deepEqual(selectUpcomingAppointments([{...next,id:'c',status:'cancelled'},{...next,id:'d',status:'completed'},{...next,id:'invalid',scheduled_start:'no-date'}],now),[]));
 test('equal times have deterministic ordering and input is not mutated',()=>{const rows=[{...next,id:'b'},{...next,id:'a'}];assert.deepEqual(selectUpcomingAppointments(rows,now).map(a=>a.id),['a','b']);assert.equal(rows[0].id,'b')});
 const position={workspace:'a',date:'2026-10-29',view:'week',filter:'scheduled',top:725,left:0,pageTop:24};
+
+test('same-day future visits with another linked session remain eligible across Athens DST',()=>{
+ const rows=[{...next,id:'first',session_id:'other',scheduled_start:'2026-10-25T03:30:00+03:00'},{...next,id:'second',session_id:'future',scheduled_start:'2026-10-25T03:30:00+02:00'}];
+ assert.deepEqual(selectUpcomingAppointments(rows,Date.parse('2026-10-25T00:45:00Z'),{excludeSessionId:'s'}).map(a=>a.id),['second']);
+ const spring=[{...next,id:'before',scheduled_start:'2026-03-29T02:30:00+02:00'},{...next,id:'after',scheduled_start:'2026-03-29T04:30:00+03:00'}];
+ assert.deepEqual(selectUpcomingAppointments(spring,Date.parse('2026-03-29T01:00:00Z')).map(a=>a.id),['after']);
+});
 test('a return position is scoped to the correct workspace',()=>{assert.deepEqual(validCalendarDeparture({at:now,explicit:true,position},'a',false,now),position);assert.equal(validCalendarDeparture({at:now,explicit:true,position},'b',false,now),null)});
 test('stale and future departure tickets fail closed',()=>{assert.equal(validCalendarDeparture({at:now-60001,explicit:true,position},'a',false,now),null);assert.equal(validCalendarDeparture({at:now+1,explicit:true,position},'a',false,now),null)});
 test('unrelated direct visits do not inherit a calendar position',()=>assert.equal(validCalendarDeparture({at:now,position},'a',false,now),null));

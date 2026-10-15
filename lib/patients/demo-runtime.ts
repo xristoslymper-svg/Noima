@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments} from '../calendar/upcoming.ts';
 import type {ContextRevision} from '../clinical/continuity-context';
 import type {ContinuityDraft,VisitContinuity} from '../clinical/continuity';
 import {pilotAuthorization} from '@/lib/pilot/request-scope';
@@ -63,7 +64,7 @@ export async function listPatientRows(tester:string){
  for(const group of completed.values())group.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const now=Date.now();
  const nextAppointments=new Map<string,typeof appointments[number]>();
- for(const appointment of appointments){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id)&&appointment.status==='scheduled'&&new Date(appointment.scheduled_end).getTime()>=now)nextAppointments.set(appointment.patient_id,appointment)}
+ for(const appointment of selectUpcomingAppointments(appointments,now)){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id))nextAppointments.set(appointment.patient_id,appointment)}
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
  const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({

@@ -6,7 +6,8 @@ import type {Finding} from '@/lib/clinical/summary-context';
 // All recorded narratives, quotes and previously generated prose remain intact.
 export function useFindingText(){
  const t=useTranslations();
- return (finding:Pick<Finding,'key'|'text'>)=>{
+ return (finding:Pick<Finding,'text'>&Partial<Pick<Finding,'key'>>)=>{
+  if(!finding.key)return finding.text;
   if(finding.key==='risk-missing')return t('clinical.missingRiskDisclaimer');
   if(finding.key==='medication-refresh')return t('medications.refreshRequired');
   if(finding.key.startsWith('risk-review:'))return t('clinical.riskSourceConflict');

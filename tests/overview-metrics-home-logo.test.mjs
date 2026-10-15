@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 
 const overview=readFileSync('app/page.tsx','utf8');
 const css=readFileSync('app/globals.css','utf8');

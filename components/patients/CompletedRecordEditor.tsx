@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -23,6 +25,8 @@ function riskShape(r?:DemoRisk){return {suicidal_ideation:r?.suicidal_ideation||
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 
 export default function CompletedRecordEditor({session,bundle,reload,onBack,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;reload:()=>Promise<unknown>;onBack:()=>void;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
  const locale=useLocale();
@@ -105,7 +109,7 @@ const riskOptions=[['not_assessed',t('clinical.notAssessed')],['unknown',t('comm
    <details className="visit-additional"><summary>{t('clinical.additionalNotesFunctioning')}</summary><div className="completed-correction-grid"><label>{t('clinical.functioning')}<textarea rows={3} value={narrative.functioning} onChange={e=>setNarrative(v=>({...v,functioning:e.target.value}))}/></label>{session.session_type==='initial_assessment'&&<><label>{t('medications.adherence')}<textarea rows={3} value={narrative.adherence} onChange={e=>setNarrative(v=>({...v,adherence:e.target.value}))}/></label><label>{t('medications.sideEffects')}<textarea rows={3} value={narrative.effects} onChange={e=>setNarrative(v=>({...v,effects:e.target.value}))}/></label></>}</div></details>
   </fieldset>
 
-  {editing&&<div className="correction-save-bar"><label>{t('visits.correctionReason')}<input value={reason} maxLength={500} onChange={e=>setReason(e.target.value)} placeholder={t('visits.correctionReasonPlaceholder')}/></label><div><button type="button" className="finalize-later" disabled={busy} onClick={reset}><X size={15}/>  {t('common.cancel')}</button><button type="button" disabled={busy||!pending||!reason.trim()} onClick={()=>void save()}><Check size={15}/>{busy?t('common.saving'):pending?t('visits.saveCorrectionPrefix')+pending+')':t('common.noChanges')}</button></div>{error&&<p role="alert" className="save-state error">{error}</p>}</div>}
+  {editing&&<div className="correction-save-bar"><label>{t('visits.correctionReason')}<input value={reason} maxLength={500} onChange={e=>setReason(e.target.value)} placeholder={t('visits.correctionReasonPlaceholder')}/></label><div><button type="button" className="finalize-later" disabled={busy} onClick={reset}><X size={15}/>  {t('common.cancel')}</button><button type="button" disabled={busy||!pending||!reason.trim()} onClick={()=>void save()}><Check size={15}/>{busy?t('common.saving'):pending?t('visits.saveCorrectionPrefix')+pending+')':t('common.noChanges')}</button></div>{error&&<p role="alert" className="save-state error">{systemMessage(error)}</p>}</div>}
   {history.length>0&&<details className="correction-audit"><summary>{t('visits.correctionHistoryPrefix')} {history.length}</summary>{history.map(item=><article key={item.id}><strong>{formatClinicDateTime(item.created_at, locale)}</strong><span>{item.reason}</span><small>{Object.keys(item.patch).length}  {t('visits.fieldsSectionsSuffix')}</small></article>)}</details>}
  </section>;
 }

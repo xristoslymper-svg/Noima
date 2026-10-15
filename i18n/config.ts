@@ -4,6 +4,7 @@ export const defaultLocale: Locale = 'el';
 export const localeCookie = 'noima-locale';
 export const clinicalTimeZone = 'Europe/Athens';
 export const localeNames: Record<Locale, string> = {el: 'Ελληνικά', en: 'English'};
+export const languageNames = localeNames;
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && locales.includes(value as Locale);
 }

@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
@@ -43,6 +45,8 @@ function ReadOnlyMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 }
 
 function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,editableEffects,firstAssessment=false,registerFlusher,onDirtyChange,durationLabel}:{medication:DemoMedication;bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>;editableEffects:boolean;durationLabel:(start:string,end?:string|null)=>string}&Tracking){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const locale=useLocale();
@@ -75,7 +79,7 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
  }
  const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10),editable=m.status!=='stopped';
  return <tr className={editing?'med-row-editing':''}>
-  <th scope="row">{m.medication_name}{error&&<span className="med-inline-error" role="alert">{error}</span>}</th>
+  <th scope="row">{m.medication_name}{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}</th>
   <td data-label={t('medications.dose')}>{editing?<div className="med-inline-dose"><input aria-label={t('medications.dose')+m.medication_name} inputMode="decimal" value={dose} disabled={saving} onChange={e=>setDose(e.target.value.replace(',','.'))}/><input aria-label={t('medications.unit')+m.medication_name} value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div>:<span className="med-dose-display">{m.dose}<b>{m.unit}</b></span>}</td>
   <td data-label={t('medications.frequency')}>{editing?<MedicationFrequency label={t('medications.frequency')+m.medication_name} value={frequency} disabled={saving} onChange={setFrequency}/>:m.frequency}</td>
   <td data-label={t('medications.periodDuration')}><span>{formatClinicDate(start, locale)}{end?' – '+formatClinicDate(end, locale):''}</span><small>{m.status==='planned'?t('medications.scheduledStart'):durationLabel(start,end)}</small></td>
@@ -86,6 +90,8 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 }
 
 function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
@@ -118,7 +124,7 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
  }
  if(!open)return <tr className="med-add-row"><td colSpan={7}><button type="button" onClick={()=>setOpen(true)}><Plus size={15}/>  {t('medications.addDrug')}</button></td></tr>;
  return <tr ref={newRowRef} className="med-new-row">
-  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{error}</span>}{needsAction&&<span className="med-inline-error" role="status">{t('medications.saveCancelHere')}</span>}</th>
+  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}{needsAction&&<span className="med-inline-error" role="status">{t('medications.saveCancelHere')}</span>}</th>
   <td data-label={t('medications.dose')}><div className="med-inline-dose"><input aria-label={t('medications.dose')} inputMode="decimal" placeholder="*" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setError('')}}/><input aria-label={t('medications.unit')} value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
   <td data-label={t('medications.frequency')}><MedicationFrequency value={frequency} disabled={saving} onChange={value=>{setFrequency(value);setError('')}}/></td>
   <td data-label={t('medications.periodDuration')}><label className="med-new-date">{t('medications.startRequired')}<input type="date" value={start} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='history'&&<label className="med-new-date">{t('medications.stopRequired')}<input type="date" value={stop} disabled={saving} min={start} max={today} onChange={e=>setStop(e.target.value)}/></label>}</td>
@@ -194,6 +200,8 @@ function MedicationEffects({medication,bundle,sessionId,today,reload,editableEff
 }
 
 function DraftSideEffect({effect,medication,sessionId,reload,registerFlusher,onDirtyChange}:{effect:PatientBundle['medicationSideEffects'][number];medication:DemoMedication;sessionId:string;reload:()=>Promise<unknown>}&Tracking){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const locale=useLocale();
@@ -208,10 +216,12 @@ function DraftSideEffect({effect,medication,sessionId,reload,registerFlusher,onD
   return {value:result.side_effect.effect_text as string,version:Date.parse(result.side_effect.updated_at)};
  },onSaved:reload,onDirty:dirty=>onDirtyChange?.(key,dirty)});
  useEffect(()=>registerFlusher?.(key,draft.flush),[key,registerFlusher,draft.flush]);
- return <div className="med-effect"><input aria-label={t('medications.sideEffectPrefix')+medication.medication_name} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})}/><small>{formatClinicDate(effect.noted_on, locale)} · {effect.severity==='severe'?t('clinical.severe'):effect.severity==='mild'?t('clinical.mild'):t('clinical.moderate')}</small>{effect.note&&<details><summary>{t('medications.entryHistory')}</summary><p style={{whiteSpace:'pre-wrap'}}>{effect.note}</p></details>}{draft.error&&<div role="alert">{draft.error} {draft.hasConflict?<><button type="button" onClick={()=>void reload()}>{t('medications.refreshSavedEntry')}</button><p>{t('medications.savedEntryPrefix')} {effect.effect_text}</p><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.acceptServer(effect.effect_text,Date.parse(effect.updated_at))}}>{t('visits.useSaved')}</button><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.resolve(draft.value,effect.effect_text,Date.parse(effect.updated_at))}}>{t('medications.keepMyCorrection')}</button></>:<button type="button" onClick={()=>void draft.flush().catch(()=>{})}>{t('common.repeat')}</button>}</div>}</div>;
+ return <div className="med-effect"><input aria-label={t('medications.sideEffectPrefix')+medication.medication_name} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})}/><small>{formatClinicDate(effect.noted_on, locale)} · {effect.severity==='severe'?t('clinical.severe'):effect.severity==='mild'?t('clinical.mild'):t('clinical.moderate')}</small>{effect.note&&<details><summary>{t('medications.entryHistory')}</summary><p style={{whiteSpace:'pre-wrap'}}>{effect.note}</p></details>}{draft.error&&<div role="alert">{systemMessage(draft.error)} {draft.hasConflict?<><button type="button" onClick={()=>void reload()}>{t('medications.refreshSavedEntry')}</button><p>{t('medications.savedEntryPrefix')} {effect.effect_text}</p><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.acceptServer(effect.effect_text,Date.parse(effect.updated_at))}}>{t('visits.useSaved')}</button><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.resolve(draft.value,effect.effect_text,Date.parse(effect.updated_at))}}>{t('medications.keepMyCorrection')}</button></>:<button type="button" onClick={()=>void draft.flush().catch(()=>{})}>{t('common.repeat')}</button>}</div>}</div>;
 }
 
 function SideEffectEntry({medication,sessionId,today,reload,registerFlusher,onDirtyChange}:{medication:DemoMedication;sessionId?:string;today:string;reload:()=>Promise<unknown>}&Tracking){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const [open,setOpen]=useState(false),[text,setText]=useState(''),[severity,setSeverity]=useState(''),[date,setDate]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
@@ -226,5 +236,5 @@ function SideEffectEntry({medication,sessionId,today,reload,registerFlusher,onDi
  }
  const cancel=()=>{setText('');setSeverity('');setDate(today);setError('');setOpen(false)};
  if(!open)return <button type="button" className="med-add-effect" onClick={()=>setOpen(true)}><Plus size={12}/> {sessionId?t('medications.sideEffect'):t('medications.recordAdverseEffect')}</button>;
- return <div className="med-inline-effect"><input aria-label={t('medications.newSideEffectPrefix')+medication.medication_name} placeholder={t('medications.sideEffectRequired')} value={text} disabled={saving} onChange={e=>{setText(e.target.value);setError('')}}/><div className="med-effect-controls"><select aria-label={t('clinical.severityPrefix')+medication.medication_name} value={severity} disabled={saving} onChange={e=>setSeverity(e.target.value)}><option value="">{t('clinical.severityRequired')}</option><option value="mild">{t('clinical.mild')}</option><option value="moderate">{t('clinical.moderate')}</option><option value="severe">{t('clinical.severe')}</option></select><input type="date" aria-label={t('medications.sideEffectDatePrefix')+medication.medication_name} value={date} disabled={saving} onChange={e=>setDate(e.target.value)}/></div><div className="med-action-pair"><button className="primary" type="button" disabled={saving||text.trim().length<2||!severity||!date} onClick={()=>void save()}><Check size={13}/></button><button type="button" disabled={saving} onClick={cancel}><X size={13}/></button></div>{error&&<span className="med-inline-error" role="alert">{error}</span>}</div>;
+ return <div className="med-inline-effect"><input aria-label={t('medications.newSideEffectPrefix')+medication.medication_name} placeholder={t('medications.sideEffectRequired')} value={text} disabled={saving} onChange={e=>{setText(e.target.value);setError('')}}/><div className="med-effect-controls"><select aria-label={t('clinical.severityPrefix')+medication.medication_name} value={severity} disabled={saving} onChange={e=>setSeverity(e.target.value)}><option value="">{t('clinical.severityRequired')}</option><option value="mild">{t('clinical.mild')}</option><option value="moderate">{t('clinical.moderate')}</option><option value="severe">{t('clinical.severe')}</option></select><input type="date" aria-label={t('medications.sideEffectDatePrefix')+medication.medication_name} value={date} disabled={saving} onChange={e=>setDate(e.target.value)}/></div><div className="med-action-pair"><button className="primary" type="button" disabled={saving||text.trim().length<2||!severity||!date} onClick={()=>void save()}><Check size={13}/></button><button type="button" disabled={saving} onClick={cancel}><X size={13}/></button></div>{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}</div>;
 }

@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
@@ -11,10 +13,10 @@ import MedicationFrequency from './MedicationFrequency';
 import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
 
-const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
 
 export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>}){
 const t=useTranslations();
+ const systemMessage=useSystemMessage();
 
 const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.previousTreatments')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning',t('history.socialFunctioning')],['allergies',t('history.allergies')]] as const;
 
@@ -44,7 +46,7 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
     const current={...patientInitial(),...(editingPatientField?{[editingPatientField]:patientValues[editingPatientField]}:{})};
     const age=current.age.trim()===''?null:Number(current.age);
     await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:current.first_name,last_name:current.last_name,age,phone:current.phone,landline:current.landline,contact_phone:current.contact_phone,amka:current.amka,address:current.address,email:current.email,chief_complaint:current.chief_complaint,expected_updated_at:bundle.patient.updated_at});
-    committed=true;patientDirty.current=false;setPatientState(t('common.saved'));
+    committed=true;patientDirty.current=false;setPatientState('saved');
     const refreshed=await reload();
     if(!refreshed){setPatientState(t('patients.detailsSavedRefreshFailed'));return}
     setEditingPatientField(null);
@@ -79,12 +81,12 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
      </form>:<><span className={value?'patient-demographics-value':'patient-demographics-empty'}>{value?(key==='age'?value+t('patients.yearsOldSuffix'):value):t('clinical.notRecorded')}</span><button type="button" className="patient-demographics-pencil" disabled={editingPatientField!==null||patientSaving} aria-label={t('accessibility.editFieldPrefix')+label} title={t('accessibility.editFieldPrefix')+label} onClick={()=>{setPatientValues(patientInitial());setEditingPatientField(key);setPatientState('')}}><Pencil size={15}/></button></>}</dd>
     </div>
    })}</dl>
-   {patientState&&<div role={patientState==='Αποθηκεύτηκε'?'status':'alert'} className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{patientState}</div>}
+   {patientState&&<div role={patientState==='saved'?'status':'alert'} className={patientState==='saved'?'save-state ok':'save-state error'}>{patientState==='saved'?t('common.saved'):systemMessage(patientState)}</div>}
   </section>
   <details className="patient-doctor-notes">
    <summary>{t('history.clinicalNotesTitle')} <span>{historyFields.some(([key])=>values[key]?.trim())?t('clinical.entryExists'):t('common.optionalPlural')}</span></summary>
    <p className="patient-reported-muted">{t('history.sharedNotesHelp')}</p>
-   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
+   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{draft.error?systemMessage(draft.error):state}</div>}
    {draft.olderRecovery&&<details className="patient-older-notes">
     <summary>{t('history.olderUnsavedDraft')}</summary>
     <p className="patient-reported-muted">{t('history.localDraftHelp')}</p>
@@ -118,6 +120,8 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
  </section>
 }
 export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,initialMedicationId}:{bundle:PatientBundle;sessionId?:string;initialMode?:'start'|'history'|'change'|'stop'|'side_effect';initialMedicationId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const active=bundle.medications.filter(x=>x.status==='active');
@@ -195,11 +199,11 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
    mode==='change'&&selected?selected.medication_name+': '+selected.dose+' '+selected.unit+' → '+(dose||'—')+' '+unit+' · '+(frequency||'—')+t('medications.fromSuffix')+effective:
    mode==='history'?(name||t('medications.previousMedication'))+': '+dose+' '+unit+' · '+frequency+' · '+effective+t('common.until')+stopped+t('medications.discontinuedBadge'):
    mode==='start'?(name||t('medications.newMedication'))+': '+(dose||'—')+' '+unit+' · '+(frequency||'—')+t('medications.fromSuffix')+effective:
-   mode==='stop'&&selected?t('medications.stop')+selected.medication_name+' από '+effective:
+   mode==='stop'&&selected?t('medications.stop')+selected.medication_name+t('medications.fromSuffix')+effective:
    selected?(effect||t('medications.sideEffect'))+' · '+selected.medication_name+' · '+effective:'—'
   }</p>{(mode==='change'||mode==='stop')&&effective>athensToday&&<small>{t('medications.futureChangeHelp')}</small>}</div>
   {sameDayEvent&&<div className="current-dose"><p>{t('medications.existingEntryDatePrefix')} {effective}{t('medications.sameDayHistoryHelp')}</p><label><input type="checkbox" checked={correctSameDay} onChange={e=>setCorrectSameDay(e.target.checked)}/>  {t('medications.sameDayCorrection')}</label><small>{t('validation.correctionReasonRequired')}</small></div>}
-  {error&&<div className="save-state error" role="alert">{error}</div>}
+  {error&&<div className="save-state error" role="alert">{systemMessage(error)}</div>}
   <footer className="entry-footer"><button onClick={safeClose}>{t('common.cancel')}</button><button className="entry-primary" onClick={()=>void save().catch(()=>{})} disabled={saving}><Check size={15}/>{saving?t('common.saving'):t('common.save')}</button></footer>
  </section></div>
 }

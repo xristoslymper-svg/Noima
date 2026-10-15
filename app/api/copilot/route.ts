@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import {withPilot} from '@/lib/pilot/route';
 import {patientBundle,request,rpc} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
@@ -23,7 +24,7 @@ const messages:Record<string,string>={
 };
 async function post(req:Request){
  const b=await req.json().catch(()=>null),started=Date.now();
- if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||b.conversation&&typeof b.conversation!=='string')return Response.json({error:'Γράψτε ερώτηση έως 1500 χαρακτήρες.'},{status:400});
+ if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||b.conversation&&typeof b.conversation!=='string')return errorJson({error:'Γράψτε ερώτηση έως 1500 χαρακτήρες.'},{status:400});
  const usage:Usage={calls:0,input_tokens:0,output_tokens:0};
  try{
   assertCopilotPrivacy();
@@ -40,7 +41,7 @@ async function post(req:Request){
    const present=normalizedName(intent.patient_name).split(/\s+/).every(term=>words.some(word=>matchPatients([{id:'',first_name:term,last_name:''}],word).length));
    if(!present)matches=[];
   }
-  if(b.choice_id){if(!isClinicalId(b.choice_id)||!matches.some(p=>p.id===b.choice_id))return Response.json({error:'Η επιλογή δεν αντιστοιχεί στην ερώτηση.'},{status:400});matches=matches.filter(p=>p.id===b.choice_id);}
+  if(b.choice_id){if(!isClinicalId(b.choice_id)||!matches.some(p=>p.id===b.choice_id))return errorJson({error:'Η επιλογή δεν αντιστοιχεί στην ερώτηση.'},{status:400});matches=matches.filter(p=>p.id===b.choice_id);}
   if(matches.length!==1)return Response.json({answer:matches.length?'Επίλεξε τον σωστό ασθενή.':'Για ποιον ασθενή; Γράψε το πλήρες καταγεγραμμένο όνομα.',choices:matches.slice(0,12),sources:[]});
   const patient=matches[0],bundle=await patientBundle(b.tester,patient.id);
   if(!memory||memory.patient_id!==patient.id)memory={patient_id:patient.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
@@ -74,7 +75,7 @@ async function post(req:Request){
   const code=e instanceof Error?e.message:'copilot_failed';
   // Fixed error codes only: no questions, provider payloads, names or clinical text.
   const safe=Object.hasOwn(messages,code)?code:'copilot_failed';
-  return Response.json({error:messages[safe]||'Η επεξεργασία δεν ολοκληρώθηκε. Δοκιμάστε ξανά.',code:safe},{status:safe==='copilot_privacy_disabled'?403:503});
+  return errorJson({error:messages[safe]||'Η επεξεργασία δεν ολοκληρώθηκε. Δοκιμάστε ξανά.',code:safe},{status:safe==='copilot_privacy_disabled'?403:503});
  }
 }
 export const POST=withPilot(post);

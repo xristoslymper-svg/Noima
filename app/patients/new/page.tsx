@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import Link from 'next/link';
@@ -8,6 +10,8 @@ import { ArrowLeft, ChevronRight, UserRound } from 'lucide-react';
 import { getDemoTesterId } from '@/lib/demo-tester';
 
 export default function NewPatient(){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const router=useRouter(); const savingRef=useRef(false); const [firstName,setFirstName]=useState(''); const [lastName,setLastName]=useState(''); const [age,setAge]=useState(''); const [phone,setPhone]=useState(''); const [landline,setLandline]=useState(''); const [contactPhone,setContactPhone]=useState(''); const [amka,setAmka]=useState(''); const [address,setAddress]=useState(''); const [email,setEmail]=useState(''); const [complaint,setComplaint]=useState(''); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
@@ -22,7 +26,7 @@ export default function NewPatient(){
    <div className="patient-create-grid"><label>{t('patients.firstNameRequired')}<input autoFocus value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder={t('patients.firstNameExample')}/></label><label>{t('patients.lastName')}<input value={lastName} onChange={e=>setLastName(e.target.value)} placeholder={t('patients.lastNameExample')}/></label><label>{t('patients.age')}<input value={age} onChange={e=>setAge(e.target.value.replace(/\D/g,'').slice(0,3))} inputMode="numeric" placeholder="—"/></label><label>{t('patients.mobile')}<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder={t('common.optional')}/></label><label>{t('patients.landline')}<input value={landline} onChange={e=>setLandline(e.target.value)} placeholder={t('common.optional')}/></label><label>{t('patients.additionalPhone')}<input value={contactPhone} onChange={e=>setContactPhone(e.target.value)} placeholder={t('common.optional')}/></label><label>{t('patients.amka')}<input value={amka} onChange={e=>setAmka(e.target.value.replace(/\D/g,'').slice(0,11))} inputMode="numeric" placeholder={t('patients.amkaDigits')}/></label><label>{t('patients.address')}<input value={address} onChange={e=>setAddress(e.target.value)} placeholder={t('patients.addressPlaceholder')}/></label><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder={t('common.optional')}/></label></div>
    <label className="create-complaint">{t('clinical.presentingComplaint')}<textarea rows={4} value={complaint} onChange={e=>setComplaint(e.target.value)} placeholder={t('clinical.presentingComplaintHelp')}/></label>
   </section>
-  {error&&<div className="record-state error" role="alert">{error}</div>}
+  {error&&<div className="record-state error" role="alert">{systemMessage(error)}</div>}
   <div className="intake-footer"><span>{t('patients.syntheticDataNotice')}</span><button className="save-intake" onClick={()=>void submit()} disabled={saving}>{saving?t('common.creating'):t('patients.createRecord')} <ChevronRight size={17}/></button></div>
  </section></main>
 }

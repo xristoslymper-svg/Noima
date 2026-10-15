@@ -1,10 +1,14 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useCallback,useEffect,useState} from 'react';
 import type {PatientBundle,DemoMedicationEvent} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
 export default function MedicationTimeline({bundle,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher?:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange?:(key:string,dirty:boolean)=>void}){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -19,6 +23,6 @@ export default function MedicationTimeline({bundle,reload,registerFlusher,onDirt
  const revised=(id:string)=>bundle.medicationRevisions.find(r=>r.event_id===id);
  function row(e:DemoMedicationEvent){const revision=revised(e.id);const m=bundle.medications.find(m=>m.id===e.medication_id);return <article className="med-event-row" key={e.id}><strong>{m?.medication_name} · {e.effective_on}</strong><p>{e.event_type==='stopped'?t('medications.stop'):e.event_type==='started'?t('visits.startedPrefix'):t('medications.doseChange')} · {String(e.new_state?.dose||'')} {String(e.new_state?.unit||'')} · {String(e.new_state?.frequency||'')}</p><p>{e.reason}</p>{revision?<small>{revision.replacement_id?t('medications.replaced'):t('common.cancelled')} · {revision.reason}</small>:<button onClick={()=>open(e)}>{e.effective_on>today?t('medications.editCancelPlan'):t('medications.enterCorrection')}</button>}</article>}
  return <><section className="med-events"><h3>{t('medications.plannedChanges')}</h3>{bundle.medicationEvents.filter(e=>e.effective_on>today&&!revised(e.id)).map(row)}</section><section className="med-events"><h3>{t('medications.history')}</h3>{bundle.medicationEvents.filter(e=>e.effective_on<=today||revised(e.id)).map(row)}</section>
- {editing&&<section className="proposal-review"><h4>{editing.effective_on>today?t('medications.editScheduledEvent'):t('medications.correctHistoricalEvent')}</h4><p>{t('medications.originalEventPreserved')}</p><label>{t('common.date')}<input disabled={busy} type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>{editing.event_type!=='stopped'&&<><label>{t('medications.dose')}<input disabled={busy} value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>{t('medications.unit')}<input disabled={busy} value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>{t('medications.frequency')}<input disabled={busy} value={frequency} onChange={e=>setFrequency(e.target.value)}/></label></>}<label>{t('common.reason')}<input disabled={busy} value={reason} onChange={e=>setReason(e.target.value)}/></label>{error&&<p role="alert">{error}</p>}<button disabled={busy||!reason.trim()} onClick={()=>void save(false)}>{t('medications.confirmReplace')}</button>{editing.effective_on>today&&<button disabled={busy||!reason.trim()} onClick={()=>void save(true)}>{t('medications.cancelScheduledEvent')}</button>}<button disabled={busy} onClick={()=>setEditing(null)}>{t('common.close')}</button></section>}
+ {editing&&<section className="proposal-review"><h4>{editing.effective_on>today?t('medications.editScheduledEvent'):t('medications.correctHistoricalEvent')}</h4><p>{t('medications.originalEventPreserved')}</p><label>{t('common.date')}<input disabled={busy} type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>{editing.event_type!=='stopped'&&<><label>{t('medications.dose')}<input disabled={busy} value={dose} onChange={e=>setDose(e.target.value.replace(',','.'))}/></label><label>{t('medications.unit')}<input disabled={busy} value={unit} onChange={e=>setUnit(e.target.value)}/></label><label>{t('medications.frequency')}<input disabled={busy} value={frequency} onChange={e=>setFrequency(e.target.value)}/></label></>}<label>{t('common.reason')}<input disabled={busy} value={reason} onChange={e=>setReason(e.target.value)}/></label>{error&&<p role="alert">{systemMessage(error)}</p>}<button disabled={busy||!reason.trim()} onClick={()=>void save(false)}>{t('medications.confirmReplace')}</button>{editing.effective_on>today&&<button disabled={busy||!reason.trim()} onClick={()=>void save(true)}>{t('medications.cancelScheduledEvent')}</button>}<button disabled={busy} onClick={()=>setEditing(null)}>{t('common.close')}</button></section>}
  </>
 }

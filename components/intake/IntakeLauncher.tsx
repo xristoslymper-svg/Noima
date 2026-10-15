@@ -1,8 +1,11 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
 
+import {isLocale,languageNames,locales,type Locale} from '@/i18n/config';
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
@@ -14,7 +17,7 @@ type Patient={id:string;first_name:string;last_name:string;email?:string};
 type Event={id:string;patient_id:string|null;patient_name:string;scheduled_start:string;status:string;provisional_email?:string};
 type Channel='tablet'|'email'|'print';
 
-const toolLabel=(tool:string)=>tool==='history'?'Αρχικό ιστορικό':tool;
+
 export default function IntakeLauncher({
  patientId,
  appointmentId,
@@ -36,11 +39,15 @@ export default function IntakeLauncher({
  onClose:()=>void;
  onDone?:()=>void;
 }){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
+ const toolLabel=(tool:string)=>tool==='history'?t('history.initialHistory'):tool;
 
  const locale=useLocale();
 
  const account=useAccountSession();
+ const [recipientLocale,setRecipientLocale]=useState<Locale>('el');
  const [tools,setTools]=useState<string[]>(defaultTools);
  const [channel,setChannel]=useState<Channel>(initialChannel);
  const [devices,setDevices]=useState<Device[]>([]);
@@ -128,7 +135,7 @@ export default function IntakeLauncher({
   const printWindow=channel==='print'?window.open('about:blank','_blank'):null;
   try{
    const provisional_identity=isNew?{first_name:newPatient.first_name.trim(),last_name:newPatient.last_name.trim(),email:email.trim()}:null;
-   const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'assign',tester:getDemoTesterId(),patient_id:selected.patient_id,appointment_id:selected.appointment_id,provisional_identity,tools,channel,device_id:channel==='tablet'?deviceId:null})});
+   const r=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'assign',tester:getDemoTesterId(),patient_id:selected.patient_id,appointment_id:selected.appointment_id,provisional_identity,tools,channel,recipient_locale:recipientLocale,device_id:channel==='tablet'?deviceId:null})});
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||t('errors.assignmentCreate'));
    if(channel==='print'){
@@ -138,7 +145,7 @@ export default function IntakeLauncher({
     return;
    }
    if(channel==='email'){
-    const mail=await fetch('/api/intake/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intake_id:d.intake.id,token:d.intakeToken,to:email.trim(),tools,doctor_name:account?.identity?.full_name||''})});
+    const mail=await fetch('/api/intake/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intake_id:d.intake.id,token:d.intakeToken,to:email.trim(),tools,recipient_locale:recipientLocale,doctor_name:account?.identity?.full_name||''})});
     const md=await mail.json();
     if(!mail.ok){
      if(md.code==='connect'&&md.fallback?.subject&&md.fallback?.body){
@@ -166,7 +173,7 @@ export default function IntakeLauncher({
    <button className="intake-launcher-close" onClick={onClose} disabled={busy} aria-label={t('common.close')}><X size={18}/></button>
    <span className="kicker">{t('history.assignmentKicker')}</span>
    <h2 id="assignment-title">{t('psychometrics.patientCompletion')}</h2>
-   <p className="assignment-intro">{t('history.assignmentHelp')}</p>
+   <div className="assignment-language"><label>{t('documents.recipientLanguage')}<select disabled={busy||channel==='tablet'} value={recipientLocale} onChange={e=>{if(isLocale(e.target.value))setRecipientLocale(e.target.value)}}>{locales.map(code=><option key={code} value={code}>{languageNames[code]}</option>)}</select></label><small>{channel==='tablet'?t('documents.tabletLanguageHelp'):t('documents.recipientLanguageHelp')}</small>{tools.some(tool=>tool!=='history')&&<small>{t('psychometrics.originalInstrumentLanguage')}</small>}</div><p className="assignment-intro">{t('history.assignmentHelp')}</p>
 
    <div className="assignment-step">
     <div className="assignment-step-title"><span>1</span><div><strong>{t('psychometrics.instrument')}</strong><small>{lockTools?t('psychometrics.selectedFromLibrary'):t('history.choosePatientTools')}</small></div></div>
@@ -190,7 +197,7 @@ export default function IntakeLauncher({
         </div>
         {subjectMode==='appointment'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
          <option value="">{t('calendar.selectAppointmentPlaceholder')}</option>
-         {events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat(locale,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':t('patients.noRecordSuffix')}</option>)}
+         {events.map(e=><option key={e.id} value={'appointment:'+e.id}>{e.patient_name} · {new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(e.scheduled_start))}{e.patient_id?'':t('patients.noRecordSuffix')}</option>)}
         </select></label>}
         {subjectMode==='patient'&&<label className="assignment-subject-select"><select value={subject} onChange={e=>{setSubject(e.target.value);setEmail('')}}>
          <option value="">{t('patients.selectPatientPlaceholder')}</option>
@@ -219,7 +226,7 @@ export default function IntakeLauncher({
    </div>
 
    {done&&<div className="intake-launcher-success"><Check size={16}/>{done}</div>}
-   {error&&<p className="intake-error" role="alert">{error}</p>}
+   {error&&<p className="intake-error" role="alert">{systemMessage(error)}</p>}
    <footer>
     <button onClick={onClose} disabled={busy}>{t('common.close')}</button>
     <button className="intake-primary" disabled={busy||Boolean(done)} onClick={()=>void send()}>{busy?t('common.preparing'):channel==='tablet'?t('history.sendToTablet'):channel==='email'?t('notifications.sendEmail'):t('documents.openForPrint')}</button>

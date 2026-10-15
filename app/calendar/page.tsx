@@ -1,4 +1,6 @@
 "use client";
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -137,6 +139,8 @@ function eventDurationMinutes(event: CalendarEvent) {
 }
 
 export default function CalendarPage() {
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
 const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=useCalendarLabels();
@@ -522,7 +526,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
 
           {calendarError && (
             <div className="calendar-runtime-error">
-              <span>{calendarError}</span>
+              <span>{systemMessage(calendarError)}</span>
               <button onClick={() => void refreshEvents()}>{t('common.retry')}</button>
             </div>
           )}
@@ -754,7 +758,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
               </div>
             </div>}
             {selectedEvent.sms_reminder&&<p className="calendar-sms-status">SMS · {selectedEvent.sms_reminder.status==="queued"?t('calendar.reminderSimulationScheduled')+dateTimeLabel(selectedEvent.sms_reminder.due_at):selectedEvent.sms_reminder.status==="simulated"?t('calendar.reminderSimulated'):selectedEvent.sms_reminder.status==="missing_phone"?t('calendar.mobileRequired'):selectedEvent.sms_reminder.status==="expired"?t('calendar.appointmentPast'):t('calendar.reminderInactive')}</p>}
-            {quickError && <p role="alert" className="calendar-quick-error">{quickError}</p>}
+            {quickError && <p role="alert" className="calendar-quick-error">{systemMessage(quickError)}</p>}
             {selectedEvent.status==="scheduled"&&!selectedEvent.session_id && <button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"cancel")}><Ban size={14}/>{quickBusy?t('common.cancelling'):selectedEvent.series_id?t('calendar.cancelOnlyThis'):t('calendar.cancelAppointment')}</button>}
             {selectedEvent.status==="cancelled" && <div className="calendar-cancelled-actions"><button className="calendar-rebook-slot" disabled={quickBusy} onClick={()=>{setAppointmentEditor({mode:"create",date:dateKey(new Date(selectedEvent.scheduled_start)),minute:athensMinutes(selectedEvent.scheduled_start),duration:eventDurationMinutes(selectedEvent)});setSelectedEvent(null)}}><CalendarDays size={14}/>  {t('calendar.newSameTime')}</button><button className="calendar-quick-cancel" disabled={quickBusy} onClick={()=>void quickMutation(selectedEvent,"restore")}><RotateCcw size={14}/>{quickBusy?t('common.restoring'):t('calendar.restoreAppointment')}</button></div>}
           </section>
@@ -770,7 +774,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
           patients={patients}
           events={events}
           eventsLoading={loading}
-          eventsError={calendarError}
+          eventsError={systemMessage(calendarError)}
           onViewExisting={event=>{setAppointmentEditor(null);setFocusDate(dateKey(new Date(event.scheduled_start)));setSelectedEvent(event)}}
           focusDate={appointmentEditor.date || focusDate}
           initialMinute={appointmentEditor.minute}
@@ -830,7 +834,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
               </div>
             )}
 
-            {moveError && <div className="calendar-move-error"><span>{moveError}</span></div>}
+            {moveError && <div className="calendar-move-error"><span>{systemMessage(moveError)}</span></div>}
 
             <footer>
               <button onClick={() => setPendingMove(null)} disabled={moveSaving}>
@@ -846,7 +850,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
         </div>
       )}
 
-      {undoEvent && <div className="calendar-undo" role="status"><span>{t('calendar.appointmentCancelled')}</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/>  {t('common.undo')}</button><button aria-label={t('accessibility.dismissNotification')} onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{quickError}</span>}</div>}
+      {undoEvent && <div className="calendar-undo" role="status"><span>{t('calendar.appointmentCancelled')}</span><button disabled={quickBusy} onClick={()=>void quickMutation(undoEvent,"restore")}><RotateCcw size={14}/>  {t('common.undo')}</button><button aria-label={t('accessibility.dismissNotification')} onClick={()=>setUndoEvent(null)}><X size={14}/></button>{quickError&&<span role="alert">{systemMessage(quickError)}</span>}</div>}
       <style jsx global>{`
         .calendar-payment-state{flex-wrap:wrap}.calendar-payment-choice{flex-wrap:wrap}
         .appointment-next-suggestion{font-size:12px;line-height:1.6;color:#53685f;margin:0 0 14px}
@@ -1022,6 +1026,8 @@ function AppointmentEditor({
   onSaved: (event?: CalendarEvent) => Promise<void>;
   onOpenSession: (event: CalendarEvent) => Promise<void>;
 }) {
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
 const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=useCalendarLabels();
@@ -1226,7 +1232,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
       {confirmCancel && <div className="calendar-dialog-confirm" role="alert">{t('calendar.cancelPromptPrefix')} {scope === "one" ? t('calendar.cancelThisObject') : t('calendar.cancelSelectionObject')};<br/><button disabled={saving} onClick={()=>void mutate("cancel")}>{t('calendar.confirmCancel')}</button><button disabled={saving} onClick={()=>setConfirmCancel(false)}>{t('common.back')}</button></div>}
 
       {event?.patient_id && <div className="appointment-linked-record"><Check size={14}/><span>{t('calendar.linkedRecord')}</span><Link href={"/patients/demo/" + event.patient_id + "?appointment=" + event.id}>{t('patients.openRecord')}</Link></div>}{provisional&&<div className="appointment-linked-record provisional"><UserPlus size={14}/><span>{provisional.first_name} {provisional.last_name}  {t('calendar.createRecordWithAppointment')}</span></div>}
-      {error && <div className="calendar-move-error"><span>{error}</span></div>}
+      {error && <div className="calendar-move-error"><span>{systemMessage(error)}</span></div>}
 
       <footer className="appointment-editor-footer">
         {mode === "edit" && event?.status === "scheduled" && !event.session_id && <button className="appointment-cancel-action" onClick={() => setConfirmCancel(true)} disabled={saving}>{t('calendar.cancelAppointment')}</button>}

@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -63,6 +65,8 @@ export default function PatientSession({
  selectedSessionId:string|null;
  onSelectSession:(sessionId?:string|null)=>void;
 }){
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
  const locale=useLocale();
@@ -255,9 +259,9 @@ const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||val
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>{t('common.goTo')}</button></span>}
   </div>
 
-  {flushError&&<div className="save-state error" role="alert"><strong>{t('visits.unsavedChanges')}</strong> {flushError} <span>{t('visits.resolveBeforeFinalize')}</span></div>}
-  {refreshError&&<div className="save-state" role="status">{refreshError}</div>}
-  {finalizeError&&<div className="save-state error" role="alert">{finalizeError}</div>}
+  {flushError&&<div className="save-state error" role="alert"><strong>{t('visits.unsavedChanges')}</strong> {systemMessage(flushError)} <span>{t('visits.resolveBeforeFinalize')}</span></div>}
+  {refreshError&&<div className="save-state" role="status">{systemMessage(refreshError)}</div>}
+  {finalizeError&&<div className="save-state error" role="alert">{systemMessage(finalizeError)}</div>}
 
   {completed.length>0&&<div className="previous-visits"><span className="kicker">{t('visits.previousKicker')}</span><CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/></div>}
  </section>);

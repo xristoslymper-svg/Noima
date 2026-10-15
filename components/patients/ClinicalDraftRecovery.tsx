@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useRef,useState} from 'react';
@@ -8,6 +10,8 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import type {useClinicalDraft} from './useClinicalDraft';
 type Draft=ReturnType<typeof useClinicalDraft<ContinuityDraft>>;
 export default function ClinicalDraftRecovery({draft,reload,sessionId,patientId,disabled=false}:{draft:Draft;reload:()=>Promise<unknown>;sessionId:string;patientId:string;disabled?:boolean}){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const [confirm,setConfirm]=useState(false),[discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');const flight=useRef(false);
@@ -28,12 +32,12 @@ export default function ClinicalDraftRecovery({draft,reload,sessionId,patientId,
   // between pointer-down and click. Keyboard activation remains unchanged.
   if((event.target as HTMLElement).closest('button'))event.preventDefault();
  }}>
-  {draft.error&&<><p role="alert">{draft.error}</p><div>
+  {draft.error&&<><p role="alert">{systemMessage(draft.error)}</p><div>
    {!draft.hasConflict&&<button type="button" disabled={blocked} onClick={()=>void run(false)}>{t('visits.retrySave')}</button>}
    <button type="button" disabled={blocked} onClick={()=>setConfirm(true)}>{t('visits.loadingSavedDraft')}</button>
   </div></>}
   {confirm&&<div role="group" aria-label={t('visits.confirmLoadDraft')}><p>{t('visits.loadDraftHelp')}</p><button type="button" disabled={blocked} onClick={()=>void run(true)}>{t('visits.backupAndLoad')}</button><button type="button" disabled={blocked} onClick={()=>setConfirm(false)}>{t('visits.cancelLoad')}</button></div>}
   {draft.olderRecovery&&<details><summary>{t('visits.unsavedBackup')}</summary><p>{t('visits.copyBeforeClose')}</p><textarea aria-label={t('visits.unsavedBackup')} rows={8} readOnly value={backup}/>{discard?<><p>{t('visits.deleteBackupConfirm')}</p><button type="button" disabled={blocked} onClick={()=>{draft.dismissOlderRecovery();setDiscard(false)}}>{t('visits.deleteBackup')}</button><button type="button" onClick={()=>setDiscard(false)}>{t('visits.keepBackup')}</button></>:<button type="button" disabled={blocked} onClick={()=>setDiscard(true)}>{t('visits.discardBackup')}</button>}</details>}
-  {error&&<p role="alert">{error}</p>}
+  {error&&<p role="alert">{systemMessage(error)}</p>}
  </section>;
 }

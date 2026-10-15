@@ -1,5 +1,5 @@
 'use client';
-import {useTranslations} from 'next-intl';
+import {useLocale,useTranslations} from 'next-intl';
 
 import {useSyntheticChart} from './SyntheticChartContext';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;onSessions:(
 type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null};
 export default function ClinicalSummary({bundle,compact=false,overview=false}:Props){
  const t=useTranslations();
+ const locale=useLocale(), outputLocale=useRef(locale);outputLocale.current=locale;
 
  const synthetic=useSyntheticChart();
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
@@ -29,7 +30,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
   // A changed patient record (key) or a manual refresh bypasses the passive cooldown.
   if(!force&&retryAfter.current?.key===key&&Date.now()<retryAfter.current.at)return;
   const controller=new AbortController();let active=true;setState('loading');
-  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,signal:controller.signal}).then(data=>{
+  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,signal:controller.signal,outputLocale:outputLocale.current}).then(data=>{
    if(!active)return;
    const delay=clinicalSummaryRetryDelayMs(data.mode);
    retryAfter.current=delay?{key,at:Date.now()+delay}:null;
@@ -45,7 +46,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?t('clinical.summaryAfterFirstVisit'):reason==='insufficient_notes'?t('clinical.briefNotesSummaryHelp'):reason?t('clinical.summaryUnavailableFallback'):null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
- return <section className="clinical-summary">
+ return <section className="clinical-summary"><small>{t('clinical.newAiLanguage',{language:languageNames[locale]})}</small>
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?t('clinical.beforeVisitKicker'):t('clinical.atAGlanceKicker')}</span><h2>{compact?t('clinical.briefOverview'):t('clinical.currentState')}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}
   <ClinicalCardView card={card} patientId={bundle.patient.id} compact={compact} overview={overview}/>

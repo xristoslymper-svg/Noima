@@ -9,5 +9,5 @@ export function assessmentLink(bundle:Pick<PatientBundle,'sessions'|'appointment
 }
 export function assessmentLinkLabel(bundle:Pick<PatientBundle,'sessions'|'appointments'>,assessment:Assessment){
  const link=assessmentLink(bundle,assessment);
- return link.kind==='direct'?'Απευθείας σύνδεση με κλινική επίσκεψη':link.kind==='appointment'?(link.session?'Μέσω ραντεβού που συνδέεται με κλινική επίσκεψη':'Σύνδεση με ραντεβού · χωρίς συνδεδεμένη κλινική επίσκεψη'):link.kind==='unavailable'?'Η αναφερόμενη σύνδεση δεν είναι διαθέσιμη':'Χωρίς σύνδεση με ραντεβού ή κλινική επίσκεψη';
+ return display(link.kind==='direct'?'Απευθείας σύνδεση με κλινική επίσκεψη':link.kind==='appointment'?(link.session?'Μέσω ραντεβού που συνδέεται με κλινική επίσκεψη':'Σύνδεση με ραντεβού · χωρίς συνδεδεμένη κλινική επίσκεψη'):link.kind==='unavailable'?'Η αναφερόμενη σύνδεση δεν είναι διαθέσιμη':'Χωρίς σύνδεση με ραντεβού ή κλινική επίσκεψη');
 }

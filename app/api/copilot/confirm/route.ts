@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import {withPilot} from '@/lib/pilot/route';
 import {rpc,patientBundle} from '@/lib/patients/demo-runtime';
 import {POST as sendMail} from '@/app/api/mailbox/send/route';
@@ -7,9 +8,9 @@ export const dynamic='force-dynamic';
 export const maxDuration=120;
 type Receipt={kind:string;event_id?:string;status?:string;recipient?:string;invitations?:{id:string;token:string;instrument:string}[]};
 async function post(req:Request){
- if(!['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||''))return Response.json({error:'Δεν έχει ενεργοποιηθεί πρόσβαση πραγματικών δεδομένων.'},{status:403});
+ if(!['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||''))return errorJson({error:'Δεν έχει ενεργοποιηθεί πρόσβαση πραγματικών δεδομένων.'},{status:403});
  const b=await req.json().catch(()=>null);
- if(!b||b.confirm!==true||!isClinicalId(b.proposal_id))return Response.json({error:'Απαιτείται ρητή επιβεβαίωση συγκεκριμένης πρότασης.'},{status:400});
+ if(!b||b.confirm!==true||!isClinicalId(b.proposal_id))return errorJson({error:'Απαιτείται ρητή επιβεβαίωση συγκεκριμένης πρότασης.'},{status:400});
  try{
   const proposal=await rpc('copilot_action_get',{p_tester:b.tester,p_id:b.proposal_id}) as {patient:string;kind:string};
   const bundle=await patientBundle(b.tester,proposal.patient);
@@ -24,6 +25,6 @@ async function post(req:Request){
    const data=await response.json();deliveries.push({instrument:invitation.instrument,status:response.ok&&data.status==='accepted'?'accepted':data.code==='unknown'?'unknown':'failed'});
   }
   return Response.json({answer:deliveries.map(d=>d.instrument+': '+(d.status==='accepted'?'έγινε δεκτό από την υπηρεσία email· η παράδοση στον παραλήπτη δεν έχει επιβεβαιωθεί.':d.status==='unknown'?'η αποστολή είναι αβέβαιη· ελέγξτε τα απεσταλμένα.':'δεν επιβεβαιώθηκε αποστολή.')).join('\n'),sources:[],deliveries,status:deliveries.every(d=>d.status==='accepted')?'accepted':'attention'});
- }catch{return Response.json({error:'Δεν επιβεβαιώθηκε ολοκλήρωση. Η πρόταση μπορεί να έληξε ή τα δεδομένα να άλλαξαν. Επαναλάβετε την ίδια επιβεβαίωση για έλεγχο, πριν δημιουργήσετε νέα πρόταση.'},{status:409})}
+ }catch{return errorJson({error:'Δεν επιβεβαιώθηκε ολοκλήρωση. Η πρόταση μπορεί να έληξε ή τα δεδομένα να άλλαξαν. Επαναλάβετε την ίδια επιβεβαίωση για έλεγχο, πριν δημιουργήσετε νέα πρόταση.'},{status:409})}
 }
 export const POST=withPilot(post);

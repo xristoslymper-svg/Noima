@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -12,6 +14,8 @@ import {confirmedBooking} from '@/lib/calendar/confirmed-booking';
 import {upcomingAppointments} from '@/lib/clinical/patient-record';
 import styles from './VisitNextAppointment.module.css';
 export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true,sessionId}:{sessionId?:string;bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean}){
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
  const locale=useLocale();
@@ -81,6 +85,6 @@ const t=useTranslations();
   </div>
   {needsVerification&&<button type="button" disabled={busy} onClick={()=>void verifyBooking()}>{t('calendar.verifyBooking')}</button>}
   {notice&&<p className={styles.feedback} role="status">{notice}</p>}
-  {error&&<p className={styles.error} role="alert">{error}</p>}
+  {error&&<p className={systemMessage(styles.error)} role="alert">{systemMessage(error)}</p>}
  </div>;
 }

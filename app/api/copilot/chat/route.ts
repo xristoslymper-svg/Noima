@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import {withPilot} from '@/lib/pilot/route';
 import {patientBundle,request} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
@@ -13,7 +14,7 @@ async function post(req:Request){
  if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||
   (b.patient_id!==undefined&&(!isClinicalId(b.patient_id)))||
   (b.conversation!==undefined&&(typeof b.conversation!=='string'||b.conversation.length>20000)))
-  return Response.json({error:'Μη έγκυρη ερώτηση ή επιλογή ασθενούς.'},{status:400});
+  return errorJson({error:'Μη έγκυρη ερώτηση ή επιλογή ασθενούς.'},{status:400});
  try{
   assertCopilotPrivacy(process.env.OPENAI_COPILOT_FAST_MODEL);seal({probe:true},'copilot-chat:'+b.tester);
   let memory:FastMemory|null=b.conversation?unseal<FastMemory>(b.conversation,'copilot-chat:'+b.tester):null;
@@ -27,7 +28,7 @@ async function post(req:Request){
    return Response.json({answer:'Επίλεξε τον ασθενή για αυτή τη συζήτηση. Μπορείς επίσης να ανοίξεις την καρτέλα του.',choices:(found.length?found:roster).slice(0,12),sources:[]});
   }
   const patient=roster.find(p=>p.id===id);
-  if(!patient)return Response.json({error:'Ο φάκελος δεν είναι διαθέσιμος.'},{status:404});
+  if(!patient)return errorJson({error:'Ο φάκελος δεν είναι διαθέσιμος.'},{status:404});
   if(memory?.patient_id!==id)memory=null;
   const bundle=await patientBundle(b.tester,id);
   const controller=new AbortController();
@@ -36,7 +37,7 @@ async function post(req:Request){
    conversation:seal({patient_id:id,question:b.query,answer,expires:Date.now()+30*60000},'copilot-chat:'+b.tester)
   }),controller);
  }catch{
-  return Response.json({error:'Η συζήτηση δεν είναι διαθέσιμη. Ελέγξτε τη σύνδεση και τη ρύθμιση AI του χώρου.'},{status:503});
+  return errorJson({error:'Η συζήτηση δεν είναι διαθέσιμη. Ελέγξτε τη σύνδεση και τη ρύθμιση AI του χώρου.'},{status:503});
  }
 }
 export const POST=withPilot(post);

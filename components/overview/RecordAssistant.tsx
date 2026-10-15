@@ -1,4 +1,7 @@
 'use client';
+import {languageNames} from '@/i18n/config';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
@@ -14,6 +17,8 @@ import styles from './RecordAssistant.module.css';
 type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string};
 type Turn={question:string;choice?:string;result?:Reply;error?:string;executing?:boolean;done?:boolean;firstMs?:number;totalMs?:number};
 export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const locale=useLocale();
@@ -41,7 +46,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
   try{
    const endpoint=synthetic?'/api/copilot/synthetic':actionMode?'/api/copilot':'/api/copilot/chat';
    const payload=synthetic?{query:question,conversation:context.current}:{query:question,choice_id:choice,conversation:context.current,patient_id:choice||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]};
-   const r=await fetch(endpoint,{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const r=await fetch(endpoint,{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','x-noima-output-locale':locale},body:JSON.stringify(payload)});
    let data:Reply;
    if(r.ok&&r.headers.get('content-type')?.includes('text/event-stream')&&r.body){
     let partial:Reply={answer:'',sources:[]},complete=false;
@@ -79,18 +84,18 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
  if(!mounted)return null;
  return createPortal(<div className={styles.dock}>
   <section id={uid+'-panel'} className={styles.panel} hidden={!open} aria-label={t('accessibility.assistantConversation')} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();minimize();}}}>
-   <header className={styles.chatHeader}><span className={styles.avatar}><Sparkles size={19}/></span><div><h2>{t('clinical.assistantName')}</h2><p>{busy?t('clinical.assistantWriting'):t('clinical.assistantTagline')}</p></div><button type="button" onClick={reset} disabled={busy} aria-label={t('clinical.assistantNewConversation')} title={t('clinical.assistantNewConversation')}><Plus size={18}/></button><button type="button" onClick={minimize} aria-label={t('accessibility.minimizeChat')} title={t('common.minimize')}><Minus size={19}/></button></header>
+   <header className={styles.chatHeader}><span className={styles.avatar}><Sparkles size={19}/></span><div><h2>{t('clinical.assistantName')}</h2><p>{busy?t('clinical.assistantWriting'):t('clinical.assistantTagline')}</p></div><button type="button" onClick={reset} disabled={busy} aria-label={t('clinical.assistantNewConversation')} title={t('clinical.assistantNewConversation')}><Plus size={18}/></button><button type="button" onClick={minimize} aria-label={t('accessibility.minimizeChat')} title={t('common.minimize')}><Minus size={19}/></button></header><small className={styles.language}>{t('clinical.newAiLanguage',{language:languageNames[locale]})}</small>
    <div className={styles.chatContext}><span className={styles.contextDot}/><span>{patientLabel}</span>{synthetic&&<small>{t('clinical.syntheticRecord')}</small>}</div>
    {!synthetic&&<div className={styles.mode}><button type="button" aria-pressed={!actionMode} disabled={busy} onClick={()=>{if(actionMode){reset();setActionMode(false)}}}>{t('clinical.conversation')}</button><button type="button" aria-pressed={actionMode} disabled={busy} onClick={()=>{if(!actionMode){reset();setActionMode(true)}}}>{t('common.action')}</button></div>}
    <div ref={scroll} className={styles.chatScroll} onScroll={()=>{const el=scroll.current;if(el)follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<70;}}>
     {!turns.length&&<div className={styles.welcome}><span><MessageCircle size={24}/></span><h3>{t('clinical.assistantWelcome')}</h3><p>{t('clinical.assistantHelp')}</p><div className={styles.prompts}>{examples.map(example=><button type="button" key={example} onClick={()=>example.includes('…')?setQuery(example.replace('…',' ')):void ask(example)}>{example}<ArrowUpRight size={14}/></button>)}</div></div>}
     <div className={styles.messages} aria-live="polite" aria-relevant="additions text">{turns.map((turn,index)=><article className={styles.messageTurn} key={index}>
      <div className={styles.questionBubble}>{turn.question}</div>
-     {turn.error?<div className={styles.errorBubble} role="alert"><p>{turn.error}</p><button disabled={busy} onClick={()=>void ask(turn.question,turn.choice)}>{t('common.retry')}</button></div>:<div className={styles.answerBubble}>
+     {turn.error?<div className={styles.errorBubble} role="alert"><p>{systemMessage(turn.error)}</p><button disabled={busy} onClick={()=>void ask(turn.question,turn.choice)}>{t('common.retry')}</button></div>:<div className={styles.answerBubble}>
       {turn.result?.answer?<p>{turn.result.answer}</p>:<span className={styles.thinking} role="status"><i/><i/><i/><span className={styles.srOnly}>{t('clinical.assistantReading')}</span></span>}
       {turn.result?.blocks?.map((block,i)=><div className={styles.block} key={i}><strong>{block.title}</strong><p>{block.text}</p></div>)}
       {turn.result?.choices?.map(p=><button className={styles.choice} disabled={busy} key={p.id} onClick={()=>void ask(turn.question,p.id)}>{p.first_name} {p.last_name} · {p.id.slice(-6)}</button>)}
-      {turn.result?.proposal&&<div className={styles.action}><strong>{t('clinical.suggestedAction')}</strong><p>{turn.result.proposal.summary}</p><small>{t('clinical.actionExpiryPrefix')} {new Date(turn.result.proposal.expires_at).toLocaleTimeString(locale)}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?t('clinical.actionExecuting'):t('clinical.confirmExecution')}</button>}</div>}
+      {turn.result?.proposal&&<div className={styles.action}><strong>{t('clinical.suggestedAction')}</strong><p>{turn.result.proposal.summary}</p><small>{t('clinical.actionExpiryPrefix')} {new Date(turn.result.proposal.expires_at).toLocaleTimeString(locale,{timeZone:'Europe/Athens'})}</small>{!turn.done&&<button disabled={busy} onClick={()=>void confirm(index)}>{turn.executing?t('clinical.actionExecuting'):t('clinical.confirmExecution')}</button>}</div>}
       {turn.totalMs!==undefined&&<div className={styles.answerFooter}><span>{(turn.totalMs/1000).toFixed(1)}  {t('common.secondsSuffix')}{synthetic&&turn.firstMs!==undefined?t('clinical.firstTextSuffix')+(turn.firstMs/1000).toFixed(1)+t('common.secondsSuffix'):''}</span>{turn.result?.patient&&!synthetic&&!turn.result.proposal&&<Link href={'/patients/demo/'+turn.result.patient.id}>{t('patients.recordPrefix')} <ArrowUpRight size={12}/></Link>}</div>}
      </div>}
     </article>)}</div>

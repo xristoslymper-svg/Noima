@@ -1,4 +1,6 @@
 "use client";
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -60,6 +62,8 @@ const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έν
 
 
 export default function Page() {
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
  const locale=useLocale();
@@ -295,7 +299,7 @@ const nav = [
             <div><span className="kicker">{t('navigation.home')}</span><h2>{widgetOpen==="payments"?t('billing.payments'):widgetOpen==="psychometrics"?t('dashboard.patientSubmissions'):t('dashboard.pendingTasks')}</h2></div>
             <button onClick={()=>setWidgetOpen(null)} aria-label={t('common.close')}><X size={18}/></button>
           </header>
-          {widgetError&&<div className="save-state error" role="alert">{widgetError}</div>}
+          {widgetError&&<div className="save-state error" role="alert">{systemMessage(widgetError)}</div>}
 
           {widgetOpen==="payments"&&<div className="dashboard-widget-list">
             {pendingPayments.length?pendingPayments.map(event=><div className="dashboard-widget-row" key={event.id}>

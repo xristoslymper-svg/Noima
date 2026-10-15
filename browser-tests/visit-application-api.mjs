@@ -58,7 +58,7 @@ try{
   // The visit shell precedes the longitudinal appointment read. Wait for its
   // existing readiness gate, then assert the persisted payment without polling
   // for the desired value or accepting the temporary loading state.
-  await area.locator('fieldset:not([disabled])').waitFor();
+  await area.locator(':scope[aria-busy="false"]').waitFor();
   assert.equal(await area.getByRole('button',{name:'Πληρωμένο',exact:true}).getAttribute('aria-pressed'),'true');
   const events=(await owner.client.from('demo_calendar_events').select('*').eq('patient_id',patientId)).data;assert.equal(events.length,2);assert.equal(events.filter(e=>e.status==='scheduled').length,1);
   const after=(await owner.client.from('demo_sessions').select('*').eq('id',sessionId).single()).data;assert.equal(after.version,session.version);assert.equal(after.completed_at,session.completed_at);

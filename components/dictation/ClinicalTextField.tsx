@@ -1,5 +1,8 @@
 'use client';
-import {useTranslations} from 'next-intl';
+import {languageNames} from '@/i18n/config';
+import {useSystemMessage} from '@/i18n/system-message';
+
+import {useLocale,useTranslations} from 'next-intl';
 
 import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
@@ -13,7 +16,10 @@ let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
+ const locale=useLocale();
 
  const [snapshot,setSnapshot]=useState<WritingSnapshot>({phase:'idle',pending:null,error:'',confirmed:p.value});
  const [seconds,setSeconds]=useState(0),[undo,setUndo]=useState<{before:string;after:string;expires:number}|null>(null);
@@ -73,7 +79,7 @@ export default function ClinicalTextField(p:Props){
  async function polish(){
   if(audio.current)return;
   const base=machine.snapshot.confirmed;if(base.trim().length<2)return;const id=machine.start('ai');if(id===null)return;setUndo(null);const abort=new AbortController();request.current=abort;const timeout=setTimeout(()=>abort.abort(),60000);
-  try{const r=await fetch('/api/clinical/polish',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({session_id:p.sessionId,section:p.section,field_key:p.fieldKey,text:base})});const result=await r.json();if(!r.ok)throw new Error(result.error||t('errors.suggestionCreate'));if(typeof result.text!=='string'||!result.text.trim())throw new Error(t('errors.suggestionInvalid'));if(mounted.current){machine.polished(id,base,result.text,result.model);textarea.current?.focus()}}
+  try{const r=await fetch('/api/clinical/polish',{method:'POST',headers:{'Content-Type':'application/json','x-noima-output-locale':locale},signal:abort.signal,body:JSON.stringify({session_id:p.sessionId,section:p.section,field_key:p.fieldKey,text:base})});const result=await r.json();if(!r.ok)throw new Error(result.error||t('errors.suggestionCreate'));if(typeof result.text!=='string'||!result.text.trim())throw new Error(t('errors.suggestionInvalid'));if(mounted.current){machine.polished(id,base,result.text,result.model);textarea.current?.focus()}}
   catch(e){if(mounted.current)machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:t('clinical.writingCancelled'))}
   finally{clearTimeout(timeout)}
  }
@@ -91,7 +97,7 @@ export default function ClinicalTextField(p:Props){
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
    <button type="button" title={micHint} aria-label={t('accessibility.dictationPrefix')+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&t('clinical.dictation')}</button>
-   <button type="button" title={aiHint} aria-label={t('accessibility.improveWordingPrefix')+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>{t('clinical.aiWording')}</span></button>
+   <button type="button" title={aiHint+' · '+t('clinical.newAiLanguage',{language:languageNames[locale]})} aria-label={t('accessibility.improveWordingPrefix')+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>{t('clinical.aiWording')}</span></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>
@@ -106,7 +112,7 @@ export default function ClinicalTextField(p:Props){
    </div>}
    {pending&&!capturing&&<div className={styles.review}><span>{snapshot.pending?.kind==='ai'?t('clinical.aiSuggestion'):seconds>=60?t('clinical.dictationLimit'):t('clinical.transcriptForReview')}</span><button type="button" disabled={busy||awaitingAudio} onClick={()=>void confirm()}><Check size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?t('common.accept'):t('common.confirm')}</button><button type="button" disabled={busy} onClick={()=>{stop();machine.cancel();textarea.current?.focus()}}><RotateCcw size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?t('clinical.keepOriginal'):t('common.cancel')}</button></div>}
    {snapshot.phase==='ai'&&<div role="status" className={styles.review}><span>{t('clinical.improvingWording')}</span><button type="button" onClick={stop}>{t('common.cancel')}</button></div>}
-   {snapshot.error&&<div role="alert" className={styles.error}>{snapshot.error}{audio.current&&<button type="button" onClick={retryTranscription}>{t('clinical.retryTranscription')}</button>}<button type="button" onClick={()=>audio.current?askCancel():stop()}>{audio.current?t('clinical.discardAudio'):t('common.close')}</button>{cancelOpen&&!capturing&&<span>  {t('clinical.discardSavedAudioQuestion')} <button type="button" onClick={stop}>{t('common.discard')}</button><button type="button" onClick={()=>setCancelOpen(false)}>{t('common.goBack')}</button></span>}</div>}
+   {snapshot.error&&<div role="alert" className={systemMessage(styles.error)}>{systemMessage(snapshot.error)}{audio.current&&<button type="button" onClick={retryTranscription}>{t('clinical.retryTranscription')}</button>}<button type="button" onClick={()=>audio.current?askCancel():stop()}>{audio.current?t('clinical.discardAudio'):t('common.close')}</button>{cancelOpen&&!capturing&&<span>  {t('clinical.discardSavedAudioQuestion')} <button type="button" onClick={stop}>{t('common.discard')}</button><button type="button" onClick={()=>setCancelOpen(false)}>{t('common.goBack')}</button></span>}</div>}
    {undo&&undo.after===p.value&&<div className={styles.review}><button type="button" className={styles.undo} onClick={()=>{latest.current.onChange(undo.before);machine.sync(undo.before);setUndo(null)}}><RotateCcw size={13} aria-hidden="true"/>  {t('common.undo')}</button></div>}
   </div>
  </div>;

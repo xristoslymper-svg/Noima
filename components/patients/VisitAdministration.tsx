@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useEffect,useRef,useState} from 'react';
@@ -9,6 +11,8 @@ import styles from './VisitAdministration.module.css';
 type Payment='unknown'|'pending'|'paid'|'not_applicable';
 
 export default function VisitAdministration({bundle,sessionId,reload,registerFlusher,onDirtyChange,disabled=false}:{bundle:PatientBundle;sessionId:string;reload:()=>Promise<unknown>;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;disabled?:boolean}){
+ const systemMessage=useSystemMessage();
+
 const t=useTranslations();
 
 const choices:[Payment,string][]=[['paid',t('billing.paid')],['pending',t('common.pending')],['not_applicable',t('billing.noCharge')],['unknown',t('billing.unrecorded')]];
@@ -29,11 +33,11 @@ const choices:[Payment,string][]=[['paid',t('billing.paid')],['pending',t('commo
   }catch(cause){if(mounted.current)setError(committed?t('billing.savedRefreshFailed'):cause instanceof Error?cause.message:t('errors.paymentUnconfirmed'));}
   finally{flight.current=false;if(mounted.current)setBusy(false)}
  }
- return <section className="visit-part" aria-label={t('visits.administration')}><header><h3>{t('visits.administration')}</h3></header><div className="visit-part-surface">
+ return <section className="visit-part" aria-label={t('visits.administration')} aria-busy={disabled||busy}><header><h3>{t('visits.administration')}</h3></header><div className="visit-part-surface">
   <p className="visit-hint">{t('visits.administrationHelp')}</p>
   <fieldset disabled={disabled||busy} style={{border:0,padding:0,margin:0,minWidth:0}}><div className="visit-related-fields"><section aria-label={t('billing.visitPayment')}><h4>{t('billing.payment')}</h4>
    {appointment?<><p role="status">{busy?t('billing.savingPayment'):choices.find(([value])=>value===status)?.[1]||t('billing.refreshingPayment')}</p><div className={styles.paymentOptions} role="group" aria-label={t('billing.paymentStatus')}>{choices.map(([value,label])=><button type="button" key={value} aria-pressed={status===value} onClick={()=>void save(value)}>{label}</button>)}</div></>:<p>{linked.length>1?t('billing.verifyAppointmentLink'):t('billing.noLinkedAppointment')}</p>}
-   {error&&<p role="alert">{error}</p>}
+   {error&&<p role="alert">{systemMessage(error)}</p>}
   </section><VisitNextAppointment bundle={bundle} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div></fieldset>
  </div></section>;
 }

@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useEffect,useState,type FormEvent} from 'react';
@@ -7,6 +9,8 @@ import LanguageSelector from '@/components/LanguageSelector';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 import {notifyAccountChange} from '@/lib/pilot/browser-session';
 export default function PilotAccess({activate=false}:{activate?:boolean}){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const account=useAccountSession();
@@ -27,7 +31,7 @@ export default function PilotAccess({activate=false}:{activate?:boolean}){
  {activate?<><label>{t('common.fullName')}<input required minLength={2} maxLength={100} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label></>:<><label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>{t('settings.password')}<input type="password" required minLength={signup?12:1} maxLength={128} autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>{signup&&<small>{t('settings.passwordSignupHelp')}</small>}</>}
  <button className="pilot-primary" type="submit">{busy?t('common.pleaseWait'):activate?t('common.getStarted'):signup?t('settings.createAccount'):t('settings.signIn')}</button></fieldset></form>
  {!activate&&!signup&&<>{emailRecovery&&<Link href="/forgot-password">{t('settings.forgotPassword')}</Link>}<small>{t('settings.googleAccountHelp')}</small></>}
- {error&&<p role="alert" className="pilot-error">{error}</p>}{message&&<p role="status">{message}</p>}
+ {error&&<p role="alert" className="pilot-error">{systemMessage(error)}</p>}{message&&<p role="status">{message}</p>}
  {!activate&&emailSignup&&<button disabled={busy} className="pilot-text-button" onClick={()=>{setSignup(!signup);setPassword('');setError('');setMessage('')}}>{signup?t('settings.existingAccount'):t('settings.createAccount')}</button>}
  {!activate&&!optionsLoading&&!emailSignup&&<small>{t('settings.googleSignupHelp')}</small>}
  {activate&&<Link href="/account">{t('settings.accountSignOut')}</Link>}

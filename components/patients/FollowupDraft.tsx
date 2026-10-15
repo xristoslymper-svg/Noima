@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {createContext,useContext,useCallback,useEffect,useRef,useState,type ReactNode} from 'react';
@@ -19,6 +21,8 @@ const FollowupContext=createContext<Context|null>(null);
 export function useFollowupDraft(){const context=useContext(FollowupContext);if(!context)throw new Error('Missing follow-up draft provider');return context;}
 
 export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onDirtyChange,children}:{bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;children:ReactNode}&Tracking){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const draft=useClinicalDraft<ContinuityDraft>({storageKey:session.id+':closure',initial:initialFollowupDraft(session,bundle.sections),version:session.closure_version||0,write:async(value,version)=>{const result=await demoPost({action:'save_closure',session_id:session.id,value,expected_version:version});return {value:result.session.closure_draft,version:result.session.closure_version}},onSaved:reload,onDirty:dirty=>onDirtyChange('closure',dirty)});
@@ -47,9 +51,9 @@ export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onD
  }
  const labels={interview:t('clinical.currentState'),plan:t('clinical.decisions'),review:t('clinical.nextReview'),adherence:t('medications.adherence')};
  return <FollowupContext.Provider value={{writingPending:Object.values(writing).some(Boolean),trackWriting,draft,sessionId:session.id,patientId:bundle.patient.id,reload,registerFlusher,onDirtyChange,checkConsistency}}>
-  {conflicts.length>0&&<section ref={conflictPanel} className="visit-source-conflicts" role="region" aria-label={t('visits.reconcilePrevious')}><h3>{t('visits.reconcilePrevious')}</h3><p>{t('visits.conflictComparisonHelp')}</p>{conflicts.map(conflict=><div key={conflict.key}><h4>{labels[conflict.key as keyof typeof labels]}</h4><div className="visit-related-fields"><div><strong>{t('visits.sharedRecord')}</strong><p>{draft.value[conflict.field]||t('common.emptyField')}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'shared')}>{t('visits.keepSharedRecord')}</button></div><div><strong>{t('visits.earlierDetailedRecord')}</strong><p>{conflict.section.content}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'detailed')}>{t('visits.keepDetailedRecord')}</button></div></div></div>)}{error&&<p role="alert">{error}</p>}</section>}
+  {conflicts.length>0&&<section ref={conflictPanel} className="visit-source-conflicts" role="region" aria-label={t('visits.reconcilePrevious')}><h3>{t('visits.reconcilePrevious')}</h3><p>{t('visits.conflictComparisonHelp')}</p>{conflicts.map(conflict=><div key={conflict.key}><h4>{labels[conflict.key as keyof typeof labels]}</h4><div className="visit-related-fields"><div><strong>{t('visits.sharedRecord')}</strong><p>{draft.value[conflict.field]||t('common.emptyField')}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'shared')}>{t('visits.keepSharedRecord')}</button></div><div><strong>{t('visits.earlierDetailedRecord')}</strong><p>{conflict.section.content}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'detailed')}>{t('visits.keepDetailedRecord')}</button></div></div></div>)}{error&&<p role="alert">{systemMessage(error)}</p>}</section>}
   {children}
-  {draft.error&&<p role="alert">{draft.error}</p>}
+  {draft.error&&<p role="alert">{systemMessage(draft.error)}</p>}
  </FollowupContext.Provider>;
 }
 

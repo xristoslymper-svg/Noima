@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import { withPilot } from '@/lib/pilot/route';
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import { fetchDemoCalendarEvents, type DemoCalendarEvent } from "@/lib/calendar/demo-supabase";
@@ -249,7 +250,7 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
 async function handlePOST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
+    return errorJson({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
   }
 
   let transcript = "";
@@ -263,15 +264,15 @@ async function handlePOST(request: Request) {
       ? body.follow_ups.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean).slice(-6)
       : [];
   } catch {
-    return Response.json({ error: "Μη έγκυρη εντολή." }, { status: 400 });
+    return errorJson({ error: "Μη έγκυρη εντολή." }, { status: 400 });
   }
 
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tester)) {
-    return Response.json({ error: "Λείπει η δοκιμαστική ταυτότητα." }, { status: 400 });
+    return errorJson({ error: "Λείπει η δοκιμαστική ταυτότητα." }, { status: 400 });
   }
 
   if (!transcript || transcript.length > 1000 || followUps.some(item => item.length > 300)) {
-    return Response.json({ error: "Η εντολή είναι κενή ή πολύ μεγάλη." }, { status: 400 });
+    return errorJson({ error: "Η εντολή είναι κενή ή πολύ μεγάλη." }, { status: 400 });
   }
 
   let events: DemoCalendarEvent[];
@@ -280,7 +281,7 @@ async function handlePOST(request: Request) {
     [events, patients] = await Promise.all([fetchDemoCalendarEvents(tester), listPatients(tester)]);
     events = events.filter(event => event.status === "scheduled");
   } catch {
-    return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
+    return errorJson({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
   }
 
   const now = new Date();
@@ -365,12 +366,12 @@ async function handlePOST(request: Request) {
     });
 
     if (!response.ok) {
-      return Response.json({ error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." }, { status: 502 });
+      return errorJson({ error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." }, { status: 502 });
     }
 
     const payload = await response.json();
     const outputText = extractOutputText(payload);
-    if (!outputText) return Response.json({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
+    if (!outputText) return errorJson({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
 
     let command = JSON.parse(outputText) as ParsedCommand;
     const intended = command.action === "clarify" ? command.intended_action : command.action;
@@ -481,7 +482,7 @@ async function handlePOST(request: Request) {
     });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
-    return Response.json({ error: timedOut ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά." : "Δεν ήταν δυνατή η κατανόηση της εντολής." }, { status: 502 });
+    return errorJson({ error: timedOut ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά." : "Δεν ήταν δυνατή η κατανόηση της εντολής." }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }

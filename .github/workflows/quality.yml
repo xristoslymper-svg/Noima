@@ -50,6 +50,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Translation completeness and ICU validation
+        run: npm run check:i18n
+
       - name: Tests
         run: |
           set -o pipefail

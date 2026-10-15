@@ -1,4 +1,6 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
 import {useTranslations} from 'next-intl';
 
 import {useEffect,useRef,useState,type MutableRefObject} from 'react';
@@ -12,6 +14,8 @@ import PatientSession from './PatientSession';
 
 type Props={beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onFinalized:(session:DemoSession)=>void|Promise<void>;onDeferred:(sessionId:string,reason?:string)=>void|Promise<void>;onSelect:(id?:string|null)=>void};
 export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onFinalized,onDeferred,onSelect,beforeNavigate}:Props){
+ const systemMessage=useSystemMessage();
+
  const t=useTranslations();
 
  const [record,setRecord]=useState<PatientBundle|null>(null),[error,setError]=useState(''),[finalizing,setFinalizing]=useState(false),[finalizeError,setFinalizeError]=useState('');
@@ -64,8 +68,8 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
  async function defer(targetSessionId=sessionId,reason?:string){if(targetSessionId!==sessionId)throw new Error(t('visits.visitHasChanged'));setFinalizeError('');try{await demoPost({action:'finish_session_later',session_id:sessionId});await onDeferred(sessionId,reason)}catch(cause){const message=cause instanceof Error?cause.message:t('errors.draftSave');setFinalizeError(message);throw cause}}
  const currentSession=record?.sessions.find(row=>row.id===sessionId&&row.patient_id===patientId);
  return <section className="visit-workspace" aria-label={t('visits.clinicalVisit')}>
-  {finalizeError&&<p role="alert">{finalizeError} <button type="button" disabled={finalizing} onClick={()=>void checkCompletion()}>{t('visits.checkCompletion')}</button></p>}
-  {error&&<p role="alert">{error} <button type="button" onClick={()=>void load().catch(cause=>setError(cause.message))}>{t('common.repeat')}</button></p>}
+  {finalizeError&&<p role="alert">{systemMessage(finalizeError)} <button type="button" disabled={finalizing} onClick={()=>void checkCompletion()}>{t('visits.checkCompletion')}</button></p>}
+  {error&&<p role="alert">{systemMessage(error)} <button type="button" onClick={()=>void load().catch(cause=>setError(cause.message))}>{t('common.repeat')}</button></p>}
   {!record&&!error&&<p role="status">{t('visits.openingVisit')}</p>}
   {record&&currentSession&&<>{!safeContext&&<p className="visit-context-status">{t('visits.independentContextLoading')} <button type="button" onClick={()=>void refreshContext().catch(cause=>setError(cause.message))}>{t('common.retryLoading')}</button></p>}<PatientSession beforeNavigate={editorBeforeNavigate} previousMse={previousMseReference(safeContext,sessionId,currentSession.started_at)} key={sessionId} bundle={merged(record)} reload={reload} reloadContext={refreshContext} contextReady={Boolean(safeContext)} onFinalize={finalize} onFinishLater={defer} finalizing={finalizing} finalizeError="" selectedSessionId={sessionId} onSelectSession={onSelect}/></>}
  </section>;

@@ -1,4 +1,5 @@
 'use client';
+import {useOptionLabel} from '@/i18n/option-labels';
 import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
@@ -9,13 +10,14 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 
 export default function ClinicalOrientationView({card,patientId}:{card:ClinicalCard;patientId:string}){
  const t=useTranslations();
+ const displayLabel=useOptionLabel();
 
  const locale=useLocale();
 
  function bullets(items:CardItem[]){
   return <ul className="orientation-list">{items.flatMap((item,i)=>item.text.split(/\n+/u).filter(line=>line.trim()).map((line,j)=>{
    const match=line.match(/^(\d{4}-\d{2}-\d{2}) · (.*)$/u);
-   const text=(match?match[2]:line).replace(/^Συνθετική κλινική εκτίμηση:\s*/u,t('clinical.assessmentPrefix')).replace(/^Συνθετικό πλάνο(?=:| επανελέγχου)/u,t('clinical.planTitle'));
+   const text=match?match[2]:line;
    const colon=text.indexOf(':');
    return <li key={i+'-'+j}><span>{colon>0&&colon<65?<><strong>{text.slice(0,colon+1)}</strong>{text.slice(colon+1)}</>:text}</span>{match&&<time dateTime={match[1]}>{match[1].split('-').reverse().join('/')}</time>}</li>;
   }))}</ul>;
@@ -29,7 +31,7 @@ export default function ClinicalOrientationView({card,patientId}:{card:ClinicalC
  }
  return <div className="clinical-orientation">
   <p className="orientation-date">{card.date?t('visits.lastCompletedPrefix')+formatClinicDateTime(card.date, locale):t('visits.noCompletedVisit')}</p>
-  <dl>{card.orientation?.map(row=><div className="orientation-row" key={row.label}><dt>{row.label==='Κλινική εικόνα'?t('clinical.diagnosisAssessment'):row.label}</dt><dd>{row.items.length?bullets(row.items):<p className="orientation-empty">{row.empty}</p>}{sources(row.items)}{Boolean(row.history?.length)&&<details className="orientation-history"><summary>{row.label==='Επόμενη επανεκτίμηση'?t('clinical.historicalPlansDisclaimer'):row.label==='Σημαντικό πλαίσιο'?t('history.recordedHistory'):t('clinical.previousEntries')} ({row.history!.length})</summary>{bullets(row.history!)}{sources(row.history!)}</details>}</dd></div>)}</dl>
+  <dl>{card.orientation?.map(row=><div className="orientation-row" key={row.label}><dt>{row.label==='Κλινική εικόνα'?t('clinical.diagnosisAssessment'):displayLabel(row.label)}</dt><dd>{row.items.length?bullets(row.items):<p className="orientation-empty">{displayLabel(row.empty)}</p>}{sources(row.items)}{Boolean(row.history?.length)&&<details className="orientation-history"><summary>{row.label==='Επόμενη επανεκτίμηση'?t('clinical.historicalPlansDisclaimer'):row.label==='Σημαντικό πλαίσιο'?t('history.recordedHistory'):t('clinical.previousEntries')} ({row.history!.length})</summary>{bullets(row.history!)}{sources(row.history!)}</details>}</dd></div>)}</dl>
   {card.alerts.length>0&&<section className="orientation-risk" aria-label={t('clinical.riskReviewPoints')}><h3>{t('clinical.riskAndReviewPoints')}</h3>{bullets(card.alerts)}{sources(card.alerts)}</section>}
   {card.corrections.length>0&&<details className="orientation-history"><summary>{t('visits.recordedCorrectionsPrefix')}{card.corrections.length})</summary>{card.corrections.map(f=><p key={f.key}>{f.text}</p>)}{sources(card.corrections)}</details>}
   <style jsx>{`.clinical-orientation{color:#293e35;line-height:1.65;max-width:920px;margin-inline:auto;font-family:inherit}.orientation-date{font-size:12px;color:#728278;margin:0 0 18px}.clinical-orientation dl{margin:0}.orientation-row{display:grid;grid-template-columns:145px minmax(0,1fr);gap:20px;padding:20px 0;border-top:1px solid #dfe8e1}.orientation-row dt{font-size:14px;font-weight:650;color:#50745e}.orientation-row dd{margin:0;min-width:0}.clinical-orientation p{margin:0 0 9px;white-space:pre-wrap;overflow-wrap:anywhere}.orientation-row p{font-size:14px}.orientation-empty{color:#728278;font-size:13px!important}.orientation-history{margin-top:10px;font-size:12px;color:#667b6f}.orientation-history summary,.orientation-sources summary{cursor:pointer}.orientation-history p{margin-top:12px;color:#293e35}.orientation-sources{font-size:11px;color:#728278}.orientation-risk{border-top:1px solid #dfe8e1;padding:20px 0;font-size:13px}.orientation-risk h3{font-size:14px;color:#50745e;margin:0 0 12px}@media(max-width:700px){.orientation-row{grid-template-columns:1fr;gap:9px;padding:16px 0}}`}</style>

@@ -17,7 +17,7 @@ const t=useTranslations();
  
 
  const menu=useRef<HTMLDetailsElement>(null);
- const title=new Intl.DateTimeFormat(locale,{weekday:'short',day:'numeric',month:'short'}).format(new Date(p.date+'T12:00:00Z'));
+ const title=new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',weekday:'short',day:'numeric',month:'short'}).format(new Date(p.date+'T12:00:00Z'));
  return <div className={styles.calendarControls}>
   <div className={styles.calendarDateRow}>
    <button type="button" aria-label={t('accessibility.previousDate')} onClick={p.onPrevious}><ChevronLeft size={20}/></button>

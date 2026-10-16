@@ -4,7 +4,7 @@ import { supabaseUrl, supabaseKey } from './lib/pilot/config';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
-  if(process.env.VERCEL_ENV==='preview' && process.env.VERCEL_GIT_COMMIT_REF==='audit/longitudinal-three-calls-20261016' && ['/','/audit-closure.json'].includes(request.nextUrl.pathname)) {
+  if(process.env.VERCEL_ENV==='preview' && process.env.VERCEL_GIT_COMMIT_REF==='audit/longitudinal-three-calls-20261016' && ['/audit-status.html','/audit-closure.json'].includes(request.nextUrl.pathname)) {
     const report=NextResponse.next();
     report.headers.set('X-Robots-Tag','noindex, nofollow');
     report.headers.set('Cache-Control','no-store');

@@ -45,6 +45,7 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
  }
  await context.close();
+ }
 
  // Empty-record onboarding: real PatientWorkspace, mocked patient API, zero actual DB writes.
  bundle.sessions=[];bundle.sections=[];bundle.risks=[];bundle.assessments=[];bundle.medications=[];bundle.medicationEvents=[];bundle.medicationSideEffects=[];
@@ -70,5 +71,5 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   await page.screenshot({path:resolve(out,`${size}-prior-course-onboarding.png`)});
   await context.close();
  }
-}writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Synthetic fixture, actual current components and full layout CSS; no live API verification.',fixtureAutosaveRequests:writes,liveWrites:0,results},null,2));console.log(`Passed ${results.length} patient workspace visual checks; zero live writes.`);
+writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Synthetic fixture, actual current components and full layout CSS; no live API verification.',fixtureAutosaveRequests:writes,liveWrites:0,results},null,2));console.log(`Passed ${results.length} patient workspace visual checks; zero live writes.`);
 }finally{await browser.close();await new Promise(r=>server.close(r));}

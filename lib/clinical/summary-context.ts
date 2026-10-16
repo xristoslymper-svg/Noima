@@ -3,7 +3,7 @@ import {continuityContexts} from './continuity-context.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=24;
+export const SUMMARY_POLICY_VERSION=25;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -24,7 +24,9 @@ export function stableSerialize(value:unknown):string{
 // view is included, not a manually maintained list of timestamp dependencies.
 export function summaryContextKey(bundle:PatientBundle,day=clinicDay()){
  const {proposals:_,...canonical}=bundle;void _;
- return stableSerialize({policy:SUMMARY_POLICY_VERSION,day,canonical});
+ const completed=new Set(canonical.sessions.filter(s=>s.status==='completed').map(s=>s.id));
+ const eligible={...canonical,sessions:canonical.sessions.filter(s=>completed.has(s.id)),sections:canonical.sections.filter(s=>completed.has(s.session_id)),risks:canonical.risks.filter(r=>completed.has(r.session_id))};
+ return stableSerialize({policy:SUMMARY_POLICY_VERSION,day,canonical:eligible});
 }
 export async function summaryContextHash(bundle:PatientBundle,day=clinicDay()){
  const bytes=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(summaryContextKey(bundle,day)));
@@ -127,7 +129,8 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  for(const revision of bundle.medicationRevisions.filter(r=>bundle.medicationEvents.some(e=>e.id===r.event_id)))add({id:'revision:'+revision.event_id+':'+revision.created_at,kind:'medication_revision',label:'Διόρθωση αγωγής',date:revision.created_at,content:revision,target:'medications',record_id:revision.event_id});
  for(const effect of bundle.medicationSideEffects)add({id:'side_effect:'+effect.id,kind:'structured_side_effect',label:'Παρενέργεια · '+effect.effect_text,date:effect.noted_on,session_id:effect.session_id||undefined,content:effect,target:'medications',record_id:effect.id});
  for(const assessment of bundle.assessments)add({id:'assessment:'+assessment.id,kind:'psychometric',label:`${assessment.instrument} · ${dateLabel(assessment.completed_at||assessment.created_at)}`,date:assessment.completed_at||assessment.created_at,session_id:assessment.session_id||undefined,content:{...assessment,review_required:assessment.item9_review,review_completed:Boolean(assessment.item9_reviewed_at)},target:'psychometrics',record_id:assessment.id});
- if(bundle.history)add({id:'history:'+bundle.patient.id,kind:'history',label:'Ιστορικό',content:bundle.history,target:'history',record_id:bundle.patient.id});
+ if(bundle.priorCourse?.content.trim())add({id:'prior_course:'+bundle.priorCourse.id,kind:'prior_course',label:'Προηγούμενη κλινική πορεία · αναδρομική καταγραφή θεράποντος',date:bundle.priorCourse.created_at,content:{period:bundle.priorCourse.period_label,clinician_report:bundle.priorCourse.content,provenance:'Αναδρομική σύνοψη θεράποντος, όχι πρωτογενείς ξεχωριστές επισκέψεις'},target:'history',record_id:bundle.priorCourse.id});
+  if(bundle.history)add({id:'history:'+bundle.patient.id,kind:'history',label:'Ιστορικό',content:bundle.history,target:'history',record_id:bundle.patient.id});
  for(const a of bundle.addenda.filter(a=>ids.has(a.session_id)))add({id:'addendum:'+a.id,kind:'addendum',label:`${a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · ${dateLabel(a.created_at)}`,date:a.created_at,session_id:a.session_id,content:a,target:'sessions',record_id:a.id});
  for(const correction of (bundle.corrections||[]).filter(c=>ids.has(c.session_id)))add({id:'structured_correction:'+correction.id,kind:'structured_correction',label:`Δομημένη διόρθωση · ${dateLabel(correction.created_at)}`,date:correction.created_at,session_id:correction.session_id,content:correction,target:'sessions',record_id:correction.id});
  for(const a of bundle.appointments)add({id:'appointment:'+a.id,kind:'appointment',label:'Ραντεβού · '+a.scheduled_start,content:a,target:'calendar',record_id:a.id});
@@ -144,7 +147,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  }
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
  const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
- const durable=sources.filter(s=>s.kind==='history'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
+ const durable=sources.filter(s=>s.kind==='history'||s.kind==='prior_course'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
  const recentIds=new Set(completed.map(s=>s.id));
  const trajectory=sources.filter(s=>s.kind==='session_section'&&recentIds.has(s.session_id!));
  const canonical=sources.filter(s=>!['session_section','addendum','structured_correction'].includes(s.kind));
@@ -223,16 +226,17 @@ export function minimumBriefingItems(_context:SummaryContext){
 // Readiness is a minimum content check, never a judgement of clinical adequacy.
 // A short factual note is enough; bare placeholders must not be expanded.
 export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
- if(!bundle.sessions.some(s=>s.status==='completed'))return 'no_completed_visit';
+ if(!bundle.sessions.some(s=>s.status==='completed')&&!bundle.priorCourse?.content.trim())return 'no_completed_visit';
  const narrative=context.sources.filter(s=>s.kind==='session_section'&&['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||''));
  const meaningful=narrative.some(s=>typeof s.content==='string'&&s.content.trim().length>=12&&s.content.trim().split(/\s+/u).length>=3);
- return meaningful?null:'insufficient_notes';
+ return meaningful||Boolean(bundle.priorCourse?.content.trim())?null:'insufficient_notes';
 }
 // A useful record-derived briefing remains available without a model. Whole
 // recorded sections retain date/source attribution; drafts and corrected parents
 // cannot become current conclusions. The UI can collapse long evidence.
 export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
  const sections=context.sources.filter(s=>s.kind==='session_section');
+ const prior=context.sources.find(s=>s.kind==='prior_course');
  const latest=[...sections].sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''))[0]?.session_id;
  // Structured patches have already been applied to each source. Only narrative
  // corrections still require interpretation before repeating the parent text.
@@ -246,7 +250,7 @@ export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
   const corrections=context.layers.corrections.filter(c=>c.kind==='structured_correction'&&c.session_id===source.session_id);
   additions.push({key:'record:'+source.id,label:category,text:source.label+(corrections.length?' — με τις καταγεγραμμένες διορθώσεις: ':' — καταγεγραμμένο: ')+String(source.content),source_ids:[source.id,...corrections.map(c=>c.id)],attention:false,origin:'documented'});
  }
- return [...context.findings,...additions];
+ return [...context.findings,...(prior?[{key:'prior_course:'+prior.id,label:'Πορεία' as Category,text:'Αναδρομική καταγραφή θεράποντος: '+String((prior.content as {clinician_report?:string}).clinician_report||''),source_ids:[prior.id],attention:false,origin:'documented' as const}]:[]),...additions];
 }
 
 export function validateNarrative(output:unknown,context:SummaryContext):Finding[]{

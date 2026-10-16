@@ -29,6 +29,8 @@ export function buildSummaryOrientation(bundle:PatientBundle,context:SummaryCont
  const reports=sections.filter(s=>['interview','functioning'].includes(s.section_key||''));
  const reportDates=[...new Set(reports.map(s=>s.date))];
  const anchors=reports.filter(s=>s.date===reportDates[0]||s.date===reportDates.at(-1));
+ const prior=context.sources.find(s=>s.kind==='prior_course');
+ const priorItem=prior?{text:'Πριν από το NOIMA (αναδρομική καταγραφή θεράποντος): '+String((prior.content as {clinician_report?:string}).clinician_report||''),source_ids:[prior.id]}:null;
  const latest=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>b.started_at.localeCompare(a.started_at))[0];
  const plans=sections.filter(s=>['plan','review'].includes(s.section_key||''));
  const currentPlans=plans.filter(s=>s.session_id===latest?.id);
@@ -39,7 +41,7 @@ export function buildSummaryOrientation(bundle:PatientBundle,context:SummaryCont
  const timing=card.medications.map(item=>{const med=bundle.medications.find(m=>item.source_ids.includes('medication:'+m.id));const dates=med?medicationTiming(med.started_at,med.effective_from,context.day):'';return {...item,text:item.text+(dates?' · '+dates:'')};});
  return [
   {label:'Κλινική εικόνα',items:card.diagnoses.length?card.diagnoses:sections.filter(s=>s.section_key==='assessment').slice(-1).map(s=>dated(s,context)),empty:'Δεν έχει καταγραφεί δομημένη διάγνωση ή διαφορική διάγνωση.'},
-  {label:'Πορεία',items:narrative(['course','general','psychometrics']).length?narrative(['course','general','psychometrics']):anchors.map(s=>dated(s,context)),history:synthesized?[]:reports.filter(s=>!anchors.includes(s)).map(s=>dated(s,context)),empty:'Δεν υπάρχουν διαθέσιμες καταγραφές πορείας.'},
+  {label:'Πορεία',items:narrative(['course','general','psychometrics']).length?narrative(['course','general','psychometrics']):[...(priorItem?[priorItem]:[]),...anchors.map(s=>dated(s,context))],history:synthesized?[]:reports.filter(s=>!anchors.includes(s)).map(s=>dated(s,context)),empty:'Δεν υπάρχουν διαθέσιμες καταγραφές πορείας.'},
   {label:'Θεραπεία & ανταπόκριση',items:[...timing,...(narrative(['medication']).length?narrative(['medication']):currentResponse.map(s=>dated(s,context)))],history:responseSections.filter(s=>s.session_id!==latest?.id).map(s=>dated(s,context)),empty:'Δεν υπάρχει καταγεγραμμένη ενεργή αγωγή ή ανταπόκριση.'},
   {label:'Σημαντικό πλαίσιο',items:[...contextItems,...narrative(['context','risk'])],history:historyItems,empty:'Δεν έχει καταγραφεί επιβεβαιωμένο ενεργό πλαίσιο. Δείτε το καταγεγραμμένο ιστορικό παρακάτω και τις επισκέψεις στην Πορεία.'},
   {label:'Επόμενη επανεκτίμηση',items:currentPlans.flatMap(s=>{const item=dated(s,context),window=s.date?reviewWindow(String(s.content),s.date,context.day):'';return window?[item,{text:window,source_ids:item.source_ids}]:[item]}),history:plans.filter(s=>s.session_id!==latest?.id).reverse().map(s=>dated(s,context)),empty:'Δεν έχει καταγραφεί πλάνο στην τελευταία ολοκληρωμένη επίσκεψη. Οι παλαιότερες οδηγίες δεν θεωρούνται αυτομάτως εκκρεμείς.'},

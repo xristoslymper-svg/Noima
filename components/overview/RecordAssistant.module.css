@@ -53,3 +53,8 @@
 .launcher:hover{background:#275142}
 .launcherPsi{font:700 19px/1 Georgia,serif;color:#deede0}
 @media(max-width:600px){.dock{left:12px;bottom:12px}.panel{width:min(392px,calc(100vw - 24px));max-width:calc(100vw - 24px);height:min(555px,calc(100dvh - 94px))}.chatHeader{padding:13px 14px 11px}.chatScroll{padding:12px 14px}.welcome h3{font-size:18px}}
+
+/* Compact assistant identity: one Ψ in the header and a larger Ψ after the dock label. */
+.chatHeader .headerCaption{font-size:12px;line-height:1.45;color:#657d6d;margin:0}
+.launcher{gap:9px}
+.launcherPsi{font-size:26px;line-height:.78;font-weight:700;letter-spacing:-.04em;color:#ecf5ee}

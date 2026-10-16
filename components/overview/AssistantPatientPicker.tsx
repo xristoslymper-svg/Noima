@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useId,useRef,useState} from 'react';
-import {ChevronDown,Search} from 'lucide-react';
+import {Search} from 'lucide-react';
 import {useTranslations} from 'next-intl';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import type {SearchPatient} from '@/lib/overview/record-search';
@@ -12,69 +12,83 @@ type Props={
  disabled?:boolean;
  onChoose:(patient:SearchPatient)=>void;
 };
+const label=(patient:SearchPatient|null)=>patient?(patient.first_name+' '+patient.last_name).trim():'';
 export default function AssistantPatientPicker({selected,fallbackLabel,disabled=false,onChoose}:Props){
  const t=useTranslations();
  const id=useId();
- const root=useRef<HTMLDivElement|null>(null),input=useRef<HTMLInputElement|null>(null);
- const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[results,setResults]=useState<SearchPatient[]>([]),[active,setActive]=useState(0),[state,setState]=useState<'idle'|'loading'|'empty'|'error'>('idle');
- const ready=query.trim().length>=2;
+ const root=useRef<HTMLDivElement|null>(null);
+ const input=useRef<HTMLInputElement|null>(null);
+ const [query,setQuery]=useState(()=>label(selected));
+ const [open,setOpen]=useState(false);
+ const [results,setResults]=useState<SearchPatient[]>([]);
+ const [active,setActive]=useState(0);
+ const [status,setStatus]=useState<'idle'|'loading'|'empty'|'error'>('idle');
+ const ready=query.trim().replace(/\s/g,'').length>=2;
+ useEffect(()=>{setQuery(label(selected));setOpen(false);setResults([])},[selected?.id,selected?.first_name,selected?.last_name]);
  useEffect(()=>{
   if(!open)return;
-  const dismiss=(event:PointerEvent)=>{if(root.current&&!root.current.contains(event.target as Node))setOpen(false)};
-  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){setOpen(false);event.stopPropagation();}};
-  document.addEventListener('pointerdown',dismiss);document.addEventListener('keydown',escape);
-  return()=>{document.removeEventListener('pointerdown',dismiss);document.removeEventListener('keydown',escape)};
- },[open]);
+  const outside=(event:PointerEvent)=>{
+   if(root.current&&!root.current.contains(event.target as Node)){
+    setOpen(false);setQuery(label(selected));
+   }
+  };
+  const escape=(event:KeyboardEvent)=>{
+   if(event.key==='Escape'){setOpen(false);setQuery(label(selected));event.stopPropagation()}
+  };
+  document.addEventListener('pointerdown',outside);
+  document.addEventListener('keydown',escape);
+  return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)};
+ },[open,selected]);
  useEffect(()=>{
-  if(!open||!ready){setResults([]);setState('idle');return}
+  if(!open||!ready){setResults([]);setStatus('idle');return;}
   const controller=new AbortController();
   const timer=setTimeout(async()=>{
-   setState('loading');
+   setStatus('loading');
    try{
     const params=new URLSearchParams({q:query.trim(),tester:getDemoTesterId()});
     const response=await fetch('/api/records/search?'+params,{signal:controller.signal,cache:'no-store'});
-    if(!response.ok)throw Error('unavailable');
-    const data=await response.json() as {patients?:SearchPatient[]};
+    if(!response.ok)throw Error('search unavailable');
+    const payload=await response.json() as {patients?:SearchPatient[]};
     if(controller.signal.aborted)return;
-    const choices=Array.isArray(data.patients)?data.patients.slice(0,8):[];
-    setResults(choices);setActive(0);setState(choices.length?'idle':'empty');
-   }catch{if(!controller.signal.aborted){setResults([]);setState('error')}}
+    const matches=Array.isArray(payload.patients)?payload.patients.slice(0,8):[];
+    setResults(matches);setActive(0);setStatus(matches.length?'idle':'empty');
+   }catch{if(!controller.signal.aborted){setResults([]);setStatus('error')}}
   },250);
   return()=>{clearTimeout(timer);controller.abort()};
  },[query,ready,open]);
- function choose(p:SearchPatient){onChoose(p);setOpen(false);setQuery('');setResults([]);setState('idle')}
- return <div className={styles.root} ref={root} onKeyDown={event=>{if(event.key==='Escape'&&open){event.stopPropagation();setOpen(false)}}}>
-  <button type="button" className={styles.trigger} disabled={disabled} aria-expanded={open} aria-controls={open?id:undefined}
-   onClick={()=>{setOpen(old=>!old);if(!open)requestAnimationFrame(()=>input.current?.focus())}}>
+ function choose(patient:SearchPatient){
+  onChoose(patient);setOpen(false);setQuery(label(patient));setResults([]);setStatus('idle');
+ }
+ return <div className={styles.root} ref={root} onKeyDown={event=>{
+   if(event.key==='Escape'&&open){event.stopPropagation();setOpen(false);setQuery(label(selected))}
+  }}>
+  <div className={styles.searchField}>
    <span className={styles.dot} aria-hidden="true"/>
-   <span className={styles.name}>{selected?selected.first_name+' '+selected.last_name:fallbackLabel}</span>
-   <ChevronDown size={15} aria-hidden="true" className={styles.chevron}/>
-  </button>
-  {open&&<div className={styles.popup} id={id}>
-   <div className={styles.inputWrap}><Search size={15} aria-hidden="true"/>
-    <input ref={input} type="search" autoComplete="off" value={query} maxLength={100}
-     aria-label={t('patients.searchPatient')} placeholder={t('patients.searchSinglePlaceholder')}
-     role="combobox" aria-expanded={ready&&results.length>0} aria-controls={id+'-list'}
-     aria-activedescendant={ready&&results.length?id+'-option-'+active:undefined}
-     onChange={event=>{setQuery(event.target.value);setActive(0);setResults([])}}
-     onKeyDown={event=>{
-      if(!results.length)return;
-      if(event.key==='ArrowDown'){event.preventDefault();setActive(i=>(i+1)%results.length)}
-      if(event.key==='ArrowUp'){event.preventDefault();setActive(i=>(i+results.length-1)%results.length)}
-      if(event.key==='Enter'){event.preventDefault();choose(results[active])}
-     }}
-    />
-   </div>
-   <div className={styles.results} role="listbox" id={id+'-list'} aria-label={t('patients.searchPatient')}>
-    {results.map((p,i)=><button type="button" id={id+'-option-'+i} role="option" aria-selected={i===active}
-      key={p.id} onMouseEnter={()=>setActive(i)} className={i===active?styles.active:styles.option} onClick={()=>choose(p)}>
-      {p.first_name} {p.last_name}
-     </button>)}
-    {state==='loading'&&<p role="status">{t('common.searching')}</p>}
-    {state==='empty'&&<p role="status">{t('patients.noPatientFound')}</p>}
-    {state==='error'&&<p role="status">{t('errors.patientSearchUnavailable')}</p>}
-    {!ready&&<p>{t('patients.searchSinglePlaceholder')}</p>}
-   </div>
+   <input ref={input} type="search" autoComplete="off" maxLength={100} disabled={disabled}
+    value={query} aria-label={t('patients.searchPatient')} placeholder={fallbackLabel}
+    className={styles.input} role="combobox" aria-autocomplete="list"
+    aria-expanded={open&&ready} aria-controls={open&&ready?id+'-list':undefined}
+    aria-activedescendant={open&&ready&&results.length?id+'-option-'+active:undefined}
+    onFocus={event=>{event.currentTarget.select();setOpen(false)}}
+    onChange={event=>{setQuery(event.target.value);setActive(0);setResults([]);setOpen(true)}}
+    onKeyDown={event=>{
+     if(!open||!ready||!results.length)return;
+     if(event.key==='ArrowDown'){event.preventDefault();setActive(i=>(i+1)%results.length)}
+     else if(event.key==='ArrowUp'){event.preventDefault();setActive(i=>(i+results.length-1)%results.length)}
+     else if(event.key==='Enter'){event.preventDefault();choose(results[active])}
+    }}
+   />
+   <Search size={16} className={styles.searchIcon} aria-hidden="true"/>
+  </div>
+  {open&&ready&&<div className={styles.results} role="listbox" id={id+'-list'} aria-label={t('patients.searchPatient')}>
+   {results.map((patient,i)=><button type="button" role="option" aria-selected={i===active}
+    className={i===active?styles.active:styles.option} key={patient.id} id={id+'-option-'+i}
+    onMouseEnter={()=>setActive(i)} onClick={()=>choose(patient)}>
+    {patient.first_name} {patient.last_name}
+   </button>)}
+   {status==='loading'&&<p role="status">{t('common.searching')}</p>}
+   {status==='empty'&&<p role="status">{t('patients.noPatientFound')}</p>}
+   {status==='error'&&<p role="status">{t('errors.patientSearchUnavailable')}</p>}
   </div>}
  </div>;
 }

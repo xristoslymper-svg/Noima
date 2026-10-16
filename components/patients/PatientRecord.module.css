@@ -9,4 +9,430 @@
 .tabs .more { position:relative; margin-left:auto; }
 .exportMenu { position:absolute; right:0; top:calc(100% + 8px); z-index:20; width:265px; padding:8px; background:#fffefa; border:1px solid #dce5df; border-radius:12px; box-shadow:0 12px 32px rgba(20,40,30,.14); }
 .exportMenu .menuItem,.exportMenu button { display:flex; gap:8px; align-items:center; width:100%; margin:0; padding:12px; color:#315e50; text-align:left; text-decoration:none; background:transparent; border:0; border-radius:8px; font-size:13px; white-space:normal; }
-.exportMenu .menuItem:hover,.exportMenu button:hover { backgr¶»§q«^
+.exportMenu .menuItem:hover,.exportMenu button:hover { background:#edf3ed; }
+@media(max-width:700px) { .recordDialog { width:100vw; height:100dvh; max-height:100dvh; max-width:100vw; margin:0; border-radius:0; padding:14px; } .tabs .more[open] { flex-basis:auto; } }
+/* Warm canvas for individual patient record only */
+.workspace {
+  /* fa64b996d + premium surfaces activated by f41e11dc8. Patient detail only. */
+  --patient-canvas:#f8f5ef;
+  --patient-surface:rgba(251,252,250,.88);
+  --patient-navigation:rgba(251,252,250,.72);
+  --patient-card:#fff;
+  --patient-line:#e1e7e3;
+  --patient-ink:#263a32;
+  --line:#e3e6df;--muted:#5c7064;--green:#315f4d;--green-soft:#edf3ed;
+  background:var(--patient-canvas);min-height:100vh;color:var(--patient-ink);
+}
+.workspace :global(.topbar) { background:#fbfcfa; }
+.shell { display:block !important; padding-top:0; }
+.grid p,.section p { margin:6px 0; line-height:1.6; }
+.list { list-style:none; padding:0; margin:0; display:grid; gap:12px; }
+.identity h1 { font-size:28px; }
+.visit strong { font-size:16px; }
+.filters button,.link { font:inherit; font-size:13px; padding:7px 12px; border:1px solid var(--line,#e3e6df); border-radius:7px; color:var(--green,#315f4d); background:transparent; cursor:pointer; }
+.details>summary { cursor:pointer; padding:16px 0; color:var(--green,#315f4d); font-weight:600; }
+.viewer { margin-top:22px; border-top:1px solid var(--line,#e3e6df); padding-top:16px; }
+.headerNote { margin-top:6px; font-size:13px; color:var(--muted,#6a746d); }
+@media(max-width:700px) { .grid,.changes { grid-template-columns:1fr; gap:18px; } .tabs { gap:0; } .tabs button { padding:9px 10px; } .tabs button:last-child { margin-left:0; } .item { grid-template-columns:1fr; gap:5px; } }
+
+.compactHeroAction { min-width:0; padding:9px 13px; gap:9px; }
+.compactHeroAction :global(.patient-voice-icon) { width:32px; height:32px; }
+.compactHeroAction strong { font-size:12.5px; white-space:nowrap; }
+
+
+/* Patient record â€” calm premium clinical workspace */
+.hero h1 {
+  font-size:30px !important;
+  line-height:1.05;
+  letter-spacing:-.035em;
+  color:#263a32;
+}
+.hero :global(.patient-record-context) {
+  margin-top:7px;
+  font-size:12px;
+  color:#78867f;
+}
+.hero :global(.kicker) {
+  font-size:9px;
+  letter-spacing:.13em;
+  color:#52695d;
+}
+
+.tabs { display:flex; align-items:center; border-bottom:1px solid var(--line,#e3e6df); margin-bottom:24px; overflow-x:auto;
+  gap:4px;
+  margin:0 0 14px;
+  padding:5px;
+  border:1px solid var(--patient-line);
+  border-radius:14px;
+  background:var(--patient-navigation);
+  box-shadow:0 7px 24px rgba(31,49,40,.035);
+}
+.tabs button { display:flex; align-items:center; gap:8px; flex-shrink:0; border:0; background:transparent; font:inherit; cursor:pointer;
+  padding:9px 13px;
+  border-radius:10px;
+  font-size:12px;
+  color:#67766e;
+}
+.tabs button[aria-current="page"] {
+  background:var(--patient-card);
+  color:#315f52;
+  box-shadow:0 2px 10px rgba(31,49,40,.06), inset 0 0 0 1px #dce6e0;
+  font-weight:700;
+}
+.tabs button:last-child { margin-left:auto;
+  color:#74827b;
+}
+
+.contentSurface {
+  min-height:360px;
+  padding:24px 26px 26px;
+  border:1px solid var(--patient-line);
+  border-radius:20px;
+  background:var(--patient-surface);
+  box-shadow:0 16px 50px rgba(31,49,40,.05);
+}
+.contentSurface :global(.panel-heading) {
+  margin-bottom:18px;
+  padding-bottom:16px;
+  border-bottom:1px solid #e7ece8;
+}
+.contentSurface :global(.panel-heading h2) {
+  margin:5px 0 3px;
+  font-size:21px;
+  letter-spacing:-.02em;
+  color:#2a3d35;
+}
+.contentSurface :global(.history-editor-grid) {
+  gap:9px;
+}
+.contentSurface :global(.history-editor-grid label) {
+  border-color:#e1e7e3;
+  border-radius:12px;
+  background:var(--patient-card);
+  box-shadow:0 2px 9px rgba(31,49,40,.025);
+}
+.contentSurface :global(.history-editor-grid textarea) {
+  color:#30433a;
+}
+
+.section {
+  padding:18px 0;
+  border-bottom:1px solid #e7ece8;
+}
+.section:first-child {
+  padding-top:0;
+}
+.section h2 {
+  margin:6px 0 11px;
+  font-size:15px;
+  letter-spacing:-.01em;
+  color:#2a3d35;
+}
+.section h3 { font-size:14px; margin:0 0 8px;
+  color:#31453c;
+}
+.muted {
+  color:#7c8982;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  margin-top:11px;
+}
+.grid > div {
+  min-height:122px;
+  padding:14px 15px;
+  border:1px solid #e2e8e4;
+  border-radius:13px;
+  background:var(--patient-card);
+  box-shadow:0 2px 10px rgba(31,49,40,.025);
+}
+.grid > div h2 {
+  margin-top:0;
+  padding-bottom:8px;
+  border-bottom:1px solid #edf0ee;
+  font-size:13px;
+}
+.grid > div > p {
+  margin:9px 0;
+}
+.grid .link {
+  margin-top:5px;
+}
+
+.changes { list-style:none; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); font-size:13px;
+  gap:0;
+  margin:11px 0 2px;
+  border-top:1px solid #e8ece9;
+}
+.changes li {
+  min-width:0;
+  padding:12px 14px 12px 13px;
+  border-bottom:1px solid #e8ece9;
+  border-left:2px solid transparent;
+}
+.changes li:hover {
+  background:rgba(255,255,255,.58);
+  border-left-color:#7fa594;
+}
+.changes li strong {
+  color:#31483e;
+  font-size:12px;
+}
+.changes li p {
+  margin:3px 0;
+  font-size:11px;
+}
+
+.alert { padding-left:14px;
+  margin-top:10px;
+  padding:11px 14px;
+  border:1px solid #e5e4d8;
+  border-left:3px solid #718f80;
+  border-radius:11px;
+  background:#f8f7f1;
+}
+.alert p {
+  margin:5px 0;
+}
+
+.link {
+  padding:6px 9px;
+  border-color:#d9e3dd;
+  border-radius:8px;
+  background:var(--patient-card);
+  color:#3d6d5d;
+  font-size:10.5px;
+  font-weight:650;
+}
+.link:hover {
+  background:#f2f7f4;
+  border-color:#c7d9cf;
+}
+.filters { display:flex; flex-wrap:wrap;
+  gap:5px;
+  margin:13px 0 18px;
+}
+.filters button {
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:10.5px;
+  background:var(--patient-card);
+}
+.filters button[aria-pressed="true"] { font-weight:600;
+  background:#e9f3ed;
+  border-color:#cbded4;
+  color:#315f52;
+}
+
+.record > h2 {
+  margin:5px 0 2px;
+  font-size:21px;
+  letter-spacing:-.02em;
+  color:#2a3d35;
+}
+.item { display:grid;
+  grid-template-columns:118px minmax(0,1fr);
+  gap:18px;
+  padding:13px 10px;
+  border-bottom:1px solid #e7ece8;
+  transition:background .15s ease;
+}
+.item:hover {
+  background:rgba(255,255,255,.56);
+}
+.item time {
+  padding-top:2px;
+  font-size:10.5px;
+  color:#87938d;
+}
+.visit {
+  border-left:2px solid #719685;
+  padding-left:11px;
+}
+
+.details {
+  margin-top:18px;
+  border-top:1px solid #e7ece8;
+}
+.details > summary {
+  padding:14px 2px;
+  font-size:10.5px;
+  letter-spacing:.06em;
+  color:#577467;
+}
+
+.contentSurface :global(.clinical-table-wrap) {
+  border:1px solid #e0e7e3;
+  border-radius:14px;
+  background:var(--patient-card);
+  box-shadow:0 3px 14px rgba(31,49,40,.03);
+}
+.contentSurface :global(.clinical-lean-table thead) {
+  background:#f5f8f6;
+}
+.contentSurface :global(.clinical-lean-table th) {
+  color:#5f7168;
+}
+.contentSurface :global(.clinical-lean-table td),
+.contentSurface :global(.clinical-lean-table th) {
+  border-color:#e7ece8;
+}
+.contentSurface :global(.record.compact) {
+  border-radius:9px;
+  box-shadow:none;
+}
+
+@media(max-width:700px) {
+  .contentSurface {
+    padding:18px 14px 22px;
+    border-radius:16px;
+  }
+  .hero {
+    padding-top:12px !important;
+  }
+  .tabs {
+    border-radius:12px;
+    padding:4px;
+  }
+  .tabs button {
+    padding:8px 9px;
+  }
+  .grid > div {
+    min-height:auto;
+  }
+}
+
+/* Continuity is a compact reading surface, not a second dashboard. */
+.continuity .section{padding:16px 0;margin:0;border-radius:0;background:transparent;box-shadow:none;border-bottom:1px solid var(--line,#e3e6df)}
+.memory{white-space:pre-wrap;max-width:900px;margin:9px 0;font-size:16px;line-height:1.55}.currentRows{display:grid;gap:8px;margin-top:10px}.currentRows>div{display:grid;grid-template-columns:95px 1fr;gap:12px}.currentRows p{margin:0}.more summary{cursor:pointer;padding:8px 15px;font-size:22px}.more button{font-size:13px}
+
+.continuity .memory{font-size:16px;line-height:1.55}.continuity .list{margin:10px 0}.continuity .section .link{padding:3px 7px}
+
+/* Folder polish; these rules do not reach the visit editor. */
+.workspace :global(.generic-patient-page) { padding-top:18px; }
+.hero {
+  border-bottom:1px solid rgba(215,224,219,.78); padding:18px 0 20px !important; margin-bottom:16px; }
+.hero :global(.patient-record-context),.headerNote { color:#586c61; font-size:13px; }
+
+
+.contentSurface :global(.kicker) { font-size:11px; color:#52695d; letter-spacing:.06em; }
+.section p {
+  color:#46594f; font-size:14px; }
+.muted,.item time { color:#5c7064; font-size:12px; }
+.link,.filters button,.details>summary { font-size:12px; }
+.item strong { display:block;
+  color:#30443b; font-size:14px; }
+.item p {
+  margin:3px 0 6px; font-size:13px; }
+.contentSurface :global(.panel-heading p) {
+  max-width:720px;
+  line-height:1.55; font-size:13px; }
+.contentSurface :global(.patient-reported-summary) { padding:14px 0; margin:0; border:0; border-bottom:1px solid #e7ece8; border-radius:0; background:transparent; }
+.contentSurface :global(.patient-reported-summary h2) { font-size:16px; }
+.contentSurface :global(.patient-reported-muted) { color:#5c7064; font-size:13px; }
+.contentSurface :global(.patient-details-card.incomplete) { background:transparent; border-color:#e1e7e3; }
+.contentSurface :global(.patient-missing-fields) { flex-basis:100%; font-size:12px; color:#5c7064; margin:8px 0 0; }
+.contentSurface :global(.clinical-table-wrap),.grid>div { box-shadow:none; }
+.contentSurface :global(.med-row-action-links) { gap:12px; }
+.contentSurface :global(.med-add-effect) { font-size:12px; max-width:170px; text-align:left; }
+.contentSurface :global(.med-row-action-links button) { font-size:12px; }
+.contentSurface :global(.clinical-lean-table td),.contentSurface :global(.clinical-lean-table th) { font-size:12px; }
+@media(max-width:700px) { .currentRows>div { grid-template-columns:1fr; gap:3px; } .item { grid-template-columns:1fr; gap:5px; } .workspace :global(.generic-patient-page) { padding-top:12px; } }
+
+@media screen and (max-width:760px) {
+ .tabs { flex-wrap:wrap; overflow:visible; gap:4px; }
+ .tabs button { min-height:44px; font-size:13px; padding:8px; }
+ .more { margin-left:0; }
+ .more summary { min-width:44px; min-height:44px; }
+ .more[open] { flex-basis:100%; flex-wrap:wrap; }
+ .link, .filters button { min-height:44px; display:inline-flex; align-items:center; }
+ .contentSurface { min-width:0; padding:18px 12px; }
+ .hero { min-width:0; }
+ .headerNote { overflow-wrap:anywhere; }
+ .grid { grid-template-columns:minmax(0,1fr); }
+}
+
+
+/* A clinician-facing print/PDF action. Technical backup stays secondary. */
+.tabs .exportLink{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;white-space:nowrap;min-height:39px;padding:9px 13px;color:#356a52;background:#eef5ef;border:1px solid #d7e6da;border-radius:10px;text-decoration:none;font-size:12.5px;font-weight:680}
+.tabs .exportLink:hover{background:#e4f0e7;border-color:#bbd4c1}
+.tabs .exportLink:focus-visible,.more>summary:focus-visible{outline:2px solid #4c8c65;outline-offset:3px}
+.more{margin-left:0;display:flex;align-items:center;flex:0 0 auto;gap:8px}
+.more[open]{display:flex}
+.more>summary{list-style:none;display:flex;align-items:center;justify-content:center;min-height:39px;min-width:39px;padding:6px 9px;border:1px solid transparent;border-radius:10px;font-size:23px;line-height:1;color:#547163;cursor:pointer}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::marker{content:''}
+.more>summary:hover,.more[open]>summary{background:#eef4ef;border-color:#dfe8e1}
+.more>button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:12px;color:#526b5c;border:1px solid #e1e9e2;border-radius:9px;background:var(--patient-card);min-height:38px;padding:8px 11px;cursor:pointer}
+.more>button:hover{background:#f1f6f2}
+@media(max-width:600px){.tabs .exportLink{padding:9px 11px;font-size:12px}.tabs .exportLink span{display:none}.more>button{white-space:normal;min-width:150px}}
+
+/* Record is the clinical action workspace: distinct but still a navigation tab. */
+.tabs button[data-record-tab="true"]{background:#e7f1eb;color:#285d4c;border:1px solid #b9d5c6;font-weight:700;box-shadow:0 1px 3px rgba(40,93,76,.045);padding:9px 13px;}
+.tabs button[data-record-tab="true"]:hover{background:#dcebe2;border-color:#a6cbb7;}
+.tabs button[data-record-tab="true"][aria-current="page"]{background:#235f4d;color:#fff;border-color:#235f4d;box-shadow:0 2px 8px rgba(35,95,77,.13);}
+.tabs button[data-record-tab="true"]:focus-visible{outline:2px solid #235f4d;outline-offset:2px;}
+@media(max-width:700px){.tabs button[data-record-tab="true"]{padding:8px 10px;}}
+
+/* Secondary, compact patient action: Record tab remains the visual navigation anchor. */
+.hero :global(.patient-voice-cta){
+  border-color:#315f54;min-height:42px!important;padding:8px 13px!important;gap:8px!important;border-radius:11px!important;background:#edf5ef!important;border:1px solid #c9ddcf!important;color:#315f52!important;box-shadow:none!important;}
+.hero :global(.patient-voice-cta:hover){background:#e3f0e7!important;border-color:#b5d3c0!important;}
+.hero :global(.patient-voice-icon){width:26px!important;height:26px!important;border-radius:7px!important;background:#dbeae0!important;color:#315f52!important;}
+.hero :global(.patient-voice-icon svg){width:16px;height:16px;}
+.hero :global(.patient-voice-cta strong){font-size:12px!important;font-weight:650!important;white-space:nowrap;}
+.hero :global(.patient-voice-cta small){font-size:10px!important;color:#718b7d!important;}
+@media(max-width:700px){.hero :global(.patient-voice-cta){min-height:44px!important;}}
+
+/* Keep folder navigation visible beside the tablet sidebar. */
+@media(max-width:1000px){
+ .tabs{flex-wrap:wrap;overflow:visible}
+ .hero{flex-wrap:wrap;gap:14px}
+ .hero>div{min-width:0;flex-basis:100%}
+ .hero h1{overflow-wrap:anywhere}
+}
+
+/* The shared app chrome keeps its own palette; these surfaces belong to the patient. */
+.patientShell :global(.sidebar){background:#fbfcfa;border-right-color:#e8ece6}
+.patientShell :global(.brand-sub){color:#5c7064}
+.patientShell :global(.brand-mark){border-radius:14px;background:#2f6f63}
+.patientShell :global(.nav-item){border-radius:13px;color:#506072}
+.patientShell :global(.nav-item.active){background:#e8f2ec;color:#1f5d50}
+.workspace :global(.visit-workspace){
+  /* Original visit palette from 2f444f582:app/visit-workspace.css. */
+  --visit-canvas:#f8f6f1;--visit-surface:#fffefa;--visit-line:#e2e7e3;
+  --visit-ink:#263a34;--visit-muted:#5c7064;--visit-sage-ink:#315e50;
+  font-family:inherit;
+}
+/* Retain the current medication tables and mobile controls, using historical surfaces. */
+.workspace :global(.medication-table-editor){max-width:100%;min-width:0;border:1px solid var(--patient-line);border-radius:12px;box-shadow:none;overflow-x:auto}
+.workspace :global(.medication-lean-table){border-collapse:collapse;font-size:13px;line-height:1.5}
+.workspace :global(.medication-lean-table thead){background:#f5f8f6}
+.workspace :global(.medication-lean-table thead th){padding:12px;color:#5f7168;font-size:12px;font-weight:650;border-bottom:1px solid #e7ece8}
+.workspace :global(.medication-lean-table tbody td),.workspace :global(.medication-lean-table tbody th){padding:14px 12px;border-bottom:1px solid #e7ece8;vertical-align:top}
+.workspace :global(.medication-lean-table tbody th){color:#31453c;font-weight:600}
+.workspace :global(.med-frequency-times){display:flex;flex-wrap:nowrap;gap:4px}
+.workspace :global(.med-frequency-times button){padding:6px 8px;font-size:12px;white-space:nowrap;border-radius:6px}
+.workspace :global(.med-frequency){min-width:210px}
+.workspace :global(.med-inline-input){margin-top:5px}
+@media(max-width:760px){
+  .workspace :global(.med-frequency-times button){min-height:44px}
+  .workspace :global(.visit-workspace textarea){font-size:16px}
+}
+
+.enrichedVisit { grid-template-columns:118px minmax(160px,1fr) minmax(220px,1fr); }
+.visitContext { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:18px; min-width:0; }
+.contextLabel { display:block; color:#87938d; font-size:10px; letter-spacing:.04em; margin-bottom:7px; }
+.contextEntry { display:block; width:100%; text-align:left; border:0; border-radius:0; background:transparent; color:#547264; padding:0; margin:0 0 10px; cursor:pointer; }
+.contextEntry span { display:block; font-size:11px; }
+.visitContext .contextEntry strong { font-size:12px; font-weight:500; line-height:1.5; overflow-wrap:anywhere; }
+.contextEntry small { display:block; font-size:10px; color:#87938d; line-height:1.5; }
+.contextEntry:hover strong { text-decoration:underline; }
+.contextEntry:focus-visible { outline:2px solid #719685; outline-offset:4px; }
+@media(max-width:1000px){ .enrichedVisit { grid-template-columns:100px minmax(0,1fr); } .visitContext { grid-column:2; } }
+@media(max-width:700px){ .enrichedVisit { grid-template-columns:1fr; } .visitContext { grid-column:1; margin-top:10px; } }
+
+.priorChoice{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#fff;border:1px solid #dce9df;border-radius:17px;padding:21px 24px;margin:18px 0;flex-wrap:wrap}.priorChoice h2{font:600 24px Georgia,serif;color:#254334;margin:0 0 6px}.priorChoice p{font-size:13px;color:#74887b;margin:0}.priorChoiceActions{display:flex;gap:12px;flex-wrap:wrap}.priorChoiceActions button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;background:#f4f8f5;color:#2c5e47;border:1px solid #d5e4da;border-radius:12px;padding:12px 18px;cursor:pointer;font-size:14px;font-weight:650}.priorChoiceActions button:hover{background:#e7f1ea}.priorChoiceActions small{font-size:12px;color:#7b8c82;font-weight:400}@media(max-width:700px){.priorChoiceActions{width:100%}.priorChoiceActions button{flex:1;min-width:170px}}.priorTimeline{background:#f5f9f6;border:1px solid #dbe7de;border-radius:14px;margin:12px 0 20px;padding:17px 19px}.priorTimeline strong{display:block;color:#335c46;font-size:14px}.priorTimeline p{color:#52695a;line-height:1.6;font-size:13px;white-space:pre-wrap;margin:9px 0}.priorTimeline small{display:block;color:#71887b;font-size:12px}.priorTimeline button{margin-top:10px}

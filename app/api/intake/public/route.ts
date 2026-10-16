@@ -1,5 +1,7 @@
 import {errorJson} from '@/i18n/errors';
 import {rpc} from '@/lib/patients/demo-runtime';
+import {checkIntakeIdentity,normalizeIntakeIdentity} from '@/lib/intake/demographics';
+import type {IntakeIdentity} from '@/lib/intake/history';
 export const dynamic='force-dynamic';
 const hex=/^[a-f0-9]{64}$/;
 function sameOrigin(req:Request){const origin=req.headers.get('origin');const site=req.headers.get('sec-fetch-site');return (!origin||origin===new URL(req.url).origin)&&site!=='cross-site'}
@@ -8,6 +10,14 @@ export async function POST(request:Request){
  if(mode&&!['demo','synthetic'].includes(mode))return errorJson({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.',code:'clinical_data_disabled'},{status:403,headers:{'Cache-Control':'private, no-store'}});
  if(!sameOrigin(request))return errorJson({error:'Μη έγκυρη προέλευση.'},{status:403});
  const b=await request.json().catch(()=>({}));
+ const newIdentity=b.identity;
+ if(['submit','device_submit'].includes(b.action)&&newIdentity!=null){
+  if(typeof newIdentity!=='object'||Array.isArray(newIdentity))return errorJson({error:'Μη έγκυρα στοιχεία ασθενή.'},{status:422});
+  const issue=checkIntakeIdentity(newIdentity as Partial<IntakeIdentity>);
+  if(issue)return errorJson({error:'Ελέγξτε τα βασικά στοιχεία ασθενή ('+issue+').',code:'invalid_patient_details'},{status:422});
+  b.identity=normalizeIntakeIdentity(newIdentity as Partial<IntakeIdentity>);
+ }
+
  try{
   if(b.action==='open'){if(typeof b.token!=='string'||!hex.test(b.token))return errorJson({error:'Ο σύνδεσμος δεν είναι έγκυρος.'},{status:400});return Response.json(await rpc('demo_intake_open',{p_token:b.token}),{headers:{'Cache-Control':'no-store'}})}
   if(b.action==='submit'){if(typeof b.token!=='string'||!hex.test(b.token))return errorJson({error:'Ο σύνδεσμος δεν είναι έγκυρος.'},{status:400});return Response.json(await rpc('demo_intake_submit',{p_token:b.token,p_identity:b.identity||null,p_history:b.history||null,p_psych:b.psychometrics||{}}),{headers:{'Cache-Control':'no-store'}})}

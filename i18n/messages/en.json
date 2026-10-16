@@ -628,7 +628,9 @@
     "noSubmissions": "No patient submissions.",
     "taskPlaceholder": "What needs to be done?",
     "task": "Task",
-    "noPendingTasks": "No pending tasks."
+    "noPendingTasks": "No pending tasks.",
+    "newPatientDetailsReview": "New patient · Review",
+    "reviewBasicDetails": "Review basic details"
   },
   "billing": {
     "payments": "Payments",
@@ -1774,8 +1776,6 @@
     "noAccountNeeded": " No account is needed. Your answers are sent only to the practice that sent you the link.",
     "linkAfterReview": "The record will be created or linked after the details are checked.",
     "reviewedAnswersDestination": "The reviewed answers will be recorded in the linked patient record.",
-    "yourDetails": "Your details",
-    "identityPurpose": "These details will be used to create your patient record.",
     "reasonQuestion": "What brings you here today?",
     "selectMultiple": "You can select more than one.",
     "durationQuestion": "Approximately how long has this been a concern?",
@@ -1887,7 +1887,22 @@
     "alreadyReceived": "Your form has been received",
     "alreadySentHelp": "Your answers have already been sent securely to the clinic. No further action is needed.",
     "receivedIdentityHelp": "The clinic has received your form and will check its link to your record.",
-    "privateAnswersHelp": "For privacy, your answers cannot be displayed again through this link."
+    "privateAnswersHelp": "For privacy, your answers cannot be displayed again through this link.",
+    "basicPatientDetails": "Basic patient details",
+    "basicPatientDetailsHelp": "Please enter your basic contact details before the questionnaire. Your record will be created when you submit, and your clinician will review the information.",
+    "lastNameRequired": "Last name *",
+    "alternateContactPhone": "Alternate contact number",
+    "demographicReviewNotice": "These self-reported details will appear in the record for clinician review.",
+    "demographicErrors": {
+      "first_name": "Enter your first name.",
+      "last_name": "Enter your last name.",
+      "age": "Age must be between 0 and 120.",
+      "email": "Check the email address.",
+      "amka": "AMKA must contain 11 digits.",
+      "phone": "The phone number is too long.",
+      "contact_phone": "The alternate phone number is too long.",
+      "address": "The address is too long."
+    }
   },
   "psychometrics": {
     "resultSuffix": " · Result",

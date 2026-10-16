@@ -19,5 +19,11 @@ if(process.env.VERCEL_ENV==='preview' &&
  if(process.env.VERCEL_GIT_COMMIT_REF==='codex/copilot-text-masking'&&!report.masking_probe?.passed)throw new Error('hosted_masking_probe_failed');
  console.log('COPILOT_EVALUATION '+JSON.stringify({status:report.status,commit:report.commit,usage:report.usage}));
 }
+
+if(process.env.VERCEL_ENV==='preview' && process.env.VERCEL_GIT_COMMIT_REF==='audit/summary-v2-ab-20261016') {
+ const run=spawnSync(process.execPath,['--experimental-strip-types','tests/support/summary-v2-ab.mjs'],{stdio:'inherit',env:process.env,timeout:450000});
+ if(run.error || run.status!==0) console.warn('SUMMARY_V2_AB_BUILD_REPORT',{status:run.status,error:run.error?.code||null});
+}
+
 const build=spawnSync('npm',['run','build'],{stdio:'inherit',env:process.env});
 process.exitCode=build.status??1;

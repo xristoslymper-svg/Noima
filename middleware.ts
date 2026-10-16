@@ -38,4 +38,4 @@ export async function middleware(request:NextRequest) {
   response.headers.set('Cache-Control','private, no-store');
   return response;
 }
-export const config={matcher:['/((?!api|auth/callback|assessment|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wasm|onnx)$).*)']};
+export const config={matcher:['/((?!summary-v2-ab\\.(?:json|html)|api|auth/callback|assessment|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wasm|onnx)$).*)']};

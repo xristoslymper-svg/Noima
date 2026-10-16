@@ -16,7 +16,7 @@ export async function understand(query:string,memory:Memory|null,usage:Usage){
 }
 export function sourceLink(patient:string,s:Evidence){
  const base='/patients/demo/'+encodeURIComponent(patient);
- const href=s.kind==='psychometric'?base+'?tab=psychometrics&assessment='+encodeURIComponent(s.record_id):
+ const href=s.kind==='prior_course'?base+'?tab=timeline':s.kind==='psychometric'?base+'?tab=psychometrics&assessment='+encodeURIComponent(s.record_id):
  s.session_id?base+'?tab=record&session='+encodeURIComponent(s.session_id):
  base+'?tab='+(s.target==='medications'?'medications':s.target==='history'?'history':'timeline');
  return {label:s.label,href,id:s.id};

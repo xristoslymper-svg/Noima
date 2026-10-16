@@ -12,6 +12,7 @@ export function assertRecordIdentity(value:unknown,patientId:string,sessionId?:s
   }
  }
  if(bundle.history&&bundle.history.patient_id!==patientId)throw new Error('Το ιστορικό δεν αντιστοιχεί στον επιλεγμένο ασθενή.');
+ if(bundle.priorCourse&&(bundle.priorCourse.patient_id!==patientId||(bundle.patient.tester_id&&bundle.priorCourse.tester_id!==bundle.patient.tester_id)))throw new Error('Η προηγούμενη πορεία δεν αντιστοιχεί στον επιλεγμένο ασθενή.');
  if(sessionId&&!bundle.sessions.some(row=>row.id===sessionId&&row.patient_id===patientId))throw new Error('Η συγκεκριμένη επίσκεψη δεν είναι διαθέσιμη στον φάκελο.');
 }
 

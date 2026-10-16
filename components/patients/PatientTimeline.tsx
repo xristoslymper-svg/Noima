@@ -8,7 +8,7 @@ import {patientRecord,visitTimelineContext,type RecordEvent} from '@/lib/clinica
 import {recordDate} from './PatientRecordSummary';
 import styles from './PatientRecord.module.css';
 
-export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeasurements,onTreatment,viewer}:{bundle:PatientBundle;selectedSessionId:string|null;onVisit:(id:string|null)=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;viewer:ReactNode}){
+export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeasurements,onTreatment,onPriorCourse,viewer}:{bundle:PatientBundle;selectedSessionId:string|null;onVisit:(id:string|null)=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;onPriorCourse:()=>void;viewer:ReactNode}){
  const t=useTranslations();
  const displayLabel=useOptionLabel();
  const locale=useLocale();
@@ -21,6 +21,12 @@ export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeas
  const grouped=new Set([...context.values()].flatMap(c=>[...c.treatment.map(e=>e.id),...c.measurements.map(m=>'measurement-'+m.current.id)]));
  const events=record.events.filter(e=>filter!=='all'||!grouped.has(e.id)).filter(e=>filter==='all'||e.kind===filter);
  return <section className={styles.record}><span className="kicker">{t('patients.longitudinalKicker')}</span><h2>{t('visits.title')}</h2>
+  <div className={styles.priorTimeline}>
+   <strong>{locale==='en'?'Before NOIMA · Previous clinical course':'Πριν από το NOIMA · Προηγούμενη κλινική πορεία'}</strong>
+   <p>{bundle.priorCourse?.content||(locale==='en'?'Enter a summary of an existing patient history without recreating past visits.':'Μεταφέρετε συνοπτικά την προηγούμενη παρακολούθηση, χωρίς να δημιουργήσετε παλιές επισκέψεις.')}</p>
+   {bundle.priorCourse?.period_label&&<small>{bundle.priorCourse.period_label}</small>}
+   <button type="button" className={styles.link} onClick={onPriorCourse}>{bundle.priorCourse?(locale==='en'?'Edit previous course':'Επεξεργασία προηγούμενης πορείας'):(locale==='en'?'Add previous course':'Προσθήκη προηγούμενης πορείας')}</button>
+  </div>
   <div className={styles.filters} aria-label={t('accessibility.timelineFilters')}>{([['all',t('common.all')],['visits',t('visits.title')],['treatment',t('clinical.treatment')],['measurements',t('psychometrics.measurements')]] as const).map(([key,label])=><button key={key} aria-pressed={filter===key} onClick={()=>setFilter(key)}>{label}</button>)}</div>
   {events.length?<ol className={styles.list}>{events.map(event=><li key={event.id} className={`${styles.item} ${event.kind==='visits'?styles.visit:''} ${event.kind==='visits'&&(context.get(event.sessionId!)?.treatment.length||context.get(event.sessionId!)?.measurements.length)?styles.enrichedVisit:''}`}><time dateTime={event.date}>{recordDate(event.date,locale)}</time><div><strong>{event.title}{event.scheduled?t('calendar.scheduledSuffix'):''}</strong><p className={styles.muted}>{event.detail}</p>{event.kind==='visits'?<button className={styles.link} onClick={()=>onVisit(event.sessionId!)}>{t('visits.openRecord')}</button>:<button className={styles.link} onClick={event.kind==='measurements'?()=>onMeasurements(event.assessmentId):onTreatment}>{event.kind==='measurements'?t('psychometrics.scoresAnswers'):t('medications.treatmentDetails')}</button>}</div>{event.kind==='visits'&&(context.get(event.sessionId!)?.treatment.length||context.get(event.sessionId!)?.measurements.length)?<div className={styles.visitContext}>
    {!!context.get(event.sessionId!)!.treatment.length&&<div><span className={styles.contextLabel}>{t('medications.medication')}</span>{context.get(event.sessionId!)!.treatment.map(change=><button key={change.id} className={styles.contextEntry} onClick={onTreatment}><span>{change.title}{change.scheduled?t('calendar.scheduledSuffix'):''}</span><strong>{change.detail}</strong><small>{t('medications.effectiveFromPrefix')} {recordDate(change.date,locale)}</small></button>)}</div>}

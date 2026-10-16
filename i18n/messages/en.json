@@ -2296,5 +2296,25 @@
     "deliveryAccepted": "accepted by the email service; delivery to the recipient is not confirmed.",
     "deliveryUncertain": "sending is uncertain; check your sent messages.",
     "deliveryUnconfirmed": "sending was not confirmed."
+  },
+  "priorCourse": {
+    "kicker": "BEFORE NOIMA",
+    "title": "Previous clinical course",
+    "intro": "Briefly describe the previous treatment course. No historical visits will be created.",
+    "period": "Duration of previous treatment",
+    "periodExample": "e.g. approximately 1 year",
+    "course": "Clinical course",
+    "coursePlaceholder": "Initial presentation, key changes, treatment response, important history and recent state…",
+    "close": "Close",
+    "dictation": "Dictate",
+    "stopRecording": "Stop recording",
+    "transcribing": "Transcribing…",
+    "saving": "Saving…",
+    "save": "Save clinical course",
+    "disclaimer": "Clinician-authored retrospective note, not independent records of past visits. Current medication and risk assessments are not changed automatically.",
+    "unsavedConfirm": "You have unsaved changes. Discard them?",
+    "microphoneUnavailable": "Microphone access is unavailable. You can type instead.",
+    "transcriptionFailed": "Transcription failed.",
+    "saveFailed": "Could not save previous clinical course."
   }
 }

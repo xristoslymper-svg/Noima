@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 
 const followup=readFileSync('components/patients/FollowupClosure.tsx','utf8');
 const css=readFileSync('components/patients/FollowupClosure.module.css','utf8');
@@ -25,7 +25,7 @@ test('follow-up presents a single next-visit focus field and distinct appointmen
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Ψυχομετρικές μετρήσεις'));
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Σημαντικά θέματα προηγούμενων καταγραφών'));
  assert.doesNotMatch(followup,/Με την οριστικοποίηση επιβεβαιώνετε ότι/);
- assert.match(followup,/Ολοκλήρωση καταγραφής/);
+ assert.match(followup,/Οριστικοποίηση καταγραφής/);
 });
 
 test('signposting is by field placeholder instead of long doctor-facing explanations',()=>{

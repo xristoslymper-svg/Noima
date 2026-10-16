@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 // Test-only real PatientSession composition. No app route imports this file.
 import React,{useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
@@ -47,4 +48,4 @@ function Fixture(){
  async function reload(){setBundle({...current});return current}
  return <main className="qa-clinical-shell"><p className="qa-disclaimer">Συνθετικά δεδομένα — έλεγχος εμφάνισης και χειρισμών</p><section className="visit-workspace"><PatientSession bundle={bundle} reload={reload} onFinalize={async()=>{throw new Error('No real finalization in visual fixture')}} onFinishLater={async()=>{}} finalizing={false} finalizeError="" selectedSessionId={sessionId} onSelectSession={()=>{}} beforeNavigate={beforeNavigate}/></section></main>;
 }
-createRoot(document.getElementById('root')!).render(<Fixture/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{<Fixture/>}</LocaleFixture>);

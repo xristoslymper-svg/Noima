@@ -22,3 +22,39 @@
 @keyframes chatPulse{0%,100%{opacity:.35}50%{opacity:1}}
 @media(max-width:600px){.dock{left:12px;bottom:calc(74px + env(safe-area-inset-bottom));gap:8px}.panel{width:min(390px,calc(100vw - 24px));height:min(510px,calc(100dvh - 160px));max-width:calc(100vw - 24px);border-radius:18px}.launcher{padding:11px 16px;min-height:44px;font-size:13px}.chatHeader{padding:12px 14px}.chatScroll{padding:12px}}
 @media(prefers-reduced-motion:reduce){.thinking i,.busyDot{animation:none}.launcher{transition:none}}
+
+/* Stitch-inspired refinement: same product colors, less visual noise, no new modal. */
+.dock{left:22px;bottom:18px;gap:11px}
+.panel{width:392px;height:min(555px,calc(100dvh - 108px));border-radius:25px;background:#fff;border:1px solid #d8e6da;box-shadow:0 22px 52px -16px rgba(21,55,40,.21),0 1px 3px rgba(28,55,43,.05)}
+.chatHeader{gap:11px;padding:15px 16px 12px;background:linear-gradient(180deg,#f0f7f1 0%,#fff 100%);border-bottom:0}
+.avatar{width:39px;height:39px;flex-shrink:0;border-radius:13px;background:#1b3b36;color:#fff;font:700 24px/1 Georgia,serif;box-shadow:0 0 0 4px #e5f0e8}
+.chatHeader h2{font-size:15px;letter-spacing:-.015em;color:#203b30}
+.chatHeader p{font-size:11px;color:#73857a;margin-top:3px}
+.chatHeader button{border-radius:10px}
+.mode{gap:3px;margin:0 14px 4px;padding:3px;border-radius:11px;background:#eaf3ec}
+.mode button{flex:1;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:580;color:#62796a}
+.mode button[aria-pressed=true]{background:#fff;color:#24553b;font-weight:700;box-shadow:0 1px 5px rgba(22,62,37,.09)}
+.chatScroll{padding:14px 17px}
+.welcome{padding:7px 0 1px}
+.welcome h3{font-size:19px;line-height:1.35;margin:0 0 7px;font-weight:740;letter-spacing:-.03em;color:#203e2f}
+.welcome p{font-size:12px;line-height:1.55;margin:0 0 14px;color:#7b8c80}
+.prompts{gap:8px}
+.prompts button{border-radius:13px;padding:12px 13px;border-color:#dce9df;background:#fff;color:#395648;font-size:12px;line-height:1.55;font-weight:580;box-shadow:0 2px 6px rgba(20,55,37,.035)}
+.prompts button:hover{border-color:#a7c4b0;background:#f5faf6}
+.prompts svg{color:#719786}
+.chatFooter{padding:12px 14px 10px;border-top:1px solid #e9eee9;background:#fff}
+.chatCompose{position:relative;border-radius:15px;border:1px solid #bfd7c6;background:#f8fbf8;padding:11px 46px 10px 12px;min-height:76px;box-shadow:0 2px 7px rgba(36,70,44,.035)}
+.chatCompose:focus-within{border-color:#5c9073;box-shadow:0 0 0 3px rgba(44,117,75,.09)}
+.chatCompose textarea{min-height:53px;max-height:120px;font-size:13px;line-height:1.55}
+.chatCompose button{position:absolute;right:10px;bottom:10px;width:31px;height:31px;border-radius:10px;background:#2c674b;color:#fff}
+.chatCompose button:hover:not(:disabled){background:#214d38}
+.chatFooter>small{margin-top:8px;font-size:10px;color:#8c9b91}
+.launcher{background:#1b3b36;border-color:#31574a;box-shadow:0 5px 22px rgba(18,53,38,.2);font-size:13px;font-weight:700}
+.launcher:hover{background:#275142}
+.launcherPsi{font:700 19px/1 Georgia,serif;color:#deede0}
+@media(max-width:600px){.dock{left:12px;bottom:12px}.panel{width:min(392px,calc(100vw - 24px));max-width:calc(100vw - 24px);height:min(555px,calc(100dvh - 94px))}.chatHeader{padding:13px 14px 11px}.chatScroll{padding:12px 14px}.welcome h3{font-size:18px}}
+
+/* Compact assistant identity: one Ψ in the header and a larger Ψ after the dock label. */
+.chatHeader .headerCaption{font-size:12px;line-height:1.45;color:#657d6d;margin:0}
+.launcher{gap:9px}
+.launcherPsi{font-size:26px;line-height:.78;font-weight:700;letter-spacing:-.04em;color:#ecf5ee}

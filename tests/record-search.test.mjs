@@ -1,9 +1,11 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
+import * as upcoming from '../lib/calendar/upcoming.ts';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 const compile=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const pure={exports:{}};new Function('require','module','exports',compile('lib/overview/record-search.ts'))(()=>{},pure,pure.exports);
+const pure={exports:{}};new Function('require','module','exports',compile('lib/overview/record-search.ts'))((id)=>(intlTestModule(id)??(()=>upcoming)(id)),pure,pure.exports);
 const {matchPatients,recordAnswer}=pure.exports;
 const patient={id:'11111111-1111-4111-8111-111111111111',first_name:'Μαρία',last_name:'Παπαδοπούλου'};
 const other={...patient,id:'22222222-2222-4222-8222-222222222222'};
@@ -32,7 +34,7 @@ function route(intent,options={}){
  const runtime={request:async()=>{rosterReads++;return options.roster||[patient]},patientBundle:async()=>{bundleReads++;return bundle},rpc:async()=>options.tasks||[]};
  const process={env:{OPENAI_API_KEY:'test'}};
  const fetch=async(url,init)=>{providerBody=JSON.parse(init.body);return {ok:true,json:async()=>({output:[{content:[{type:'output_text',text:JSON.stringify(intent)}]}]})}};
- new Function('require','module','exports','process','fetch','Response','AbortSignal',compile('app/api/records/search/route.ts'))(id=>id.endsWith('pilot/route')?{withPilot:fn=>async req=>{const b=await req.json();return fn(new Request(req.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,tester:'workspace'})}))}}:id.endsWith('demo-runtime')?runtime:id.endsWith('identity')?{isClinicalId:value=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value)}:pure.exports,module,module.exports,process,fetch,Response,AbortSignal);
+ new Function('require','module','exports','process','fetch','Response','AbortSignal',compile('app/api/records/search/route.ts'))((id)=>(intlTestModule(id)??(id=>id.endsWith('pilot/route')?{withPilot:fn=>async req=>{const b=await req.json();return fn(new Request(req.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,tester:'workspace'})}))}}:id.endsWith('demo-runtime')?runtime:id.endsWith('identity')?{isClinicalId:value=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value)}:pure.exports)(id)),module,module.exports,process,fetch,Response,AbortSignal);
  return {post:body=>module.exports.POST(new Request('https://noima.test/api/records/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'Τι αγωγή παίρνει η Μαρία Παπαδοπούλου;',...body})})),stats:()=>({bundleReads,rosterReads,providerBody})};
 }
 test('ambiguous names require selection before clinical data is fetched',async()=>{

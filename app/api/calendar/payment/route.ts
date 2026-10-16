@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import { withPilot } from '@/lib/pilot/route';
 import { rpc } from '@/lib/patients/demo-runtime';
 
@@ -12,17 +13,17 @@ async function handlePOST(request:Request){
   const eventId=typeof body.event_id==='string'?body.event_id:'';
   const status=typeof body.status==='string'?body.status:'';
   if(!uuid.test(tester)||!uuid.test(eventId)||!statuses.has(status)){
-    return Response.json({error:'Μη έγκυρη κατάσταση πληρωμής.'},{status:400});
+    return errorJson({error:'Μη έγκυρη κατάσταση πληρωμής.'},{status:400});
   }
   try{
     const result=await rpc('demo_payment_set',{p_tester:tester,p_event:eventId,p_status:status});
     const event=Array.isArray(result)?result[0]:result;
-    if(!event)return Response.json({error:'Το ραντεβού δεν βρέθηκε.'},{status:404});
+    if(!event)return errorJson({error:'Το ραντεβού δεν βρέθηκε.'},{status:404});
     return Response.json({event});
   }catch(error){
     const message=error instanceof Error?error.message:'';
-    if(message.includes('event_not_found'))return Response.json({error:'Το ραντεβού δεν βρέθηκε.'},{status:404});
-    return Response.json({error:'Η πληρωμή δεν ενημερώθηκε. Δοκιμάστε ξανά.'},{status:502});
+    if(message.includes('event_not_found'))return errorJson({error:'Το ραντεβού δεν βρέθηκε.'},{status:404});
+    return errorJson({error:'Η πληρωμή δεν ενημερώθηκε. Δοκιμάστε ξανά.'},{status:502});
   }
 }
 

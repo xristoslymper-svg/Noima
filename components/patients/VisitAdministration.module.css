@@ -1,0 +1,7 @@
+.paymentOptions{display:flex;flex-wrap:wrap;gap:.45rem;margin:.65rem 0 1rem}
+.paymentOptions button{font:inherit;font-size:.82rem;line-height:1.35;min-height:2.4rem;padding:.5rem .75rem;border:1px solid #d5dfd7;border-radius:.65rem;background:#fffefa;color:#334f43;cursor:pointer}
+.paymentOptions button:hover:not(:disabled){background:#f0f5ef}
+.paymentOptions button[aria-pressed="true"]{background:#e8f1e8;border-color:#8fac99;font-weight:600}
+.paymentOptions button:focus-visible{outline:2px solid #427562;outline-offset:2px}
+.paymentOptions button:disabled{opacity:.6;cursor:wait}
+@media(max-width:560px){.paymentOptions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.paymentOptions button{width:100%;min-height:2.75rem}}

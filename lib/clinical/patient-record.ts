@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments,type UpcomingContext} from '../calendar/upcoming.ts';
 import {riskFindings} from './risk-findings.ts';
 import {effectiveRisk} from './corrections.ts';
 import {assessmentLink,assessmentLinkLabel} from './assessment-link.ts';
@@ -13,10 +14,10 @@ export function completedMeasurements(bundle:PatientBundle,now=new Date()){
 export function clinicalDate(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
  return session.started_at;
 }
-export function upcomingAppointments(bundle:Pick<PatientBundle,'appointments'>,now=new Date()){
- return bundle.appointments.filter(a=>a.status==='scheduled'&&Date.parse(a.scheduled_end)>=now.getTime()).sort((a,b)=>Date.parse(a.scheduled_start)-Date.parse(b.scheduled_start));
+export function upcomingAppointments(bundle:Pick<PatientBundle,'appointments'>,now=new Date(),context:UpcomingContext={}){
+ return selectUpcomingAppointments(bundle.appointments,now.getTime(),context);
 }
-export function patientRecord(bundle:PatientBundle,now=new Date()){
+export function patientRecord(bundle:PatientBundle,now=new Date(),context:UpcomingContext={},display:(label:string)=>string=label=>label){
  const today=bundle.clinical_day||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
  const completed=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(clinicalDate(bundle,b))-Date.parse(clinicalDate(bundle,a))||a.id.localeCompare(b.id));
  const latestVisit=completed[0];
@@ -28,15 +29,15 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
   return results[0]?[{current:results[0],previous:results[1]||null}]:[];
  });
  const activeEffects=bundle.medicationSideEffects.filter(e=>(!e.resolved_on||e.resolved_on>today)&&e.noted_on<=today);
- const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
+ const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||display('Αγωγή');
  const events:RecordEvent[]=[
-  ...completed.map(s=>({id:'visit-'+s.id,kind:'visits' as const,date:clinicalDate(bundle,s),title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση',detail:'Ολοκληρωμένη καταγραφή',sessionId:s.id})),
-  ...medicationEvents.map(e=>({id:'med-'+e.id,kind:'treatment' as const,date:e.effective_on,recordedAt:e.created_at,title:eventLabels[e.event_type],detail:[String(e.new_state?.medication_name||e.previous_state?.medication_name||medicationName(e.medication_id)),e.new_state?.dose!==undefined?`${e.new_state.dose} ${e.new_state.unit||''}`:'',e.reason].filter(Boolean).join(' · '),sessionId:e.session_id||undefined,scheduled:e.effective_on>today})),
+  ...completed.map(s=>({id:'visit-'+s.id,kind:'visits' as const,date:clinicalDate(bundle,s),title:display(s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'),detail:display('Ολοκληρωμένη καταγραφή'),sessionId:s.id})),
+  ...medicationEvents.map(e=>({id:'med-'+e.id,kind:'treatment' as const,date:e.effective_on,recordedAt:e.created_at,title:display(eventLabels[e.event_type]),detail:[String(e.new_state?.medication_name||e.previous_state?.medication_name||medicationName(e.medication_id)),e.new_state?.dose!==undefined?`${e.new_state.dose} ${e.new_state.unit||''}`:'',e.reason].filter(Boolean).join(' · '),sessionId:e.session_id||undefined,scheduled:e.effective_on>today})),
   ...bundle.medicationSideEffects.flatMap(e=>[
-   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:'Παρενέργεια',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
-   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:'Λήξη παρενέργειας',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
+   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:display('Παρενέργεια'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
+   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:display('Λήξη παρενέργειας'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
   ]),
-  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:(a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+' · '+assessmentLinkLabel(bundle,a),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
+  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:display(a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+' · '+assessmentLinkLabel(bundle,a,display),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
  // Same-day date-only events need a recorded timestamp to establish ordering.
  const sinceLatest=latestVisit?events.filter(e=>{
@@ -46,13 +47,13 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
   return day(e.date)>day(visitDate)||(day(e.date)===day(visitDate)&&Boolean(e.recordedAt)&&Date.parse(e.recordedAt!)>Date.parse(visitDate));
  }):[];
  const risk=latestVisit?effectiveRisk(bundle.risks.find(r=>r.session_id===latestVisit.id),bundle.corrections,latestVisit.id)||null:null;
- const safetyAlerts=riskFindings(risk).filter(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value)).map(f=>({self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'}[f.key]||f.label));
- const nextAppointment=upcomingAppointments(bundle,now)[0]||null;
+ const safetyAlerts=riskFindings(risk).filter(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value)).map(f=>({self_harm:'Αυτοτραυματισμός',harm_to_others:'Κίνδυνος προς τρίτους'}[f.key]||f.label)).map(display);
+ const nextAppointment=upcomingAppointments(bundle,now,context)[0]||null;
  return {today,completed,latestVisit,risk,safetyAlerts,nextAppointment,latestScores,activeEffects,events,sinceLatest,activeMedications:bundle.medications.filter(m=>m.status==='active'),pendingSafety:measured.filter(a=>day(a.completed_at!)<=today&&a.item9_review&&!a.item9_reviewed_at)};
 }
 
 /** Explicit source links only: dates alone never attribute an event to a visit. */
-export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
+export function visitTimelineContext(bundle:PatientBundle,now=new Date(),display:(label:string)=>string=label=>label){
  const record=patientRecord(bundle,now);
  const context=new Map<string,{treatment:RecordEvent[];measurements:{current:PatientBundle['assessments'][number];previous:PatientBundle['assessments'][number]|null}[]}>();
  for(const visit of record.completed)context.set(visit.id,{treatment:[],measurements:[]});
@@ -62,9 +63,9 @@ export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
   if(!event.session_id||event.patient_id!==bundle.patient.id||revised.has(event.id)||!eventLabels[event.event_type])continue;
   const target=context.get(event.session_id);if(!target)continue;
   const before=stateText(event.previous_state),after=stateText(event.new_state);
-  const name=String(event.new_state?.medication_name||event.previous_state?.medication_name||bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή');
+  const name=String(event.new_state?.medication_name||event.previous_state?.medication_name||bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||display('Αγωγή'));
   const detail=[name,event.event_type==='changed'&&before&&after?before+' → '+after:event.event_type==='stopped'?before:after].filter(Boolean).join(' · ');
-  target.treatment.push({id:'med-'+event.id,kind:'treatment',date:event.effective_on,title:eventLabels[event.event_type],detail,scheduled:event.effective_on>record.today,sessionId:event.session_id});
+  target.treatment.push({id:'med-'+event.id,kind:'treatment',date:event.effective_on,title:display(eventLabels[event.event_type]),detail,scheduled:event.effective_on>record.today,sessionId:event.session_id});
  }
  const measured=completedMeasurements(bundle,now).filter(a=>a.patient_id===bundle.patient.id);
  for(const current of measured){

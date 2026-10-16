@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -8,7 +9,7 @@ const source=ts.transpileModule(await readFile('lib/pilot/route.ts','utf8'),{com
 function wrapper({user={id:'actor'},identity={workspace_id:'owned'},token='verified-token',env={}}={}){
  const scope=new AsyncLocalStorage();const module={exports:{}};
  const client={auth:{getUser:async()=>({data:{user}}),getSession:async()=>({data:{session:token?{access_token:token}:null}})},rpc:async()=>({data:identity})};
- vm.runInNewContext(source,{module,exports:module.exports,Request,Response,URL,JSON,process:{env},require:id=>id.includes('server')?{pilotClient:async()=>client}:{pilotScope:scope}});
+ vm.runInNewContext(source,{module,exports:module.exports,Request,Response,URL,JSON,process:{env},require:(id)=>(intlTestModule(id)??(id=>id.includes('server')?{pilotClient:async()=>client}:{pilotScope:scope})(id))});
  return {withPilot:module.exports.withPilot,scope};
 }
 const request=(tester='forged')=>new Request('https://noima.test/api/patients?tester='+tester,{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://noima.test'},body:JSON.stringify({tester,action:'save'})});

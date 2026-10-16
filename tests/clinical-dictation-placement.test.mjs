@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 
 test('clinical writing actions share the existing field header with accessible compact controls',()=>{
  const source=readFileSync('components/dictation/ClinicalTextField.tsx','utf8');

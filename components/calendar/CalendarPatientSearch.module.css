@@ -1,0 +1,10 @@
+.root{position:relative;flex:0 1 210px;min-width:160px;max-width:260px;width:210px;z-index:30}
+.input{width:100%;min-height:40px;padding:9px 12px 9px 36px;border-radius:11px;border:1px solid #dee8e1;background:#fff;color:#30473c;font-size:12px;outline:none}
+.input::placeholder{color:#84948a}
+.input:focus{border-color:#89ae9a;box-shadow:0 0 0 3px rgba(65,118,88,.11)}
+.icon{position:absolute;top:50%;left:12px;transform:translateY(-50%);color:#708a7a;pointer-events:none}
+.results{position:absolute;left:0;right:0;top:calc(100% + 6px);padding:5px;border:1px solid #dce6df;background:#fff;box-shadow:0 14px 32px rgba(40,65,50,.15);border-radius:12px;max-height:300px;overflow:auto;z-index:100}
+.option,.active{display:block;padding:10px 11px;text-decoration:none;font-size:13px;line-height:1.4;border-radius:8px;color:#314c3d;overflow-wrap:anywhere}
+.option:hover,.active{background:#edf4ef;color:#275d43}
+.empty{margin:0;padding:13px 11px;color:#83918a;font-size:12px}
+@media(max-width:760px){.root{flex:1 1 100%;width:100%;max-width:none}.results{max-height:240px}}

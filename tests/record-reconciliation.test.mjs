@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {assertRecordIdentity,reconcileRecord,reconcileSession} from '../lib/clinical/record-reconciliation.ts';
 import {finalizeAndVerify,confirmedCompletion} from '../lib/clinical/finalization.ts';
+import {patientRecord} from '../lib/clinical/patient-record.ts';
 const patient={id:'patient-a',tester_id:'tenant-a',updated_at:'2026-10-12T10:00:00Z'};
 const draft={id:'visit-a',patient_id:patient.id,tester_id:patient.tester_id,status:'draft',version:2,closure_version:1,closure_draft:{clinical_state_summary:'CURRENT'},started_at:'2026-10-12T10:00:00Z',completed_at:null};
 const completed={...draft,status:'completed',version:3,completed_at:'2026-10-12T11:00:00Z'};
@@ -15,6 +16,15 @@ test('full and shell reloads cannot reopen a confirmed completed visit',()=>{
   const result=reconcileRecord(bundle([completed]),bundle(),mode);
   assert.equal(result.sessions[0].status,'completed');assert.equal(result.sessions[0].version,3);
  }
+});
+test('a late lightweight shell preserves confirmed payment fields omitted from its projection',()=>{
+ const paid={id:'appointment-a',patient_id:patient.id,session_id:draft.id,status:'completed',payment_status:'paid',updated_at:'2026-10-12T12:00:00Z'};
+ const previous={...bundle([completed]),appointments:[paid]};
+ const shell={...bundle([completed]),appointments:[{id:paid.id,session_id:draft.id,status:'completed'}]};
+ assert.equal(reconcileRecord(previous,shell,'shell').appointments[0].payment_status,'paid');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[{...paid,payment_status:'pending',updated_at:'2026-10-12T11:00:00Z'}]},'shell').appointments[0].payment_status,'paid');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[{...paid,payment_status:'not_applicable',updated_at:'2026-10-12T13:00:00Z'}]},'shell').appointments[0].payment_status,'not_applicable');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[]},'shell').appointments.length,0);
 });
 test('closure version is independent and an empty newer field remains an intentional clear',()=>{
  const current={...draft,version:4,closure_version:7,closure_draft:{clinical_state_summary:''}};
@@ -52,4 +62,14 @@ test('verification rejects a stale post-commit draft; retrying an already comple
 });
 test('invalid timestamp and invalid optimistic versions are not completion evidence',()=>{
  for(const changes of [{completed_at:'not-a-date'},{version:-1},{version:1.5},{version:Number.MAX_SAFE_INTEGER+1}])assert.throws(()=>confirmedCompletion({...completed,...changes},draft.id,patient.id));
+});
+test('verified finalization updates the completed visit, timeline and latest-record projection',async()=>{
+ let current=bundle(),reads=0,writes=0;
+ const verified={...bundle([completed]),sections:[{id:'current-note',patient_id:patient.id,session_id:draft.id,section_key:'interview',content:'QA CURRENT VISIT',version:1}]};
+ await finalizeAndVerify({sessionId:draft.id,patientId:patient.id,read:async()=>++reads===1?bundle():verified,write:async()=>{writes++;return {session:completed}},onCommitted:session=>{current=reconcileRecord(current,{...current,sessions:[session]})},onVerified:(_,fresh)=>{current=reconcileRecord(current,fresh)}});
+ assert.equal(writes,1);assert.equal(current.sessions[0].status,'completed');assert.equal(current.sections[0].content,'QA CURRENT VISIT');
+ const projection=patientRecord(current,new Date('2026-10-12T12:00:00Z'));
+ assert.equal(projection.latestVisit.id,draft.id);assert.equal(projection.completed.length,1);assert.equal(projection.events.filter(e=>e.kind==='visits'&&e.sessionId===draft.id).length,1);
+ // A stale shell cannot remove the committed visit or its current findings.
+ current=reconcileRecord(current,bundle(),'shell');assert.equal(current.sessions[0].status,'completed');assert.equal(current.sections[0].content,'QA CURRENT VISIT');
 });

@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import * as browserRecovery from '../lib/clinical/browser-recovery.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +19,7 @@ function mount({stored,write,onSaved=async()=>{}}={}){
   useEffect(fn,deps){const i=cursor++;if(changed(cells[i]?.deps,deps)){const old=cells[i];cells[i]={deps,fn};effects.push(()=>{old?.cleanup?.();cells[i].cleanup=fn()})}},
  };
  const module={exports:{}};
- vm.runInNewContext(code,{module,exports:module.exports,Error,require:id=>id==='react'?react:id.includes('browser-recovery')?browserRecovery:reconciliation,
+ vm.runInNewContext(code,{module,exports:module.exports,Error,require:(id)=>(intlTestModule(id)??(id=>id==='react'?react:id.includes('browser-recovery')?browserRecovery:reconciliation)(id)),
   sessionStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
   setTimeout:fn=>{timers.set(++timerId,fn);return timerId},clearTimeout:id=>timers.delete(id),
  });
@@ -49,5 +50,16 @@ test('genuinely stale recovery remains protected from overwriting the server',as
 test('network error permits retry while a real write conflict blocks it',async()=>{
  for(const [message,conflict] of [['Network unavailable',false],['stale',true]]){
   const h=mount({write:async()=>{throw new Error(message)}});let d=h.render();d.change('local');await assert.rejects(d.flush());d=h.render();assert.equal(d.hasConflict,conflict);assert.equal(d.error,message);assert.ok(h.storage.has('mse'));
+ }
+});
+
+test('server replacement archives recoverable text and adopts only the confirmed version',async()=>{
+ const h=mount({write:async()=>{throw Error('offline')}});let d=h.render();d.change('unsaved');await assert.rejects(d.flush());d=h.render();
+ d.acceptServerPreservingLocal('remote',4);d=h.render();assert.equal(d.value,'remote');assert.equal(d.version(),4);assert.equal(d.olderRecovery,'unsaved');assert.equal(JSON.parse(h.storage.get('mse:older-recovery')).value,'unsaved');assert.equal(h.storage.has('mse'),false);
+});
+test('failed backup and an existing different backup prevent destructive replacement',()=>{
+ for(const reason of ['quota','existing']){const h=mount();let d=h.render();d.change('unsaved');
+  if(reason==='quota')h.storage.set=()=>{throw Error('quota')};else browserRecovery.writeRecovery({setItem:(k,v)=>h.storage.set(k,v)},'mse:older-recovery',JSON.stringify({value:'older',version:1}));
+  assert.throws(()=>d.acceptServerPreservingLocal('remote',4));d=h.render();assert.equal(d.value,'unsaved');assert.equal(d.version(),1);assert.equal(JSON.parse(h.storage.get('mse')).value,'unsaved');
  }
 });

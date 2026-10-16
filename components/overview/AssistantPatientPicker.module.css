@@ -1,0 +1,13 @@
+.root{position:relative;min-width:0;margin:10px 14px 8px;z-index:8}
+.searchField{display:flex;align-items:center;gap:10px;min-height:39px;width:100%;padding:0 12px;background:#f2f7f3;border:1px solid #dbe8df;border-radius:12px;transition:background .15s,border-color .15s,box-shadow .15s}
+.searchField:focus-within{background:#fff;border-color:#9ebda8;box-shadow:0 0 0 3px rgba(57,113,73,.07)}
+.dot{width:7px;height:7px;flex:none;border-radius:50%;background:#658e73}
+.input{width:100%;min-width:0;flex:1;min-height:36px;background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;color:#325742;font-family:inherit;font-size:12px;font-weight:550;line-height:1.35;padding:0}
+.input::placeholder{color:#91a59a;opacity:1;font-weight:400}
+.input:focus{outline:0!important;box-shadow:none!important}
+.searchIcon{flex:none;color:#819b8d}
+.input:disabled{opacity:.7;cursor:wait}
+.results{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:22;max-height:230px;overflow:auto;padding:6px;background:#fff;border:1px solid #dbe7df;border-radius:12px;box-shadow:0 14px 34px rgba(24,55,38,.17)}
+.option,.active{display:block;width:100%;padding:10px 11px;border:0;border-radius:8px;text-align:left;background:transparent;color:#385a47;font:inherit;font-size:12px;cursor:pointer}
+.option:hover,.active{background:#edf5ef;color:#224d36}
+.results p{margin:0;padding:10px;color:#778d7e;font-size:11px}

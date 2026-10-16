@@ -1,3 +1,4 @@
+import {selectUpcomingAppointments} from '../calendar/upcoming.ts';
 import type {ContextRevision} from '../clinical/continuity-context';
 import type {ContinuityDraft,VisitContinuity} from '../clinical/continuity';
 import {pilotAuthorization} from '@/lib/pilot/request-scope';
@@ -12,11 +13,12 @@ export type DemoPatient = { id:string; tester_id:string; first_name:string; last
 export type DemoSession = { closure_draft?:ContinuityDraft|null; closure_version?:number; continuity?:VisitContinuity|null; id:string; tester_id:string; patient_id:string; session_type:string; status:'draft'|'completed'; version:number; started_at:string; completed_at:string|null; updated_at:string };
 export type DemoSection = { document?:VisitDocument|null; id:string; session_id:string; patient_id:string; section_key:string; content:string; source:string; version:number; updated_at:string };
 export type DemoRisk = { tree?:import('../clinical/risk-tree').RiskTree; harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
+export type DemoPriorCourse = {id:string;tester_id:string;patient_id:string;version:number;period_label:string;content:string;created_at:string};
 export type DemoHistory = { patient_id:string; psychiatric_history:string; medical_history:string; previous_treatments:string; hospitalizations:string; family_history:string; substance_history:string; social_functioning:string; allergies:string; version:number; updated_at:string };
 export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string; started_at:string; ended_at:string|null; status:string; notes:string; updated_at:string };
 export type DemoMedicationEvent = { id:string; patient_id:string; medication_id:string; session_id:string|null; event_type:string; previous_state:Record<string,unknown>|null; new_state:Record<string,unknown>|null; reason:string; effective_on:string; created_at:string };
 export type DemoMedicationSideEffect = { id:string; patient_id:string; medication_id:string; session_id:string|null; effect_text:string; severity:'mild'|'moderate'|'severe'; impact:string; noted_on:string; resolved_on:string|null; note:string; created_at:string; updated_at:string };
-export type PatientBundle = { contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
+export type PatientBundle = { priorCourse?:DemoPriorCourse|null; contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;payment_status?:'unknown'|'pending'|'paid'|'not_applicable';updated_at?:string;patient_id?:string|null;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
 
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
 export async function request(path:string, init:RequestInit={}){
@@ -63,7 +65,7 @@ export async function listPatientRows(tester:string){
  for(const group of completed.values())group.sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const now=Date.now();
  const nextAppointments=new Map<string,typeof appointments[number]>();
- for(const appointment of appointments){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id)&&appointment.status==='scheduled'&&new Date(appointment.scheduled_end).getTime()>=now)nextAppointments.set(appointment.patient_id,appointment)}
+ for(const appointment of selectUpcomingAppointments(appointments,now)){if(appointment.patient_id&&!nextAppointments.has(appointment.patient_id))nextAppointments.set(appointment.patient_id,appointment)}
  const registryOrder=[...patients].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime()||a.id.localeCompare(b.id));
  const registryNumber=new Map(registryOrder.map((patient,index)=>[patient.id,index+1]));
  return patients.map(patient=>({
@@ -78,6 +80,15 @@ export async function listPatientRows(tester:string){
 export async function createPatient(tester:string,input:{first_name:string;last_name:string;age:number|null;phone:string;landline:string;contact_phone:string;amka:string;address:string;email:string;chief_complaint:string}){
   await bootstrap(tester); return one<DemoPatient>(await rpc('demo_patient_create_v3',{p_tester:tester,p_first_name:input.first_name,p_last_name:input.last_name,p_age:input.age,p_phone:input.phone,p_landline:input.landline,p_contact_phone:input.contact_phone,p_amka:input.amka,p_address:input.address,p_email:input.email,p_complaint:input.chief_complaint}));
 }
+async function loadPriorCourse(tester:string,patientId:string){
+ try{return await rpc('demo_prior_course_get',{p_tester:tester,p_patient:patientId})}
+ catch(error){
+  const reason=error instanceof Error?error.message:'';
+  if(process.env.VERCEL_ENV==='preview'&&/Could not find the function.*demo_prior_course_get|PGRST202|function public\.demo_prior_course_get.*does not exist/i.test(reason))
+   return [];
+  throw error;
+ }
+}
 export async function patientBundle(tester:string,patientRef:string):Promise<PatientBundle>{
   if(!isClinicalId(patientRef))throw new Error('patient_not_found');
   const tid=encodeURIComponent(tester),id=encodeURIComponent(patientRef);
@@ -85,7 +96,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
   if(!patient) throw new Error('patient_not_found');
   const clinicalDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const patientId=encodeURIComponent(patient.id);
-  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions,assessments,contextRevisions]=await Promise.all([
+  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions,assessments,contextRevisions,priorCourse]=await Promise.all([
     request(`demo_sessions?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=started_at.desc`),
     request(`demo_session_sections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
     request(`demo_risk_assessments?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
@@ -96,10 +107,11 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
     request(`demo_clinical_entries?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.desc`),
     request(`demo_session_addenda?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
     request(`demo_session_corrections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=created_at.asc`),
-    request(`demo_calendar_events?select=id,session_id,appointment_type,scheduled_start,scheduled_end,status&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
+    request(`demo_calendar_events?select=id,patient_id,session_id,appointment_type,scheduled_start,scheduled_end,status,payment_status,updated_at&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=scheduled_start.asc`),
     rpc('demo_medication_revisions_for_patient',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_context_revisions',{p_tester:tester,p_patient:patient.id}),
+    loadPriorCourse(tester,patient.id),
   ]);
-  return {contextRevisions:rows<ContextRevision>(contextRevisions),clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(assessments),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
+  return {priorCourse:rows<DemoPriorCourse>(priorCourse)[0]||null,contextRevisions:rows<ContextRevision>(contextRevisions),clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(assessments),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
 }

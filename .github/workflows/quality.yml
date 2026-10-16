@@ -18,17 +18,28 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_test
-      MAILBOX_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      MAILBOX_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
       OPENAI_API_KEY: test
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Use Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
+
+      - name: Record tested source
+        run: |
+          mkdir -p test-results/quality
+          git rev-parse HEAD > test-results/quality/provenance.txt
+          git status --porcelain >> test-results/quality/provenance.txt
+          sha256sum tests/record-reconciliation.test.mjs tests/appointment-context.test.mjs components/patients/PatientWorkspace.tsx components/calendar/useCalendarPosition.ts >> test-results/quality/provenance.txt
+          tar -czf test-results/quality/source.tar.gz tests/record-reconciliation.test.mjs tests/appointment-context.test.mjs components/patients/PatientWorkspace.tsx components/calendar/useCalendarPosition.ts
+          cat test-results/quality/provenance.txt
 
       - name: Install
         run: npm ci
@@ -39,8 +50,22 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Translation completeness and ICU validation
+        run: npm run check:i18n
+
       - name: Tests
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-results/quality/tests.log
 
       - name: Build
+        if: ${{ !cancelled() }}
         run: npm run build
+
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quality-evidence
+          path: test-results/quality
+          retention-days: 7

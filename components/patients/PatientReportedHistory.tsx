@@ -1,13 +1,26 @@
 'use client';
+import {useLocale} from 'next-intl';
+
+import {useTranslations} from 'next-intl';
+
 import {useSyntheticChart} from './SyntheticChartContext';
 import {useEffect,useState} from 'react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {historyDraftFromAnswers} from '@/lib/intake/history';
 import {normalizedPatientHistory,patientReportedHighlights,receivedPatientHistories,type ReceivedHistory} from '@/lib/intake/patient-report';
 
-const fields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Θεραπείες και φάρμακα'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνικό ιστορικό'],['allergies','Αλλεργίες']] as const;
-const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
+
+
 export default function PatientReportedHistory({patientId,compact=false,onOpen}:{patientId:string;compact?:boolean;onOpen?:()=>void}){
+const t=useTranslations();
+
+ const locale=useLocale();
+
+const fields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.treatmentsMedication')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning',t('history.social')],['allergies',t('history.allergies')]] as const;
+const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
+
+ 
+
  const synthetic=useSyntheticChart();
  const [data,setData]=useState<ReceivedHistory[]>([]);
  const [loading,setLoading]=useState(true);
@@ -47,26 +60,26 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   const timer=window.setInterval(refresh,60_000);
   return()=>{controller.abort();window.removeEventListener('focus',refresh);window.clearInterval(timer)};
  },[patientId,retry,compact,synthetic]);
- if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
- if(error)return compact?null:<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>;
- if(!data.length)return compact?null:<p className="patient-reported-muted">Δεν έχει επιστραφεί ακόμη ερωτηματολόγιο ιστορικού.</p>;
+ if(loading)return compact?null:<p className="patient-reported-muted">{t('history.loadingAnswers')}</p>;
+ if(error)return compact?null:<p role="alert">{t('errors.patientAnswersLoad')} <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>{t('common.repeat')}</button></p>;
+ if(!data.length)return compact?null:<p className="patient-reported-muted">{t('history.noReturnedForm')}</p>;
  const latest=data[0], h=normalizedPatientHistory(latest.history_answers);
  const overview=patientReportedHighlights(h);
- if(compact)return <section className="patient-reported-summary" aria-label="Ιστορικό ασθενούς">
-  <span className="kicker">ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ</span>
-  <h2>Ο ασθενής συμπλήρωσε το ιστορικό</h2>
-  <p className="patient-reported-muted">Απαντήσεις της {dateLabel(latest.submitted_at)} · αυτοαναφορά ασθενούς κατά τη συμπλήρωση, χωρίς κλινική επιβεβαίωση.</p>
+ if(compact)return <section className="patient-reported-summary" aria-label={t('history.patientHistory')}>
+  <span className="kicker">{t('history.patientAnswersKicker')}</span>
+  <h2>{t('history.patientCompleted')}</h2>
+  <p className="patient-reported-muted">{t('history.answersFromPrefix')} {dateLabel(latest.submitted_at)}  {t('history.selfReportDisclaimer')}</p>
   {overview.length>0&&<ul>{overview.slice(0,3).map(item=><li key={item}>{item}</li>)}</ul>}
-  {onOpen&&<button type="button" className="patient-reported-link" onClick={onOpen}>Όλες οι απαντήσεις →</button>}
+  {onOpen&&<button type="button" className="patient-reported-link" onClick={onOpen}>{t('history.allAnswersLink')}</button>}
  </section>;
- return <section className="patient-reported-section" aria-label="Απαντήσεις ιστορικού από ασθενή">
-  <div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΣΘΕΝΟΥΣ</span><h2>Απαντήσεις από τον ασθενή</h2><p className="patient-reported-muted">Εμφανίζονται αυτόματα μόλις υποβληθούν. Παραμένουν διακριτές από τις κλινικές σημειώσεις σας.</p></div>
+ return <section className="patient-reported-section" aria-label={t('history.patientHistoryAnswers')}>
+  <div><span className="kicker">{t('history.patientHistoryKicker')}</span><h2>{t('history.answersByPatient')}</h2><p className="patient-reported-muted">{t('history.answersSeparateHelp')}</p></div>
   {data.map((item,index)=>{
    const answers=normalizedPatientHistory(item.history_answers),report=historyDraftFromAnswers(answers),highlights=patientReportedHighlights(answers);
    return <article key={item.id} className="patient-reported-card">
-    <div className="patient-reported-card-head"><strong>{index===0?'Τελευταίο ιστορικό':'Προηγούμενο ιστορικό'} · {dateLabel(item.submitted_at)}</strong><span>{item.channel==='email'?'Email':item.channel==='tablet'?'Tablet':'Ερωτηματολόγιο'} · Αναφορά ασθενούς</span></div>
+    <div className="patient-reported-card-head"><strong>{index===0?t('history.latestHistory'):t('history.previousHistory')} · {dateLabel(item.submitted_at)}</strong><span>{item.channel==='email'?'Email':item.channel==='tablet'?'Tablet':t('psychometrics.questionnaire')}  {t('history.patientReportSuffix')}</span></div>
     {highlights.length>0&&<ul>{highlights.map(fact=><li key={fact}>{fact}</li>)}</ul>}
-    <details><summary>Όλες οι απαντήσεις</summary><div className="patient-reported-answers">{fields.map(([key,label])=><div key={key}><strong>{label}</strong><p>{report[key]}</p></div>)}</div></details>
+    <details><summary>{t('history.allAnswers')}</summary><div className="patient-reported-answers">{fields.map(([key,label])=><div key={key}><strong>{label}</strong><p>{report[key]}</p></div>)}</div></details>
    </article>;
   })}
  </section>;

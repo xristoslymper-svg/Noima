@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 import {patientRecordPrintableHtml} from '../lib/clinical/record-export-print.ts';
+import english from '../i18n/messages/en.json' with {type:'json'};
 
 function sample(){
  return {
@@ -47,6 +48,16 @@ test('unsafe clinical strings are escaped, no direct HTML is executed, and missi
  assert.ok(html.includes('Δεν διερευνήθηκαν όλες οι διαστάσεις.'));
  assert.ok(html.includes('Δεν καταγράφηκε'));
  assert.doesNotMatch(html,/Δεν αναφέρθηκε αυτοκτονικός ιδεασμός/);
+});
+
+test('English print presentation preserves clinical text and never mutates source records',()=>{
+ const bundle=sample(),before=JSON.stringify(bundle);
+ const html=patientRecordPrintableHtml(bundle,'nonce-test','2026-10-10T08:00:00Z',{locale:'en',messages:english});
+ assert.match(html,/<html lang="en">/);
+ for(const heading of ['Clinical record','Clinical visits','Patient details','Print / PDF','Not recorded'])assert.ok(html.includes(heading),heading);
+ for(const text of ['Δοκιμή','Ασθενής','Ιστορικό σε εξέλιξη','Νέα κλινική αποτίμηση','Ενημερωμένο θεραπευτικό πλάνο','TEST-MED','το βράδυ'])assert.ok(html.includes(text),text);
+ assert.equal(JSON.stringify(bundle),before);
+ assert.ok(!html.includes('ΑΝΕΓΚΡΙΤΟ ΠΡΟΧΕΙΡΟ ΠΕΡΙΕΧΟΜΕΝΟ'));
 });
 
 test('record menu presents print/PDF directly and keeps full technical export separately',()=>{

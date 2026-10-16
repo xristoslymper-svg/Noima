@@ -1,16 +1,26 @@
 name: Clinical editor browser checks
 on:
+  workflow_dispatch:
+  push:
+    branches: ['main', 'fix/visit-workflow-*', 'codex/greek-english-i18n']
   pull_request:
     paths:
       - 'components/patients/**'
+      - 'components/calendar/**'
       - 'components/dictation/**'
       - 'app/*.css'
       - 'app/layout.tsx'
-      - 'lib/clinical/**'
-      - 'browser-tests/clinical-cleanup*'
-      - 'browser-tests/warm-patient-workspace*'
-      - 'browser-tests/clinical-reliability*'
-      - 'browser-tests/fixtures/warm-patient.json'
+      - 'app/calendar/**'
+      - 'app/patients/**'
+      - 'app/api/**'
+      - 'lib/**'
+      - 'i18n/**'
+      - 'components/LanguageSelector.tsx'
+      - 'components/PilotProfile.tsx'
+      - 'supabase/**'
+      - 'browser-tests/**'
+      - 'tests/**'
+      - 'package*.json'
       - '.github/workflows/clinical-ui.yml'
 permissions:
   contents: read
@@ -20,22 +30,26 @@ concurrency:
 jobs:
   visual-and-interaction:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
+      - run: node browser-tests/visit-workflow.mjs
       - run: node browser-tests/clinical-cleanup.mjs
+        if: ${{ !cancelled() }}
       - run: node browser-tests/warm-patient-workspace.mjs
         if: ${{ !cancelled() }}
       - run: node browser-tests/clinical-reliability.mjs
         if: ${{ !cancelled() }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: clinical-editor-evidence
@@ -43,4 +57,5 @@ jobs:
             test-results/clinical-cleanup
             test-results/warm-patient-workspace
             test-results/clinical-reliability
+            test-results/visit-workflow
           retention-days: 7

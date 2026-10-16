@@ -1,0 +1,33 @@
+.modal{position:relative;width:min(520px,calc(100vw - 32px));max-height:min(88dvh,680px);overflow-y:auto;overflow-x:hidden;padding:27px 29px 22px;border:1px solid #e0e8e1;border-radius:22px;background:#fff;box-shadow:0 24px 70px rgba(18,51,33,.18);font-family:inherit;font-size:14px;color:#284837}
+.close{position:absolute;right:19px;top:18px;width:32px;height:32px;display:grid;place-items:center;border:0;background:#f1f5f2;border-radius:50%;color:#657b6b;cursor:pointer}
+.header{padding-right:35px;margin:0 0 23px}
+.header p{margin:0 0 7px;color:#83978a;font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+.header h2{margin:0;color:#203d30;font-family:Georgia,serif;font-size:25px!important;font-weight:650;line-height:1.26;overflow-wrap:anywhere}
+.fields{display:grid;gap:17px}
+.field{display:grid;gap:7px;position:relative}
+.field>label,.newFields label{font-size:12px;font-weight:680;color:#435b4e}
+.field>input,.field>select,.newFields input{min-height:42px;display:block;width:100%;border:1px solid #dce7df;border-radius:10px;background:#fff;padding:10px 12px;color:#2b4c3b;font-size:13px;font-family:inherit;box-sizing:border-box}
+.field>input:focus,.field>select:focus,.newFields input:focus,.patientSearch:focus-within{outline:none;border-color:#7ca98a;box-shadow:0 0 0 3px rgba(38,104,65,.08)}
+.patientSearch{display:flex;align-items:center;gap:9px;border:1px solid #dce7df;border-radius:11px;background:#f9fbf9;padding:0 12px;min-height:43px;color:#769181}
+.patientSearch input{width:100%;min-width:0;border:0!important;box-shadow:none!important;outline:none!important;background:transparent!important;color:#2a4a3a;font-size:13px;padding:9px 0}
+.patientSearch input::placeholder{color:#9baaa0;font-weight:400}
+.suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:#fff;border:1px solid #dce6df;border-radius:11px;padding:5px;box-shadow:0 13px 26px rgba(28,65,41,.15);max-height:230px;overflow:auto}
+.suggestions button{width:100%;text-align:left;border:0;background:transparent;color:#345b45;min-height:38px;padding:9px 11px;border-radius:8px;font-size:12px;cursor:pointer}
+.suggestions button:hover,.suggestions button:focus-visible{background:#edf5ef}
+.suggestions .newEntry{border-top:1px solid #edf0ec;color:#2b6846;display:flex;align-items:center;gap:8px;font-weight:650}
+.newFields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.newFields label{display:grid;gap:6px}
+.newFields p{grid-column:1/-1;margin:0;color:#889b8e;font-size:11px;line-height:1.55}
+.selectedPatient{display:flex;align-items:center;gap:6px;color:#527963;font-size:11px;font-weight:600}
+.field>p{margin:3px 0;color:#6f8475;font-size:12px;line-height:1.5}
+.field>p a{color:#286b48;text-decoration:underline}
+.bottomOptions{display:flex;justify-content:flex-start}
+.bottomOptions label{display:flex;align-items:center;gap:8px;font-size:11px;color:#849489}
+.bottomOptions select{border:0;background:transparent;color:#365c46;padding:4px;font-size:11px}
+.footer{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #eaf0eb;margin-top:22px;padding-top:17px}
+.footer button{border:1px solid #dce7df;border-radius:11px;background:#fff;color:#435d4b;padding:11px 16px;font-size:13px;font-weight:650;cursor:pointer}
+.footer .submit{background:#275c44;border-color:#275c44;color:#fff;min-width:132px}
+.footer button:disabled{opacity:.5;cursor:not-allowed}
+.error{font-size:12px;color:#a73b35;padding:8px 10px;border-radius:8px;background:#fff7f5}
+.success{display:flex;align-items:center;gap:8px;font-size:12px;color:#2b714c}
+@media(max-width:540px){.modal{padding:24px 17px 17px;border-radius:18px;max-height:calc(100dvh - 24px)}.header h2{font-size:21px!important}.newFields{grid-template-columns:1fr}}

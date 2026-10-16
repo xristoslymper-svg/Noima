@@ -37,5 +37,5 @@ test('compact controls retain date, all status filters, refresh and both calenda
  const html=renderToStaticMarkup(React.createElement(controls.exports.default,{date:'2026-10-13',today:'2026-10-13',days:[{key:'2026-10-13',day:'Τρί',date:'13 Οκτ'}],view:'day',filter:'all',patients:[],onDate(){},onPrevious(){},onNext(){},onView(){},onFilter(){},onRefresh(){},onNew(){}}));
  for(const value of ['current','scheduled','completed','cancelled','all'])assert.match(html,new RegExp('value="'+value+'"'));
  for(const label of ['Μετάβαση σε ημερομηνία','Ανανέωση ημερολογίου','Προηγούμενη ημερομηνία','Επόμενη ημερομηνία','Ημέρες ημερολογίου','Νέο ραντεβού'])assert.ok(html.includes(label));
- assert.ok(html.includes('Ημέρα')&&html.includes('Εβδομάδα'));assert.ok(html.includes('Αναζήτηση ασθενή'))assert.match(html,/<details[^>]*>/);assert.doesNotMatch(html,/<details[^>]* open/);
+ assert.ok(html.includes('Ημέρα')&&html.includes('Εβδομάδα'));assert.ok(html.includes('Αναζήτηση ασθενή'));assert.match(html,/<details[^>]*>/);assert.doesNotMatch(html,/<details[^>]* open/);
 });

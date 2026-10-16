@@ -1902,7 +1902,11 @@
       "phone": "The phone number is too long.",
       "contact_phone": "The alternate phone number is too long.",
       "address": "The address is too long."
-    }
+    },
+    "quickEmailTitle": "Send: {tool}",
+    "quickTabletTitle": "Complete on tablet: {tool}",
+    "quickNewPatient": "+ New patient",
+    "blankPrintNotLinked": "Blank printout — no assignment or patient record is created. After completion, scan the form from the Library to import it."
   },
   "psychometrics": {
     "resultSuffix": " · Result",

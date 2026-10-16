@@ -8,7 +8,9 @@ import {useLocale} from 'next-intl';
 import {isLocale,languageNames,locales,type Locale} from '@/i18n/config';
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
-import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
+import {normalizePatientSearch} from '@/lib/calendar/patient-search';
+import quickStyles from './QuickIntakeAssignment.module.css';
+import {Check,Mail,Printer,Tablet,UserRound,X,Search} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 
@@ -56,6 +58,8 @@ export default function IntakeLauncher({
  const [events,setEvents]=useState<Event[]>([]);
  const [subjectMode,setSubjectMode]=useState<'appointment'|'patient'|'new'>('appointment');
  const [subject,setSubject]=useState(patientId?'patient:'+patientId:appointmentId?'appointment:'+appointmentId:'');
+ const [quickSearch,setQuickSearch]=useState('');
+ const [quickResultsOpen,setQuickResultsOpen]=useState(false);
  const [newPatient,setNewPatient]=useState({first_name:'',last_name:''});
  const [email,setEmail]=useState(patientEmail);
  const [busy,setBusy]=useState(false);
@@ -118,6 +122,29 @@ export default function IntakeLauncher({
  },[fixed,subjectMode,subject,newPatient,patients,events,patientId,appointmentId,patientEmail,subjectLabel]);
 
  useEffect(()=>{if(!email&&selected.email)setEmail(selected.email)},[selected.email,email]);
+ const quickMatches=useMemo(()=>{
+  const terms=normalizePatientSearch(quickSearch).split(/\s+/).filter(Boolean);
+  if(terms.join('').length<2)return [];
+  return patients.filter(p=>{
+   const name=normalizePatientSearch(p.first_name+' '+p.last_name);
+   return terms.every(term=>name.includes(term));
+  }).slice(0,6);
+ },[patients,quickSearch]);
+ const quickCompact=lockTools&&!fixed;
+ function chooseQuickPatient(p:Patient){
+  setSubjectMode('patient');setSubject('patient:'+p.id);
+  setQuickSearch((p.first_name+' '+p.last_name).trim());setQuickResultsOpen(false);setEmail(p.email||'');setError('');
+ }
+ function chooseQuickNew(){
+  const parts=quickSearch.trim().split(/\s+/).filter(Boolean);
+  setSubjectMode('new');setSubject('');setNewPatient({first_name:parts[0]||'',last_name:parts.slice(1).join(' ')});
+  setQuickResultsOpen(false);setError('');
+ }
+ function quickChange(value:string){
+  setQuickSearch(value);setQuickResultsOpen(true);
+  setSubject('');setSubjectMode('patient');setEmail('');setError('');
+ }
+
 
  function toggle(tool:string){
   if(lockTools)return;
@@ -169,7 +196,54 @@ export default function IntakeLauncher({
  }
 
  return <div className="intake-launcher-backdrop" onClick={()=>!busy&&onClose()}>
-  <section className="intake-launcher assignment-launcher" role="dialog" aria-modal="true" aria-labelledby="assignment-title" onClick={e=>e.stopPropagation()}>
+  {quickCompact?<section className={quickStyles.modal} role="dialog" aria-modal="true" aria-labelledby="quick-assignment-title" onClick={e=>e.stopPropagation()}>
+   <button className={quickStyles.close} type="button" onClick={onClose} disabled={busy} aria-label={t('common.close')}><X size={19}/></button>
+   <header className={quickStyles.header}>
+    <p>{t('navigation.library')}</p>
+    <h2 id="quick-assignment-title">{channel==='email'?t('history.quickEmailTitle',{tool:tools.map(toolLabel).join(' · ')}):t('history.quickTabletTitle',{tool:tools.map(toolLabel).join(' · ')})}</h2>
+   </header>
+   <div className={quickStyles.fields}>
+    <div className={quickStyles.field}>
+     <label htmlFor="quick-intake-patient">{t('patients.patient')}</label>
+     <div className={quickStyles.patientSearch}>
+      <Search size={17} aria-hidden="true"/>
+      <input id="quick-intake-patient" type="search" autoComplete="off" value={quickSearch}
+       placeholder={t('patients.searchSinglePlaceholder')}
+       role="combobox" aria-expanded={quickResultsOpen&&quickSearch.trim().length>=2}
+       aria-controls="quick-intake-results"
+       onFocus={()=>{if(quickSearch.trim().length>=2)setQuickResultsOpen(true)}}
+       onChange={e=>quickChange(e.target.value)}
+       onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setQuickResultsOpen(false)}else if(e.key==='Enter'&&quickResultsOpen&&quickMatches.length){e.preventDefault();chooseQuickPatient(quickMatches[0])}}}
+      />
+     </div>
+     {quickResultsOpen&&quickSearch.trim().length>=2&&<div className={quickStyles.suggestions} id="quick-intake-results" role="listbox">
+      {quickMatches.map(p=><button type="button" role="option" aria-selected={subject==='patient:'+p.id} key={p.id} onClick={()=>chooseQuickPatient(p)}>{p.first_name} {p.last_name}</button>)}
+      <button type="button" className={quickStyles.newEntry} onClick={chooseQuickNew}><UserRound size={15}/> {t('history.quickNewPatient')}</button>
+     </div>}
+     {subjectMode==='new'&&<div className={quickStyles.newFields}>
+      <label>{t('patients.firstNameRequired')}<input autoComplete="off" maxLength={120} value={newPatient.first_name} onChange={e=>setNewPatient(v=>({...v,first_name:e.target.value}))}/></label>
+      <label>{t('history.lastNameRequired')}<input autoComplete="off" maxLength={120} value={newPatient.last_name} onChange={e=>setNewPatient(v=>({...v,last_name:e.target.value}))}/></label>
+      <p>{t('history.noRecordUntilSubmission')}</p>
+     </div>}
+     {subjectMode==='patient'&&subject&&<small className={quickStyles.selectedPatient}><Check size={13}/>{selected.label}</small>}
+    </div>
+    {channel==='email'?<div className={quickStyles.field}>
+     <label htmlFor="quick-intake-email">{t('notifications.recipientEmail')}</label>
+     <input id="quick-intake-email" type="email" autoComplete="off" placeholder="patient@example.com" value={email} onChange={e=>setEmail(e.target.value)}/>
+    </div>:<div className={quickStyles.field}>
+     <label htmlFor="quick-intake-device">{t('history.device')}</label>
+     {devices.length?<select id="quick-intake-device" value={deviceId} onChange={e=>setDeviceId(e.target.value)}>{devices.map(d=><option value={d.id} key={d.id}>{d.label}</option>)}</select>:<p>{t('history.noTabletConnected')} <Link href="/tablet" target="_blank">{t('history.openTabletMode')}</Link></p>}
+    </div>}
+    <div className={quickStyles.bottomOptions}><label>{t('documents.recipientLanguage')} <select disabled={busy||channel==='tablet'} value={recipientLocale} onChange={e=>{if(isLocale(e.target.value))setRecipientLocale(e.target.value)}}>{locales.map(code=><option value={code} key={code}>{languageNames[code]}</option>)}</select></label></div>
+   </div>
+   {error&&<p className={quickStyles.error} role="alert">{systemMessage(error)}</p>}
+   {done&&<p className={quickStyles.success} role="status"><Check size={16}/>{done}</p>}
+   <footer className={quickStyles.footer}>
+    <button type="button" onClick={onClose} disabled={busy}>{t('common.close')}</button>
+    <button type="button" className={quickStyles.submit} disabled={busy||Boolean(done)||!selected.patient_id&&!selected.appointment_id&&!(subjectMode==='new'&&newPatient.first_name.trim()&&newPatient.last_name.trim())||channel==='tablet'&&!deviceId||channel==='email'&&!email.trim()}
+      onClick={()=>void send()}>{busy?t('common.preparing'):channel==='email'?t('notifications.sendEmail'):t('history.sendToTablet')}</button>
+   </footer>
+  </section>:<section className="intake-launcher assignment-launcher"  role="dialog" aria-modal="true" aria-labelledby="assignment-title" onClick={e=>e.stopPropagation()}>
    <button className="intake-launcher-close" onClick={onClose} disabled={busy} aria-label={t('common.close')}><X size={18}/></button>
    <span className="kicker">{t('history.assignmentKicker')}</span>
    <h2 id="assignment-title">{t('psychometrics.patientCompletion')}</h2>
@@ -231,6 +305,6 @@ export default function IntakeLauncher({
     <button onClick={onClose} disabled={busy}>{t('common.close')}</button>
     <button className="intake-primary" disabled={busy||Boolean(done)} onClick={()=>void send()}>{busy?t('common.preparing'):channel==='tablet'?t('history.sendToTablet'):channel==='email'?t('notifications.sendEmail'):t('documents.openForPrint')}</button>
    </footer>
-  </section>
+  </section>}
  </div>;
 }

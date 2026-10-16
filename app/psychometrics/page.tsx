@@ -64,7 +64,14 @@ export default function Psychometrics(){
  const openCustom=()=>{if(category!=="all"&&!custom.area.trim())setCustom(v=>({...v,area:categoryName}));setCustomOpen(true)};
  const categoryName=displayLabel(categories.find(label=>categoryIds[label]===category)||category);
  const clinicalHashtags=(area:string)=>area.split("/").map(value=>"#"+displayLabel(value.trim()).replace(/^#+/,"")).join(" ");
- const open=(i:Instrument)=>{setActive(i);setAnswers({})}; const launch=(tools:string[],channel:"tablet"|"email"|"print")=>setLauncherRequest({tools,channel}); const score=Object.values(answers).reduce((a,b)=>a+b,0); const complete=active?Object.keys(answers).length===active.items.length:false;
+ const open=(i:Instrument)=>{setActive(i);setAnswers({})}; const launch=(tools:string[],channel:"tablet"|"email"|"print")=>{
+  if(channel==='print'){
+   // A blank printed form is not an issued invitation and is not linked to any patient.
+   window.open('/intake/blank?tool='+encodeURIComponent(tools[0]||'history'),'_blank','noopener,noreferrer');
+   return;
+  }
+  setLauncherRequest({tools,channel});
+ }; const score=Object.values(answers).reduce((a,b)=>a+b,0); const complete=active?Object.keys(answers).length===active.items.length:false;
  return <main className={`app-shell secondary-shell${mobileV2Enabled?` ${mobileStyles.navigationPage}`:``}`}><MobileClinicalNav active="library"/><aside id="app-navigation" role={mobileNav?"dialog":undefined} aria-modal={mobileNav||undefined} aria-label={t('accessibility.mainNavigation')} className={mobileNav?"sidebar mobile-open":"sidebar"}><button className="mobile-nav-close" onClick={()=>setMobileNav(false)} aria-label={t('accessibility.closeMenu')}><X size={20}/></button><div className="brand"><Link href="/" className="brand-mark" aria-label={t('accessibility.goToOverview')} title={t('navigation.overview')}>Ψ</Link><div className="brand-copy"><div className="brand-sub">{t('navigation.tagline')}</div></div></div><nav className="nav"><Link href="/" className="nav-item"><Home size={19}/><span>{t('navigation.overview')}</span></Link><Link href="/calendar" className="nav-item"><CalendarDays size={19}/><span>{t('navigation.calendar')}</span></Link><Link href="/patients" className="nav-item"><Users size={19}/><span>{t('navigation.patients')}</span></Link><Link href="/psychometrics" className="nav-item active"><BookOpen size={19}/><span>{t('navigation.library')}</span></Link></nav></aside>{mobileNav&&<button className="mobile-nav-backdrop" tabIndex={-1} aria-label={t('accessibility.closeMenu')} onClick={()=>setMobileNav(false)}/>}<section className="workspace"><header className="topbar"><button className="mobile-menu-button" aria-expanded={mobileNav} aria-controls="app-navigation" onClick={()=>setMobileNav(true)} aria-label={t('accessibility.openMenu')}><Menu size={21}/></button><PilotProfile/></header><div className="secondary-content psy-page"><div className="psy-content library-redesign"><div className="library-heading">
   <div>
     <h1>{t('navigation.library')}</h1>

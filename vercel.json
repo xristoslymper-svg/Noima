@@ -1,6 +1,6 @@
 {
   "framework": null,
   "installCommand": "echo Isolated synthetic audit: no dependencies required",
-  "buildCommand": "node --experimental-strip-types tests/support/summary-v2-ab-resume.mjs",
+  "buildCommand": "node --experimental-strip-types tests/support/longitudinal-three-live.mjs",
   "outputDirectory": "public"
 }

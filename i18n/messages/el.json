@@ -662,7 +662,6 @@
     "slotTakenUnchanged": "Η ώρα δεν είναι πλέον διαθέσιμη. Το ραντεβού έμεινε στην αρχική του θέση.",
     "rescheduleFailedUnchanged": "Η μετακίνηση δεν αποθηκεύτηκε. Το ραντεβού έμεινε στην αρχική του θέση.",
     "newAppointment": "Νέο ραντεβού",
-    "noAppointments": "Χωρίς ραντεβού",
     "appointmentStatus": "Κατάσταση ραντεβού",
     "currentFilter": "Πρόγραμμα & ολοκληρωμένα",
     "scheduledFilter": "Προγραμματισμένα",

@@ -662,7 +662,6 @@
     "slotTakenUnchanged": "This time is no longer available. The appointment remains in its original slot.",
     "rescheduleFailedUnchanged": "The change could not be saved. The appointment remains in its original slot.",
     "newAppointment": "New appointment",
-    "noAppointments": "No appointments",
     "appointmentStatus": "Appointment status",
     "currentFilter": "Scheduled and completed",
     "scheduledFilter": "Scheduled",

@@ -19,6 +19,11 @@ const server=createServer(async(req,res)=>{
   // These are different endpoint contracts, not interchangeable patient bundles.
   if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
   if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
+  if(url.pathname==='/api/patients/demo/prior-course'&&req.method==='POST'){
+    let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
+    bundle.priorCourse={id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',patient_id:bundle.patient.id,tester_id:bundle.patient.tester_id,version:(bundle.priorCourse?.version||0)+1,period_label:body.period_label,content:body.content,created_at:'2026-10-16T09:00:00Z'};
+    writes++;return res.end(JSON.stringify({priorCourse:bundle.priorCourse}));
+  }
   if(req.method!=='GET'){
    writes++;let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw||'{}');const session=bundle.sessions.find(s=>s.id===body.session_id);
    return res.end(JSON.stringify({session,section:{id:'fixture-section',patient_id:bundle.patient.id,session_id:body.session_id,section_key:body.section_key,document:body.document,content:body.content||'',version:1,updated_at:session?.updated_at}}));
@@ -40,5 +45,30 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
  }
  await context.close();
+
+ // Empty-record onboarding: real PatientWorkspace, mocked patient API, zero actual DB writes.
+ bundle.sessions=[];bundle.sections=[];bundle.risks=[];bundle.assessments=[];bundle.medications=[];bundle.medicationEvents=[];bundle.medicationSideEffects=[];
+ for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
+  bundle.priorCourse=null;
+  const context=await browser.newContext({viewport});
+  await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
+  const page=await context.newPage();const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(`${origin}/patients/demo/${bundle.patient.id}?new=1`);
+  await page.getByRole('heading',{name:'Πώς θέλετε να ξεκινήσετε;'}).waitFor();
+  await page.getByRole('button',{name:/Καταχώριση προηγούμενης πορείας/}).click();
+  const form=page.getByRole('heading',{name:'Προηγούμενη κλινική πορεία'});
+  await form.waitFor();
+  await page.getByRole('textbox',{name:/Διάρκεια προηγούμενης παρακολούθησης/}).fill('περίπου 1 έτος');
+  await page.getByRole('textbox',{name:'Κλινική πορεία'}).fill('Παρακολούθηση περίπου ενός έτους για άγχος. Αρχική λειτουργική δυσκολία, σταδιακή βελτίωση και πρόσφατη αϋπνία.');
+  await page.getByRole('button',{name:'Αποθήκευση πορείας'}).click();
+  await page.getByRole('button',{name:/Νέα επανεξέταση/}).waitFor();
+  assert.equal(bundle.sessions.length,0,'prior clinical course must not manufacture a visit');
+  assert.ok(bundle.priorCourse?.content.includes('λειτουργική δυσκολία'));
+  assert.deepEqual(errors,[],'prior course onboarding must not throw browser errors');
+  results.push({size,tab:'prior-course-onboarding',status:'passed'});
+  await page.screenshot({path:resolve(out,`${size}-prior-course-onboarding.png`)});
+  await context.close();
+ }
 }writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Synthetic fixture, actual current components and full layout CSS; no live API verification.',fixtureAutosaveRequests:writes,liveWrites:0,results},null,2));console.log(`Passed ${results.length} patient workspace visual checks; zero live writes.`);
 }finally{await browser.close();await new Promise(r=>server.close(r));}

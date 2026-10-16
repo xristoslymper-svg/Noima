@@ -10,7 +10,8 @@ import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-import {Search,Send,Sparkles,Minus,Plus,Square,MessageCircle,ArrowUpRight} from 'lucide-react';
+import {Search,Send,Minus,Plus,Square,ArrowUpRight} from 'lucide-react';
+import AssistantPatientPicker from './AssistantPatientPicker';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
 import {sseData} from '@/lib/copilot/stream';
 import styles from './RecordAssistant.module.css';
@@ -24,28 +25,42 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
  const locale=useLocale();
 
  const [mounted,setMounted]=useState(false),[open,setOpen]=useState(false),[actionMode,setActionMode]=useState(false);
- const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false),[patient,setPatient]=useState<SearchPatient|null>(null);
+ const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false),[patient,setPatient]=useState<SearchPatient|null>(null),[chosenPatient,setChosenPatient]=useState<SearchPatient|null>(null);
  const context=useRef<string|undefined>(undefined),locked=useRef(false),sequence=useRef(0),pending=useRef<AbortController|null>(null);
  const scroll=useRef<HTMLDivElement|null>(null),follow=useRef(true),input=useRef<HTMLTextAreaElement|null>(null),launcher=useRef<HTMLButtonElement|null>(null);
  const uid=useId(),pathname=usePathname(),inChart=pathname.startsWith('/patients/demo/');
  useEffect(()=>setMounted(true),[]);
- useEffect(()=>{sequence.current++;pending.current?.abort();context.current=undefined;locked.current=false;setBusy(false);setPatient(null);setTurns([]);setQuery('');setActionMode(false)},[pathname]);
+ useEffect(()=>{sequence.current++;pending.current?.abort();context.current=undefined;locked.current=false;setBusy(false);setPatient(null);setChosenPatient(null);setTurns([]);setQuery('');setActionMode(false)},[pathname]);
  useEffect(()=>()=>pending.current?.abort(),[]);
  useEffect(()=>{if(open)input.current?.focus()},[open]);
  useEffect(()=>{if(open&&follow.current&&scroll.current)scroll.current.scrollTop=scroll.current.scrollHeight},[turns,open]);
  function minimize(){setOpen(false);launcher.current?.focus();}
- function reset(){sequence.current++;pending.current?.abort();context.current=undefined;locked.current=false;setBusy(false);setPatient(null);setTurns([]);setQuery('');follow.current=true;input.current?.focus();}
+ function clearConversation(nextPatient:SearchPatient|null=chosenPatient){
+  sequence.current++;pending.current?.abort();context.current=undefined;locked.current=false;
+  setBusy(false);setPatient(nextPatient);setTurns([]);setQuery('');follow.current=true;input.current?.focus();
+ }
+ function reset(){clearConversation();}
+ function choosePatient(next:SearchPatient){
+  if(busy)return;
+  if((chosenPatient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1])===next.id){setChosenPatient(next);setPatient(next);return;}
+  setChosenPatient(next);clearConversation(next);
+ }
  async function ask(question:string,choice?:string){
   if(locked.current||question.trim().length<3)return;
+  if(choice&&choice!==(chosenPatient?.id||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1])){
+   context.current=undefined;
+   const option=turns.flatMap(turn=>turn.result?.choices||[]).find(p=>p.id===choice);
+   if(option){setChosenPatient(option);setPatient(option);}
+  }
   locked.current=true;setBusy(true);setQuery('');follow.current=true;
   const current=++sequence.current,controller=new AbortController();pending.current=controller;
   const timeout=setTimeout(()=>controller.abort(),actionMode?175000:45000),started=performance.now();
   let firstMs:number|undefined;
-  setTurns(t=>[...t.slice(-7),{question,choice}]);
+  setTurns(t=>choice?[{question,choice}]:[...t.slice(-7),{question,choice}]);
   const update=(result:Reply,totalMs?:number)=>setTurns(t=>t.map((turn,i)=>i===t.length-1?{question,choice,result,firstMs,totalMs}:turn));
   try{
    const endpoint=synthetic?'/api/copilot/synthetic':actionMode?'/api/copilot':'/api/copilot/chat';
-   const payload=synthetic?{query:question,conversation:context.current}:{query:question,choice_id:choice,conversation:context.current,patient_id:choice||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]};
+   const payload=synthetic?{query:question,conversation:context.current}:{query:question,choice_id:choice,conversation:context.current,patient_id:choice||chosenPatient?.id||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]};
    const r=await fetch(endpoint,{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','x-noima-output-locale':locale},body:JSON.stringify(payload)});
    let data:Reply;
    if(r.ok&&r.headers.get('content-type')?.includes('text/event-stream')&&r.body){
@@ -54,7 +69,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
      if(current!==sequence.current)return;
      const event=JSON.parse(raw);
      if(event.type==='error')throw new Error(event.error);
-     if(event.type==='meta'){partial={...partial,patient:event.patient};setPatient(event.patient||null);}
+     if(event.type==='meta'){partial={...partial,patient:event.patient};if(event.patient)setPatient(event.patient);}
      if(event.type==='delta'){if(firstMs===undefined&&event.text.trim())firstMs=performance.now()-started;partial={...partial,answer:partial.answer+event.text};}
      if(event.type==='done'){partial={...partial,answer:event.answer,conversation:event.conversation};complete=true;}
      update(partial);
@@ -63,7 +78,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
     data=partial;
    }else{const value=await r.json();if(!r.ok)throw new Error(value.error||t('errors.assistantRequestFailed'));data=value;}
    if(current!==sequence.current)return;
-   context.current=data.conversation;setPatient(data.patient||null);update(data,performance.now()-started);
+   context.current=data.conversation;if(data.patient)setPatient(data.patient);update(data,performance.now()-started);
   }catch(e){if(current===sequence.current){setQuery(question);setTurns(previous=>previous.map((turn,i)=>i===previous.length-1?{question,choice,error:controller.signal.aborted?t('errors.assistantInterruptedRetry'):e instanceof Error?e.message:t('common.tryAgainSentence')}:turn));}}
   finally{clearTimeout(timeout);if(current===sequence.current){locked.current=false;setBusy(false);input.current?.focus();}}
  }
@@ -79,16 +94,16 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
   }catch(e){if(current===sequence.current)setTurns(previous=>previous.map((turn,i)=>i===index?{...turn,executing:false,error:e instanceof Error?e.message:t('errors.assistantStatusUnconfirmed')}:turn));}
   finally{if(current===sequence.current){locked.current=false;setBusy(false);}}
  }
- const examples=actionMode?[t('clinical.assistantBookPrompt'),t('clinical.assistantSendPrompt')]:inChart||patient?[t('clinical.assistantChangesPrompt'),t('clinical.assistantMedicationPrompt'),t('clinical.assistantSleepPrompt')]:[t('clinical.assistantCoursePrompt'),t('clinical.assistantTakingPrompt')];
- const patientLabel=synthetic?'Μαρία Δοκιμαστική':patient?patient.first_name+' '+patient.last_name:inChart?t('clinical.assistantOpenRecord'):t('clinical.assistantChoosePatient');
+ const examples=(actionMode?[t('clinical.assistantBookPrompt'),t('clinical.assistantSendPrompt')]:inChart||patient||chosenPatient?[t('clinical.assistantChangesPrompt'),t('clinical.assistantMedicationPrompt'),t('clinical.assistantSleepPrompt')]:[t('clinical.assistantCoursePrompt'),t('clinical.assistantTakingPrompt')]).slice(0,2);
+ const patientLabel=synthetic?'Μαρία Δοκιμαστική':chosenPatient?chosenPatient.first_name+' '+chosenPatient.last_name:patient?patient.first_name+' '+patient.last_name:inChart?t('clinical.assistantOpenRecord'):t('clinical.assistantChoosePatient');
  if(!mounted)return null;
  return createPortal(<div className={styles.dock}>
   <section id={uid+'-panel'} className={styles.panel} hidden={!open} aria-label={t('accessibility.assistantConversation')} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();minimize();}}}>
-   <header className={styles.chatHeader}><span className={styles.avatar}><Sparkles size={19}/></span><div><h2 title={t('clinical.newAiLanguage',{language:languageNames[locale]})}>{t('clinical.assistantName')}</h2><p>{busy?t('clinical.assistantWriting'):t('clinical.assistantTagline')}</p></div><button type="button" onClick={reset} disabled={busy} aria-label={t('clinical.assistantNewConversation')} title={t('clinical.assistantNewConversation')}><Plus size={18}/></button><button type="button" onClick={minimize} aria-label={t('accessibility.minimizeChat')} title={t('common.minimize')}><Minus size={19}/></button></header>
-   <div className={styles.chatContext}><span className={styles.contextDot}/><span>{patientLabel}</span>{synthetic&&<small>{t('clinical.syntheticRecord')}</small>}</div>
+   <header className={styles.chatHeader}><span className={styles.avatar} aria-hidden="true">Ψ</span><div><h2 title={t('clinical.newAiLanguage',{language:languageNames[locale]})}>{t('clinical.assistantName')}</h2><p>{busy?t('clinical.assistantWriting'):t('clinical.assistantTagline')}</p></div><button type="button" onClick={reset} disabled={busy} aria-label={t('clinical.assistantNewConversation')} title={t('clinical.assistantNewConversation')}><Plus size={18}/></button><button type="button" onClick={minimize} aria-label={t('accessibility.minimizeChat')} title={t('common.minimize')}><Minus size={19}/></button></header>
+   {synthetic?<div className={styles.chatContext}><span className={styles.contextDot}/><span>{patientLabel}</span><small>{t('clinical.syntheticRecord')}</small></div>:<AssistantPatientPicker key={pathname} selected={chosenPatient||patient} fallbackLabel={patientLabel} disabled={busy} onChoose={choosePatient}/>}
    {!synthetic&&<div className={styles.mode}><button type="button" aria-pressed={!actionMode} disabled={busy} onClick={()=>{if(actionMode){reset();setActionMode(false)}}}>{t('clinical.conversation')}</button><button type="button" aria-pressed={actionMode} disabled={busy} onClick={()=>{if(!actionMode){reset();setActionMode(true)}}}>{t('common.action')}</button></div>}
    <div ref={scroll} className={styles.chatScroll} onScroll={()=>{const el=scroll.current;if(el)follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<70;}}>
-    {!turns.length&&<div className={styles.welcome}><span><MessageCircle size={24}/></span><h3>{t('clinical.assistantWelcome')}</h3><p>{t('clinical.assistantHelp')}</p><div className={styles.prompts}>{examples.map(example=><button type="button" key={example} onClick={()=>example.includes('…')?setQuery(example.replace('…',' ')):void ask(example)}>{example}<ArrowUpRight size={14}/></button>)}</div></div>}
+    {!turns.length&&<div className={styles.welcome}><h3>{t('clinical.assistantWelcome')}</h3><p>{t('clinical.assistantHelp')}</p><div className={styles.prompts}>{examples.map(example=><button type="button" key={example} onClick={()=>example.includes('…')?setQuery(example.replace('…',' ')):void ask(example)}>{example}<ArrowUpRight size={14}/></button>)}</div></div>}
     <div className={styles.messages} aria-live="polite" aria-relevant="additions text">{turns.map((turn,index)=><article className={styles.messageTurn} key={index}>
      <div className={styles.questionBubble}>{turn.question}</div>
      {turn.error?<div className={styles.errorBubble} role="alert"><p>{systemMessage(turn.error)}</p><button disabled={busy} onClick={()=>void ask(turn.question,turn.choice)}>{t('common.retry')}</button></div>:<div className={styles.answerBubble}>
@@ -106,7 +121,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
     {busy?<button type="button" onClick={()=>pending.current?.abort()} aria-label={t('accessibility.stopResponse')}><Square size={15}/></button>:<button type="submit" disabled={query.trim().length<3} aria-label={t('accessibility.sendQuestion')}><Send size={17}/></button>}
    </form><small>{synthetic?t('clinical.liveSyntheticTest'):t('clinical.verifyAssistantResponse')}</small></footer>
   </section>
-  <button ref={launcher} type="button" className={styles.launcher} aria-controls={uid+'-panel'} aria-expanded={open} onClick={()=>open?minimize():setOpen(true)}><Sparkles size={20}/><span>{t('clinical.assistantName')}</span>{busy&&<i className={styles.busyDot}/>}</button>
+  <button ref={launcher} type="button" className={styles.launcher} aria-controls={uid+'-panel'} aria-expanded={open} onClick={()=>open?minimize():setOpen(true)}><span className={styles.launcherPsi} aria-hidden="true">Ψ</span><span>{t('clinical.assistantName')}</span>{busy&&<i className={styles.busyDot}/>}</button>
  </div>,document.body);
 }
 export function OverviewShortcuts(){

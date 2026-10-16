@@ -2333,6 +2333,7 @@
     "unsavedConfirm": "You have unsaved changes. Discard them?",
     "microphoneUnavailable": "Microphone access is unavailable. You can type instead.",
     "transcriptionFailed": "Transcription failed.",
-    "saveFailed": "Could not save previous clinical course."
+    "saveFailed": "Could not save previous clinical course.",
+    "unavailable": "Saving a previous clinical course is not yet enabled in the connected database. You can copy your text, but it cannot be saved in this preview."
   }
 }

@@ -6,6 +6,7 @@ import {useLocale} from 'next-intl';
 import {useTranslations} from 'next-intl';
 
 import {useMobileNavigation} from '@/components/useMobileNavigation';
+import CalendarPatientSearch from '@/components/calendar/CalendarPatientSearch';
 import MobileCalendarControls from '@/components/mobile/MobileCalendarControls';
 import {useMobileCalendarLayout} from '@/components/mobile/useMobileCalendarLayout';
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
@@ -496,7 +497,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
             {mobileCalendar&&<div className="calendar-page-actions"><PilotProfile/></div>}
           </div>
 
-          {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
+          {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})} patients={patients}/>:<div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-tools">
               <div className="calendar-date-nav">
                 <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label={t('accessibility.previousDate')}>‹</button>
@@ -505,6 +506,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
                 {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>{t('calendar.today')}</button>}
               </div>
               <button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>{t('calendar.addAppointment')}</button>
+              <CalendarPatientSearch patients={patients}/>
             </div>
             <label className="calendar-filter"><span className="sr-only">{t('calendar.appointmentStatus')}</span><select aria-label={t('calendar.appointmentStatus')} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">{t('calendar.currentFilter')}</option><option value="scheduled">{t('calendar.scheduledFilter')}</option><option value="completed">{t('calendar.completedFilter')}</option><option value="cancelled">{t('calendar.cancelledFilter')}</option><option value="all">{t('calendar.allFilter')}</option></select></label><input aria-label={t('calendar.goToDate')} className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label={t('accessibility.refreshCalendar')} className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>{t('calendar.day')}</button>
@@ -850,7 +852,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
         .calendar-page-actions{gap:8px}
         .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
         .calendar-control-bar{min-height:48px;padding:7px 8px 7px 4px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
-        .calendar-date-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}
+        .calendar-date-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0;flex:0 1 auto}
         .calendar-date-nav strong{font-size:13px;color:#334b40;white-space:nowrap}.calendar-date-nav>button{border:0!important;background:transparent!important}
         .calendar-toolbar-add{flex:0 0 auto;white-space:nowrap;font-size:12px!important;font-weight:700!important}
         .calendar-control-bar .calendar-filter{margin-left:auto}

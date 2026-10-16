@@ -471,3 +471,6 @@
  .scope.scope :global(.calendar-page-actions .profile .avatar){width:36px;height:36px;font-size:12px;background:#e5ede5;color:#1b3d2f;border:1px solid #d5e3d5}
  .scope.scope :global(.calendar-page-actions .pilot-badge){font-size:10px;background:#efece6;border-color:#dfdad0;color:#586d62}
 }
+
+/* Patient search remains usable below compact mobile calendar date controls. */
+.calendarPatientSearchRow{width:100%;margin:8px 0 12px;position:relative;z-index:15}

@@ -4,11 +4,13 @@ import {useLocale} from 'next-intl';
 import {useTranslations} from 'next-intl';
 
 import {useRef} from 'react';
+import CalendarPatientSearch from '@/components/calendar/CalendarPatientSearch';
+import type {SearchablePatient} from '@/lib/calendar/patient-search';
 import {CalendarDays,ChevronDown,ChevronLeft,ChevronRight,Filter,RefreshCw} from 'lucide-react';
 import styles from './MobileClinical.module.css';
 
 type Day={key:string;day:string;date:string};
-type Props={date:string;today:string;days:Day[];view:'day'|'week';filter:string;onDate:(value:string)=>void;onPrevious:()=>void;onNext:()=>void;onView:(value:'day'|'week')=>void;onFilter:(value:string)=>void;onRefresh:()=>void;onNew:()=>void};
+type Props={patients:readonly SearchablePatient[];date:string;today:string;days:Day[];view:'day'|'week';filter:string;onDate:(value:string)=>void;onPrevious:()=>void;onNext:()=>void;onView:(value:'day'|'week')=>void;onFilter:(value:string)=>void;onRefresh:()=>void;onNew:()=>void};
 export default function MobileCalendarControls(p:Props){
 const t=useTranslations();
 
@@ -24,6 +26,7 @@ const t=useTranslations();
    <button type="button" className={styles.calendarNewAppointment} onClick={p.onNew}>{t('calendar.addAppointment')}</button>
    <button type="button" aria-label={t('accessibility.nextDate')} onClick={p.onNext}><ChevronRight size={20}/></button>
   </div>
+  <div className={styles.calendarPatientSearchRow}><CalendarPatientSearch patients={p.patients}/></div>
   <div className={styles.calendarViewRow}>
    <div role="group" aria-label={t('accessibility.calendarView')}><button type="button" aria-pressed={p.view==='day'} onClick={()=>p.onView('day')}>{t('calendar.day')}</button><button type="button" aria-pressed={p.view==='week'} onClick={()=>p.onView('week')}>{t('calendar.week')}</button></div>
    <details ref={menu} className={styles.calendarOptions}>

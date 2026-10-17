@@ -50,7 +50,7 @@ export function mseTimeline(bundle:PatientBundle,sessionId:string,startedAt:stri
 export type WorkspaceTab='summary'|'timeline'|'treatment'|'history'|'record';
 type LegacyWorkspaceTab='sessions'|'medications'|'psychometrics';
 function canonicalTab(tab:WorkspaceTab|LegacyWorkspaceTab):WorkspaceTab{
- return tab==='sessions'?'record':tab==='medications'||tab==='psychometrics'?'treatment':tab;
+ return tab==='sessions'?'record':tab==='medications'?'treatment':tab==='psychometrics'?'timeline':tab;
 }
 export type WorkspaceHeroAction='resume'|'new_initial'|'new_follow_up';
 export function workspaceHeroAction(established:boolean,hasDraft:boolean,hasIntended:boolean):WorkspaceHeroAction{
@@ -81,11 +81,11 @@ const tabs=['summary','timeline','treatment','history','record','sessions','medi
 export function workspaceLocation(search:string){
  const params=new URLSearchParams(search),requested=params.get('tab');
  const tab:WorkspaceTab=requested&&tabs.includes(requested)?canonicalTab(requested as WorkspaceTab|LegacyWorkspaceTab):(!requested&&params.get('session')?'record':'summary');
- return {tab:tab==='timeline'&&params.get('session')?'record' as const:tab,sessionId:params.get('session')||params.get('record_session')};
+ return {tab:requested==='treatment'&&params.get('section')==='measurements'?'timeline' as const:tab==='timeline'&&params.get('session')?'record' as const:tab,sessionId:params.get('session')||params.get('record_session')};
 }
 export function workspaceMeasurementsRequested(search:string){
  const params=new URLSearchParams(search);
- return params.get('tab')==='psychometrics'||(params.get('tab')==='treatment'&&params.get('section')==='measurements');
+ return params.get('tab')==='psychometrics'||(['treatment','timeline'].includes(params.get('tab')||'')&&params.get('section')==='measurements');
 }
 export function workspaceSelectedAssessment(search:string){
  return workspaceMeasurementsRequested(search)?new URLSearchParams(search).get('assessment'):null;

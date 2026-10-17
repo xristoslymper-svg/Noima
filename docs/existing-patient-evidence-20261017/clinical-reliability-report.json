@@ -1,0 +1,55 @@
+{
+  "scope": "Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes.",
+  "results": [
+    {
+      "name": "exact-assessment-and-explicit-review",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "demographics-save-cancel-navigation",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "record-resume-identity",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "verified-finalization-and-refresh",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "second-medication-isolation",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "exact-assessment-and-explicit-review",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "demographics-save-cancel-navigation",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "record-resume-identity",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "verified-finalization-and-refresh",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "second-medication-isolation",
+      "size": "mobile",
+      "status": "passed"
+    }
+  ]
+}

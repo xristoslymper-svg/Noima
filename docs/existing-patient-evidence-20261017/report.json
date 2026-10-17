@@ -1,0 +1,189 @@
+{
+  "scope": "Production React and API handlers, exact isolated PostgreSQL migrations; synthetic Auth, REST/Storage transport and deterministic OCR provider",
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "patient": "11280747-c599-43c0-91c1-6a57e4e2b405",
+      "screenshots": [
+        "desktop-manual-score.png",
+        "desktop-three-historical-scores.png",
+        "desktop-document-upload.png",
+        "desktop-scan-review.png",
+        "desktop-history-conflict-review.png",
+        "desktop-existing-medication.png",
+        "desktop-existing-medication-saved.png"
+      ],
+      "status": "passed"
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "patient": "d51cd0cc-86f2-4285-b551-595ced0a7d01",
+      "screenshots": [
+        "mobile-manual-score.png",
+        "mobile-three-historical-scores.png",
+        "mobile-document-upload.png",
+        "mobile-scan-review.png",
+        "mobile-history-conflict-review.png",
+        "mobile-existing-medication.png",
+        "mobile-existing-medication-saved.png"
+      ],
+      "status": "passed"
+    }
+  ],
+  "workflows": [
+    {
+      "viewport": "desktop",
+      "workflow": "Original questionnaire image",
+      "response": 200,
+      "originalBytesMatch": true,
+      "rendered": {
+        "width": 900,
+        "height": 1000
+      }
+    },
+    {
+      "viewport": "desktop",
+      "workflow": "Original history PDF",
+      "response": 200,
+      "originalBytesMatch": true,
+      "nativeViewerAvailable": false,
+      "nativeRenderingVerified": false,
+      "fallbackVerified": true
+    },
+    {
+      "viewport": "mobile",
+      "workflow": "Original questionnaire image",
+      "response": 200,
+      "originalBytesMatch": true,
+      "rendered": {
+        "width": 900,
+        "height": 1000
+      }
+    },
+    {
+      "viewport": "mobile",
+      "workflow": "Original history PDF",
+      "response": 200,
+      "originalBytesMatch": true,
+      "nativeViewerAvailable": false,
+      "nativeRenderingVerified": false,
+      "fallbackVerified": true
+    }
+  ],
+  "cognitiveLoad": [
+    {
+      "workflow": "Historical score",
+      "actionClicks": 2,
+      "requiredFields": 3,
+      "prefilledFields": [
+        "Instrument: PHQ-9"
+      ],
+      "decisionCount": 1,
+      "decisions": "Instrument choice, with PHQ-9 preselected; score and examination date are clinical values",
+      "dialogs": 0,
+      "screenTransitions": 0
+    },
+    {
+      "workflow": "Document",
+      "actionClicks": 4,
+      "requiredFields": 1,
+      "prefilledFields": [
+        "Patient"
+      ],
+      "decisionCount": 1,
+      "decisions": "Document action in the contextual menu; the source file is the required input",
+      "dialogs": 1,
+      "screenTransitions": 0
+    },
+    {
+      "workflow": "Questionnaire scan",
+      "actionClicks": 4,
+      "requiredFields": 1,
+      "prefilledFields": [
+        "Patient",
+        "Recognized instrument",
+        "Legible answers/date"
+      ],
+      "decisionCount": 3,
+      "decisions": "Scan action, one uncertain-answer correction in the tested source, final approval (2 choices for a fully legible source)",
+      "dialogs": 1,
+      "screenTransitions": 0
+    },
+    {
+      "workflow": "History import",
+      "actionClicks": 4,
+      "requiredFields": 1,
+      "prefilledFields": [
+        "Patient",
+        "Uncontested new additions"
+      ],
+      "decisionCount": 4,
+      "decisions": "Scan action, accept the new hospitalization, retain the existing allergy, final approval; decisions scale only with relevant differences",
+      "dialogs": 1,
+      "screenTransitions": 0
+    },
+    {
+      "workflow": "Existing medication",
+      "actionClicks": 2,
+      "requiredFields": 3,
+      "prefilledFields": [
+        "Patient",
+        "Already taking",
+        "mg"
+      ],
+      "decisionCount": 1,
+      "decisions": "Clinical registration status, with Already taking preselected; medication, dose and frequency are required values",
+      "dialogs": 0,
+      "screenTransitions": 0
+    }
+  ],
+  "counting": "From the relevant tab already open. Action clicks count menu opening, action choice, native file-picker opening and Save/Approve; typing, field focus, native file selection and correction controls are separate. Decision counts include workflow selections and clinical approval judgments in the tested scenario, including preselected instrument/status choices; typing known clinical values is counted under fields. Source upload/review states stay within one dialog.",
+  "limitations": [
+    "Live OpenAI OCR was replaced by a deterministic provider response.",
+    "Supabase-owned Auth/REST/object byte transport was emulated; exact application migrations, RPCs and RLS executed in isolated PGlite PostgreSQL.",
+    "Native PDF rendering is unavailable in the local headless browser. Authorized original PDF bytes and compact fallback links were verified; the original PNG questionnaire rendered visibly.",
+    "No production database, real clinical data, external email or SMS was used."
+  ],
+  "regressionSuites": [
+    {
+      "suite": "visit-workflow",
+      "passed": 32,
+      "total": 32,
+      "evidence": "visit-workflow-report.json"
+    },
+    {
+      "suite": "warm-patient-workspace",
+      "passed": 10,
+      "total": 10,
+      "evidence": "warm-patient-workspace-report.json"
+    },
+    {
+      "suite": "clinical-reliability",
+      "passed": 10,
+      "total": 10,
+      "evidence": "clinical-reliability-report.json"
+    },
+    {
+      "suite": "clinical-cleanup",
+      "passed": 9,
+      "total": 9,
+      "evidence": "clinical-cleanup-report.json"
+    }
+  ],
+  "apiSuites": [
+    {
+      "suite": "tests/existing-patient-api.test.mjs",
+      "passed": 6
+    },
+    {
+      "suite": "tests/existing-patient-documents-api.test.mjs",
+      "passed": 10
+    }
+  ],
+  "generatedAt": "2026-10-17T10:24:34.235Z",
+  "finalRefinement": "Desktop and mobile existing-patient workflow rerun after limiting the individual measurement chart to 480px, shortening the results disclosure, clarifying the manual-score action, and defensively treating historical measurements as unlinked."
+}

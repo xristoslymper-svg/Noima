@@ -14,6 +14,8 @@ import MedicationFrequency from './MedicationFrequency';
 import {formatClinicDate} from '@/lib/clinic-time';
 import {placeMedicationMenu,type MedicationMenuPlacement} from '@/lib/clinical/medication-menu-placement';
 import {useClinicalDraft} from './useClinicalDraft';
+import {medicationRegistration,confirmedMedicationRegistration,type MedicationRegistrationMode} from '@/lib/clinical/medication-registration';
+import styles from './MedicationTable.module.css';
 
 type Mode='start'|'history'|'change'|'stop'|'side_effect';
 type Tracking={firstAssessment?:boolean;registerFlusher?:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange?:(key:string,dirty:boolean)=>void};
@@ -23,10 +25,10 @@ export default function MedicationTable({bundle,sessionId,onManage,reload,editab
  const t=useTranslations();
 
  const today=bundle.clinical_day||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const medications=[...bundle.medications].sort((a,b)=>{const rank=(s:string)=>s==='active'?0:s==='planned'?1:2;return rank(a.status)-rank(b.status)||Date.parse(b.started_at)-Date.parse(a.started_at)});
- function durationLabel(start:string,end?:string|null){const days=Math.max(0,Math.floor((Date.parse((end||today).slice(0,10))-Date.parse(start.slice(0,10)))/86400000));if(!sessionId&&days===0&&!end&&start.slice(0,10)===today)return t('medications.startsToday');if(days<31)return days===1?t('common.oneDay'):days+t('common.daysSuffix');const months=Math.max(1,Math.round(days/30.44));if(months<12)return months===1?t('common.oneMonth'):months+t('common.monthsSuffix');const years=Math.floor(months/12),rest=months%12;return years+(years===1?t('common.yearSuffix'):t('common.yearsSuffix'))+(rest?' · '+rest+t('common.monthsAbbreviation'):'')}
+ const medications=[...bundle.medications].sort((a,b)=>{const rank=(s:string)=>s==='active'?0:s==='planned'?1:2;return rank(a.status)-rank(b.status)||(b.started_at||'').localeCompare(a.started_at||'')});
+ function durationLabel(start:string,end?:string|null){if(!start)return '';const days=Math.max(0,Math.floor((Date.parse((end||today).slice(0,10))-Date.parse(start.slice(0,10)))/86400000));if(!Number.isFinite(days))return '';if(!sessionId&&days===0&&!end&&start.slice(0,10)===today)return t('medications.startsToday');if(days<31)return days===1?t('common.oneDay'):days+t('common.daysSuffix');const months=Math.max(1,Math.round(days/30.44));if(months<12)return months===1?t('common.oneMonth'):months+t('common.monthsSuffix');const years=Math.floor(months/12),rest=months%12;return years+(years===1?t('common.yearSuffix'):t('common.yearsSuffix'))+(rest?' · '+rest+t('common.monthsAbbreviation'):'')}
  const actionColumn=editablePlan||Boolean(onManage);
- return <div className={'clinical-table-wrap medication-table-editor'+(firstAssessment?' first-assessment-medications':'')}><table className="clinical-lean-table medication-lean-table"><caption className="sr-only">{t('medications.medication')}</caption><thead><tr><th>{t('medications.drug')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.dose')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.frequency')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.periodDuration')}</th><th>{t('common.status')}</th><th>{t('medications.sideEffects')}</th>{actionColumn&&<th className="med-actions-head"><span>{t('common.actions')}</span></th>}</tr></thead><tbody>
+ return <div className={styles.responsive+' clinical-table-wrap medication-table-editor'+(firstAssessment?' first-assessment-medications':'')}><table className="clinical-lean-table medication-lean-table"><caption className="sr-only">{t('medications.medication')}</caption><thead><tr><th>{t('medications.drug')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.dose')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.frequency')}{editablePlan&&<b className="required-star"> *</b>}</th><th>{t('medications.periodDuration')}</th><th>{t('common.status')}</th><th>{t('medications.sideEffects')}</th>{actionColumn&&<th className="med-actions-head"><span>{t('common.actions')}</span></th>}</tr></thead><tbody>
  {medications.map(m=>editablePlan
   ?<EditableMedicationRow key={m.id} medication={m} bundle={bundle} today={today} sessionId={sessionId} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} durationLabel={durationLabel}/>
   :<ReadOnlyMedicationRow key={m.id} medication={m} bundle={bundle} today={today} sessionId={sessionId} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onManage={onManage} durationLabel={durationLabel}/>)}
@@ -40,8 +42,8 @@ function ReadOnlyMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 
  const locale=useLocale();
 
- const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10);
- return <tr><th scope="row">{m.medication_name}</th><td data-label={t('medications.dose')}><span className="med-dose-display">{m.dose}<b>{m.unit}</b></span></td><td data-label={t('medications.frequency')}>{m.frequency}</td><td data-label={t('medications.periodDuration')}><span>{formatClinicDate(start, locale)}{end?' – '+formatClinicDate(end, locale):''}</span><small>{m.status==='planned'?t('medications.scheduledStart'):durationLabel(start,end)}</small></td><td data-label={t('common.status')}><span className={'med-status '+m.status}>{m.status==='active'?t('medications.taking'):m.status==='stopped'?t('medications.discontinued'):t('medications.scheduled')}</span></td><td data-label={t('medications.sideEffects')}><MedicationEffects medication={m} bundle={bundle} sessionId={sessionId} today={today} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></td>{onManage&&<td data-label={t('common.actions')} className="med-row-actions">{m.status!=='stopped'&&<><button type="button" onClick={()=>onManage('change',m.id)}>{t('common.change')}</button><button type="button" onClick={()=>onManage('stop',m.id)}>{t('medications.stop')}</button></>}</td>}</tr>;
+ const start=m.started_at?.slice(0,10)||'',end=m.ended_at?.slice(0,10);
+ return <tr><th scope="row">{m.medication_name}{m.record_source&&m.record_source!=='prescribed'&&<small className={styles.source}>{t('medications.existingRecord')}</small>}</th><td data-label={t('medications.dose')}><span className="med-dose-display">{m.dose}<b>{m.unit}</b></span></td><td data-label={t('medications.frequency')}>{m.frequency}</td><td data-label={t('medications.periodDuration')}><span>{start?formatClinicDate(start, locale):'—'}{end?' – '+formatClinicDate(end, locale):''}</span><small>{m.status==='planned'?t('medications.scheduledStart'):m.status==='stopped'&&!end?'':durationLabel(start,end)}</small></td><td data-label={t('common.status')}><span className={'med-status '+m.status}>{m.status==='active'?t('medications.taking'):m.status==='stopped'?t('medications.discontinued'):t('medications.scheduled')}</span></td><td data-label={t('medications.sideEffects')}><MedicationEffects medication={m} bundle={bundle} sessionId={sessionId} today={today} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></td>{onManage&&<td data-label={t('common.actions')} className="med-row-actions">{m.status!=='stopped'&&<><button type="button" onClick={()=>onManage('change',m.id)}>{t('common.change')}</button><button type="button" onClick={()=>onManage('stop',m.id)}>{t('medications.stop')}</button></>}</td>}</tr>;
 }
 
 function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,editableEffects,firstAssessment=false,registerFlusher,onDirtyChange,durationLabel}:{medication:DemoMedication;bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>;editableEffects:boolean;durationLabel:(start:string,end?:string|null)=>string}&Tracking){
@@ -66,7 +68,7 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   if(!Number.isFinite(numericDose)||numericDose<=0||!unit.trim()||!frequency.trim()){setError(t('validation.requiredFields'));return}
   setSaving(true);setError('');
   try{
-   const effectiveOn=m.status==='planned'?m.started_at.slice(0,10):today;
+   const effectiveOn=m.status==='planned'&&m.started_at?m.started_at.slice(0,10):today;
    const sameDay=bundle.medicationEvents.find(e=>e.medication_id===m.id&&e.effective_on===effectiveOn&&!bundle.medicationRevisions.some(r=>r.event_id===e.id));
    await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:sessionId||null,dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?t('medications.correctionFromTable'):''});
    setEditing(false);await reload();
@@ -77,12 +79,12 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   setSaving(true);setError('');
   try{await demoPost({action:'medication_stop',medication_id:m.id,session_id:sessionId||null,effective_on:stopDate,reason:''});setStopping(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:t('errors.medicationStopSave'))}finally{setSaving(false)}
  }
- const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10),editable=m.status!=='stopped';
+ const start=m.started_at?.slice(0,10)||'',end=m.ended_at?.slice(0,10),editable=m.status!=='stopped';
  return <tr className={editing?'med-row-editing':''}>
-  <th scope="row">{m.medication_name}{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}</th>
+  <th scope="row">{m.medication_name}{m.record_source&&m.record_source!=='prescribed'&&<small className={styles.source}>{t('medications.existingRecord')}</small>}{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}</th>
   <td data-label={t('medications.dose')}>{editing?<div className="med-inline-dose"><input aria-label={t('medications.dose')+m.medication_name} inputMode="decimal" value={dose} disabled={saving} onChange={e=>setDose(e.target.value.replace(',','.'))}/><input aria-label={t('medications.unit')+m.medication_name} value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div>:<span className="med-dose-display">{m.dose}<b>{m.unit}</b></span>}</td>
   <td data-label={t('medications.frequency')}>{editing?<MedicationFrequency label={t('medications.frequency')+m.medication_name} value={frequency} disabled={saving} onChange={setFrequency}/>:m.frequency}</td>
-  <td data-label={t('medications.periodDuration')}><span>{formatClinicDate(start, locale)}{end?' – '+formatClinicDate(end, locale):''}</span><small>{m.status==='planned'?t('medications.scheduledStart'):durationLabel(start,end)}</small></td>
+  <td data-label={t('medications.periodDuration')}><span>{start?formatClinicDate(start, locale):'—'}{end?' – '+formatClinicDate(end, locale):''}</span><small>{m.status==='planned'?t('medications.scheduledStart'):m.status==='stopped'&&!end?'':durationLabel(start,end)}</small></td>
   <td data-label={t('common.status')}><span className={'med-status '+m.status}>{m.status==='active'?t('medications.taking'):m.status==='stopped'?t('medications.discontinued'):t('medications.scheduled')}</span></td>
   <td data-label={t('medications.sideEffects')}><MedicationEffects medication={m} bundle={bundle} sessionId={sessionId} today={today} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></td>
   <td data-label={t('common.actions')} className="med-row-actions">{editing?<div className="med-action-pair"><button className="primary" type="button" disabled={saving||!dirty} onClick={()=>void saveEdit()} title={t('common.save')}><Check size={14}/></button><button type="button" disabled={saving} onClick={resetEdit} title={t('common.cancel')}><X size={14}/></button></div>:stopping?<div className="med-stop-inline"><input type="date" value={stopDate} min={start} disabled={saving} onChange={e=>setStopDate(e.target.value)}/><div className="med-action-pair"><button className="danger" type="button" disabled={saving||!stopDate} onClick={()=>void stopMedication()} title={t('medications.confirmStop')}><Check size={14}/></button><button type="button" disabled={saving} onClick={()=>{setStopping(false);setError('')}} title={t('common.cancel')}><X size={14}/></button></div></div>:editable?<div className="med-row-action-links"><button type="button" onClick={()=>{setEditing(true);setStopping(false);setError('')}}><Pencil size={13}/>{t('common.modify')}</button><button type="button" className="danger-link" onClick={()=>{setStopping(true);setEditing(false);setError('')}}><Ban size={13}/>{t('medications.stop')}</button></div>:<span className="med-no-actions">—</span>}</td>
@@ -91,17 +93,16 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 
 function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
  const systemMessage=useSystemMessage();
-
  const t=useTranslations();
-
- const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
+ const initialMode:MedicationRegistrationMode=sessionId?'prescribed':'existing';
+ const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(sessionId?today:''),[mode,setMode]=useState<MedicationRegistrationMode>(initialMode),[stop,setStop]=useState(''),[saving,setSaving]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
  const [needsAction,setNeedsAction]=useState(false);
- const newRowRef=useRef<HTMLTableRowElement>(null);
+ const newRowRef=useRef<HTMLTableRowElement>(null),requestId=useRef<string|null>(null),savingRef=useRef(false);
  const key='medication-new';
- const dirty=open&&Boolean(name.trim()||dose.trim()||frequency.trim()||mode==='history'||start!==today||unit!=='mg');
- const complete=Boolean(name.trim()&&dose.trim()&&frequency.trim()&&start&&(mode==='start'||stop));
+ const dirty=open&&Boolean(name.trim()||dose.trim()||frequency.trim()||mode!==initialMode||start!==(sessionId?today:'')||stop||unit!=='mg');
+ const complete=Boolean(name.trim()&&dose.trim()&&frequency.trim()&&(mode!=='prescribed'||start));
  const pending=dirty||saving;
- const reset=()=>{setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
+ const reset=()=>{setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(sessionId?today:'');setMode(initialMode);setStop('');setError('');requestId.current=null};
  const guard=useCallback(async()=>{
   if(!pending)return;
   setNeedsAction(true);
@@ -110,27 +111,36 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
  },[pending]);
  useEffect(()=>registerFlusher?.(key,guard),[key,registerFlusher,guard]);
  useEffect(()=>{onDirtyChange?.(key,pending);return()=>onDirtyChange?.(key,false)},[key,pending,onDirtyChange]);
- async function save(){
-  if(saving||!complete)return;
-  const numericDose=Number(dose);
-  if(!Number.isFinite(numericDose)||numericDose<=0){setError(t('validation.invalidDose'));return}
-  setSaving(true);setError('');
-  try{
-   const draft=bundle.sessions.find(x=>sessionId?x.id===sessionId&&x.status==='draft':x.status==='draft');
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:draft?.id||null,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),started_on:start,stopped_on:stop,reason:''});
-   else await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:draft?.id||null,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),effective_on:start,reason:''});
-   reset();await reload();
-  }catch(cause){setError(cause instanceof Error?cause.message:t('errors.medicationAdd'))}finally{setSaving(false)}
+ useEffect(()=>{if(open)newRowRef.current?.querySelector<HTMLInputElement>('[role="combobox"]')?.focus()},[open]);
+ function changeMode(next:MedicationRegistrationMode){
+  setMode(next);setError('');
+  if(next==='prescribed'&&!start)setStart(today);
+  else if(mode==='prescribed'&&start===today)setStart('');
+  if(next!=='historical')setStop('');
  }
- if(!open)return <tr className="med-add-row"><td colSpan={7}><button type="button" onClick={()=>setOpen(true)}><Plus size={15}/>  {t('medications.addDrug')}</button></td></tr>;
- return <tr ref={newRowRef} className="med-new-row">
-  <th scope="row"><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}{needsAction&&<span className="med-inline-error" role="status">{t('medications.saveCancelHere')}</span>}</th>
+ async function save(){
+  if(savingRef.current||!complete)return;
+  let input;
+  try{input=medicationRegistration({patient_id:bundle.patient.id,request_id:requestId.current||(requestId.current=crypto.randomUUID()),mode,name,dose:Number(dose),unit,frequency,started_on:start||null,stopped_on:mode==='historical'?stop||null:null,session_id:mode==='prescribed'?sessionId||null:null},today)}
+  catch(cause){setError(cause instanceof Error&&cause.message==='invalid_medication_dates'?t('medications.checkDates'):t('validation.requiredFields'));return}
+  savingRef.current=true;setSaving(true);setError('');setSaved(false);
+  try{
+   const result=await demoPost({action:'medication_register',...input});
+   try{confirmedMedicationRegistration(result.medication,input)}catch{throw new Error(t('medications.registrationUnconfirmed'))}
+   reset();setSaved(true);
+   try{await reload()}catch{setError(t('medications.savedRefresh'))}
+  }catch(cause){setError(cause instanceof Error?cause.message:t('errors.medicationAdd'))}finally{savingRef.current=false;setSaving(false)}
+ }
+ if(!open)return <tr className="med-add-row"><td colSpan={7}><button type="button" onClick={()=>{setOpen(true);setSaved(false)}}><Plus size={15}/>{t('medications.addTreatment')}</button>{saved&&<small role="status" className={styles.saved}>{t('medications.saved')}</small>}{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}</td></tr>;
+ const dates=<><label className="med-new-date">{mode==='prescribed'?t('medications.startRequired'):t('medications.startOptional')}<input type="date" value={start} max={mode==='prescribed'?undefined:today} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='historical'&&<label className="med-new-date">{t('medications.stopOptional')}<input type="date" value={stop} disabled={saving} min={start||undefined} max={today} onChange={e=>setStop(e.target.value)}/></label>}</>;
+ return <tr ref={newRowRef} className="med-new-row" onKeyDown={e=>{if(e.key==='Escape'&&!dirty&&!saving){e.preventDefault();reset()}}}>
+  <th scope="row" data-label={t('medications.drug')}><MedicationSearchInput value={name} disabled={saving} onChange={value=>{setName(value);setError('')}}/>{error&&<span className="med-inline-error" role="alert">{systemMessage(error)}</span>}{needsAction&&<span className="med-inline-error" role="status">{t('medications.saveCancelHere')}</span>}</th>
   <td data-label={t('medications.dose')}><div className="med-inline-dose"><input aria-label={t('medications.dose')} inputMode="decimal" placeholder="*" value={dose} disabled={saving} onChange={e=>{setDose(e.target.value.replace(',','.'));setError('')}}/><input aria-label={t('medications.unit')} value={unit} disabled={saving} onChange={e=>setUnit(e.target.value)}/></div></td>
   <td data-label={t('medications.frequency')}><MedicationFrequency value={frequency} disabled={saving} onChange={value=>{setFrequency(value);setError('')}}/></td>
-  <td data-label={t('medications.periodDuration')}><label className="med-new-date">{t('medications.startRequired')}<input type="date" value={start} disabled={saving} onChange={e=>setStart(e.target.value)}/></label>{mode==='history'&&<label className="med-new-date">{t('medications.stopRequired')}<input type="date" value={stop} disabled={saving} min={start} max={today} onChange={e=>setStop(e.target.value)}/></label>}</td>
-  <td data-label={t('common.status')}><select className="med-inline-status" aria-label={t('medications.newStatus')} value={mode} disabled={saving} onChange={e=>setMode(e.target.value as 'start'|'history')}><option value="start">{t('medications.takingScheduled')}</option><option value="history">{t('medications.previousDiscontinued')}</option></select></td>
+  <td data-label={t('medications.periodDuration')}>{mode==='prescribed'?dates:<details className={styles.dates}><summary>{t('medications.datesOptional')}</summary>{dates}</details>}</td>
+  <td data-label={t('common.status')}><select className="med-inline-status" aria-label={t('medications.newStatus')} value={mode} disabled={saving} onChange={e=>changeMode(e.target.value as MedicationRegistrationMode)}><option value="existing">{t('medications.alreadyTaking')}</option><option value="historical">{t('medications.previousDiscontinued')}</option><option value="prescribed">{t('medications.newTreatment')}</option></select></td>
   <td data-label={t('medications.sideEffects')}><span className="med-empty-cell">—</span></td>
-  <td data-label={t('common.actions')} className="med-row-actions"><div className="med-action-pair"><button className="primary" type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?t('common.add'):t('validation.asteriskFields')}><Check size={15}/></button><button type="button" disabled={saving} onClick={reset} title={t('medications.cancelNewDrug')} aria-label={t('medications.cancelNewDrug')}><X size={15}/></button></div></td>
+  <td data-label={t('common.actions')} className="med-row-actions"><div className="med-action-pair"><button className={'primary '+styles.save} type="button" disabled={saving||!complete} onClick={()=>void save()} title={complete?t('common.save'):t('validation.asteriskFields')}><Check size={15}/>{saving?t('common.saving'):t('common.save')}</button><button type="button" disabled={saving} onClick={reset} title={t('medications.cancelNewDrug')} aria-label={t('medications.cancelNewDrug')}><X size={15}/></button></div></td>
  </tr>;
 }
 

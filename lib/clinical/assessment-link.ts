@@ -1,6 +1,7 @@
 import type {Assessment} from './core-types';
 import type {PatientBundle} from '../patients/demo-runtime';
 export function assessmentLink(bundle:Pick<PatientBundle,'sessions'|'appointments'>,assessment:Assessment){
+ if(assessment.measurement_source)return {kind:'unlinked',session:undefined,appointment:undefined} as const;
  const direct=assessment.session_id?bundle.sessions.find(s=>s.id===assessment.session_id&&(!s.patient_id||s.patient_id===assessment.patient_id)):undefined;
  const appointment=assessment.appointment_id?bundle.appointments.find(a=>a.id===assessment.appointment_id):undefined;
  if(assessment.session_id)return {kind:direct?'direct':'unavailable',session:direct,appointment} as const;
@@ -8,6 +9,7 @@ export function assessmentLink(bundle:Pick<PatientBundle,'sessions'|'appointment
  return {kind:'unlinked',session:undefined,appointment:undefined} as const;
 }
 export function assessmentLinkLabel(bundle:Pick<PatientBundle,'sessions'|'appointments'>,assessment:Assessment,display:(label:string)=>string=label=>label){
+ if(assessment.measurement_source)return display('Αναδρομική καταχώριση');
  const link=assessmentLink(bundle,assessment);
  return display(link.kind==='direct'?'Απευθείας σύνδεση με κλινική επίσκεψη':link.kind==='appointment'?(link.session?'Μέσω ραντεβού που συνδέεται με κλινική επίσκεψη':'Σύνδεση με ραντεβού · χωρίς συνδεδεμένη κλινική επίσκεψη'):link.kind==='unavailable'?'Η αναφερόμενη σύνδεση δεν είναι διαθέσιμη':'Χωρίς σύνδεση με ραντεβού ή κλινική επίσκεψη');
 }

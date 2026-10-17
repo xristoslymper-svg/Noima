@@ -1,10 +1,12 @@
 // Exact repository migrations and RPCs; synthetic auth, no remote services.
 import {PGlite} from '@electric-sql/pglite';
 import {readFileSync,readdirSync} from 'node:fs';
+import {storageSchemaSql} from '../tests/support/storage-schema.mjs';
 export async function createWorkflowDatabase(){
  const db=new PGlite(),owner='99000000-0000-4000-8000-000000000001';
  const sql=async(q,p=[])=>(await db.query(q,p)).rows;
  await db.exec("create role anon nologin; create role authenticated nologin; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth,public to anon,authenticated; grant execute on function auth.uid() to anon,authenticated;");
+ await db.exec(storageSchemaSql);
  for(const name of readdirSync('supabase/migrations').filter(n=>n.endsWith('.sql')).sort())await db.exec(readFileSync('supabase/migrations/'+name,'utf8'));
  await sql('insert into auth.users(id) values($1)',[owner]);await sql("insert into private.pilot_members(user_id,full_name) values($1,'Workflow synthetic owner')",[owner]);
  let queue=Promise.resolve();

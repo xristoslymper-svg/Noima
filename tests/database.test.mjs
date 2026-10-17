@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
+import {storageSchemaSql} from './support/storage-schema.mjs';
 
 // Real PostgreSQL in-process. Only the Supabase-owned auth schema/JWT role context
 // is emulated; the exact production migration, RLS, grants and triggers run here.
@@ -38,6 +39,7 @@ before(async () => {
     grant usage on schema auth, public to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
+  await db.exec(storageSchemaSql);
   for (const name of (await readdir('supabase/migrations')).filter(x => x.endsWith('.sql')).sort()) {
     try { await db.exec(await readFile(`supabase/migrations/${name}`, 'utf8')); }
     catch (error) { throw new Error(`${name}: ${error.message} ${error.where ?? ''}`); }

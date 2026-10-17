@@ -4,12 +4,18 @@ import { after } from 'next/server';
 import { withPilot } from '@/lib/pilot/route';
 import { createPatient, listPatientRows, patientBundle, rpc } from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
+import {medicationRegistration,type MedicationRegistration} from '@/lib/clinical/medication-registration';
+import {clinicDay} from '@/lib/clinical/summary-context';
 export const dynamic='force-dynamic';
 export const preferredRegion='fra1';
 const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
+ if(message.includes('medication_request_conflict'))return errorJson({error:'Η αγωγή έχει ήδη καταχωριστεί. Ανανεώστε πριν κάνετε αλλαγές.',code:'medication_request_conflict'},{status:409});
+ if(message.includes('invalid_medication_registration'))return errorJson({error:'Συμπληρώστε έγκυρα στοιχεία αγωγής.',code:'invalid_medication_registration'},{status:422});
+ if(message.includes('invalid_medication_dates'))return errorJson({error:'Ελέγξτε τις ημερομηνίες έναρξης και διακοπής της προηγούμενης αγωγής.'},{status:422});
+ if(message.includes('demo_medication_register')&&(message.includes('PGRST202')||message.includes('does not exist')||message.includes('schema cache')))return errorJson({error:'Η καταχώριση προϋπάρχουσας αγωγής δεν είναι διαθέσιμη ακόμη.',code:'medication_registration_unavailable'},{status:503});
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return errorJson({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return errorJson({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});
  if(message.includes('missing_sections'))return errorJson({error:'Συμπληρώστε Ψυχιατρική συνέντευξη, MSE, Κλινική εκτίμηση, Πλάνο και Επανεκτίμηση πριν την ολοκλήρωση.',code:'missing_sections'},{status:422});
@@ -65,6 +71,11 @@ async function handlePOST(request:Request){
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});
    case 'save_risk': return Response.json({risk:first(await rpc('demo_session_save_risk_tree',{p_tester:tester,p_session:body.session_id,p_risk:body.risk||{},p_expected_version:body.expected_version??null}))});
    case 'save_history': {const history=first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{},p_expected_version:body.expected_version??null}));queueSummary(request,body.patient_id);return Response.json({history})}
+   case 'medication_register': {
+    const input=medicationRegistration(body as MedicationRegistration,clinicDay());
+    const medication=first(await rpc('demo_medication_register',{p_tester:tester,p_patient:input.patient_id,p_request:input.request_id,p_mode:input.mode,p_name:input.name,p_dose:input.dose,p_unit:input.unit,p_frequency:input.frequency,p_started:input.started_on,p_stopped:input.stopped_on,p_session:input.session_id}));
+    queueSummary(request,input.patient_id);return Response.json({medication});
+   }
    case 'medication_history': {const medication=first(await rpc('demo_medication_record_history',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg'),p_frequency:String(body.frequency||''),p_started:body.started_on,p_stopped:body.stopped_on,p_reason:String(body.reason||'')}));queueSummary(request,body.patient_id);return Response.json({medication})}
    case 'medication_start': {const medication=first(await rpc('demo_medication_start',{p_tester:tester,p_patient:body.patient_id,p_session:body.session_id||null,p_name:String(body.name||'').trim(),p_dose:Number(body.dose),p_unit:String(body.unit||'mg').trim(),p_frequency:String(body.frequency||'').trim(),p_effective:body.effective_on,p_reason:String(body.reason||'').trim()}));queueSummary(request,body.patient_id);return Response.json({medication})}
    case 'medication_event': {const medication=first<{patient_id:string}>(await rpc('demo_medication_event_write',{p_tester:tester,p_medication:body.medication_id,p_session:body.session_id||null,p_type:body.event_type,p_dose:body.dose??null,p_unit:body.unit??null,p_frequency:body.frequency??null,p_effective:body.effective_on,p_reason:String(body.reason||''),p_expected_version:body.expected_version,p_replace:body.replace_id||null,p_cancel:body.cancel===true}));queueSummary(request,medication.patient_id);return Response.json({medication})}

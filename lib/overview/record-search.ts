@@ -19,7 +19,7 @@ export function recordAnswer(bundle:PatientBundle,topic:SearchTopic,now=Date.now
  const result=(answer:string,label:string,href:string):SearchAnswer=>({answer,patient,sources:[{label,href}]});
  if(topic==='medications'){
   const active=bundle.medications.filter(m=>m.status==='active');
-  const lines=active.map(m=>`${m.medication_name}: ${m.dose} ${m.unit}${m.frequency?' · '+m.frequency:''}\n`+t('clinical.medicationDates',{start:m.started_at,effective:m.effective_from?t('clinical.medicationEffective',{date:m.effective_from}):''}));
+  const lines=active.map(m=>`${m.medication_name}: ${m.dose} ${m.unit}${m.frequency?' · '+m.frequency:''}\n`+t('clinical.medicationDates',{start:m.started_at||t('clinical.notRecorded'),effective:m.effective_from?t('clinical.medicationEffective',{date:m.effective_from}):''}));
   return result(lines.length?t('clinical.recordedMedication',{items:lines.join('\n\n')}):t('clinical.noMedicationNotNegative'),t('clinical.treatmentPlan'),base+'?tab=medications');
  }
  if(topic==='last_visit'){

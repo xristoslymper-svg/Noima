@@ -75,3 +75,15 @@ test('record menu presents print/PDF directly and keeps full technical export se
  assert.match(route,/private, no-store/);
  assert.match(route,/patientRecordText\(bundle\)/);
 });
+
+test('historical exports preserve clinical dates, source and item-9 scope without inventing dates or manual answers',()=>{
+ const b=sample();b.sessions=[];b.sections=[];b.risks=[];b.history=null;b.proposals=[];b.appointments=[];b.medicationEvents=[];
+ b.medications=[{id:'existing',medication_name:'SYNTHETIC IMPORTED',dose:50,unit:'mg',frequency:'daily',status:'active',started_at:null,effective_from:null,ended_at:null,record_source:'existing'}];
+ b.assessments=[{id:'historical-total',instrument:'PHQ-9',status:'completed',score:14,completed_at:'2020-01-02',created_at:'2026-10-17T10:00:00Z',measurement_source:'historical_manual',answers:[3,3,3,3,2,0,0,0,0],item9_review:false},
+  {id:'historical-scan',instrument:'PHQ-9',status:'completed',score:10,completed_at:'2021-02-03',created_at:'2026-10-17T10:00:00Z',measurement_source:'historical_scan',answers:[1,1,1,1,1,1,1,1,2],item9_review:true,item9_reviewed_at:'2026-10-17T10:00:00Z'}];
+ const html=patientRecordPrintableHtml(b,'test-nonce','2026-10-17T09:00:00Z',{locale:'en',messages:english});
+ assert.ok(html.includes('Existing treatment record'));assert.ok(html.includes('Historical entry'));assert.ok(html.includes(english.historical.item9));
+ assert.ok(!html.includes(english.documents.printItemNineReviewed));assert.ok(!html.includes('3, 3, 3, 3, 2, 0, 0, 0, 0'));
+ assert.ok(html.includes('1, 1, 1, 1, 1, 1, 1, 1, 2'));assert.ok(html.indexOf('2 Jan 2020')<html.indexOf('3 Feb 2021'));
+ assert.ok(!html.includes('from —'));assert.ok(!html.includes('null'));
+});

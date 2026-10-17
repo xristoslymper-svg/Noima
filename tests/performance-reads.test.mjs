@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import * as upcoming from '../lib/calendar/upcoming.ts';
+import * as historicalMeasurements from '../lib/clinical/historical-measurements.ts';
 import ts from 'typescript';
 import {readFileSync} from 'node:fs';
 const compiled=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -11,7 +12,7 @@ function load(source,mocks,globals={}){const m={exports:{}};vm.runInNewContext(s
 const plain=value=>JSON.parse(JSON.stringify(value));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const diagnosis=code=>({kind:'assessment',fields:[{key:'diagnosis',codes:code?[{code}]:[]}]});
-function registry(fetch){return load(runtime,{'../calendar/upcoming.ts':upcoming,'@/lib/pilot/request-scope':{pilotAuthorization:()=>({Authorization:'Bearer synthetic'})},'@/lib/clinical/identity':{isClinicalId:()=>true}},{fetch}).listPatientRows}
+function registry(fetch){return load(runtime,{'../calendar/upcoming.ts':upcoming,'../clinical/historical-measurements':historicalMeasurements,'@/lib/pilot/request-scope':{pilotAuthorization:()=>({Authorization:'Bearer synthetic'})},'@/lib/clinical/identity':{isClinicalId:()=>true}},{fetch}).listPatientRows}
 const response=data=>({ok:true,text:async()=>JSON.stringify(data)});
 test('registry waits for bootstrap, then starts all five reads without waiting for patients',async()=>{
  const bootstrap=deferred(),patients=deferred(),paths=[];
@@ -34,7 +35,7 @@ test('registry retains input order, stable dates, first matches, corrected diagn
  corrections.push({session_id:'old',patch:{assessment:{after:diagnosis('UPDATED')}}});assert.equal((await read('a'))[1].diagnosis.code,'UPDATED');
 });
 function summaryHandler({bundle=async()=>({hash:'fresh'}),cache=async()=>[{context_hash:'fresh',policy_version:7,findings:['verified']}]}={}){
- return load(summary,{'@/lib/clinical/provider-evidence':{providerEvidence:v=>v},'@/lib/pilot/route':{withPilot:f=>f},'@/lib/patients/demo-runtime':{patientBundle:bundle,request:cache},'@/lib/clinical/identity':{isClinicalId:id=>Boolean(id)},'@/lib/clinical/clinical-card':{buildClinicalCard:(b,c,f)=>({hash:b.hash,findings:f})},'@/lib/clinical/summary-context':{buildSummaryContext:()=>({day:'2026-10-09'}),summaryContextHash:async b=>b.hash,SUMMARY_POLICY_VERSION:7}}).GET;
+ return load(summary,{'@/lib/clinical/provider-evidence':{providerEvidence:v=>v},'@/lib/pilot/route':{withPilot:f=>f},'@/lib/patients/demo-runtime':{patientBundle:bundle,request:cache},'@/lib/clinical/identity':{isClinicalId:id=>Boolean(id)},'@/lib/clinical/clinical-card':{buildClinicalCard:(b,c,f)=>({hash:b.hash,findings:f})},'@/lib/clinical/summary-context':{buildSummaryContext:()=>({day:'2026-10-09'}),summaryReadiness:()=>null,summaryNeedsSynthesis:()=>true,summaryContextHash:async b=>b.hash,SUMMARY_POLICY_VERSION:7}}).GET;
 }
 const summaryRequest=()=>new Request('https://qa.test/api/clinical/summary?tester=owned&patient_id=patient');
 test('summary reads overlap but never returns before fresh bundle validation',async()=>{

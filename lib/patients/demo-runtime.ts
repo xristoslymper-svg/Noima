@@ -5,6 +5,7 @@ import {pilotAuthorization} from '@/lib/pilot/request-scope';
 import {isClinicalId} from '@/lib/clinical/identity';
 import type {VisitDocument} from '@/lib/clinical/visit-document';
 import type { ClinicalProposal, Addendum, Assessment, StructuredCorrection } from '@/lib/clinical/core-types';
+import {historicalMeasurementProjection,historicalMeasurementsUnavailable,type HistoricalMeasurement} from '../clinical/historical-measurements';
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mgpnaxaquzeoomxdzhic.supabase.co';
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g4MJzSlAYzIFAt9glM_WeQ_UcP-yheG';
 const headers = () => ({ apikey: KEY || '', Authorization: `Bearer ${KEY || ''}`, 'Content-Type': 'application/json', ...pilotAuthorization() });
@@ -15,10 +16,11 @@ export type DemoSection = { document?:VisitDocument|null; id:string; session_id:
 export type DemoRisk = { tree?:import('../clinical/risk-tree').RiskTree; harm_to_others?:string; session_id:string; patient_id:string; suicidal_ideation:string; intent:string; plan:string; self_harm:string; attempt_history:string; protective_factors:string; clinical_note:string; version:number; updated_at:string };
 export type DemoPriorCourse = {id:string;tester_id:string;patient_id:string;version:number;period_label:string;content:string;created_at:string};
 export type DemoHistory = { patient_id:string; psychiatric_history:string; medical_history:string; previous_treatments:string; hospitalizations:string; family_history:string; substance_history:string; social_functioning:string; allergies:string; version:number; updated_at:string };
-export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string; started_at:string; ended_at:string|null; status:string; notes:string; updated_at:string };
+export type DemoMedication = { plan_version:number; id:string; patient_id:string; medication_name:string; dose:number; unit:string; frequency:string; effective_from:string|null; started_at:string|null; ended_at:string|null; status:string; notes:string; updated_at:string;record_source?:'prescribed'|'existing'|'historical';recorded_by?:string|null;created_at?:string;registration_request_id?:string|null };
+export type HistoryImport = {id:string;patient_id:string;tester_id:string;scan_id:string;document_ids:string[];additions:{field:string;text:string;attribution:'patient_reported'|'document'}[];actor_id:string;created_at:string;history_version:number};
 export type DemoMedicationEvent = { id:string; patient_id:string; medication_id:string; session_id:string|null; event_type:string; previous_state:Record<string,unknown>|null; new_state:Record<string,unknown>|null; reason:string; effective_on:string; created_at:string };
 export type DemoMedicationSideEffect = { id:string; patient_id:string; medication_id:string; session_id:string|null; effect_text:string; severity:'mild'|'moderate'|'severe'; impact:string; noted_on:string; resolved_on:string|null; note:string; created_at:string; updated_at:string };
-export type PatientBundle = { priorCourse?:DemoPriorCourse|null; contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;payment_status?:'unknown'|'pending'|'paid'|'not_applicable';updated_at?:string;patient_id?:string|null;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
+export type PatientBundle = { historyImports?:HistoryImport[];historicalMeasurementsAvailable?:boolean;priorCourse?:DemoPriorCourse|null; contextRevisions?:ContextRevision[]; clinical_day?:string; patient:DemoPatient; sessions:DemoSession[]; sections:DemoSection[]; risks:DemoRisk[]; history:DemoHistory|null; medications:DemoMedication[]; medicationEvents:DemoMedicationEvent[]; medicationSideEffects:DemoMedicationSideEffect[]; medicationRevisions:{event_id:string;replacement_id:string|null;reason:string;created_at:string}[]; proposals:ClinicalProposal[]; addenda:Addendum[]; corrections:StructuredCorrection[]; assessments:Assessment[]; appointments:{id:string;payment_status?:'unknown'|'pending'|'paid'|'not_applicable';updated_at?:string;patient_id?:string|null;session_id:string|null;appointment_type:string;scheduled_start:string;scheduled_end:string;status:string}[] };
 
 function configured(){ if(!URL || !KEY) throw new Error('demo_runtime_not_configured'); }
 export async function request(path:string, init:RequestInit={}){
@@ -89,6 +91,14 @@ async function loadPriorCourse(tester:string,patientId:string){
   throw error;
  }
 }
+async function loadHistoricalMeasurements(tester:string,patientId:string){
+ try{return {rows:rows<HistoricalMeasurement>(await rpc('demo_historical_measurement_list',{p_tester:tester,p_patient:patientId})),available:true}}
+ catch(error){if(historicalMeasurementsUnavailable(error))return {rows:[],available:false};throw error}
+}
+async function loadHistoryImports(tester:string,patientId:string){
+ try{return rows<HistoryImport>(await rpc('demo_history_import_list',{p_tester:tester,p_patient:patientId}))}
+ catch(error){if(/Could not find the function.*demo_history_import_list|function public\.demo_history_import_list.*does not exist/i.test(error instanceof Error?error.message:''))return [];throw error}
+}
 export async function patientBundle(tester:string,patientRef:string):Promise<PatientBundle>{
   if(!isClinicalId(patientRef))throw new Error('patient_not_found');
   const tid=encodeURIComponent(tester),id=encodeURIComponent(patientRef);
@@ -96,7 +106,7 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
   if(!patient) throw new Error('patient_not_found');
   const clinicalDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const patientId=encodeURIComponent(patient.id);
-  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions,assessments,contextRevisions,priorCourse]=await Promise.all([
+  const [sessions,sections,risks,history,medications,events,sideEffects,proposals,addenda,corrections,appointments,revisions,assessments,contextRevisions,priorCourse,historicalMeasurements,historyImports]=await Promise.all([
     request(`demo_sessions?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=started_at.desc`),
     request(`demo_session_sections?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
     request(`demo_risk_assessments?select=*&tester_id=eq.${tid}&patient_id=eq.${patientId}&order=updated_at.desc`),
@@ -112,6 +122,8 @@ export async function patientBundle(tester:string,patientRef:string):Promise<Pat
     rpc('demo_assessment_list',{p_tester:tester,p_patient:patient.id}),
     rpc('demo_context_revisions',{p_tester:tester,p_patient:patient.id}),
     loadPriorCourse(tester,patient.id),
+    loadHistoricalMeasurements(tester,patient.id),
+    loadHistoryImports(tester,patient.id),
   ]);
-  return {priorCourse:rows<DemoPriorCourse>(priorCourse)[0]||null,contextRevisions:rows<ContextRevision>(contextRevisions),clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:rows<Assessment>(assessments),appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
+  return {historyImports,historicalMeasurementsAvailable:historicalMeasurements.available,priorCourse:rows<DemoPriorCourse>(priorCourse)[0]||null,contextRevisions:rows<ContextRevision>(contextRevisions),clinical_day:clinicalDay,patient,medicationRevisions:rows<PatientBundle['medicationRevisions'][number]>(revisions),proposals:rows<ClinicalProposal>(proposals),addenda:rows<Addendum>(addenda),corrections:rows<StructuredCorrection>(corrections),assessments:[...rows<Assessment>(assessments),...historicalMeasurements.rows.map(historicalMeasurementProjection)],appointments:rows<PatientBundle['appointments'][number]>(appointments),sessions:rows<DemoSession>(sessions),sections:rows<DemoSection>(sections),risks:rows<DemoRisk>(risks),history:rows<DemoHistory>(history)[0]||null,medications:rows<DemoMedication>(medications),medicationEvents:rows<DemoMedicationEvent>(events),medicationSideEffects:rows<DemoMedicationSideEffect>(sideEffects)};
 }

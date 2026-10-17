@@ -4,8 +4,10 @@
 import {PGlite} from '@electric-sql/pglite';
 import {createServer} from 'node:http';
 import {readFile,readdir} from 'node:fs/promises';
+import {storageSchemaSql} from './storage-schema.mjs';
 const db=new PGlite();
 await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
+await db.exec(storageSchemaSql);
 for(const name of (await readdir('supabase/migrations')).filter(x=>x.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+name,'utf8'));
 const user={id:'99100000-0000-4000-8000-000000000001',email:'workflow@example.invalid',aud:'authenticated',role:'authenticated',email_confirmed_at:new Date().toISOString(),app_metadata:{},user_metadata:{},created_at:new Date().toISOString()};
 await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[user.id,user.email]);

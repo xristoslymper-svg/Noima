@@ -2,6 +2,7 @@ import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
+import {storageSchemaSql} from './support/storage-schema.mjs';
 import {finalizeAndVerify} from '../lib/clinical/finalization.ts';
 import {buildSummaryContext,summaryContextKey,clinicDay} from '../lib/clinical/summary-context.ts';
 import {patientRecord} from '../lib/clinical/patient-record.ts';
@@ -18,6 +19,7 @@ before(async()=>{
  create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz);
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth,public to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
+ await db.exec(storageSchemaSql);
  for(const file of (await readdir('supabase/migrations')).filter(name=>name.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+file,'utf8'));
  for(const id of [tenant,otherTenant])await query('select demo_tester_bootstrap($1)',[id]);
 });

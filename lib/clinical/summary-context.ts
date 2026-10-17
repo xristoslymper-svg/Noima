@@ -2,8 +2,9 @@ import {riskFindings,riskFindingLabel} from './risk-findings.ts';
 import {continuityContexts} from './continuity-context.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
+import {validAdministrationDate,validHistoricalScore} from './historical-measurements.ts';
 
-export const SUMMARY_POLICY_VERSION=25;
+export const SUMMARY_POLICY_VERSION=26;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -23,7 +24,7 @@ export function stableSerialize(value:unknown):string{
 // Shared browser/server fingerprint input. Every record consumed by a derived
 // view is included, not a manually maintained list of timestamp dependencies.
 export function summaryContextKey(bundle:PatientBundle,day=clinicDay()){
- const {proposals:_,...canonical}=bundle;void _;
+ const {proposals:_,historicalMeasurementsAvailable:availability,...canonical}=bundle;void _;void availability;
  const completed=new Set(canonical.sessions.filter(s=>s.status==='completed').map(s=>s.id));
  const eligible={...canonical,sessions:canonical.sessions.filter(s=>completed.has(s.id)),sections:canonical.sections.filter(s=>completed.has(s.session_id)),risks:canonical.risks.filter(r=>completed.has(r.session_id))};
  return stableSerialize({policy:SUMMARY_POLICY_VERSION,day,canonical:eligible});
@@ -58,6 +59,18 @@ function medicationNeedsReview(text:string,med:PatientBundle['medications'][numb
  });
 }
 const dateLabel=(date?:string)=>date?date.slice(0,10):'';
+const measurementDate=(assessment:PatientBundle['assessments'][number])=>assessment.measurement_source?assessment.administered_on||'':assessment.completed_at||assessment.created_at;
+function eligibleMeasurement(assessment:PatientBundle['assessments'][number],bundle:PatientBundle,day:string){
+ if(!assessment.measurement_source)return true;
+ return ['historical_manual','historical_scan'].includes(assessment.measurement_source)&&assessment.patient_id===bundle.patient.id&&assessment.tester_id===bundle.patient.tester_id&&assessment.status==='completed'&&Boolean(assessment.entered_by&&assessment.reviewed_at)
+  &&validHistoricalScore(assessment.instrument,assessment.score)&&validAdministrationDate(assessment.administered_on,day);
+}
+function historicalAnswers(assessment:PatientBundle['assessments'][number]){
+ const answers=assessment.answers;
+ return assessment.measurement_source==='historical_scan'&&Array.isArray(answers)
+  &&answers.length===(assessment.instrument==='PHQ-9'?9:7)&&answers.every(n=>Number.isInteger(n)&&n>=0&&n<=3)
+  &&answers.reduce((sum,n)=>sum+n,0)===assessment.score?answers:null;
+}
 function clinicalSessionTime(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
  return session.started_at||session.completed_at||'';
 }
@@ -125,12 +138,34 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
   const risk=correctedRisk(bundle,session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(encounterTime)} · Κίνδυνος`,date:encounterTime,session_id:session.id,required_correction_ids:structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},'risk')).map(c=>'structured_correction:'+c.id),content:risk,target:'sessions',record_id:session.id});
  }
  for(const med of bundle.medications)add({id:'medication:'+med.id,kind:'structured_medication',label:'Αγωγή · '+med.medication_name,content:med,target:'medications',record_id:med.id});
- for(const event of bundle.medicationEvents)add({id:'event:'+event.id,kind:'medication_event',label:`Αλλαγή ${event.effective_on} · ${bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή'}`,date:event.created_at,session_id:event.session_id||undefined,content:event,target:'medications',record_id:event.id});
+ for(const event of bundle.medicationEvents)add({id:'event:'+event.id,kind:'medication_event',label:`Αλλαγή ${event.effective_on} · ${bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή'}`,date:event.effective_on,session_id:event.session_id||undefined,content:event,target:'medications',record_id:event.id});
  for(const revision of bundle.medicationRevisions.filter(r=>bundle.medicationEvents.some(e=>e.id===r.event_id)))add({id:'revision:'+revision.event_id+':'+revision.created_at,kind:'medication_revision',label:'Διόρθωση αγωγής',date:revision.created_at,content:revision,target:'medications',record_id:revision.event_id});
  for(const effect of bundle.medicationSideEffects)add({id:'side_effect:'+effect.id,kind:'structured_side_effect',label:'Παρενέργεια · '+effect.effect_text,date:effect.noted_on,session_id:effect.session_id||undefined,content:effect,target:'medications',record_id:effect.id});
- for(const assessment of bundle.assessments)add({id:'assessment:'+assessment.id,kind:'psychometric',label:`${assessment.instrument} · ${dateLabel(assessment.completed_at||assessment.created_at)}`,date:assessment.completed_at||assessment.created_at,session_id:assessment.session_id||undefined,content:{...assessment,review_required:assessment.item9_review,review_completed:Boolean(assessment.item9_reviewed_at)},target:'psychometrics',record_id:assessment.id});
- if(bundle.priorCourse?.content.trim())add({id:'prior_course:'+bundle.priorCourse.id,kind:'prior_course',label:'Προηγούμενη κλινική πορεία · αναδρομική καταγραφή θεράποντος',date:bundle.priorCourse.created_at,content:{period:bundle.priorCourse.period_label,clinician_report:bundle.priorCourse.content,provenance:'Αναδρομική σύνοψη θεράποντος, όχι πρωτογενείς ξεχωριστές επισκέψεις'},target:'history',record_id:bundle.priorCourse.id});
-  if(bundle.history)add({id:'history:'+bundle.patient.id,kind:'history',label:'Ιστορικό',content:bundle.history,target:'history',record_id:bundle.patient.id});
+ const eligibleAssessments=bundle.assessments.filter(a=>eligibleMeasurement(a,bundle,day)).sort((a,b)=>measurementDate(a).localeCompare(measurementDate(b))||a.id.localeCompare(b.id));
+ for(const assessment of eligibleAssessments){
+  const historical=Boolean(assessment.measurement_source),answers=historical?historicalAnswers(assessment):assessment.answers;
+  const item9Available=Array.isArray(answers)&&assessment.instrument==='PHQ-9'&&answers.length===9;
+  add({id:'assessment:'+assessment.id,kind:historical?'historical_measurement':'psychometric',
+   label:`${assessment.instrument} · ${dateLabel(measurementDate(assessment))}${historical?' · Αναδρομική καταχώριση':''}`,
+   date:measurementDate(assessment),session_id:historical?undefined:assessment.session_id||undefined,
+   content:historical?{instrument:assessment.instrument,instrument_version:assessment.instrument_version,score:assessment.score,
+    administered_on:assessment.administered_on,recorded_at:assessment.created_at,entered_by:assessment.entered_by,
+    source:assessment.measurement_source,document_ids:assessment.document_ids||[],note:assessment.note||'',
+    answers,total_score_only:answers===null,item9_available:item9Available,item9_response:item9Available?answers![8]:null,
+    review_completed:true,reviewed_at:assessment.reviewed_at,temporal_scope:'historical_measurement_not_current_risk',
+    provenance:'Clinician-approved historical measurement; no questionnaire assignment or encounter was created.'}
+    :{...assessment,review_required:assessment.item9_review,review_completed:Boolean(assessment.item9_reviewed_at)},target:'psychometrics',record_id:assessment.id});
+ }
+ if(bundle.priorCourse?.content.trim())add({id:'prior_course:'+bundle.priorCourse.id,kind:'prior_course',label:'Προηγούμενη κλινική πορεία · αναδρομική καταγραφή θεράποντος',content:{period:bundle.priorCourse.period_label,clinician_report:bundle.priorCourse.content,recorded_at:bundle.priorCourse.created_at,provenance:'Αναδρομική σύνοψη θεράποντος, όχι πρωτογενείς ξεχωριστές επισκέψεις. Η ημερομηνία καταχώρισης δεν είναι κλινική ημερομηνία.'},target:'history',record_id:bundle.priorCourse.id});
+ if(bundle.history)add({id:'history:'+bundle.patient.id,kind:'history',label:'Ιστορικό',content:bundle.history,target:'history',record_id:bundle.patient.id});
+ for(const imported of bundle.historyImports||[]){
+  if(imported.patient_id!==bundle.patient.id||imported.tester_id!==bundle.patient.tester_id||!imported.actor_id||!imported.additions.length)continue;
+  add({id:'history_import:'+imported.id,kind:'imported_history',label:'Ιστορικό · εγκεκριμένη εισαγωγή',
+   content:{scan_id:imported.scan_id,document_ids:imported.document_ids,additions:imported.additions,
+    actor_id:imported.actor_id,history_version:imported.history_version,recorded_at:imported.created_at,current_history_version:bundle.history?.version,
+    provenance:'Clinician-approved additions from an imported document. Preserve patient-reported versus document attribution; the approval is not a new initial assessment. Current structured history takes precedence over a conflicting older import.'},
+   target:'history',record_id:imported.id});
+ }
  for(const a of bundle.addenda.filter(a=>ids.has(a.session_id)))add({id:'addendum:'+a.id,kind:'addendum',label:`${a.kind==='correction'?'Διόρθωση':'Προσθήκη'} · ${dateLabel(a.created_at)}`,date:a.created_at,session_id:a.session_id,content:a,target:'sessions',record_id:a.id});
  for(const correction of (bundle.corrections||[]).filter(c=>ids.has(c.session_id)))add({id:'structured_correction:'+correction.id,kind:'structured_correction',label:`Δομημένη διόρθωση · ${dateLabel(correction.created_at)}`,date:correction.created_at,session_id:correction.session_id,content:correction,target:'sessions',record_id:correction.id});
  for(const a of bundle.appointments)add({id:'appointment:'+a.id,kind:'appointment',label:'Ραντεβού · '+a.scheduled_start,content:a,target:'calendar',record_id:a.id});
@@ -147,7 +182,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  }
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
  const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
- const durable=sources.filter(s=>s.kind==='history'||s.kind==='prior_course'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
+ const durable=sources.filter(s=>s.kind==='history'||s.kind==='imported_history'||s.kind==='prior_course'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
  const recentIds=new Set(completed.map(s=>s.id));
  const trajectory=sources.filter(s=>s.kind==='session_section'&&recentIds.has(s.session_id!));
  const canonical=sources.filter(s=>!['session_section','addendum','structured_correction'].includes(s.kind));
@@ -162,18 +197,22 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  }
  const risk=latest?correctedRisk(bundle,latest.id):undefined;
  if(risk){const keys=Object.keys(riskNames).filter(k=>!(risk.tree&&k==='self_harm'&&(!risk.self_harm||risk.self_harm==='not_assessed')));const positive=keys.filter(k=>risk[k as keyof typeof risk]==='positive').map(k=>riskNames[k]);const negative=keys.filter(k=>risk[k as keyof typeof risk]==='negative').map(k=>riskNames[k]);const uncertain=keys.filter(k=>['unknown','not_assessed'].includes(String(risk[k as keyof typeof risk]))).map(k=>`${riskNames[k]} ${risk[k as keyof typeof risk]==='not_assessed'?'δεν διερευνήθηκε':'παραμένει άγνωστο'}`);const ideation=risk.tree?.answers.ideation;const description=ideation==='passive'?'παθητικές σκέψεις':ideation==='active'?'ενεργές σκέψεις':ideation==='both'?'παθητικές και ενεργές σκέψεις':'';const extra=riskFindings(risk).filter(f=>f.key.startsWith('tree:')&&!['tree:wish','tree:intent','tree:plan','tree:others','tree:ideation'].includes(f.key));const parts=[positive.length?`Θετικά ευρήματα: ${positive.join(', ')}${risk.suicidal_ideation==='positive'?` (${description||'μορφή μη προσδιορισμένη'}) · Πρόθεση: ${states[risk.intent]||'δεν διερευνήθηκε'} · Σχέδιο: ${states[risk.plan]||'δεν διερευνήθηκε'}`:''}.`:'',uncertain.length?`Δεν έχουν αποσαφηνιστεί: ${uncertain.join(', ')}.`:'',negative.length?`Αρνητική καταγραφή για: ${negative.join(', ')}.`:'',...extra.map(f=>`${f.previousBranch?'Προηγούμενος κλάδος προς επανέλεγχο: ':''}${f.label}: ${riskFindingLabel(f)}${f.note?' · '+f.note:''}.`)].filter(Boolean);push('risk','Κίνδυνος',`Εκτίμηση ${dateLabel(clinicalSessionTime(bundle,latest))}: ${parts.join(' ')} Δεν υποκαθιστά σημερινή εκτίμηση.`,['risk:'+latest.id],extra.some(f=>!f.previousBranch&&['positive','active','both','passive'].includes(f.value))||keys.some(k=>!['intent','plan'].includes(k)&&risk[k as keyof typeof risk]!=='negative')||(['unknown','positive'].includes(risk.suicidal_ideation)&&[risk.intent,risk.plan].some(v=>v!=='negative')));}
- else push('risk-missing','Κίνδυνος','Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.',[],true);
+ else push('risk-missing','Κίνδυνος','Δεν υπάρχει ολοκληρωμένη δομημένη εκτίμηση κινδύνου. Το κενό δεν σημαίνει αρνητικό εύρημα.',[],Boolean(latest));
  if(risk?.clinical_note?.trim())push('risk-note','Κίνδυνος',`Κλινική σημείωση κινδύνου ${dateLabel(clinicalSessionTime(bundle,latest))}: «${risk.clinical_note}»`,['risk:'+latest.id],narrativeRiskRequiresReview(risk.clinical_note),'documented');
  if(bundle.clinical_day&&bundle.clinical_day!==day)push('medication-refresh','Αγωγή','Η ημερομηνία άλλαξε. Απαιτείται ανανέωση της αγωγής πριν εμφανιστεί η σημερινή κατάσταση.',[],true);
- else for(const med of bundle.medications)push('med:'+med.id,'Αγωγή',`${med.medication_name}: ${medStates[med.status]||med.status} · ${med.dose} ${med.unit} · ${med.frequency} · έναρξη ${med.started_at}${med.ended_at?' · διακοπή '+med.ended_at:''}.`,['medication:'+med.id]);
+ else for(const med of bundle.medications)push('med:'+med.id,'Αγωγή',`${med.medication_name}: ${medStates[med.status]||med.status} · ${med.dose} ${med.unit} · ${med.frequency}${med.record_source&&med.record_source!=='prescribed'?' · προϋπάρχουσα καταχώριση':''}${med.started_at?' · έναρξη '+med.started_at:''}${med.ended_at?' · διακοπή '+med.ended_at:''}.`,['medication:'+med.id]);
  const superseded=new Set(bundle.medicationRevisions.map(r=>r.event_id));
  for(const e of bundle.medicationEvents.filter(e=>e.effective_on>day&&!superseded.has(e.id)))push('future:'+e.id,'Αγωγή',`Προγραμματισμένη αλλαγή ${e.effective_on}: ${bundle.medications.find(m=>m.id===e.medication_id)?.medication_name||'Αγωγή'} · ${e.event_type} · ${e.new_state?.dose??'—'} ${e.new_state?.unit??''}. Δεν είναι η σημερινή αγωγή.`,['event:'+e.id]);
  for(const effect of bundle.medicationSideEffects.filter(e=>!e.resolved_on))push('effect:'+effect.id,'Παρενέργειες',`${bundle.medications.find(m=>m.id===effect.medication_id)?.medication_name||'Αγωγή'}: ${effect.effect_text} · ${effect.severity==='severe'?'σοβαρή':effect.severity==='mild'?'ήπια':'μέτρια'} · από ${effect.noted_on}${effect.impact?' · '+effect.impact:''}${effect.note?' · '+effect.note:''} · ανεπίλυτη.`,['side_effect:'+effect.id],effect.severity==='severe');
  for(const code of ['PHQ-9','GAD-7']){
-  const assessments=bundle.assessments.filter(a=>a.instrument===code&&a.status==='completed').sort((a,b)=>Date.parse(a.completed_at||a.created_at)-Date.parse(b.completed_at||b.created_at));
-  if(assessments.length)push('psych:'+code,'Ψυχομετρικά',`${code}: ${assessments.map(a=>`${a.score} (${dateLabel(a.completed_at||a.created_at)})`).join(' → ')}.`,assessments.map(a=>'assessment:'+a.id));
+  const assessments=eligibleAssessments.filter(a=>a.instrument===code&&a.status==='completed').sort((a,b)=>measurementDate(a).localeCompare(measurementDate(b))||a.id.localeCompare(b.id));
+  if(assessments.length)push('psych:'+code,'Ψυχομετρικά',`${code}: ${assessments.map(a=>`${a.score} (${dateLabel(measurementDate(a))})`).join(' → ')}.`,assessments.map(a=>'assessment:'+a.id));
  }
- for(const a of bundle.assessments.filter(a=>a.status==='completed'&&a.item9_review))push('review:'+a.id,'Ψυχομετρικά',a.item9_reviewed_at?`PHQ-9 ${dateLabel(a.completed_at||a.created_at)}: ο έλεγχος λήμματος 9 καταγράφηκε στις ${a.item9_reviewed_at}. Δεν αποτελεί εκτίμηση κινδύνου.`:`PHQ-9 ${dateLabel(a.completed_at||a.created_at)}: λήμμα 9 προς έλεγχο — δεν έχει καταγραφεί ολοκλήρωση ελέγχου.`,['assessment:'+a.id],!a.item9_reviewed_at);
+ for(const a of eligibleAssessments.filter(a=>a.status==='completed'&&a.item9_review&&!a.measurement_source))push('review:'+a.id,'Ψυχομετρικά',a.item9_reviewed_at?`PHQ-9 ${dateLabel(measurementDate(a))}: ο έλεγχος λήμματος 9 καταγράφηκε στις ${a.item9_reviewed_at}. Δεν αποτελεί εκτίμηση κινδύνου.`:`PHQ-9 ${dateLabel(measurementDate(a))}: λήμμα 9 προς έλεγχο — δεν έχει καταγραφεί ολοκλήρωση ελέγχου.`,['assessment:'+a.id],!a.item9_reviewed_at);
+ for(const a of eligibleAssessments.filter(a=>a.measurement_source==='historical_scan'&&a.instrument==='PHQ-9')){
+  const answers=historicalAnswers(a);
+  if(answers&&answers[8]>0)push('historical-review:'+a.id,'Σημαντικό ιστορικό',`PHQ-9 ${dateLabel(measurementDate(a))}: ιστορική απάντηση στο λήμμα 9 (${answers[8]}), ελεγμένη κατά την εισαγωγή. Δεν αποτελεί τρέχουσα εκτίμηση κινδύνου.`,['assessment:'+a.id],false);
+ }
  // Durable narrative is evidence, not promoted structured truth. A corrected
  // parent's original statements are never repeated as a current conclusion.
  const durableNarrative=durable.filter(s=>s.kind==='session_section');
@@ -225,11 +264,18 @@ export function minimumBriefingItems(_context:SummaryContext){
 }
 // Readiness is a minimum content check, never a judgement of clinical adequacy.
 // A short factual note is enough; bare placeholders must not be expanded.
-export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
- if(!bundle.sessions.some(s=>s.status==='completed')&&!bundle.priorCourse?.content.trim())return 'no_completed_visit';
+export function summaryNeedsSynthesis(bundle:PatientBundle,context=buildSummaryContext(bundle)){
  const narrative=context.sources.filter(s=>s.kind==='session_section'&&['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||''));
  const meaningful=narrative.some(s=>typeof s.content==='string'&&s.content.trim().length>=12&&s.content.trim().split(/\s+/u).length>=3);
- return meaningful||Boolean(bundle.priorCourse?.content.trim())?null:'insufficient_notes';
+ const historyNarrative=['psychiatric_history','medical_history','previous_treatments','hospitalizations','family_history','substance_history','social_functioning','allergies']
+  .some(field=>{const value=bundle.history?.[field as keyof NonNullable<PatientBundle['history']>];return typeof value==='string'&&value.trim().length>=12&&value.trim().split(/\s+/u).length>=3});
+ return meaningful||Boolean(bundle.priorCourse?.content.trim())||historyNarrative;
+}
+export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
+ const confirmedHistorical=context.sources.some(s=>s.kind==='historical_measurement'||s.kind==='imported_history'||
+  s.kind==='structured_medication'&&['existing','historical'].includes(String((s.content as {record_source?:string}).record_source)));
+ if(!bundle.sessions.some(s=>s.status==='completed')&&!bundle.priorCourse?.content.trim()&&!summaryNeedsSynthesis(bundle,context)&&!confirmedHistorical)return 'no_completed_visit';
+ return summaryNeedsSynthesis(bundle,context)||confirmedHistorical?null:'insufficient_notes';
 }
 // A useful record-derived briefing remains available without a model. Whole
 // recorded sections retain date/source attribution; drafts and corrected parents

@@ -9,7 +9,12 @@ const eventLabels:Record<string,string>={started:'Έναρξη αγωγής',cha
 const day=(value:string)=>value.length===10?value:new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
 export function completedMeasurements(bundle:PatientBundle,now=new Date()){
  const today=bundle.clinical_day||day(now.toISOString());
- return bundle.assessments.filter(a=>a.status==='completed'&&a.completed_at&&a.score!==null&&Date.parse(a.completed_at)<=now.getTime()&&day(a.completed_at)<=today).sort((a,b)=>Date.parse(b.completed_at!)-Date.parse(a.completed_at!)||a.id.localeCompare(b.id));
+ return bundle.assessments.filter(a=>a.status==='completed'&&a.completed_at&&a.score!==null
+  &&Number.isFinite(Date.parse(a.completed_at))&&day(a.completed_at)<=today
+  // A historical administration day has no clock time. Athens may already be
+  // on that day while UTC is still on the previous one.
+  &&(a.measurement_source&&a.completed_at.length===10||Date.parse(a.completed_at)<=now.getTime()))
+  .sort((a,b)=>day(b.completed_at!).localeCompare(day(a.completed_at!))||Date.parse(b.completed_at!)-Date.parse(a.completed_at!)||a.id.localeCompare(b.id));
 }
 export function clinicalDate(bundle:PatientBundle,session:PatientBundle['sessions'][number]){
  return session.started_at;
@@ -37,7 +42,7 @@ export function patientRecord(bundle:PatientBundle,now=new Date(),context:Upcomi
    {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:display('Παρενέργεια'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
    ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:display('Λήξη παρενέργειας'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
   ]),
-  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:display(a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+' · '+assessmentLinkLabel(bundle,a,display),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
+  ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:display(a.measurement_source?'Αναδρομική καταχώριση':a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+(a.measurement_source?'':' · '+assessmentLinkLabel(bundle,a,display)),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
  // Same-day date-only events need a recorded timestamp to establish ordering.
  const sinceLatest=latestVisit?events.filter(e=>{
@@ -70,7 +75,7 @@ export function visitTimelineContext(bundle:PatientBundle,now=new Date(),display
  const measured=completedMeasurements(bundle,now).filter(a=>a.patient_id===bundle.patient.id);
  for(const current of measured){
   const session=assessmentLink(bundle,current).session;const target=session?context.get(session.id):undefined;if(!target)continue;
-  const previous=measured.find(a=>a.instrument===current.instrument&&a.instrument_version===current.instrument_version&&Date.parse(a.completed_at!)<Date.parse(current.completed_at!))||null;
+  const previous=measured.find(a=>a.instrument===current.instrument&&(a.instrument_version===current.instrument_version||a.measurement_source||current.measurement_source)&&Date.parse(a.completed_at!)<Date.parse(current.completed_at!))||null;
   target.measurements.push({current,previous});
  }
  for(const entry of context.values())entry.treatment.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));

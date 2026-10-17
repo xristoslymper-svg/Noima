@@ -85,7 +85,7 @@ const t=useTranslations();
      const selectedResponse=readMedicationResponse(draft.value.clinical_state_summary,m);
      const hasRecordedSideEffect=bundle.medicationSideEffects.some(e=>e.medication_id===m.id&&e.session_id===session.id);
      return <tr key={m.id} data-medication-response={m.id}>
-      <th scope="row">{m.medication_name}</th><td><span className="med-dose-display">{m.dose}<b>{m.unit}</b></span></td><td>{m.frequency}</td><td>{formatClinicDate(m.started_at, locale)}</td><td><span className="med-status active">{t('medications.taking')}</span></td>
+      <th scope="row">{m.medication_name}</th><td><span className="med-dose-display">{m.dose}<b>{m.unit}</b></span></td><td>{m.frequency}</td><td>{m.started_at?formatClinicDate(m.started_at, locale):t('clinical.notRecorded')}</td><td><span className="med-status active">{t('medications.taking')}</span></td>
       <td><div className={styles.responseOptions} role="group" aria-label={t('medications.responseToPrefix')+m.medication_name}>
        <button type="button" aria-pressed={selectedResponse==='good'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'good')}>{t('medications.responseGood')}</button>
        <button type="button" aria-pressed={selectedResponse==='neutral'} disabled={writing.clinical_state_summary||busy||p.finalizing} onClick={()=>selectMedicationResponse(m,'neutral')}>{t('medications.responseNeutral')}</button>

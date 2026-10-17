@@ -49,6 +49,10 @@ jobs:
         if: ${{ !cancelled() }}
       - run: node browser-tests/clinical-reliability.mjs
         if: ${{ !cancelled() }}
+      - run: node browser-tests/existing-patient-workflow.mjs
+        if: ${{ !cancelled() }}
+        env:
+          NOIMA_TEST_OUTPUT: test-results/existing-patient
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -58,4 +62,5 @@ jobs:
             test-results/warm-patient-workspace
             test-results/clinical-reliability
             test-results/visit-workflow
+            test-results/existing-patient
           retention-days: 7

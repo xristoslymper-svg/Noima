@@ -28,6 +28,22 @@ test('current scores use Athens clinical day and pending safety remains independ
  const result=patientRecord(bundle({assessments:[{id:'old',status:'completed',instrument:'PHQ-9',completed_at:'2026-10-01T12:00:00Z',score:15},{id:'current',status:'completed',instrument:'PHQ-9',completed_at:'2026-10-07T22:00:00Z',score:10,item9_review:true,item9_reviewed_at:null},{id:'future',status:'completed',instrument:'PHQ-9',completed_at:'2026-10-08T22:00:00Z',score:2},{id:'assigned',status:'assigned',instrument:'GAD-7',completed_at:null,score:null}]}),now);
  assert.equal(result.latestScores[0].current.id,'current');assert.equal(result.latestScores[0].previous.id,'old');assert.equal(result.pendingSafety[0].id,'current');
 });
+test('historical administration dates are available after Athens midnight without inventing a completion time',()=>{
+ const historical={id:'historical',patient_id:'p',status:'completed',instrument:'PHQ-9',score:14,completed_at:'2026-10-17',administered_on:'2026-10-17',measurement_source:'historical_manual',answers:null,item9_review:false};
+ const future={id:'not-yet-completed',patient_id:'p',status:'completed',instrument:'GAD-7',score:6,completed_at:'2026-10-17T08:00:00Z'};
+ const result=patientRecord(bundle({clinical_day:'2026-10-17',assessments:[historical,future]}),new Date('2026-10-16T22:30:00Z'));
+ assert.deepEqual(result.latestScores.map(row=>row.current.id),['historical']);
+ assert.equal(result.events[0].date,'2026-10-17');
+ assert.deepEqual(result.sinceLatest,[]);
+ assert.deepEqual(result.pendingSafety,[]);
+ assert.equal(result.latestVisit,undefined);
+});
+test('a historical measurement never adopts an incidental encounter link in a malformed transport',()=>{
+ const input=bundle({sessions:[{id:'actual-visit',patient_id:'p',status:'completed',started_at:'2026-10-01'}],
+  assessments:[{id:'historical',patient_id:'p',status:'completed',instrument:'PHQ-9',score:14,completed_at:'2022-01-01',measurement_source:'historical_manual',answers:null,session_id:'actual-visit'}]});
+ assert.equal(patientRecord(input,now).events.find(event=>event.assessmentId==='historical').sessionId,undefined);
+ assert.deepEqual(visitTimelineContext(input,now).get('actual-visit').measurements,[]);
+});
 test('future resolution does not suppress active effects; expired and cancelled appointments are not upcoming',()=>{
  const result=patientRecord(bundle({medicationSideEffects:[{id:'active',noted_on:'2026-10-01',resolved_on:'2026-10-09'},{id:'ended',noted_on:'2026-10-01',resolved_on:'2026-10-07'},{id:'future',noted_on:'2026-10-09',resolved_on:null}],appointments:[{id:'past',status:'scheduled',scheduled_start:'2026-10-01',scheduled_end:'2026-10-01'},{id:'cancelled',status:'cancelled',scheduled_start:'2026-10-08',scheduled_end:'2026-10-09'},{id:'next',status:'scheduled',scheduled_start:'2026-10-09',scheduled_end:'2026-10-09'}]}),now);
  assert.deepEqual(result.activeEffects.map(e=>e.id),['active']);assert.equal(result.nextAppointment.id,'next');

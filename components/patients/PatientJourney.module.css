@@ -55,3 +55,23 @@
  .orientation .rows{font-size:14px;gap:4px}.orientation .rows dd{margin-bottom:14px}
  .actions{align-items:stretch}.actions>button{flex:1 1 180px}
 }
+
+/* Medication remains readable without dragging an eight-column table. */
+.visitSurface :global([data-followup-medication-group] .medication-lean-table){min-width:0;table-layout:auto}
+@media(max-width:1100px){
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table){display:block;width:100%;min-width:0!important}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table thead){display:none}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tbody){display:block}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tbody tr){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:16px;border-bottom:1px solid #e1e7e3}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tbody th),.visitSurface :global([data-followup-medication-group] .medication-lean-table tbody td){display:block;min-width:0!important;border:0;padding:0!important;font-size:13px;overflow-wrap:anywhere}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tbody th){grid-column:1/-1;font-size:16px}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tbody td):before{display:block;font-size:11px;color:#708277;margin-bottom:5px}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(2)):before{content:'Δόση'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(3)):before{content:'Συχνότητα'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(4)):before{content:'Από'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(5)):before{content:'Κατάσταση'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(6)):before{content:'Ανταπόκριση'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:nth-child(7)):before{content:'Ανοχή'}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table td:last-child){grid-column:1/-1}
+ .visitSurface :global([data-followup-medication-group] .medication-lean-table tr:last-child){border-bottom:0}
+}

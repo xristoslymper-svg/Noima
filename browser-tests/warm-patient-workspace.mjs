@@ -37,6 +37,14 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   assert.deepEqual(errors,[],'workspace must remain mounted without browser exceptions');
   const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');if(!w||!nav||!nav.nextElementSibling)throw new Error('Expected patient workspace is missing');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
+  if(size==='mobile'){
+   const positions=await page.locator('nav[aria-label="Καρτέλες φακέλου"] > button').evaluateAll(buttons=>buttons.map(b=>Math.round(b.getBoundingClientRect().top)));
+   assert.equal(positions.length,4);assert.equal(new Set(positions).size,1,'the four patient tabs occupy one balanced row');
+  }
+  if(tab==='record'){
+   assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');
+   assert.equal(await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).locator('details').first().getAttribute('open'),null,'previous context begins collapsed');
+  }
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
  }
  await context.close();

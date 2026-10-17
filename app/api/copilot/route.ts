@@ -56,7 +56,7 @@ async function post(req:Request){
   }else if(intent.tool==='medication_start'){
    const med=resolveMedication(bundle,memory,intent);
    if(!med)result={answer:t('clinical.medicationUnclear'),sources:[]};
-   else{memory.focus_medication_id=med.id;memory.after=med.started_at;result={answer:med.medication_name+t('clinical.medicationStartedPrefix')+med.started_at+'.',sources:[{label:med.medication_name+t('clinical.medicationStartSource'),href:'/patients/demo/'+patient.id+'?tab=medications'}]};}
+   else{memory.focus_medication_id=med.id;memory.after=med.started_at;result={answer:med.medication_name+(med.started_at?t('clinical.medicationStartedPrefix')+med.started_at+'.':t('clinical.medicationStartSource')+': '+t('clinical.notRecordedSentence')),sources:[{label:med.medication_name+t('clinical.medicationStartSource'),href:'/patients/demo/'+patient.id+'?tab=medications'}]};}
   }else if(intent.tool==='tasks'){
    const rows=await rpc('demo_task_list',{p_tester:b.tester});
    const tasks=(Array.isArray(rows)?rows:[]).filter(t=>t.patient_id===patient.id&&t.status==='open');

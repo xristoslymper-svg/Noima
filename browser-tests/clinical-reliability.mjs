@@ -50,8 +50,9 @@ function handle(body){
   if(completionMode==='malformed')return {session:{...s}};
   Object.assign(s,{status:'completed',version:s.version+1,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()});return {session:s};
  }
- if(body.action==='medication_start'){
-  const m={id:'40000000-0000-4000-8000-000000000099',patient_id:patientId,medication_name:body.name,dose:body.dose,unit:body.unit,frequency:body.frequency,started_at:body.effective_on,effective_from:body.effective_on,ended_at:null,status:'active',plan_version:1,notes:'',updated_at:new Date().toISOString()};state.medications.push(m);return {medication:m};
+ if(body.action==='medication_register'){
+  assert.equal(body.patient_id,patientId);assert.equal(body.mode,'prescribed');assert.equal(body.session_id,visitId);
+  const m={id:'40000000-0000-4000-8000-000000000099',patient_id:patientId,medication_name:body.name,dose:body.dose,unit:body.unit,frequency:body.frequency,started_at:body.started_on,effective_from:body.started_on,ended_at:null,status:'active',record_source:body.mode,registration_request_id:body.request_id,plan_version:1,notes:'',updated_at:new Date().toISOString()};state.medications.push(m);return {medication:m};
  }
  throw new Error('Unexpected synthetic action: '+body.action);
 }
@@ -106,16 +107,16 @@ try{
    completionMode='malformed';await open(`?tab=record&session=${visitId}`);const finish=page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true});await finish.waitFor();await finish.click();
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);
    completionMode='ok';await finish.click();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();
+   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Πορεία').click();
    const expectedVisits=state.sessions.filter(s=>s.status==='completed').length;
    const visitButtons=page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true});
    await visitButtons.nth(expectedVisits-1).waitFor();assert.equal(await visitButtons.count(),expectedVisits);
    await nav('Σύνοψη').click();await page.getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
   });
   await check('second-medication-isolation',async({page,open})=>{
-   await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
-   const row=table.locator('.med-new-row');await row.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA SECOND MEDICATION');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('10');await row.getByRole('button',{name:'Πρωί',exact:true}).click();await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();
-   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);
+   await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Αγωγή',exact:true}).click();
+   const row=table.locator('.med-new-row');await row.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA SECOND MEDICATION');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('10');await row.getByRole('button',{name:'Πρωί',exact:true}).click();await row.getByRole('button',{name:'Αποθήκευση',exact:true}).click();
+   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_register').length,1);
    await page.reload();await table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'}).waitFor();assert.equal(await table.locator('.med-new-row').count(),0);
   });
  }

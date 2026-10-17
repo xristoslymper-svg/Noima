@@ -1,0 +1,81 @@
+.source { display:block; margin-top:3px; font-size:10px; font-weight:400; color:#718077; }
+.saved { margin-left:12px; color:#617969; font-weight:400; }
+.dates summary { cursor:pointer; color:#4f7464; }
+.dates label { margin-top:7px; }
+:global(.med-action-pair) .save { width:auto; min-width:106px; gap:5px; padding:0 10px; }
+
+.responsive {
+  container:medication-table / inline-size;
+  min-width:0;
+  max-width:100%;
+}
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) {
+  width:100%;
+  min-width:0;
+  table-layout:fixed;
+}
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(1) { width:16%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(2) { width:11%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(3) { width:18%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(4) { width:14%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(5) { width:13%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(6) { width:12%; }
+.responsive:global(.medication-table-editor) :global(.medication-lean-table) thead th:nth-child(7) { width:16%; }
+.responsive :global(.medication-lean-table) :is(th,td) { min-width:0; overflow-wrap:anywhere; }
+.responsive :global(.medication-lean-table) thead th { white-space:normal; }
+.responsive :global(.medication-lean-table .medication-search),
+.responsive :global(.medication-lean-table .med-frequency),
+.responsive :global(.medication-lean-table .med-inline-effect),
+.responsive :global(.medication-lean-table .med-stop-inline) { min-width:0; max-width:100%; }
+.responsive :global(.medication-lean-table) :global(.med-frequency-times) { flex-wrap:wrap; }
+.responsive :global(.med-inline-input) { min-width:0!important; }
+.responsive :global(.medication-lean-table .med-inline-dose) { display:flex; }
+.responsive :global(.med-inline-dose) input:first-child { width:0; flex:1; }
+.responsive :global(.med-inline-dose) input:last-child { flex:0 0 47px; }
+.responsive :global(.medication-lean-table) :global(.med-dose-display) { max-width:100%; flex-wrap:wrap; white-space:normal; }
+.responsive :global(.medication-lean-table) :global(.med-frequency-reset) { border:0; background:none; padding:0; max-width:100%; white-space:normal; line-height:1.4; }
+.responsive :global(.med-effect-controls) { grid-template-columns:minmax(0,1fr); }
+
+/* The same inline row stacks to fit the patient pane, including split visit layouts. */
+@container medication-table (max-width:1050px) {
+  .responsive :global(.medication-lean-table),
+  .responsive :global(.medication-lean-table) tbody { display:block; width:100%; }
+  .responsive :global(.medication-lean-table) thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+  .responsive :global(.medication-lean-table) tbody tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px; padding:8px 12px; border-bottom:1px solid #e4e9df; }
+  .responsive :global(.medication-lean-table) tbody tr:last-child { border-bottom:0; }
+  .responsive:global(.medication-table-editor) :global(.medication-lean-table) tbody :is(th,td) { display:block; width:auto; padding:7px 0; border:0; }
+  .responsive :global(.medication-lean-table) tbody th { grid-column:1/-1; }
+  .responsive :global(.medication-lean-table) [data-label]::before { content:attr(data-label); display:block; margin-bottom:5px; color:#697b72; font-size:12px; font-weight:500; }
+  .responsive :global(.medication-lean-table) tbody td:nth-child(6),
+  .responsive :global(.medication-lean-table) :global(.med-row-actions) { grid-column:1/-1; }
+  .responsive :global(.medication-lean-table) :global(.med-row-actions)::before,
+  .responsive :global(.medication-lean-table) :global(.med-new-row) td:nth-child(4)::before { display:none; }
+  .responsive:global(.medication-table-editor) :global(.medication-lean-table) :global(.med-new-row) td:nth-child(6) { display:none; }
+  .responsive :global(.medication-lean-table) :global(.med-row-action-links) { flex-direction:row; flex-wrap:wrap; gap:16px; }
+  .responsive :global(.medication-lean-table) :global(.med-row-actions) :global(.med-action-pair) { justify-content:flex-end; }
+  .responsive :global(.medication-lean-table) :global(.med-add-row) { display:block; padding:0; }
+  .responsive :global(.medication-lean-table) :global(.med-add-row) td { padding:7px 12px!important; }
+  .responsive :global(.medication-lean-table) :global(.med-effect-controls) { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .responsive :global(.medication-lean-table) tbody td[colspan] { grid-column:1/-1; }
+  .responsive .dates summary { min-height:36px; padding:8px 0; }
+}
+
+@container medication-table (max-width:520px) {
+  .responsive :global(.medication-lean-table) tbody tr { grid-template-columns:minmax(0,1fr); }
+  .responsive:global(.medication-table-editor) :is(input,select) { min-height:44px; font-size:16px!important; }
+  .responsive :global(.medication-lean-table) :global(.med-action-pair) button { width:44px; min-height:44px; }
+  .responsive :global(.medication-lean-table) :global(.med-action-pair) .save { width:auto; min-width:122px; font-size:13px; }
+  .responsive :global(.medication-lean-table .med-row-action-links) button,
+  .responsive :global(.medication-lean-table .med-add-row) button,
+  .responsive :global(.medication-lean-table .med-frequency-times) button,
+  .responsive :global(.medication-lean-table .med-inline-effect) button,
+  .responsive :global(.medication-lean-table .med-add-effect),
+  .responsive :global(.medication-lean-table .med-frequency-reset) { min-height:44px; }
+  .responsive :global(.medication-lean-table .med-row-action-links) button,
+  .responsive :global(.medication-lean-table .med-add-row) button { font-size:13px; }
+  .responsive :global(.medication-lean-table) :global(.med-inline-dose) { max-width:160px; }
+  .responsive :global(.medication-lean-table) :global(.med-inline-dose) input:first-child { min-width:80px; }
+  .responsive :global(.medication-lean-table) :global(.med-new-date) { font-size:12px; }
+  .responsive :global(.medication-lean-table) :global(.med-inline-error) { font-size:12px; }
+  .responsive .dates summary { min-height:44px; }
+}

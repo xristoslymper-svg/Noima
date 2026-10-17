@@ -349,5 +349,8 @@ export const errorMessageKeys = {
   "Γράψε μια ερώτηση έως 500 χαρακτήρες.": "validation.recordQuestionLength",
   "Γράψτε μια σύντομη εργασία.": "validation.shortTask",
   "Αποθηκεύστε την κλινική καταγραφή πριν οριστικοποιήσετε.": "validation.saveBeforeFinalizing",
-  "Χρειάζεται καταγραφή: ": "validation.recordRequiredPrefix"
+  "Χρειάζεται καταγραφή: ": "validation.recordRequiredPrefix",
+  "Η αγωγή έχει ήδη καταχωριστεί. Ανανεώστε πριν κάνετε αλλαγές.": "errors.medicationRequestConflict",
+  "Συμπληρώστε έγκυρα στοιχεία αγωγής.": "errors.medicationRegistrationInvalid",
+  "Η καταχώριση προϋπάρχουσας αγωγής δεν είναι διαθέσιμη ακόμη.": "errors.medicationRegistrationUnavailable"
 } as const;

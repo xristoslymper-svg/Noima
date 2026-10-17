@@ -12,10 +12,17 @@ import MedicationTable from './MedicationTable';
 import MedicationFrequency from './MedicationFrequency';
 import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
+import type {Assessment} from '@/lib/clinical/core-types';
+import HistoryAddMenu,{type HistoryAddAction} from './HistoryAddMenu';
+import PriorClinicalCourse from './PriorClinicalCourse';
+import HistoricalScoreForm from './HistoricalScoreForm';
+import {PatientDocumentsSection} from './PatientDocuments';
 
 
-export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>}){
+export function HistoryPanel({bundle,reload,beforeNavigate,onMeasurementSaved,onPriorCourse,priorCourseOpen=false,onPriorCourseClose,onPriorCourseDirtyChange}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;onMeasurementSaved?:(measurement:Assessment)=>Promise<unknown>;onPriorCourse?:()=>void;priorCourseOpen?:boolean;onPriorCourseClose?:()=>void;onPriorCourseDirtyChange?:(dirty:boolean)=>void}){
 const t=useTranslations();
+ const [addAction,setAddAction]=useState<HistoryAddAction|null>(null);
+ const [addedNotice,setAddedNotice]=useState('');
  const systemMessage=useSystemMessage();
 
 const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.previousTreatments')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning',t('history.socialFunctioning')],['allergies',t('history.allergies')]] as const;
@@ -64,7 +71,11 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
  useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">{t('patients.recordKicker')}</span><h2>{t('patients.detailsHistory')}</h2><p>{t('history.answersAppearHelp')}</p></div></div>
+  <div className="panel-heading"><div><span className="kicker">{t('patients.recordKicker')}</span><h2>{t('patients.detailsHistory')}</h2></div><HistoryAddMenu onSelect={action=>{setAddedNotice('');setAddAction(action)}}/></div>
+  {addAction==='score'&&<HistoricalScoreForm patientId={bundle.patient.id} onClose={()=>setAddAction(null)} onSaved={async measurement=>{if(onMeasurementSaved)await onMeasurementSaved(measurement);else await reload();setAddedNotice(t('historical.saved'))}}/>}
+  {addedNotice&&<p role="status" className="save-state ok">{addedNotice}</p>}
+  {onPriorCourse&&<div className="history-prior-course"><div className="history-prior-course-header"><strong>{t('historical.priorCourse')}</strong><button type="button" className="record compact history-prior-course-action" onClick={priorCourseOpen?onPriorCourseClose:onPriorCourse} aria-expanded={priorCourseOpen}>{priorCourseOpen?t('common.cancel'):bundle.priorCourse?.content?(t('accessibility.editFieldPrefix')+t('historical.priorCourse')):t('common.add')}</button></div>{priorCourseOpen&&onPriorCourseClose?<PriorClinicalCourse bundle={bundle} reload={reload} onClose={onPriorCourseClose} onDirtyChange={onPriorCourseDirtyChange}/>:bundle.priorCourse?.content?<p>{bundle.priorCourse.content}</p>:null}</div>}
+  <PatientDocumentsSection bundle={bundle} reload={reload} action={addAction==='document'||addAction==='scan'?addAction:null} onClose={()=>setAddAction(null)}/>
   <PatientReportedHistory patientId={bundle.patient.id}/>
 
   <section className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>

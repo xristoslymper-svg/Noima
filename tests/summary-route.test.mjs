@@ -131,3 +131,15 @@ test('draft-only and placeholder notes never call the provider or claim generati
   if(status==='draft')assert.ok(!d.sources.some(s=>s.kind==='session_section'));
  }
 });
+
+test('score and medication-only transferred records return current canonical summary without LLM or generation writes',async()=>{
+ for(const kind of ['score','medication']){
+  const b=fixture();b.sessions=[];b.sections=[];b.risks=[];b.addenda=[];b.assessments=[];b.patient.tester_id='668a6cc0-1692-4c17-a807-c84d09e9f02e';
+  if(kind==='score')b.assessments=[{id:'historical-total',patient_id:b.patient.id,tester_id:b.patient.tester_id,instrument:'PHQ-9',instrument_version:'not_recorded',status:'completed',score:14,answers:null,measurement_source:'historical_manual',administered_on:'2020-01-01',completed_at:'2020-01-01',created_at:'2026-10-17T09:00:00Z',entered_by:'clinician',reviewed_at:'2026-10-17T09:00:00Z',item9_review:false}];
+  else b.medications=[{id:'existing-medication',medication_name:'Synthetic medication',dose:50,unit:'mg',frequency:'daily',status:'active',record_source:'existing',started_at:null,effective_from:null,ended_at:null}];
+  const db={};let calls=0;const handler=route(b,async()=>{calls++;throw Error('unexpected provider')},{OPENAI_API_KEY:'local-fixture'},db);
+  const responses=[await handler.POST(request()),await handler.GET(new Request('http://localhost/api/clinical/summary?tester='+b.patient.tester_id+'&patient_id='+b.patient.id))];
+  for(const response of responses){assert.equal(response.status,200);const result=await response.json();assert.equal(result.mode,'canonical');assert.equal(result.reason,null);assert.equal(result.model,null);assert.equal(result.card.synthesized,false);assert.equal(result.card.date,null);assert.equal(result.card.briefing.ideation.value,'missing');assert.equal(result.card.alerts.length,0);assert.equal(response.headers.get('cache-control'),'no-store');}
+  assert.equal(calls,0);assert.equal(db.calls,undefined);assert.equal(db.cache,undefined);
+ }
+});

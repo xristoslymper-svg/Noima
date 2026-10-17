@@ -1,0 +1,42 @@
+{
+  "commit": "local",
+  "scope": "Actual PatientSession and clinical components with real CSS. Synthetic fixture patient, persistence and transcription/AI responses. Not live-provider or Supabase verification.",
+  "tests": [
+    {
+      "name": "desktop: outside headings, ivory editors, quiet MSE, accessible provenance",
+      "status": "passed"
+    },
+    {
+      "name": "MSE selection then clearing stays empty, not normal; values and save contract retained",
+      "status": "passed"
+    },
+    {
+      "name": "legacy formulation and narrative MSE remain recoverable without alternative editors",
+      "status": "passed"
+    },
+    {
+      "name": "mobile: usable widths and same-editor recorder pause/resume/transcription",
+      "status": "passed"
+    },
+    {
+      "name": "follow-up retains its editor, structured MSE and no global unassessed shortcut",
+      "status": "passed"
+    },
+    {
+      "name": "single interview heading keeps named field and inline mic/AI, with no duplicate label",
+      "status": "passed"
+    },
+    {
+      "name": "desktop: grouped sections and responsive medication retain clinical panel styling",
+      "status": "passed"
+    },
+    {
+      "name": "mobile: grouped risk/history/assessment fit and retain external headings",
+      "status": "passed"
+    },
+    {
+      "name": "follow-up: compact grouped panels and detailed session keep common layout",
+      "status": "passed"
+    }
+  ]
+}

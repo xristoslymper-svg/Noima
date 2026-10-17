@@ -1,0 +1,107 @@
+{
+  "scope": "Synthetic fixture, actual current components and full layout CSS; no live API verification.",
+  "fixtureAutosaveRequests": 0,
+  "liveWrites": 0,
+  "results": [
+    {
+      "size": "desktop",
+      "tab": "summary",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "desktop",
+      "tab": "timeline",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "desktop",
+      "tab": "treatment",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "desktop",
+      "tab": "history",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "desktop",
+      "tab": "record",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "mobile",
+      "tab": "summary",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "mobile",
+      "tab": "timeline",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "mobile",
+      "tab": "treatment",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "mobile",
+      "tab": "history",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    },
+    {
+      "size": "mobile",
+      "tab": "record",
+      "status": "passed",
+      "canvas": "rgb(248, 245, 239)",
+      "ink": "rgb(38, 58, 50)",
+      "navigation": "rgba(251, 252, 250, 0.72)",
+      "surface": "rgba(251, 252, 250, 0.88)",
+      "overflow": false
+    }
+  ]
+}

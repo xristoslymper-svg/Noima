@@ -3,6 +3,7 @@ import {withPilot} from '@/lib/pilot/route';
 import {rpc} from '@/lib/patients/demo-runtime';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {diagnosisOptions,familyConditions,familyRelations,medicalOptions,reasonOptions,substanceOptions,type HistoryAnswers,type IntakeIdentity} from '@/lib/intake/history';
+import {parseHistoricalScan} from '@/lib/documents/scan-server';
 
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=120;
 const model=process.env.OPENAI_SCAN_MODEL||'gpt-5.6-luna';
@@ -38,6 +39,7 @@ async function post(request:Request){
  const body=await request.json().catch(()=>({}));const tester=String(body.tester||'');
  if(!isClinicalId(tester))return errorJson({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
  if(process.env.CLINICAL_DATA_MODE==='real')return errorJson({error:'Η σάρωση πραγματικών κλινικών δεδομένων δεν έχει ενεργοποιηθεί.'},{status:403});
+ if(body.mode==='historical')return parseHistoricalScan(body,tester);
  try{
   if(body.action==='commit'){
    if(!isClinicalId(String(body.intake_id||'')))return errorJson({error:'Μη έγκυρη ανάθεση.'},{status:400});

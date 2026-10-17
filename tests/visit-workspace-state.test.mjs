@@ -120,13 +120,14 @@ test('previous MSE never skips the immediately previous completed visit',()=>{
 
 test('legacy medication and measurement links retain contextual destination',()=>{
  assert.deepEqual(workspaceLocation('?tab=medications'),{tab:'treatment',sessionId:null});
- assert.deepEqual(workspaceLocation('?tab=psychometrics'),{tab:'treatment',sessionId:null});
- assert.equal(workspaceTransitionSearch('?appointment=a','psychometrics'),'?appointment=a&tab=treatment&section=measurements');
+ assert.deepEqual(workspaceLocation('?tab=psychometrics'),{tab:'timeline',sessionId:null});
+ assert.deepEqual(workspaceLocation('?tab=treatment&section=measurements'),{tab:'timeline',sessionId:null});
+ assert.equal(workspaceTransitionSearch('?appointment=a','psychometrics'),'?appointment=a&tab=timeline&section=measurements');
 });
 
 test('measurement destinations retain the selected assessment and appointment through reloads and clear it on leaving',()=>{
  const selected=workspaceMeasurementSearch('?appointment=appt&tab=timeline&session=visit','score/with spaces');
- assert.deepEqual(workspaceLocation(selected),{tab:'treatment',sessionId:'visit'});
+ assert.deepEqual(workspaceLocation(selected),{tab:'timeline',sessionId:'visit'});
  assert.equal(workspaceSelectedAssessment(selected),'score/with spaces');
  assert.equal(new URLSearchParams(selected).get('appointment'),'appt');
  assert.equal(workspaceSelectedAssessment(workspaceTransitionSearch(selected,'history')),null);

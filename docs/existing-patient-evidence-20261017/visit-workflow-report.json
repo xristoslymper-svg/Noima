@@ -1,0 +1,165 @@
+{
+  "scope": "React/browser and real PostgreSQL repository migrations/RPCs; synthetic HTTP/auth adapter. No remote AI, SMS, email, live database or production patient data.",
+  "results": [
+    {
+      "name": "initial-finalize-payment-next-visit",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "compact-followup-finalizes-once",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-followup-finalizes-once",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "compact-blocker-focus",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-blocker-focus",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "recovery-requires-consent-and-preserves-local",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "retry-save-does-not-replace-local",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "immediate-escape-flushes-exact-session",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "two-tabs-reject-stale-overwrite",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "double-click-finalization-is-single-mutation",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "committed-finalization-refresh-failure-is-read-only",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-recovery-fails-closed-on-storage-error",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "administrative-errors-preserve-clinical-completion",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "booking-commit-refresh-failure-prevents-resubmission",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "calendar-button-preserves-real-origin",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "current-appointment-excluded-and-calendar-return",
+      "size": "desktop",
+      "status": "passed"
+    },
+    {
+      "name": "initial-finalize-payment-next-visit",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "compact-followup-finalizes-once",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-followup-finalizes-once",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "compact-blocker-focus",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-blocker-focus",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "recovery-requires-consent-and-preserves-local",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "retry-save-does-not-replace-local",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "immediate-escape-flushes-exact-session",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "two-tabs-reject-stale-overwrite",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "double-click-finalization-is-single-mutation",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "committed-finalization-refresh-failure-is-read-only",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "detailed-recovery-fails-closed-on-storage-error",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "administrative-errors-preserve-clinical-completion",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "booking-commit-refresh-failure-prevents-resubmission",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "calendar-button-preserves-real-origin",
+      "size": "mobile",
+      "status": "passed"
+    },
+    {
+      "name": "current-appointment-excluded-and-calendar-return",
+      "size": "mobile",
+      "status": "passed"
+    }
+  ]
+}

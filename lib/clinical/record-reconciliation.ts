@@ -4,7 +4,7 @@ import type {DemoSession,PatientBundle} from '../patients/demo-runtime';
 export function assertRecordIdentity(value:unknown,patientId:string,sessionId?:string):asserts value is PatientBundle{
  const bundle=value as Partial<PatientBundle>|null;
  if(!bundle?.patient||bundle.patient.id!==patientId||!Array.isArray(bundle.sessions)||!Array.isArray(bundle.sections)||!Array.isArray(bundle.risks))throw new Error('Δεν επιβεβαιώθηκε ο φάκελος του επιλεγμένου ασθενούς. Δοκιμάστε ξανά.');
- for(const rows of [bundle.sessions,bundle.sections,bundle.risks,bundle.medications||[],bundle.medicationEvents||[],bundle.medicationSideEffects||[],bundle.assessments||[],bundle.proposals||[],bundle.addenda||[],bundle.corrections||[]]){
+ for(const rows of [bundle.sessions,bundle.sections,bundle.risks,bundle.medications||[],bundle.medicationEvents||[],bundle.medicationSideEffects||[],bundle.assessments||[],bundle.proposals||[],bundle.addenda||[],bundle.corrections||[],bundle.historyImports||[]]){
   if(!Array.isArray(rows))throw new Error('Η απάντηση του φακέλου δεν είναι έγκυρη.');
   for(const row of rows){
    if(!row||typeof row!=='object'||('patient_id' in row&&row.patient_id!==patientId))throw new Error('Η απάντηση δεν αντιστοιχεί στον επιλεγμένο ασθενή.');

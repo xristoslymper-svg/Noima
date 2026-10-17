@@ -3,8 +3,10 @@
 import {PGlite} from '@electric-sql/pglite';
 import {createServer} from 'node:http';
 import {readFile,readdir} from 'node:fs/promises';
+import {storageSchemaSql} from './storage-schema.mjs';
 const db=new PGlite();
 await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth; create table auth.users(id uuid primary key,email text);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
+await db.exec(storageSchemaSql);
 for(const name of (await readdir('supabase/migrations')).filter(x=>x.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+name,'utf8'));
 const ident=x=>{if(!/^[a-z_][a-z_0-9]*$/.test(x))throw Error('invalid_identifier');return '"'+x+'"'};
 let queue=Promise.resolve();

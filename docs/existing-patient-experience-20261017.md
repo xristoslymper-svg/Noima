@@ -154,13 +154,33 @@ exports (5). The existing-patient browser runner passed at 1440×1000 and
 
 ### What this does and does not prove
 
-The actual React components and application API handlers ran against actual
-repository SQL migrations, RPCs, triggers, authorization and RLS in disposable
-PGlite PostgreSQL databases. Synthetic adapters supplied Supabase-owned Auth,
-REST transport and object-byte transport. Extraction used deterministic provider
-responses. No real clinical data, email or SMS was used.
+The local React/API suites ran against actual repository SQL migrations, RPCs,
+triggers, authorization and RLS in disposable PGlite PostgreSQL databases.
+Synthetic adapters supplied Supabase-owned Auth, REST transport and object-byte
+transport. Extraction used deterministic provider responses.
 
-Hosted Supabase Auth/Storage behavior and live extraction accuracy remain
+The separate **Isolated visit application APIs** GitHub Actions workflow starts
+disposable Supabase services, applies the repository migrations and builds the
+actual Next application with loopback-only endpoints. Its existing visit and
+calendar regression passed with real cookie Auth and PostgREST. The workflow
+now also enables private Storage and invokes
+[`existing-patient-supabase.mjs`](../browser-tests/existing-patient-supabase.mjs)
+on desktop and mobile. That helper exercises historical scores, original bytes,
+Storage policies, cross-patient/workspace denial, retries, reviewed imports,
+existing medication, previous course and a calendar-only appointment.
+Its execution results and screenshots are written to the workflow's
+`visit-application-api-evidence` artifact under `existingPatientResults`.
+
+External AI remains disabled in that real-service suite, including an assertion
+that the actual extraction endpoint refuses the request. Only the browser's
+extraction response is a deterministic fixture, backed by authenticated scan
+RPCs and an original that was really uploaded and retrieved. Upload, review and
+final approval continue through real application routes. The service-role
+client only sets up synthetic users and inspects the private bucket settings;
+clinical writes and document delivery use the authenticated clinician client.
+No real clinical data, email or SMS is used.
+
+Deployment-specific hosted configuration and live extraction accuracy remain
 untested. No isolated hosted branch was available; the branch creation request
 did not complete, and a subsequent read confirmed that no branch was created.
 The local headless browser has no native PDF viewer: authorized PDF bytes and
@@ -175,16 +195,16 @@ Three new migrations are committed for review, in order:
 2. `20261017091931_patient_document_imports.sql`
 3. `20261017092001_existing_patient_medication_registration.sql`
 
-They have only been applied to disposable local test databases. **No shared or
+They have only been applied to disposable local and GitHub CI test databases. **No shared or
 production database migration, merge or production deployment is authorized or
 performed by this change.** A code preview against the existing shared schema
 cannot establish successful hosted writes for these additions. Missing-feature
 RPCs fail explicitly while existing patient reads retain their fallback path.
 
 The next release gate is an approved isolated hosted database and application
-preview configured exclusively for it, followed by real Auth/Storage and live
-scan tests with synthetic records. Shared-database migration and merge require
-separate explicit authorization.
+preview configured exclusively for it, followed by deployment-specific
+Auth/Storage and live scan tests with synthetic records. Shared-database
+migration and merge require separate explicit authorization.
 
 Bulk CSV/Excel migration remains future scope. It would need a reviewed staging
 format, explicit patient matching and stable external record IDs before safe

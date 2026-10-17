@@ -1,4 +1,5 @@
 import {unsavedLocaleSwitch,localePersistenceAndRecipient,assertLoginPresentation,assertWorkspacePresentation} from './i18n-application.mjs';
+import {existingPatientSupabase} from './existing-patient-supabase.mjs';
 // C: browser -> actual Next.js handlers -> local Supabase Auth/PostgREST/RPCs.
 // Only run on a disposable GitHub runner. Never accepts a remote database URL.
 import assert from 'node:assert/strict';
@@ -18,11 +19,13 @@ execFileSync('npm',['run','build'],{env,stdio:'inherit'});
 // browser requests exercise the unchanged same-origin protection correctly.
 const server=spawn('npm',['run','start','--','--hostname','localhost','--port','3100'],{env,stdio:'ignore'}),origin='http://localhost:3100';
 const admin=createClient(api,config.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-const out=resolve('test-results/visit-application-api');mkdirSync(out,{recursive:true});const results=[],timings=[];
+const out=resolve('test-results/visit-application-api');mkdirSync(out,{recursive:true});const results=[],timings=[],existingPatientResults=[];
 let browser;
 try{
  for(let i=0;i<90;i++){try{if((await fetch(origin+'/login')).ok)break}catch{}if(i===89)throw Error('Next server unavailable');await new Promise(r=>setTimeout(r,500))}
- browser=await chromium.launch();
+ // Full Chromium's headless mode also exposes the native PDF viewer, allowing
+ // protected-original rendering to be inspected without weakening CSP/sandbox.
+ browser=await chromium.launch({channel:'chromium',headless:true});
  async function user(label){const email=`qa-${randomUUID()}@example.invalid`,password=randomUUID()+'QA!';const created=await admin.auth.admin.createUser({email,password,email_confirm:true});assert.equal(created.error,null);
   const client=createClient(api,key,{auth:{persistSession:false,autoRefreshToken:false}});const auth=await client.auth.signInWithPassword({email,password});assert.equal(auth.error,null);
   const joined=await client.rpc('pilot_join',{p_name:'QA '+label});assert.equal(joined.error,null);return {email,password,client,workspace:joined.data.workspace_id};}
@@ -36,7 +39,7 @@ try{
   await assertLoginPresentation(page);await page.screenshot({path:resolve(out,size+'-login-en.png')});
   await page.getByRole('button',{name:'Ελληνικά',exact:true}).click();await page.waitForFunction(()=>document.documentElement.lang==='el');
   const login=await context.request.post(origin+'/api/pilot',{headers:{origin},data:{action:'login',email:owner.email,password:owner.password}});assert.equal(login.status(),200,`Application login: ${(await login.json()).error??'ok'}`);
-  const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.postDataJSON()?.action})});
+  const calls=[];page.on('request',r=>{if(r.url().includes('/api/'))calls.push({path:new URL(r.url()).pathname,method:r.method(),action:r.headers()['content-type']?.includes('application/json')?r.postDataJSON()?.action:undefined})});
   async function post(path,data){const r=await context.request.post(origin+path,{headers:{origin},data});const body=await r.json();assert.equal(r.ok(),true,`${path}: ${body.error}`);return body}
   const started=new Date();started.setUTCDate(started.getUTCDate()+2+(size==='mobile'?1:0));started.setUTCHours(10,0,0,0);
   // A new-patient appointment and session are created through the real routes.
@@ -101,14 +104,16 @@ try{
   const denied=await unauthorized.request.get(origin+'/api/patients/demo/visit?patient='+patientId+'&session='+sessionId+'&tester='+owner.workspace);assert.equal(denied.ok(),false);
   const wrongPayment=await unauthorized.request.post(origin+'/api/calendar/payment',{headers:{origin},data:{tester:owner.workspace,event_id:appointmentId,status:'pending'}});assert.equal(wrongPayment.ok(),false);
   assert.equal((await owner.client.from('demo_calendar_events').select('payment_status').eq('id',appointmentId).single()).data.payment_status,'paid');
-  await unauthorized.close();await context.close();results.push({size,status:'passed',scenario:'new appointment -> real save/finalize/payment/booking -> reload -> calendar; cross-workspace read/write rejected'});
+  await unauthorized.close();
+  existingPatientResults.push(await existingPatientSupabase({browser,context,page,origin,api,owner,other,admin,out,size}));
+  await context.close();results.push({size,status:'passed',scenario:'new appointment -> real save/finalize/payment/booking -> reload -> calendar; cross-workspace read/write rejected'});
  }
 }catch(error){
  // These contexts can only reach the disposable synthetic application.
  for(const [index,context] of (browser?.contexts()??[]).entries())for(const [tab,page] of context.pages().entries())await page.screenshot({path:resolve(out,`failure-${index}-${tab}.png`)}).catch(()=>{});
  throw error;
 }finally{
- writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'C: real Next.js application, Supabase Auth/PostgREST and repository migrations in disposable GitHub CI; synthetic users and records only',results,timings},null,2));
+ writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'C: real Next.js application, Supabase Auth/PostgREST/Storage and repository migrations in disposable GitHub CI; synthetic users and records only',results,timings,existingPatientResults},null,2));
  await browser?.close();server.kill('SIGTERM');
 }
-assert.equal(results.length,2);console.log('PASS desktop and mobile real application API workflow; evidence contains synthetic records only.');
+assert.equal(results.length,2);assert.equal(existingPatientResults.length,2);console.log('PASS desktop and mobile real application API workflow and existing-patient Auth/Storage workflows; evidence contains synthetic records only.');

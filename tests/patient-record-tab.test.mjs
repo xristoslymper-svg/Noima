@@ -21,7 +21,7 @@ async function mount(search='',sessions=[]){
  return {render,posts,location,listeners,visit:()=>nodes(render()).find(n=>n.type===VisitWorkspace),nav:label=>nodes(render()).find(n=>n.props.label===label),tree:()=>render()};
 }
 const draft=id=>({id,patient_id:'p',tester_id:'tenant',version:1,status:'draft',session_type:'initial_assessment',started_at:'2026-10-10'});
-test('patient composition has four browsing tabs and a recording dialog; passive open never writes',async()=>{
+test('patient composition has four browsing tabs and an inline recording surface; passive open never writes',async()=>{
  const app=await mount('?tab=record',[draft('a'),draft('b')]);assert.deepEqual(nodes(app.tree()).filter(n=>n.props.label).map(n=>n.props.label),['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό']);assert.equal(app.visit(),undefined);assert.equal(app.posts.length,0);assert.equal(nodes(app.tree()).filter(n=>n.type==='button'&&n.props.children?.includes?.(' · ')).length,2);
 });
 test('record remains mounted with exactly the selected completed or draft session across tabs and refresh locations',async()=>{
@@ -36,4 +36,4 @@ test('legacy explicit sessions are routed to the recording workspace, never subs
 
 
 
-test('dialog close flushes pending work and returns to the background tab; export is in the dropdown',async()=>{const app=await mount('?tab=timeline&record_session=exact',[draft('exact')]);await app.visit().props.onSelect('exact');await tick();let flushed=0;app.visit().props.beforeNavigate.current=async()=>{flushed++};const close=nodes(app.tree()).find(n=>n.type==='button'&&n.props['aria-label']==='Κλείσιμο καταγραφής και επιστροφή στον φάκελο');close.props.onClick();await tick();assert.equal(flushed,1);assert.equal(navigation.workspaceLocation(app.location.search).tab,'timeline');assert.equal(app.visit().props.sessionId,'exact');const details=nodes(app.tree()).find(n=>n.type==='details');assert.ok(nodes(details).some(n=>n.type==='a'&&n.props.href.includes('format=print')));assert.equal(app.posts.length,0)});
+test('record close flushes pending work and returns to the background tab; export is in the dropdown',async()=>{const app=await mount('?tab=timeline&record_session=exact',[draft('exact')]);await app.visit().props.onSelect('exact');await tick();let flushed=0;app.visit().props.beforeNavigate.current=async()=>{flushed++};const close=nodes(app.tree()).find(n=>n.type==='button'&&n.props['aria-label']==='Κλείσιμο καταγραφής και επιστροφή στον φάκελο');close.props.onClick();await tick();assert.equal(flushed,1);assert.equal(navigation.workspaceLocation(app.location.search).tab,'timeline');assert.equal(app.visit().props.sessionId,'exact');const details=nodes(app.tree()).find(n=>n.type==='details');assert.ok(nodes(details).some(n=>n.type==='a'&&n.props.href.includes('format=print')));assert.equal(app.posts.length,0)});

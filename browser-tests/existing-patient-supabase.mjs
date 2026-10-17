@@ -66,7 +66,10 @@ export async function existingPatientSupabase({browser, context, page, origin, a
     await form.getByRole('button', {name: 'Αποθήκευση', exact: true}).click();
     await form.waitFor({state: 'detached'});
   }
-  const scores = (await get('/api/patients/demo/measurements?patient_id=' + patient.id)).measurements;
+  const scoreResponse = await context.request.get(origin + '/api/patients/demo/measurements?patient_id=' + patient.id);
+  assert.equal(scoreResponse.headers()['x-frame-options'], 'DENY', 'unrelated API endpoints retain the global framing protection');
+  assert.equal(scoreResponse.headers()['content-security-policy'], "base-uri 'self'; frame-ancestors 'none'; object-src 'none'");
+  const scores = (await ok(scoreResponse)).measurements;
   assert.deepEqual(scores.map(row => [row.administered_on, row.score]), [['2023-09-12', 7], ['2022-06-15', 14], ['2020-02-10', 19]]);
   assert.ok(scores.every(row => row.answers === null && row.item9_review === false && row.session_id === null && row.appointment_id === null));
   assert.match(await measurements.getByRole('img', {name: /^PHQ-9/}).getAttribute('aria-label'), /2020.*19.*2022.*14.*2023.*7/);
@@ -95,6 +98,7 @@ export async function existingPatientSupabase({browser, context, page, origin, a
     assert.deepEqual(await response.body(), dischargeBytes);
     assert.equal(response.headers()['cache-control'], 'private, no-store');
     assert.equal(response.headers()['x-content-type-options'], 'nosniff');
+    assert.equal(response.headers()['x-frame-options'], 'SAMEORIGIN');
     assert.match(response.headers()['content-security-policy'], /sandbox/);
     assert.match(response.headers()['content-disposition'], download ? /^attachment;/ : /^inline;/);
   }

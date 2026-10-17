@@ -127,6 +127,11 @@ on browsers without a native PDF viewer. The final table retains seven semantic
 column headers and readable mobile controls. Charts are compact and aligned
 with their heading. No new page transition or permanent toolbar is required.
 
+Real Next.js HTTP checks exposed the global framing headers overriding the
+document endpoint's intended policy. An exact document-route header rule
+preserves its sandbox and permits same-origin framing; other endpoints retain
+the global framing denial. The real-service suite checks both policies.
+
 ## Verification evidence
 
 The [evidence report](existing-patient-evidence-20261017/report.json) includes

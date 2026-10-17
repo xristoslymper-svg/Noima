@@ -14,6 +14,15 @@ const nextConfig = {
         ],
       },
       { source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }] },
+      {
+        // Authorized originals can appear beside their clinical review.
+        // Keep this exact route after the global framing restriction.
+        source: '/api/patients/documents',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "default-src 'none'; sandbox; frame-ancestors 'self'" },
+        ],
+      },
     ];
   },
 };

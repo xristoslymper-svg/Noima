@@ -6,7 +6,7 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import styles from './PriorClinicalCourse.module.css';
 
-export default function PriorClinicalCourse({bundle,reload,onClose}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onClose:()=>void}){
+export default function PriorClinicalCourse({bundle,reload,onClose,onDirtyChange}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onClose:()=>void;onDirtyChange?:(dirty:boolean)=>void}){
  const t=useTranslations();
  const initial=bundle.priorCourse;
  const [content,setContent]=useState(initial?.content||'');
@@ -17,6 +17,7 @@ export default function PriorClinicalCourse({bundle,reload,onClose}:{bundle:Pati
  const busy=useRef(false);
  const saveRequestId=useRef<string|null>(null);
  const dirty=content!==(initial?.content||'')||period!==(initial?.period_label||'');
+ useEffect(()=>{onDirtyChange?.(dirty);return()=>onDirtyChange?.(false)},[dirty,onDirtyChange]);
  function closeEditor(){if(dirty&&!window.confirm(t('priorCourse.unsavedConfirm')))return;onClose();}
  useEffect(()=>{const onLeave=(e:BeforeUnloadEvent)=>{if(content!==(initial?.content||'')||period!==(initial?.period_label||'')){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',onLeave);return()=>window.removeEventListener('beforeunload',onLeave)},[content,period,initial]);
  useEffect(()=>()=>{recorder.current?.stop();stream.current?.getTracks().forEach(t=>t.stop())},[]);

@@ -14,11 +14,12 @@ import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
 import type {Assessment} from '@/lib/clinical/core-types';
 import HistoryAddMenu,{type HistoryAddAction} from './HistoryAddMenu';
+import PriorClinicalCourse from './PriorClinicalCourse';
 import HistoricalScoreForm from './HistoricalScoreForm';
 import {PatientDocumentsSection} from './PatientDocuments';
 
 
-export function HistoryPanel({bundle,reload,beforeNavigate,onMeasurementSaved,onPriorCourse}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;onMeasurementSaved?:(measurement:Assessment)=>Promise<unknown>;onPriorCourse?:()=>void}){
+export function HistoryPanel({bundle,reload,beforeNavigate,onMeasurementSaved,onPriorCourse,priorCourseOpen=false,onPriorCourseClose}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;onMeasurementSaved?:(measurement:Assessment)=>Promise<unknown>;onPriorCourse?:()=>void;priorCourseOpen?:boolean;onPriorCourseClose?:()=>void}){
 const t=useTranslations();
  const [addAction,setAddAction]=useState<HistoryAddAction|null>(null);
  const [addedNotice,setAddedNotice]=useState('');
@@ -73,7 +74,7 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
   <div className="panel-heading"><div><span className="kicker">{t('patients.recordKicker')}</span><h2>{t('patients.detailsHistory')}</h2></div><HistoryAddMenu onSelect={action=>{setAddedNotice('');setAddAction(action)}}/></div>
   {addAction==='score'&&<HistoricalScoreForm patientId={bundle.patient.id} onClose={()=>setAddAction(null)} onSaved={async measurement=>{if(onMeasurementSaved)await onMeasurementSaved(measurement);else await reload();setAddedNotice(t('historical.saved'))}}/>}
   {addedNotice&&<p role="status" className="save-state ok">{addedNotice}</p>}
-  {onPriorCourse&&<div className="history-prior-course"><button type="button" className="patient-reported-link" onClick={onPriorCourse}>{t('historical.priorCourse')}</button>{bundle.priorCourse?.content&&<p>{bundle.priorCourse.content}</p>}</div>}
+  {onPriorCourse&&<div className="history-prior-course"><div className="history-prior-course-header"><strong>{t('historical.priorCourse')}</strong><button type="button" className="history-prior-course-action" onClick={priorCourseOpen?onPriorCourseClose:onPriorCourse} aria-expanded={priorCourseOpen}>{priorCourseOpen?t('common.cancel'):bundle.priorCourse?.content?t('common.edit'):t('common.add')}</button></div>{priorCourseOpen&&onPriorCourseClose?<PriorClinicalCourse bundle={bundle} reload={reload} onClose={onPriorCourseClose}/>:bundle.priorCourse?.content?<p>{bundle.priorCourse.content}</p>:null}</div>}
   <PatientDocumentsSection bundle={bundle} reload={reload} action={addAction==='document'||addAction==='scan'?addAction:null} onClose={()=>setAddAction(null)}/>
   <PatientReportedHistory patientId={bundle.patient.id}/>
 

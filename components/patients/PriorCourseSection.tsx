@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useId,useRef,useState,type MutableRefObject} from 'react';
+import {useCallback,useEffect,useLayoutEffect,useId,useRef,useState,type MutableRefObject} from 'react';
 import {Check,Mic,Plus,Square,X} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
@@ -21,8 +21,9 @@ export default function PriorCourseSection({patientId,beforeNavigate}:Props){
  const initial=fromRecord(record),dirty=draft.content!==initial.content||draft.period!==initial.period;
  const voiceBusy=phase!=='idle';
  const pending=saving||voiceBusy||hasAudio||open&&dirty;
- const guard=useCallback(async()=>{if(pending)throw new Error('Αποθηκεύστε ή ακυρώστε την προηγούμενη κλινική πορεία πριν αλλάξετε περιοχή.')},[pending]);
- useEffect(()=>{if(!beforeNavigate)return;beforeNavigate.current=guard;return()=>{if(beforeNavigate.current===guard)beforeNavigate.current=null}},[beforeNavigate,guard]);
+ const pendingRef=useRef(pending);pendingRef.current=pending;
+ const guard=useCallback(async()=>{if(pendingRef.current)throw new Error('Αποθηκεύστε ή ακυρώστε την προηγούμενη κλινική πορεία πριν αλλάξετε περιοχή.')},[]);
+ useLayoutEffect(()=>{if(!beforeNavigate)return;beforeNavigate.current=guard;return()=>{if(beforeNavigate.current===guard)beforeNavigate.current=null}});
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;loadAbort.current?.abort();transcription.current?.abort();recorder.current?.cancel()}},[]);
  function clearDraft(){try{sessionStorage.removeItem(key)}catch{}}
  async function load(restore=true){
@@ -70,7 +71,7 @@ export default function PriorCourseSection({patientId,beforeNavigate}:Props){
   try{await capture.start()}catch(cause){if(alive.current){setPhase('idle');setError(cause instanceof Error?cause.message:'Δεν υπάρχει πρόσβαση στο μικρόφωνο.')}}
  }
  const status=<>{loading&&<p className={styles.meta} role="status">Φόρτωση προηγούμενης πορείας…</p>}{saved&&<p className={styles.success} role="status">Η προηγούμενη πορεία αποθηκεύτηκε.</p>}{error&&<p className={styles.error} role="alert">{error}{!ready&&!loading&&<button className={styles.secondary+' '+styles.retry} onClick={()=>void load()}>Επανάληψη</button>}{conflict&&<button className={styles.secondary+' '+styles.retry} onClick={()=>void reloadSaved()}>Φόρτωση αποθηκευμένης έκδοσης</button>}</p>}</>;
- return <section className={styles.section} aria-label="Προηγούμενη κλινική πορεία">
+ return <section className={styles.section} data-prior-pending={pending} aria-label="Προηγούμενη κλινική πορεία">
   {!open&&<>{record?<div className={styles.read}><div className={styles.heading}><h3>Προηγούμενη κλινική πορεία</h3><button type="button" className={styles.action} onClick={()=>{setOpen(true);setSaved(false)}} disabled={!ready}>Επεξεργασία</button></div><p className={styles.meta}>Πριν από το NOIMA{record.period_label?' · '+record.period_label:''} · Αναδρομική καταχώριση</p><p className={styles.content}>{record.content}</p><small className={styles.meta}>Καταχωρίστηκε {new Intl.DateTimeFormat('el-GR',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Athens'}).format(new Date(record.created_at))}</small></div>:<button type="button" className={styles.action} disabled={!ready} onClick={()=>{setOpen(true);setSaved(false)}}><Plus size={16}/> Προηγούμενη κλινική πορεία</button>}{status}</>}
   {open&&<div className={styles.form} onKeyDown={event=>{if(event.key==='Escape'&&!voiceBusy&&!saving){event.preventDefault();event.stopPropagation();cancel()}}}>
    <div className={styles.heading}><div><span className={styles.meta}>ΠΡΙΝ ΑΠΟ ΤΟ NOIMA</span><h3 id={titleId}>Προηγούμενη κλινική πορεία</h3></div></div>

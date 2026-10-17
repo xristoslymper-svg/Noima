@@ -1,0 +1,42 @@
+name: Selective port workspace
+on:
+  push:
+    branches: [feat/prod-library-prior-course-20261017]
+    paths: [.github/workflows/selective-workspace.yml]
+permissions:
+  contents: read
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Repository instructions and clean baseline
+        run: |
+          git status --short
+          git diff --stat
+          find . -name AGENTS.md -not -path './.git/*' -print -exec cat {} \;
+      - name: Package committed repository objects only
+        run: git bundle create noima-source.bundle --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selective-source
+          path: noima-source.bundle
+          retention-days: 3
+      - name: Install isolated dependencies without application credentials
+        run: npm ci --ignore-scripts
+      - name: Package isolated dependencies
+        run: tar -czf noima-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selective-dependencies
+          path: noima-dependencies.tar.gz
+          compression-level: 0
+          retention-days: 3

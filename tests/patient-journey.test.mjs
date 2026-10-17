@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {journeyExcerpt,journeyReview,latestJourneyNotes,previousJourneyVisit} from '../lib/clinical/patient-journey.ts';
+import {journeyExcerpt,journeyReview,journeyReviewFingerprint,latestJourneyNotes,previousJourneyVisit} from '../lib/clinical/patient-journey.ts';
 const seed=()=>JSON.parse(readFileSync('browser-tests/fixtures/warm-patient.json','utf8'));
 test('previous-visit context excludes drafts, the current visit and future clinical dates',()=>{
  const b=seed(),template=b.sessions[0];
@@ -38,4 +38,12 @@ test('both editors flush, validate and require explicit review confirmation befo
  const workspace=readFileSync('components/patients/PatientWorkspace.tsx','utf8');
  assert.ok(workspace.indexOf('confirmedCompletion(fresh.sessions')<workspace.indexOf('setCompletedJourney(session.id)'));
  assert.doesNotMatch(workspace,/<dialog/);assert.match(workspace,/JourneyCompletion/);
+});
+
+test('review identity detects post-review clinical edits and version changes',()=>{
+ const b=seed(),s=b.sessions[0],before=journeyReviewFingerprint(b,s.id);
+ const changed=structuredClone(b);changed.sessions.find(x=>x.id===s.id).version++;
+ assert.notEqual(journeyReviewFingerprint(changed,s.id),before);
+ const unrelated=structuredClone(b);unrelated.sections.push({session_id:'other',section_key:'interview',content:'Unrelated'});
+ assert.equal(journeyReviewFingerprint(unrelated,s.id),before);
 });

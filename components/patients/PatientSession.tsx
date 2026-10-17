@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
+import {journeyReviewFingerprint} from '@/lib/clinical/patient-journey';
 import {JourneyReview} from './PatientJourney';
 import FollowupClosure from './FollowupClosure';
 import RiskEditor from './RiskTreeEditor';
@@ -165,6 +166,7 @@ export default function PatientSession({
    if(!draft)throw new Error('Δεν υπάρχει το επιλεγμένο πρόχειρο.');
    if(blocker){setReviewBundle(null);setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
    if(!confirm){setReviewBundle(fresh);return}
+   if(reviewBundle&&journeyReviewFingerprint(fresh,draft.id)!==journeyReviewFingerprint(reviewBundle,draft.id)){setReviewBundle(fresh);setFlushError('Η καταγραφή άλλαξε μετά τον έλεγχο. Ελέγξτε τη νέα έκδοση και επιβεβαιώστε ξανά.');return}
    await onFinalize(draft.id);
   }catch{
    // The concrete save/finalize error is already rendered in the workspace.

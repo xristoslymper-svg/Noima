@@ -3,7 +3,7 @@ import {completedVisitNotes} from './completed-visit-notes.ts';
 import {sessionClinicalTime} from './visit-workspace-state.ts';
 
 export function previousJourneyVisit(bundle:PatientBundle,current?:DemoSession){
- const limit=current?Date.parse(sessionClinicalTime(bundle,current)):Infinity;
+ const limit=current?Date.parse(sessionClinicalTime(bundle,current)):Date.now()+1;
  return bundle.sessions.filter(s=>s.status==='completed'&&s.id!==current?.id&&Date.parse(sessionClinicalTime(bundle,s))<limit)
  .sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a))||a.id.localeCompare(b.id))[0];
 }
@@ -22,3 +22,10 @@ export function journeyReview(bundle:PatientBundle,session:DemoSession){
  };
 }
 export function latestJourneyNotes(bundle:PatientBundle,current?:DemoSession){const visit=previousJourneyVisit(bundle,current);return {visit,notes:completedVisitNotes(bundle,visit)};}
+
+export function journeyReviewFingerprint(bundle:PatientBundle,sessionId:string){
+ const session=bundle.sessions.find(s=>s.id===sessionId);
+ return JSON.stringify({session:session&&{id:session.id,status:session.status,version:session.version,closure_version:session.closure_version,closure_draft:session.closure_draft},
+ sections:bundle.sections.filter(s=>s.session_id===sessionId).map(s=>({key:s.section_key,version:s.version,content:s.content,document:s.document})).sort((a,b)=>a.key.localeCompare(b.key)),
+ risk:bundle.risks.find(r=>r.session_id===sessionId)});
+}

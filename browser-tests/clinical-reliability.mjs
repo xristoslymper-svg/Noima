@@ -98,6 +98,18 @@ try{
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
   });
+  await check('journey-old-draft-and-today-are-explicit-choices',async({page,open})=>{
+   const old=new Date(Date.now()-3*86400000).toISOString();state.sessions.find(s=>s.id===visitId).started_at=old;
+   state.appointments=[{id:'90000000-0000-4000-8000-000000000015',patient_id:patientId,status:'scheduled',appointment_type:'follow_up',scheduled_start:new Date().toISOString(),scheduled_end:new Date(Date.now()+3000000).toISOString(),session_id:null}];
+   await open('?tab=summary');await page.locator('.patient-voice-cta').click();
+   const choices=page.getByRole('region',{name:'Επιλογή συγκεκριμένης επίσκεψης'});await choices.waitFor();
+   assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
+   await choices.getByRole('button',{name:/Συνέχεια προχείρου/}).click();
+   await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);
+   assert.equal(requests.filter(r=>r.action==='start_session').length,0);
+  });
   await check('exact-assessment-and-explicit-review',async({page,open})=>{
    await open(`?tab=psychometrics&assessment=${assessmentId}`);
    const result=page.locator(`[data-assessment-id="${assessmentId}"]`);await result.waitFor();await result.getByText(/13\s*\/\s*27/).waitFor();

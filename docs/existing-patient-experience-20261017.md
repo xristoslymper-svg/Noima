@@ -122,10 +122,16 @@ answers and detailed history comparisons stay behind disclosures. Clinical
 approval and conflict choices remain explicit.
 
 Browser inspection found and corrected medication-table overflow, a narrow
-mobile dose field, a duplicate accessible file input and a large blank PDF pane
-on browsers without a native PDF viewer. The final table retains seven semantic
-column headers and readable mobile controls. Charts are compact and aligned
-with their heading. No new page transition or permanent toolbar is required.
+mobile dose field and a duplicate accessible file input. Full Chromium in CI
+reported native PDF support but could not render the protected original under
+the required sandbox. PDF review now uses a compact, single-column layout and
+one authenticated download link. PDF document names and measurement source
+links also download the original; there is no duplicate open/download control
+or empty viewer. Image originals remain visible beside the review on desktop
+and stacked with it on mobile. Inspecting a PDF adds one optional download action.
+The final medication table retains seven semantic column headers and readable
+mobile controls. Charts are compact and aligned with their heading. No new page
+transition or permanent toolbar is required.
 
 Real Next.js HTTP checks exposed the global framing headers overriding the
 document endpoint's intended policy. An exact document-route header rule
@@ -188,9 +194,11 @@ No real clinical data, email or SMS is used.
 Deployment-specific hosted configuration and live extraction accuracy remain
 untested. No isolated hosted branch was available; the branch creation request
 did not complete, and a subsequent read confirmed that no branch was created.
-The local headless browser has no native PDF viewer: authorized PDF bytes and
-the compact protected-original fallback were verified, while native PDF viewer
-rendering remains unverified. Image originals were visibly rendered.
+Native PDF embedding is deliberately absent after its failure in the full
+Chromium CI browser. Browser download events and exact protected-original bytes
+are tested instead, including document-list and measurement source links.
+Image originals were visibly rendered. This does not establish native PDF
+rendering in an external application chosen by the clinician.
 
 ## Database and release boundary
 

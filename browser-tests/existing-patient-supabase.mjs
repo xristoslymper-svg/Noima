@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash, randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {syntheticDischarge, syntheticHistory, syntheticPhq, syntheticPdf} from '../tests/support/synthetic-existing-documents.mjs';
 
@@ -189,29 +190,25 @@ export async function existingPatientSupabase({browser, context, page, origin, a
   const pdfEvidence = [];
   const inspectPdf = async (dialog, name) => {
     const available = await page.evaluate(() => navigator.pdfViewerEnabled);
-    const href = new URL(await dialog.getByRole('link', {name: 'Άνοιγμα', exact: true}).getAttribute('href'), origin).href;
+    const link = dialog.getByRole('link', {name: /^Λήψη: /});
+    const href = new URL(await link.getAttribute('href'), origin).href;
+    assert.equal(new URL(href).searchParams.get('download'), '1');
+    assert.notEqual(await link.getAttribute('download'), null);
+    assert.equal(await link.getAttribute('target'), null);
     const response = await context.request.get(href);
     assert.equal(response.status(), 200);
     assert.deepEqual(await response.body(), expectedOriginal);
-    if (!available) assert.equal(await dialog.locator('iframe').count(), 0);
-    else {
-      const frame = dialog.locator('iframe[title="Πρωτότυπο"]');
-      await frame.waitFor();
-      assert.equal(await frame.getAttribute('sandbox'), '');
-      // A PDF-capable browser is not proof that a sandboxed PDF actually paints.
-      // Keep the protected response unchanged and preserve images for visual QA.
-      await frame.screenshot({path: resolve(out, size + '-pdf-' + pdfEvidence.length + '-protected-frame.png')});
-      const originalTab = await context.newPage();
-      let navigationError = null;
-      try {
-        await originalTab.goto(href, {waitUntil: 'load', timeout: 10000}).catch(error => { navigationError = error.message.split('\n')[0]; });
-        await originalTab.locator('embed[type="application/pdf"]').waitFor({timeout: 3000}).catch(() => {});
-        await originalTab.screenshot({path: resolve(out, size + '-pdf-' + pdfEvidence.length + '-protected-tab.png')});
-      } finally { await originalTab.close(); }
-      pdfEvidence.push({document: name, originalBytesMatch: true, nativeViewerAvailable: true, nativeRenderingVerified: false, visualInspectionRequired: true, navigationError});
-      return;
-    }
-    pdfEvidence.push({document: name, originalBytesMatch: true, nativeViewerAvailable: available, fallbackVerified: !available, nativeRenderingVerified: false});
+    assert.match(response.headers()['content-disposition'], /^attachment;/);
+    assert.equal(await dialog.locator('iframe').count(), 0, 'protected PDFs have no unsupported native preview pane');
+    assert.equal(await dialog.getByRole('link', {name: 'Άνοιγμα', exact: true}).count(), 0);
+    const compact = await dialog.evaluate(node => ({width: node.getBoundingClientRect().width, scroll: node.scrollWidth, client: node.clientWidth}));
+    assert.ok(compact.width <= 471 && compact.scroll <= compact.client + 1, 'PDF review stays compact without horizontal scrolling');
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    const savedPath = resolve(out, size + '-pdf-' + pdfEvidence.length + '-protected-download.pdf');
+    await download.saveAs(savedPath);
+    assert.equal(await download.failure(), null);
+    assert.deepEqual(readFileSync(savedPath), expectedOriginal, 'the browser downloads the exact protected original');
+    pdfEvidence.push({document: name, originalBytesMatch: true, nativeViewerAvailable: available, nativeRendererUsed: false, protectedDownloadVerified: true, downloadedBytesMatch: true, compactWidth: compact.width});
   };
   try {
     extracted = {kind: 'PHQ-9', patient_name: 'QA SYNTHETIC existing patient', administration_date: '2021-06-15', reported_total: 12, answers: [2,2,1,1,1,1,1,1,null], history: {}, uncertainties: [{field: 'answers.8', issue: 'QA unclear source mark'}], patient_identity_check: false};
@@ -253,7 +250,9 @@ export async function existingPatientSupabase({browser, context, page, origin, a
     const totalRow = (await get('/api/patients/demo/measurements?patient_id=' + patient.id)).measurements.find(row => row.id === totalOnly.measurement.id);
     assert.equal(totalRow.item9_review, false);
 
-    let history = (await rows('demo_patient_history', patient.id))[0];
+    // Creating a basic patient does not fabricate a clinical history row.
+    // The existing save route creates it with the documented version-zero base.
+    let history = (await rows('demo_patient_history', patient.id))[0] || {version: 0};
     await post('/api/patients/demo/runtime', {action: 'save_history', patient_id: patient.id, expected_version: history.version, history: {...history, allergies: 'QA SYNTHETIC known allergy retained'}});
     await page.reload();
     extracted = {kind: 'history', patient_name: 'QA SYNTHETIC existing patient', administration_date: null, reported_total: null, answers: null, history: {

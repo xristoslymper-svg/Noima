@@ -34,7 +34,6 @@ function PatientDocuments({bundle,reload,action,onClose}:Props){
  const [title,setTitle]=useState(''),[category,setCategory]=useState(''),[documentDate,setDocumentDate]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[scan,setScan]=useState<HistoricalScan|null>(null),[review,setReview]=useState<HistoricalScanReview|null>(null);
  const [answerDraft,setAnswerDraft]=useState<(number|null)[]|null>(null),[originalIndex,setOriginalIndex]=useState(0),[scanRequest,setScanRequest]=useState(''),[metadataLocked,setMetadataLocked]=useState(false);
- const [nativePdfViewer,setNativePdfViewer]=useState(false);
  const [historyDrafts,setHistoryDrafts]=useState<Partial<Record<HistorySectionKey,string>>>({});
  const fileInput=useRef<HTMLInputElement>(null),flight=useRef(false);
  const previousAction=useRef<Action>(null);
@@ -58,7 +57,6 @@ function PatientDocuments({bundle,reload,action,onClose}:Props){
   return()=>{active=false};
  },[patientId]);
  useEffect(()=>{if(action&&previousAction.current&&action!==previousAction.current)setError('');if(action)previousAction.current=action},[action]);
- useEffect(()=>{setNativePdfViewer(navigator.pdfViewerEnabled===true)},[]);
  useEffect(()=>{
   const warn=(event:BeforeUnloadEvent)=>{if(files.length||scanFiles.length&&scan?.state!=='approved'){event.preventDefault();event.returnValue=''}};
   window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
@@ -130,7 +128,8 @@ function PatientDocuments({bundle,reload,action,onClose}:Props){
  const historyCandidates=historySectionKeys.filter(key=>scan?.extracted?.history[key]&&!historyAdditionExists(bundle.history?.[key]||'',scan.extracted.history[key]!.text));
  const mismatch=scan?.extracted?questionnaireCalculation(scan.extracted.kind,answerDraft,scan.extracted.reported_total).discrepancy:false;
  const original=scanFiles[originalIndex]?.document;
- const originalPreview=Boolean(original&&(original.media_type!=='application/pdf'||nativePdfViewer));
+ // Native PDF capability does not make the protected, sandboxed original render.
+ const originalPreview=Boolean(original&&original.media_type!=='application/pdf');
  const uncertainIndices=scan?.extracted?.answers?.flatMap((value,index)=>value===null?[index]:[])||[];
  const selected=action==='document'?files:scanFiles;
  function answerInput(index:number){
@@ -143,8 +142,8 @@ function PatientDocuments({bundle,reload,action,onClose}:Props){
   <h3 id="patient-documents-heading">{t('patientDocuments.title')}</h3>
   {notice&&<p className={styles.notice} role="status">{notice}</p>}
   {listError?<p className={styles.muted} role="status">{errorText(listError)}</p>:documents.length?<ul className={styles.list}>{documents.map(document=><li key={document.id}>
-   <div><a href={documentUrl(patientId,document.id)} target="_blank" rel="noreferrer">{document.title||document.original_name}</a><small>{[document.category?categories[document.category]:'',document.document_date?formatClinicDate(document.document_date,locale):''].filter(Boolean).join(' · ')}</small></div>
-   <a href={documentUrl(patientId,document.id,true)} className={styles.download} aria-label={t('patientDocuments.downloadFile',{name:document.title||document.original_name})}><Download size={16}/></a>
+   <div><a href={documentUrl(patientId,document.id,document.media_type==='application/pdf')} download={document.media_type==='application/pdf'} target={document.media_type==='application/pdf'?undefined:'_blank'} rel="noreferrer">{document.title||document.original_name}</a><small>{[document.category?categories[document.category]:'',document.document_date?formatClinicDate(document.document_date,locale):''].filter(Boolean).join(' · ')}</small></div>
+   {document.media_type!=='application/pdf'&&<a href={documentUrl(patientId,document.id,true)} className={styles.download} aria-label={t('patientDocuments.downloadFile',{name:document.title||document.original_name})}><Download size={16}/></a>}
   </li>)}</ul>:<p className={styles.muted}>{t('patientDocuments.empty')}</p>}
   {action&&<div className={styles.backdrop} onClick={event=>{if(event.target===event.currentTarget)onClose()}}>
    <section ref={modal} className={`${styles.dialog} ${action==='scan'&&scan?.extracted&&originalPreview?styles.wide:''}`} role="dialog" aria-modal="true" aria-labelledby="patient-document-dialog-title" tabIndex={-1}>
@@ -192,9 +191,9 @@ function PatientDocuments({bundle,reload,action,onClose}:Props){
        {scan.extracted.kind==='unknown'&&<p className={styles.muted}>{t('patientDocuments.unsupportedScan')}</p>}
        {scan.extracted.uncertainties.length>0&&<details className={styles.metadata}><summary>{t('patientDocuments.reviewNotes')}</summary><ul>{scan.extracted.uncertainties.map((issue,index)=><li key={index}>{issue.issue}</li>)}</ul></details>}
       </div>
-      {original&&<aside className={styles.original}><div className={styles.originalHeader}><strong>{t('patientDocuments.original')}</strong><a href={documentUrl(patientId,original.id)} target="_blank" rel="noreferrer">{t('patientDocuments.openOriginal')}</a></div>
+      {original&&<aside className={styles.original}><div className={styles.originalHeader}><strong>{t('patientDocuments.original')}</strong>{originalPreview&&<a href={documentUrl(patientId,original.id)} target="_blank" rel="noreferrer">{t('patientDocuments.openOriginal')}</a>}</div>
        {scanFiles.length>1&&<nav className={styles.pages} aria-label={t('patientDocuments.originals')}>{scanFiles.map((file,index)=><button type="button" key={file.id} className={index===originalIndex?styles.pageActive:''} aria-pressed={index===originalIndex} onClick={()=>setOriginalIndex(index)}>{index+1}</button>)}</nav>}
-       {original.media_type==='application/pdf'?(nativePdfViewer?<iframe title={t('patientDocuments.original')} src={documentUrl(patientId,original.id)} sandbox=""/>:<p className={styles.originalFile}><a href={documentUrl(patientId,original.id,true)}>{original.title||original.original_name}</a></p>):<img src={documentUrl(patientId,original.id)} alt={t('patientDocuments.original')}/>}
+       {original.media_type==='application/pdf'?<p className={styles.originalFile}><a href={documentUrl(patientId,original.id,true)} download>{t('patientDocuments.downloadFile',{name:original.title||original.original_name})}</a></p>:<img src={documentUrl(patientId,original.id)} alt={t('patientDocuments.original')}/>}
       </aside>}
      </div>
      {error&&<p className={styles.error} role="alert">{errorText(error)}{error==='scan_stale_history'&&review&&<button type="button" className={styles.quiet} onClick={()=>{setReview({...review,expected_history_version:bundle.history?.version??0,additions:[]});setError('')}}>{t('patientDocuments.reviewUpdatedHistory')}</button>}</p>}

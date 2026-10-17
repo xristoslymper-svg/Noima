@@ -5,7 +5,7 @@
       "name": "desktop",
       "width": 1440,
       "height": 1000,
-      "patient": "11280747-c599-43c0-91c1-6a57e4e2b405",
+      "patient": "b69d80f5-0426-431f-8c44-ae164521000b",
       "screenshots": [
         "desktop-manual-score.png",
         "desktop-three-historical-scores.png",
@@ -21,7 +21,7 @@
       "name": "mobile",
       "width": 390,
       "height": 844,
-      "patient": "d51cd0cc-86f2-4285-b551-595ced0a7d01",
+      "patient": "b5f55a63-7528-42b2-8dfe-dc371c0eeaaf",
       "screenshots": [
         "mobile-manual-score.png",
         "mobile-three-historical-scores.png",
@@ -51,8 +51,10 @@
       "response": 200,
       "originalBytesMatch": true,
       "nativeViewerAvailable": false,
-      "nativeRenderingVerified": false,
-      "fallbackVerified": true
+      "nativeRendererUsed": false,
+      "protectedDownloadVerified": true,
+      "downloadedBytesMatch": true,
+      "compactWidth": 470
     },
     {
       "viewport": "mobile",
@@ -70,8 +72,10 @@
       "response": 200,
       "originalBytesMatch": true,
       "nativeViewerAvailable": false,
-      "nativeRenderingVerified": false,
-      "fallbackVerified": true
+      "nativeRendererUsed": false,
+      "protectedDownloadVerified": true,
+      "downloadedBytesMatch": true,
+      "compactWidth": 370
     }
   ],
   "cognitiveLoad": [
@@ -141,11 +145,11 @@
       "screenTransitions": 0
     }
   ],
-  "counting": "From the relevant tab already open. Action clicks count menu opening, action choice, native file-picker opening and Save/Approve; typing, field focus, native file selection and correction controls are separate. Decision counts include workflow selections and clinical approval judgments in the tested scenario, including preselected instrument/status choices; typing known clinical values is counted under fields. Source upload/review states stay within one dialog.",
+  "counting": "From the relevant tab already open. Action clicks count menu opening, action choice, native file-picker opening and Save/Approve; typing, field focus, native file selection and correction controls are separate. Decision counts include workflow selections and clinical approval judgments in the tested scenario, including preselected instrument/status choices; typing known clinical values is counted under fields. Source upload/review states stay within one dialog. Optional inspection of an original adds one download click; that verification action is recorded separately from the common entry-and-approval path.",
   "limitations": [
     "Live OpenAI OCR was replaced by a deterministic provider response.",
-    "Supabase-owned Auth/REST/object byte transport was emulated; exact application migrations, RPCs and RLS executed in isolated PGlite PostgreSQL.",
-    "Native PDF rendering is unavailable in the local headless browser. Authorized original PDF bytes and compact fallback links were verified; the original PNG questionnaire rendered visibly.",
+    "Supabase-owned Auth/REST/object byte transport was emulated in this local suite; exact application migrations, RPCs and RLS executed in isolated PGlite PostgreSQL.",
+    "Protected PDF originals use a compact download action. Browser download events and exact saved bytes were verified for documents, history and measurement originals; native PDF rendering is not used. The original PNG questionnaire rendered visibly.",
     "No production database, real clinical data, external email or SMS was used."
   ],
   "regressionSuites": [
@@ -184,6 +188,6 @@
       "passed": 10
     }
   ],
-  "generatedAt": "2026-10-17T10:24:34.235Z",
-  "finalRefinement": "Desktop and mobile existing-patient workflow rerun after limiting the individual measurement chart to 480px, shortening the results disclosure, clarifying the manual-score action, and defensively treating historical measurements as unlinked."
+  "generatedAt": "2026-10-17T11:55:25.146546Z",
+  "finalRefinement": "Desktop and mobile existing-patient workflow rerun after replacing unavailable native PDF previews with one protected download action, verifying saved bytes from generic documents, measurement originals and history review, and preserving adjacent image preview. The individual chart remains limited to 480px; concise results and manual-score actions and historical deep links remain verified."
 }

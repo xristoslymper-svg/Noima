@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {existsSync, mkdirSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createExistingPatientServer} from './existing-patient-server.mjs';
 import {syntheticDischarge, syntheticPhqPng, syntheticHistory} from '../tests/support/synthetic-existing-documents.mjs';
@@ -70,6 +70,22 @@ try {
       ]);
       await picked.setFiles(file);
     };
+    const downloadOriginal = async (link, bytes, name) => {
+      const href = new URL(await link.getAttribute('href'), fixture.origin).href;
+      assert.equal(new URL(href).searchParams.get('download'), '1');
+      assert.notEqual(await link.getAttribute('download'), null);
+      assert.equal(await link.getAttribute('target'), null);
+      const response = await page.request.get(href);
+      assert.equal(response.status(), 200);
+      assert.deepEqual(await response.body(), bytes);
+      assert.equal(response.headers()['cache-control'], 'private, no-store');
+      assert.match(response.headers()['content-disposition'], /^attachment;/);
+      const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+      const path = resolve(out, viewport.name + '-' + name);
+      await download.saveAs(path);
+      assert.equal(await download.failure(), null);
+      assert.deepEqual(readFileSync(path), bytes, 'browser download preserves the exact protected original');
+    };
 
     await page.goto(base + '?tab=timeline');
     const measurements = page.locator('#patient-measurements');
@@ -131,10 +147,7 @@ try {
     await dialog.waitFor({state: 'detached'});
     const originalLink = page.getByRole('link', {name: 'QA-synthetic-discharge.pdf', exact: true});
     await originalLink.waitFor();
-    const originalResponse = await page.request.get(await originalLink.getAttribute('href'));
-    assert.equal(originalResponse.status(), 200);
-    assert.deepEqual(await originalResponse.body(), syntheticDischarge());
-    assert.equal(originalResponse.headers()['cache-control'], 'private, no-store');
+    await downloadOriginal(originalLink, syntheticDischarge(), 'protected-discharge-download.pdf');
     // Failure recovery is part of the same attachment interaction, without a
     // confirmation dialog or a second choice of upload mode.
     await openHistoryAction('Έγγραφο');
@@ -184,6 +197,7 @@ try {
     await reviewedResult.waitFor();
     assert.equal(await reviewedResult.locator('details[open]').count(), 1, 'legacy targeted scanned result opens its real answers');
     assert.equal(await reviewedResult.locator('.review-signal').count(), 0, 'historical item9 is not a current risk alert');
+    await downloadOriginal(reviewedResult.getByRole('link', {name: 'Λήψη πρωτοτύπου', exact: true}), phqImage, 'protected-measurement-original.png');
 
     let history = (await fixture.api.db.read(fixture.doctor.id, 'demo_patient_history?patient_id=eq.' + patient.id))[0];
     await okJson(await fixture.api.request(fixture.doctor, '/api/patients/demo/runtime', {action: 'save_history', patient_id: patient.id, history: {...history, allergies: 'QA SYNTHETIC known allergy retained'}, expected_version: history.version}));
@@ -202,11 +216,12 @@ try {
     assert.equal(await dialog.getByRole('checkbox', {name: /Νοσηλείες/}).isChecked(), true);
     assert.equal(await dialog.locator('textarea:visible').count(), 0, 'details remain compact');
     const nativePdf = await page.evaluate(() => navigator.pdfViewerEnabled);
-    if (!nativePdf) assert.equal(await dialog.locator('iframe').count(), 0, 'unsupported native PDF has a compact secure fallback');
-    const historyOriginal = await page.request.get(await dialog.getByRole('link', {name: 'Άνοιγμα', exact: true}).getAttribute('href'));
-    assert.equal(historyOriginal.status(), 200);
-    assert.deepEqual(await historyOriginal.body(), syntheticHistory());
-    report.workflows.push({viewport: viewport.name, workflow: 'Original history PDF', response: 200, originalBytesMatch: true, nativeViewerAvailable: nativePdf, nativeRenderingVerified: false, fallbackVerified: !nativePdf});
+    assert.equal(await dialog.locator('iframe').count(), 0, 'protected PDFs have no unsupported native preview pane');
+    assert.equal(await dialog.getByRole('link', {name: 'Άνοιγμα', exact: true}).count(), 0);
+    const compactWidth = await dialog.evaluate(node => node.getBoundingClientRect().width);
+    assert.ok(compactWidth <= 471, 'PDF review remains a compact single column');
+    await downloadOriginal(dialog.getByRole('link', {name: 'Λήψη: QA-old-history.pdf', exact: true}), syntheticHistory(), 'protected-history-download.pdf');
+    report.workflows.push({viewport: viewport.name, workflow: 'Original history PDF', response: 200, originalBytesMatch: true, nativeViewerAvailable: nativePdf, nativeRendererUsed: false, protectedDownloadVerified: true, downloadedBytesMatch: true, compactWidth});
     await noOverflow('history review');
     await snapshot('history-conflict-review');
     await dialog.getByRole('button', {name: 'Έγκριση και αποθήκευση', exact: true}).click();

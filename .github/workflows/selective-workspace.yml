@@ -8,35 +8,20 @@ permissions:
 jobs:
   workspace:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - name: Repository instructions and clean baseline
+      - name: Install browser tools in an empty temporary workspace
         run: |
-          git status --short
-          git diff --stat
-          find . -name AGENTS.md -not -path './.git/*' -print -exec cat {} \;
-      - name: Package committed repository objects only
-        run: git bundle create noima-source.bundle --all
+          mkdir -p browser-tools
+          cd browser-tools
+          npm install --ignore-scripts --no-audit --no-fund playwright@1.57.0 esbuild@0.25.0
+          tar -czf ../noima-browser-tools.tar.gz node_modules
       - uses: actions/upload-artifact@v4
         with:
-          name: selective-source
-          path: noima-source.bundle
-          retention-days: 3
-      - name: Install isolated dependencies without application credentials
-        run: npm ci --ignore-scripts
-      - name: Package isolated dependencies
-        run: tar -czf noima-dependencies.tar.gz node_modules
-      - uses: actions/upload-artifact@v4
-        with:
-          name: selective-dependencies
-          path: noima-dependencies.tar.gz
+          name: selective-browser-tools
+          path: noima-browser-tools.tar.gz
           compression-level: 0
           retention-days: 3

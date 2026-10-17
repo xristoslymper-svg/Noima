@@ -443,3 +443,12 @@
 .priorTimeline{background:#f5f9f6;border:1px solid #dbe7de;border-radius:14px;margin:12px 0 20px;padding:17px 19px}.priorTimeline strong{display:block;color:#335c46;font-size:14px}.priorTimeline p{color:#52695a;line-height:1.6;font-size:13px;white-space:pre-wrap;margin:9px 0}.priorTimeline small{display:block;color:#71887b;font-size:12px}.priorTimeline button{margin-top:10px}
 
 .newRecordActions{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:12px 0 18px}.newRecordActions .link{font-size:13px;padding:8px 0;background:transparent;border:0}
+
+/* Clear actions for a newly created patient, without a separate onboarding screen. */
+.newRecordActions .newRecordPrimary,.newRecordActions .newRecordSecondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 14px;border:1px solid #c8dccc;border-radius:10px;font:inherit;font-size:13px;font-weight:650;cursor:pointer;transition:background .15s ease,border-color .15s ease}
+.newRecordActions .newRecordPrimary{background:#2c6651;color:white;border-color:#2c6651}
+.newRecordActions .newRecordPrimary:hover{background:#20533f}
+.newRecordActions .newRecordSecondary{background:#f3f8f4;color:#285944}
+.newRecordActions .newRecordSecondary:hover{background:#e6f1e9;border-color:#a8cdb5}
+.newRecordActions button:focus-visible{outline:2px solid #316c54;outline-offset:3px}
+.newRecordActions button:disabled{opacity:.55;cursor:not-allowed}

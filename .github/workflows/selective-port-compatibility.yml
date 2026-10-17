@@ -1,0 +1,79 @@
+name: Selective port compatibility verification
+on:
+  push:
+    branches: ['feat/production-library-prior-course-20261017']
+    paths: ['.github/workflows/selective-port-compatibility.yml']
+permissions:
+  contents: write
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CLINICAL_DATA_MODE: synthetic
+      EXTERNAL_AI_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Preserve production print contract and correct test adapters
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          function patch(file,old,next){const text=fs.readFileSync(file,'utf8');if(text.split(old).length!==2)throw Error('Unexpected context: '+file+' '+old);fs.writeFileSync(file,text.replace(old,next))}
+          patch('app/psychometrics/page.tsx','title={"Επισκόπηση"}','title="Επισκόπηση"');
+          patch('app/psychometrics/page.tsx',`  if(channel==='print'){
+             // A blank printed form is not an issued invitation and is not linked to any patient.
+             window.open('/intake/blank?tool='+encodeURIComponent(tools[0]||'history'),'_blank','noopener,noreferrer');
+             return;
+            }
+          `.replace(/^   /gm,''),'');
+          patch('tests/selective-library-database.test.mjs',"assert.equal(result.status,'submitted');assert.ok(result.patient_id);", "assert.equal(result.status,'submitted');const linkedIntake=(await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0];assert.ok(linkedIntake.patient_id);result.patient_id=linkedIntake.patient_id;");
+          patch('browser-tests/selective-port-fixture.tsx',"import BlankPrint from '../app/intake/blank/BlankPrint';\n",'');
+          patch('browser-tests/selective-port-fixture.tsx',"page==='/intake/blank'?<BlankPrint tool={new URLSearchParams(location.search).get('tool')||'history'}/>:",'');
+          patch('browser-tests/selective-port.mjs',".intake-psych-question",".intake-psych-q");
+          patch('browser-tests/selective-port.mjs',"questions.nth(i).getByRole('button').nth(1).click()","questions.nth(i).getByRole('radio').nth(1).check()");
+          patch('browser-tests/selective-port.mjs',".fill('+302101234567')",".fill(size==='desktop'?'+302101234561':'+302101234562')");
+          patch('browser-tests/selective-port.mjs',"const beforePrint=assignments.length;await page.goto(origin+'/intake/blank?tool=PHQ-9');await page.locator('.intake-print').waitFor();assert.equal(assignments.length,beforePrint);await check(page,'blank-print',size);", `const beforePrint=assignments.length;await page.goto(origin+'/psychometrics');await page.locator('article[aria-label="Προεπισκόπηση PHQ-9"]').locator('button[title=" Εκτύπωση"]').click();const printDialog=page.getByRole('dialog');await printDialog.getByRole('combobox').fill('Ira');await printDialog.getByRole('option',{name:'Ira Pira'}).click();const popupPromise=page.waitForEvent('popup');await printDialog.getByRole('button',{name:'Εκτύπωση',exact:true}).click();const printed=await popupPromise;await printed.locator('.print-assignment-code').waitFor();assert.equal(assignments.length,beforePrint+1);assert.ok((await printed.locator('.print-assignment-code').textContent()).includes(assignments.at(-1).response.intake.id.slice(0,8).toUpperCase()));assert.equal(assignments.at(-1).request.patient_id,patient.id);await check(printed,'coded-print',size);await printed.close();`);
+          patch('tests/selective-production.test.mjs',"const form=await read('components/intake/PatientIntakeForm.tsx'),blank=await read('app/intake/blank/BlankPrint.tsx');", "const form=await read('components/intake/PatientIntakeForm.tsx'),launcher=await read('components/intake/LibraryIntakeLauncher.tsx');");
+          patch('tests/selective-production.test.mjs',"assert.match(blank,/needs_identity:true/);assert.doesNotMatch(blank,/fetch\\(|create_patient|start_session/);", "assert.match(form,/print-assignment-code/);assert.match(launcher,/assignment.printLink/);assert.doesNotMatch(await read('app/psychometrics/page.tsx'),/intake\\/blank/);");
+          patch('tests/selective-production.test.mjs',"new intake includes contact details and a blank print never assigns a patient","new intake includes contact details and print preserves the scannable assignment code");
+          fs.rmSync('app/intake/blank',{recursive:true});
+          fs.unlinkSync('.github/workflows/selective-port-compatibility.yml');
+          NODE
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app tests browser-tests .github/workflows/selective-port-compatibility.yml
+          git commit -m 'Keep print assignments compatible with existing scan workflow and verify public intake through persisted linkage'
+          git push origin HEAD:refs/heads/feat/production-library-prior-course-20261017
+          echo "TESTED_SOURCE=$(git rev-parse HEAD)"
+      - name: TypeScript and lint
+        run: npm run typecheck && npm run lint
+      - name: Unit and database regressions
+        if: ${{ !cancelled() }}
+        run: |
+          npm test > /tmp/selective-tests.log 2>&1 || { grep -n -A 24 -B 2 'not ok' /tmp/selective-tests.log | head -n 200; tail -n 20 /tmp/selective-tests.log; exit 1; }
+          tail -n 15 /tmp/selective-tests.log
+      - name: Production build
+        if: ${{ !cancelled() }}
+        run: npm run build
+      - name: Browser dependencies
+        if: ${{ !cancelled() }}
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+          npx playwright install --with-deps chromium
+      - name: Actual selective UI and SQL journeys
+        if: ${{ !cancelled() }}
+        run: node browser-tests/selective-port.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selective-compatibility-evidence
+          path: |
+            /tmp/selective-tests.log
+            test-results/selective-port
+          retention-days: 7

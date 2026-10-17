@@ -5,6 +5,9 @@ on:
     paths: ['.github/workflows/selective-port-compatibility.yml']
 permissions:
   contents: write
+concurrency:
+  group: selective-port-compatibility
+  cancel-in-progress: true
 jobs:
   compatibility:
     runs-on: ubuntu-latest
@@ -25,12 +28,7 @@ jobs:
           const fs=require('fs');
           function patch(file,old,next){const text=fs.readFileSync(file,'utf8');if(text.split(old).length!==2)throw Error('Unexpected context: '+file+' '+old);fs.writeFileSync(file,text.replace(old,next))}
           patch('app/psychometrics/page.tsx','title={"Επισκόπηση"}','title="Επισκόπηση"');
-          patch('app/psychometrics/page.tsx',`  if(channel==='print'){
-             // A blank printed form is not an issued invitation and is not linked to any patient.
-             window.open('/intake/blank?tool='+encodeURIComponent(tools[0]||'history'),'_blank','noopener,noreferrer');
-             return;
-            }
-          `.replace(/^   /gm,''),'');
+          const library=fs.readFileSync('app/psychometrics/page.tsx','utf8');const blank=library.match(/  if\(channel==='print'\)\{[\s\S]*?return;\s*\}\n/);if(!blank||!blank[0].includes('/intake/blank'))throw Error('Print contract not found');patch('app/psychometrics/page.tsx',blank[0],'');
           patch('tests/selective-library-database.test.mjs',"assert.equal(result.status,'submitted');assert.ok(result.patient_id);", "assert.equal(result.status,'submitted');const linkedIntake=(await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0];assert.ok(linkedIntake.patient_id);result.patient_id=linkedIntake.patient_id;");
           patch('browser-tests/selective-port-fixture.tsx',"import BlankPrint from '../app/intake/blank/BlankPrint';\n",'');
           patch('browser-tests/selective-port-fixture.tsx',"page==='/intake/blank'?<BlankPrint tool={new URLSearchParams(location.search).get('tool')||'history'}/>:",'');

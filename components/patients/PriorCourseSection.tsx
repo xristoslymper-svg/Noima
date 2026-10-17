@@ -7,10 +7,11 @@ import {FieldRecorder} from '@/lib/clinical/field-recorder';
 import {confirmedPriorCourse,priorCourseInput,type PriorCourseRecord} from '@/lib/clinical/prior-course-record';
 import styles from './PriorCourseSection.module.css';
 
-type Props={patientId:string;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>};
+type Props={patientId:string;onSettled?:(warning:string)=>void;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>};
 type Draft={version:number;period:string;content:string};
+const navigationWarning='Αποθηκεύστε ή ακυρώστε την προηγούμενη κλινική πορεία πριν αλλάξετε περιοχή.';
 const fromRecord=(record:PriorCourseRecord|null):Draft=>({version:record?.version||0,period:record?.period_label||'',content:record?.content||''});
-export default function PriorCourseSection({patientId,beforeNavigate}:Props){
+export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:Props){
  const tester=getDemoTesterId(),key='noima-prior-course:'+tester+':'+patientId,titleId=useId();
  const [record,setRecord]=useState<PriorCourseRecord|null>(null),[draft,setDraft]=useState<Draft>({version:0,period:'',content:''});
  const [ready,setReady]=useState(false),[loading,setLoading]=useState(true),[open,setOpen]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false),[conflict,setConflict]=useState(false);
@@ -22,7 +23,7 @@ export default function PriorCourseSection({patientId,beforeNavigate}:Props){
  const voiceBusy=phase!=='idle';
  const pending=saving||voiceBusy||hasAudio||open&&dirty;
  const pendingRef=useRef(pending);pendingRef.current=pending;
- const guard=useCallback(async()=>{if(pendingRef.current)throw new Error('Αποθηκεύστε ή ακυρώστε την προηγούμενη κλινική πορεία πριν αλλάξετε περιοχή.')},[]);
+ const guard=useCallback(async()=>{if(pendingRef.current)throw new Error(navigationWarning)},[]);
  useLayoutEffect(()=>{if(!beforeNavigate)return;beforeNavigate.current=guard;return()=>{if(beforeNavigate.current===guard)beforeNavigate.current=null}});
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;loadAbort.current?.abort();transcription.current?.abort();recorder.current?.cancel()}},[]);
  function clearDraft(){try{sessionStorage.removeItem(key)}catch{}}
@@ -43,7 +44,7 @@ export default function PriorCourseSection({patientId,beforeNavigate}:Props){
  useEffect(()=>{if(!pending)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending]);
  useEffect(()=>{if(open)textarea.current?.focus()},[open]);
  function change(patch:Partial<Draft>){setDraft(value=>({...value,...patch}));setSaved(false)}
- function cancel(){if(savingRef.current||voiceBusy)return;if((dirty||hasAudio)&&!window.confirm('Να απορριφθεί το μη αποθηκευμένο πρόχειρο;'))return;recorder.current?.cancel();audio.current=null;setHasAudio(false);setDraft(fromRecord(record));setOpen(false);setError('');setConflict(false);request.current=null;clearDraft()}
+ function cancel(){if(savingRef.current||voiceBusy)return;if((dirty||hasAudio)&&!window.confirm('Να απορριφθεί το μη αποθηκευμένο πρόχειρο;'))return;recorder.current?.cancel();audio.current=null;setHasAudio(false);setDraft(fromRecord(record));setOpen(false);setError('');setConflict(false);request.current=null;clearDraft();onSettled?.(navigationWarning)}
  async function reloadSaved(){if(pending&&!window.confirm('Να φορτωθεί η αποθηκευμένη έκδοση; Το μη αποθηκευμένο πρόχειρο θα απορριφθεί.'))return;clearDraft();setConflict(false);request.current=null;await load(false)}
  async function save(){
   if(savingRef.current||!ready||voiceBusy||hasAudio||conflict)return;
@@ -54,7 +55,7 @@ export default function PriorCourseSection({patientId,beforeNavigate}:Props){
    const response=await fetch('/api/patients/demo/prior-course',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const data=await response.json();
    if(!response.ok){if(data.code==='stale_prior_course')setConflict(true);throw new Error(data.error||'Δεν επιβεβαιώθηκε η αποθήκευση. Δοκιμάστε ξανά.')}
    const row=confirmedPriorCourse(data.priorCourse,patientId,tester,input);if(!alive.current)return;
-   setRecord(row);setDraft(fromRecord(row));setOpen(false);setSaved(true);clearDraft();request.current=null;
+   setRecord(row);setDraft(fromRecord(row));setOpen(false);setSaved(true);clearDraft();request.current=null;onSettled?.(navigationWarning);
   }catch(cause){if(alive.current)setError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η αποθήκευση. Το πρόχειρό σας διατηρείται.')}
   finally{savingRef.current=false;if(alive.current)setSaving(false)}
  }

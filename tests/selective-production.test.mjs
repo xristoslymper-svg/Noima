@@ -9,7 +9,7 @@ const manifest=JSON.parse(await read('tests/selective-production-contract.json')
 for(const [file,expected] of Object.entries(manifest.hashes))test('production unchanged: '+file,async()=>assert.equal(hash(await read(file)),expected));
 test('patient workspace differs only by the Visits prior-course integration',async()=>{
  const source=await read('components/patients/PatientWorkspace.tsx');
- assert.equal(hash(source.replace('viewer={null} beforeNavigate={sectionBeforeNavigate} priorCourseEnabled={!previewBundle}/>','viewer={null}/>')),manifest.workspaceHash);
+ assert.equal(hash(source.replace("viewer={null} beforeNavigate={sectionBeforeNavigate} priorCourseEnabled={!previewBundle} onPriorCourseSettled={warning=>setError(current=>current===warning?'':current)}/>",'viewer={null}/>')),manifest.workspaceHash);
  for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό'])assert.ok(source.includes('label="'+label+'"'));
  assert.ok(!source.includes('Προσθήκη παλαιών δεδομένων'));
 });

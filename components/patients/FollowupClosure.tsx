@@ -53,7 +53,7 @@ export default function FollowupClosure(p:Props){
  return <section className={styles.closure+(mobileV2Enabled?` ${mobileStyles.followup}`:``)} data-clinical-followup="true">
   {reviewBundle&&<JourneyReview bundle={reviewBundle} session={reviewBundle.sessions.find(s=>s.id===session.id)||session} busy={busy||p.finalizing} error={error||p.finalizeError} onBack={()=>setReviewBundle(null)} onConfirm={()=>void finalize(true)}/>}
   <div hidden={Boolean(reviewBundle)}>
-  <header className={styles.heading}><div><span className="kicker">ΕΠΑΝΕΞΕΤΑΣΗ</span><h2>Σημερινή καταγραφή</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Πρόχειρη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
+  <header className={styles.heading}><div><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΕΠΙΣΚΕΨΗΣ</span><h2>Επανεξέταση</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Πρόχειρη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
   <MobileFollowupTools/><section className={styles.card} data-mobile-section="notes" tabIndex={mobileV2Enabled?-1:undefined} aria-label="Σημειώσεις επίσκεψης">
    {writingField('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…',4)}
   </section>

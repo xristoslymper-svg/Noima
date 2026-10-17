@@ -19,7 +19,6 @@ import PatientTreatment from './PatientTreatment';
 import styles from './PatientRecord.module.css';
 import {patientRecord} from '@/lib/clinical/patient-record';
 import VisitWorkspace from './VisitWorkspace';
-import PriorClinicalCourse from './PriorClinicalCourse';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {hasCompletedClinicalHistory,workspaceHeroAction,workspaceMeasurementSearch,workspaceSelectedAssessment,workspaceMeasurementsRequested,workspaceLocation,workspaceTransitionSearch,type WorkspaceTab} from '@/lib/clinical/visit-workspace-state';

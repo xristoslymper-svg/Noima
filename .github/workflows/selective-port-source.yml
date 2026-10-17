@@ -1,0 +1,38 @@
+name: Selective port source snapshot
+on:
+  push:
+    branches: ['feat/production-library-prior-course-20261017']
+    paths: ['.github/workflows/selective-port-source.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export pinned source only (no Git config or credentials)
+        run: |
+          mkdir -p /tmp/selective-port
+          git archive --format=tar.gz -o /tmp/selective-port/production.tar.gz 27e61cefd3a7bb568a73a02a4e08ebf70a9a762a
+          git archive --format=tar.gz -o /tmp/selective-port/integration.tar.gz a095f231c97bd653f110b152ff4c7144f9f84645
+          git archive --format=tar.gz -o /tmp/selective-port/feature.tar.gz 07992749be9b5cd12820c8206ec5649f8e1aadc7
+          git log --format='%H %s' 27e61cefd3a7bb568a73a02a4e08ebf70a9a762a..a095f231c97bd653f110b152ff4c7144f9f84645 > /tmp/selective-port/integration-commits.txt
+          git status --porcelain > /tmp/selective-port/status.txt
+          git diff --stat > /tmp/selective-port/diff.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Export locked dependencies for isolated local checks
+        run: tar -czf /tmp/selective-port/node-modules.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selective-port-source
+          path: /tmp/selective-port/
+          retention-days: 2
+          compression-level: 0

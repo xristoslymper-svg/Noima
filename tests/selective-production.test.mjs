@@ -41,9 +41,9 @@ test('library uses a scoped compact launcher and retains assignment identity on 
  assert.doesNotMatch(launcher,/create_patient|start_session|medication_start/);
  assert.doesNotMatch(library,/next-intl|@\/i18n\//);
 });
-test('new intake includes contact details and a blank print never assigns a patient',async()=>{
- const form=await read('components/intake/PatientIntakeForm.tsx'),blank=await read('app/intake/blank/BlankPrint.tsx');
+test('new intake includes contact details and print preserves the scannable assignment code',async()=>{
+ const form=await read('components/intake/PatientIntakeForm.tsx'),launcher=await read('components/intake/LibraryIntakeLauncher.tsx');
  for(const field of ['identity.first_name','identity.last_name','identity.amka','identity.phone','identity.email','identity.age','identity.address','identity.contact_phone'])assert.ok(form.includes(field),field);
  assert.match(form,/checkIntakeIdentity/);assert.match(form,/normalizeIntakeIdentity/);
- assert.match(blank,/needs_identity:true/);assert.doesNotMatch(blank,/fetch\(|create_patient|start_session/);
+ assert.match(form,/print-assignment-code/);assert.match(launcher,/assignment.printLink/);assert.doesNotMatch(await read('app/psychometrics/page.tsx'),/intake\/blank/);
 });

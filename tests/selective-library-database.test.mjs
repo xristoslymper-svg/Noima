@@ -43,7 +43,7 @@ test('new questionnaire-only intake creates exactly one folder on submission and
  await asUser(user,()=>sql("select demo_intake_assign_unattached($1,$2,$3,$4,jsonb_build_array('GAD-7'),'email',null)",[workspace,id,token,JSON.stringify(identity)]));
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients);
  const result=(await anonymous(()=>sql('select demo_intake_submit($1,$2,null,$3) value',[token,JSON.stringify(identity),JSON.stringify({'GAD-7':[1,1,1,1,1,1,1]})])))[0].value;
- assert.equal(result.status,'submitted');assert.ok(result.patient_id);
+ assert.equal(result.status,'submitted');const linkedIntake=(await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0];assert.ok(linkedIntake.patient_id);result.patient_id=linkedIntake.patient_id;
  const row=(await sql('select * from demo_patients where id=$1',[result.patient_id]))[0];assert.equal(row.first_name,identity.first_name);assert.equal(row.last_name,identity.last_name);assert.equal(row.email,identity.email);assert.equal(row.address,identity.address);
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients+1);
  assert.deepEqual(await sql('select id from demo_sessions where patient_id=$1',[row.id]),[]);

@@ -3,6 +3,7 @@ import {before,after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {randomUUID,randomBytes} from 'node:crypto';
+import {emptyHistory} from '../lib/intake/history.ts';
 const db=new PGlite();const user=randomUUID(),other=randomUUID();let workspace,otherWorkspace,patient,otherPatient;
 const sql=async(query,args=[])=>{try{return (await db.query(query,args)).rows}catch(e){throw new Error(e.message)}};
 async function asUser(id,fn){await db.exec('begin;set local role authenticated;');await sql("select set_config('request.jwt.claim.sub',$1,true)",[id]);try{const value=await fn();await db.exec('commit');return value}catch(e){await db.exec('rollback');throw e}}
@@ -43,12 +44,35 @@ test('new questionnaire-only intake creates exactly one folder on submission and
  await asUser(user,()=>sql("select demo_intake_assign_unattached($1,$2,$3,$4,jsonb_build_array('GAD-7'),'email',null)",[workspace,id,token,JSON.stringify(identity)]));
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients);
  const result=(await anonymous(()=>sql('select demo_intake_submit($1,$2,null,$3) value',[token,JSON.stringify(identity),JSON.stringify({'GAD-7':[1,1,1,1,1,1,1]})])))[0].value;
- assert.equal(result.status,'submitted');const linkedIntake=(await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0];assert.ok(linkedIntake.patient_id);result.patient_id=linkedIntake.patient_id;
- const row=(await sql('select * from demo_patients where id=$1',[result.patient_id]))[0];assert.equal(row.first_name,identity.first_name);assert.equal(row.last_name,identity.last_name);assert.equal(row.email,identity.email);assert.equal(row.address,identity.address);
+ assert.equal(result.status,'submitted');const linkedIntake=(await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0];assert.ok(linkedIntake.patient_id);
+ const row=(await sql('select * from demo_patients where id=$1',[linkedIntake.patient_id]))[0];assert.equal(row.first_name,identity.first_name);assert.equal(row.last_name,identity.last_name);assert.equal(row.email,identity.email);assert.equal(row.address,identity.address);
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients+1);
  assert.deepEqual(await sql('select id from demo_sessions where patient_id=$1',[row.id]),[]);
  assert.deepEqual(await sql('select id from demo_calendar_events where patient_id=$1',[row.id]),[]);
  try{await anonymous(()=>sql('select demo_intake_submit($1,$2,null,$3)',[token,JSON.stringify(identity),JSON.stringify({'GAD-7':[1,1,1,1,1,1,1]})]))}catch{/* A completed token may reject retry; it must never duplicate the folder. */}
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients+1);
  const measurements=await asUser(user,()=>sql('select * from demo_assessment_list($1,$2)',[workspace,row.id]));assert.ok(JSON.stringify(measurements).includes('GAD-7'));
+});
+test('history-only submission creates a folder with patient-reported history, without clinical visits or medication writes',async()=>{
+ const id=randomUUID(),token=randomBytes(32).toString('hex');
+ const identity={first_name:'Synthetic',last_name:'History Only',age:'42',phone:'',email:'synthetic-history@example.invalid',amka:'',address:'History synthetic address',contact_phone:''};
+ const history={...structuredClone(emptyHistory),reasons:['Άγχος'],duration:'περίπου ένα έτος',psychiatrist:'yes',psychiatrist_recent:'2025',current_meds:'yes',current_medication_name:'Συνθετική αναφορά αγωγής',suicide_attempt:'prefer',other_note:'SYNTHETIC HISTORY PRESERVATION MARKER'};
+ const count=async()=>(await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n;
+ const before=await count();
+ await asUser(user,()=>sql("select demo_intake_assign_unattached($1,$2,$3,$4,jsonb_build_array('history'),'email',null)",[workspace,id,token,JSON.stringify(identity)]));assert.equal(await count(),before);
+ const result=(await anonymous(()=>sql('select demo_intake_submit($1,$2,$3,null) value',[token,JSON.stringify(identity),JSON.stringify(history)])))[0].value;assert.equal(result.status,'submitted');
+ const intake=(await sql('select patient_id,history_answers,status from private.demo_intakes where id=$1',[id]))[0];assert.equal(intake.status,'submitted');assert.ok(intake.patient_id);assert.equal(intake.history_answers.other_note,history.other_note);assert.equal(intake.history_answers.suicide_attempt,'prefer');assert.equal(await count(),before+1);
+ const row=(await sql('select first_name,last_name,email,address from demo_patients where id=$1',[intake.patient_id]))[0];for(const key of Object.keys(row))assert.equal(row[key],identity[key]);
+ for(const table of ['demo_sessions','demo_calendar_events','demo_medications'])assert.deepEqual(await sql('select id from '+table+' where patient_id=$1',[intake.patient_id]),[]);
+});
+test('questionnaire assigned to an existing patient uses that folder and cannot create another visit or patient',async()=>{
+ const id=randomUUID(),token=randomBytes(32).toString('hex');
+ const before=(await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n;
+ await asUser(user,()=>sql("select demo_intake_assign(p_tester=>$1,p_id=>$2,p_token=>$3,p_appointment=>null,p_patient=>$4,p_tools=>jsonb_build_array('PHQ-9'),p_channel=>'email',p_device=>null)",[workspace,id,token,patient.id]));
+ const result=(await anonymous(()=>sql('select demo_intake_submit($1,null,null,$2) value',[token,JSON.stringify({'PHQ-9':[1,1,1,1,1,1,1,1,0]})])))[0].value;assert.equal(result.status,'submitted');
+ assert.equal((await sql('select patient_id from private.demo_intakes where id=$1',[id]))[0].patient_id,patient.id);
+ assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,before);
+ assert.deepEqual(await sql('select id from demo_sessions where patient_id=$1',[patient.id]),[]);
+ assert.deepEqual(await sql('select id from demo_calendar_events where patient_id=$1',[patient.id]),[]);
+ const measurements=await asUser(user,()=>sql('select * from demo_assessment_list($1,$2)',[workspace,patient.id]));assert.ok(JSON.stringify(measurements).includes('PHQ-9'));
 });

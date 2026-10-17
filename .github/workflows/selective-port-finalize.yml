@@ -1,0 +1,52 @@
+name: Finalize selective port source
+on:
+  push:
+    branches: ['feat/production-library-prior-course-20261017']
+    paths: ['.github/workflows/selective-port-finalize.yml']
+permissions:
+  contents: write
+jobs:
+  finalize-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Focused source corrections
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          function patch(file,a,b){let s=fs.readFileSync(file,'utf8');if(s.split(a).length!==2)throw Error('Unexpected patch context '+file+' '+a);fs.writeFileSync(file,s.replace(a,b))}
+          patch('components/patients/PriorCourseSection.tsx','Ακύρωση ήχου</button>}','Ακύρωση ήχου</button></span>}');
+          patch('app/psychometrics/page.tsx','aria-label={"Μετάβαση στην Επισκόπηση"}','aria-label="Μετάβαση στην Επισκόπηση"');
+          patch('tests/selective-library-database.test.mjs','select demo_prior_course_save($1,$2,$3,$4,$5,$6) value','select to_jsonb(demo_prior_course_save($1,$2,$3,$4,$5,$6)) value');
+          patch('tests/selective-library-database.test.mjs',"array['GAD-7']","jsonb_build_array('GAD-7')");
+          patch('browser-tests/selective-port.mjs',"v!==null&&typeof v==='object'&&!Array.isArray(v)","v!==null&&typeof v==='object'");
+          fs.unlinkSync('.github/workflows/selective-port-finalize.yml');
+          NODE
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/patients/PriorCourseSection.tsx app/psychometrics/page.tsx tests/selective-library-database.test.mjs browser-tests/selective-port.mjs .github/workflows/selective-port-finalize.yml
+          git commit -m 'Correct inline markup and align isolated SQL adapters with deployed RPC types'
+          git push origin HEAD:refs/heads/feat/production-library-prior-course-20261017
+          echo "VALIDATED_SOURCE=$(git rev-parse HEAD)"
+      - name: Validate all source checks
+        env:
+          CLINICAL_DATA_MODE: synthetic
+          EXTERNAL_AI_ENABLED: 'false'
+        run: |
+          set +e
+          result=0
+          for task in typecheck lint test build; do
+            npm run "$task" > "/tmp/selective-$task.log" 2>&1
+            status=$?
+            echo "CHECK $task EXIT $status"
+            tail -n 25 "/tmp/selective-$task.log"
+            if [ "$status" -ne 0 ]; then grep -n -A 18 -B 2 -E 'not ok|error TS|Error:|error  ' "/tmp/selective-$task.log" | head -n 160; result=1; fi
+          done
+          exit "$result"

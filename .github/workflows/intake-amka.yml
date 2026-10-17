@@ -1,0 +1,60 @@
+name: Intake AMKA identity integrity
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/selective-amka-database.test.mjs'
+      - '.github/workflows/intake-amka.yml'
+permissions:
+  contents: read
+concurrency:
+  group: intake-amka-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_ci_only
+          POSTGRES_DB: noima_identity_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d noima_identity_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CLINICAL_DATA_MODE: synthetic
+      EXTERNAL_AI_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Prove the regression against the unchanged pre-fix schema
+        shell: bash
+        run: |
+          set +e
+          NOIMA_AMKA_SKIP_FIX=1 node --test --test-name-pattern='later exact AMKA rejects' tests/selective-amka-database.test.mjs > amka-baseline.log 2>&1
+          result=$?
+          set -e
+          cat amka-baseline.log
+          test "$result" -ne 0
+          grep -q 'Missing expected rejection' amka-baseline.log
+      - name: Validate migrated schema with in-process PostgreSQL
+        run: node --test tests/selective-amka-database.test.mjs
+      - name: Install the CI-only native PostgreSQL driver
+        run: npm install --no-save --package-lock=false pg@8.16.3
+      - name: Verify real lock waits and concurrent transactions
+        env:
+          NOIMA_IDENTITY_TEST_URL: postgresql://postgres:synthetic_ci_only@127.0.0.1:5432/noima_identity_test
+        run: node --test tests/selective-amka-database.test.mjs

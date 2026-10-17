@@ -1,0 +1,15 @@
+import './selective-browser-env';
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import '../app/globals.css';
+import '../app/clinical-refinement.css';
+import '../app/visit-workspace.css';
+import '../app/mobile.css';
+import '../app/initial-assessment.css';
+import '../app/clinical-editor.css';
+import '../app/noima-ui.css';
+import PatientWorkspace from '../components/patients/PatientWorkspace';
+import Library from '../app/psychometrics/page';
+import Intake from '../app/intake/page';
+const page=location.pathname;
+createRoot(document.getElementById('root')!).render(page==='/psychometrics'?<Library/>:page==='/intake'?<Intake/>:<PatientWorkspace patientRef={page.split('/').at(-1)||''}/>);

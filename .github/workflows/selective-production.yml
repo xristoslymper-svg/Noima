@@ -1,0 +1,45 @@
+name: Selective production preservation
+on:
+  pull_request:
+    paths:
+      - 'components/intake/**'
+      - 'components/patients/PriorCourse*'
+      - 'components/patients/PatientTimeline.tsx'
+      - 'app/psychometrics/**'
+      - 'app/intake/**'
+      - 'app/api/intake/**'
+      - 'app/api/patients/demo/prior-course/**'
+      - 'tests/selective*'
+      - 'browser-tests/selective*'
+      - '.github/workflows/selective-production.yml'
+permissions:
+  contents: read
+concurrency:
+  group: selective-production-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preserve-and-exercise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLINICAL_DATA_MODE: synthetic
+      EXTERNAL_AI_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types --test tests/selective-production.test.mjs tests/selective-library-database.test.mjs
+      - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
+      - run: npx playwright install --with-deps chromium
+      - run: node browser-tests/selective-port.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selective-production-evidence
+          path: test-results/selective-port
+          retention-days: 7

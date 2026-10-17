@@ -452,3 +452,30 @@
 .newRecordActions .newRecordSecondary:hover{background:#e6f1e9;border-color:#a8cdb5}
 .newRecordActions button:focus-visible{outline:2px solid #316c54;outline-offset:3px}
 .newRecordActions button:disabled{opacity:.55;cursor:not-allowed}
+
+/* Patient-folder visual refinement: preserve every tab, action and data workflow. */
+.workspace{--patient-canvas:#f6f7f3;--patient-surface:#fff;--patient-navigation:#fafbf9;--patient-line:#e5e9e3;--patient-ink:#1f332a;background:var(--patient-canvas)}
+.hero{align-items:center;gap:16px!important;padding:17px 0 14px!important;margin-bottom:0!important}
+.hero h1{font-size:clamp(25px,2.4vw,32px)!important;letter-spacing:-.035em;line-height:1.15!important}
+.hero :global(.patient-record-context){font-size:12.5px;margin-top:5px;color:#64766c}
+.newRecordActions{gap:9px;margin:2px 0 14px;justify-content:flex-end}
+.newRecordActions .newRecordPrimary,.newRecordActions .newRecordSecondary{min-height:40px;border-radius:10px;box-shadow:0 1px 2px rgba(20,50,38,.035)}
+.newRecordActions .newRecordPrimary{background:#204c3d;border-color:#204c3d}
+.newRecordActions .newRecordSecondary{background:#fff;border-color:#d8e2da;color:#275242}
+.newRecordActions button:focus-visible{outline:2px solid #316c54;outline-offset:3px}
+.tabs{padding:5px!important;background:#fdfefd!important;border:1px solid #e5e9e3!important;border-radius:14px!important;box-shadow:0 2px 13px rgba(24,51,37,.035)!important;margin-bottom:14px!important;gap:3px!important}
+.tabs button{border-radius:9px!important;font-weight:550;min-height:39px!important;padding:8px 13px!important}
+.tabs button[aria-current="page"]{background:#fff!important;border:1px solid #dce5de!important;color:#234b3c!important;box-shadow:0 1px 5px rgba(30,53,42,.08)!important;font-weight:700}
+.tabs button:not([aria-current="page"]):hover{background:#f0f5f1!important}
+.contentSurface{padding:22px 27px 25px!important;background:#fff!important;border-color:#e5eae4!important;border-radius:18px!important;box-shadow:0 4px 28px rgba(28,55,41,.035)!important}
+.contentSurface :global(.panel-heading){padding-bottom:15px;margin-bottom:14px}
+.contentSurface :global(.panel-heading h2){font-size:21px;line-height:1.25;letter-spacing:-.025em}
+.contentSurface :global(.panel-heading button),.contentSurface :global(.history-prior-course-action){border-radius:9px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:650;cursor:pointer}
+.contentSurface :global(.history-prior-course){border-top:0;margin:0 0 16px;padding:5px 0 14px}
+.contentSurface :global(.history-prior-course-header){display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.contentSurface :global(.history-prior-course-header strong){font-size:14px;color:#244438;letter-spacing:-.01em}
+.contentSurface :global(.history-prior-course-action){background:#fff!important;color:#25543e!important;border:1px solid #d3e2d7!important;box-shadow:none!important;padding:8px 13px!important}
+.contentSurface :global(.history-prior-course-action:hover){background:#eef5f0!important}
+.contentSurface :global(.history-prior-course>p){white-space:pre-wrap;line-height:1.6;font-size:13px;color:#52665a;max-width:80ch}
+.contentSurface :global(button:focus-visible){outline:2px solid #3a775d;outline-offset:2px}
+@media(max-width:700px){.hero{padding:13px 0!important}.newRecordActions{justify-content:flex-start;gap:8px}.newRecordActions button{flex:0 1 auto}.tabs{overflow-x:auto!important;flex-wrap:nowrap!important}.tabs button{min-height:44px!important;padding:9px 10px!important}.contentSurface{padding:17px 14px 22px!important;border-radius:15px!important}}

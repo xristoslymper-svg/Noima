@@ -18,8 +18,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Apply only the pinned library changes and Visits integration
-        run: node scripts/prepare-selective-port.cjs
+      - name: Apply only pinned library changes and Visits integration
+        run: |
+          node scripts/prepare-selective-port.cjs
+          sed -i 's/[[:blank:]]*$//' app/psychometrics/page.tsx components/intake/PatientIntakeForm.tsx app/api/intake/public/route.ts app/intake/blank/BlankPrint.tsx
       - name: Publish only to the dedicated draft branch
         run: |
           git diff --check
@@ -29,10 +31,28 @@ jobs:
           git commit -m 'Port Greek library intake and inline prior course onto unchanged production folder'
           git push origin HEAD:refs/heads/feat/production-library-prior-course-20261017
           echo "GENERATED_COMMIT=$(git rev-parse HEAD)"
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - name: TypeScript, lint, unit/database tests and production build
         env:
           CLINICAL_DATA_MODE: synthetic
           EXTERNAL_AI_ENABLED: 'false'
+        run: |
+          set +e
+          mkdir -p /tmp/port-validation
+          result=0
+          for task in typecheck lint test build; do
+            npm run "$task" > "/tmp/port-validation/$task.log" 2>&1
+            status=$?
+            echo "CHECK $task EXIT $status"
+            tail -n 35 "/tmp/port-validation/$task.log"
+            if [ "$status" -ne 0 ]; then
+              grep -n -A 20 -B 3 -E 'not ok|error TS|Error:|error  ' "/tmp/port-validation/$task.log" | head -n 180
+              result=1
+            fi
+          done
+          exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selective-validation
+          path: /tmp/port-validation/
+          retention-days: 5

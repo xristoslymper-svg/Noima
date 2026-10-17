@@ -1,4 +1,3 @@
-
 import {rpc} from '@/lib/patients/demo-runtime';
 import {checkIntakeIdentity,normalizeIntakeIdentity} from '@/lib/intake/demographics';
 import type {IntakeIdentity} from '@/lib/intake/history';
@@ -9,7 +8,8 @@ export async function POST(request:Request){
  const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
  if(mode&&!['demo','synthetic'].includes(mode))return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.',code:'clinical_data_disabled'},{status:403,headers:{'Cache-Control':'private, no-store'}});
  if(!sameOrigin(request))return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});
- const b=await request.json().catch(()=>({}));
+ const b=await request.json().catch(()=>null);
+ if(!b||typeof b!=='object'||Array.isArray(b))return Response.json({error:'Μη έγκυρο αίτημα.'},{status:400,headers:{'Cache-Control':'private, no-store'}});
  const newIdentity=b.identity;
  if(['submit','device_submit'].includes(b.action)&&newIdentity!=null){
   if(typeof newIdentity!=='object'||Array.isArray(newIdentity))return Response.json({error:'Μη έγκυρα στοιχεία ασθενή.'},{status:422});

@@ -9,7 +9,7 @@ export function normalizeIntakeIdentity(raw:Partial<IntakeIdentity>):IntakeIdent
  return {
   first_name:String(raw.first_name||'').trim().slice(0,120),
   last_name:String(raw.last_name||'').trim().slice(0,120),
-  age:String(raw.age||'').trim(),
+  age:String(raw.age??'').trim(),
   phone:String(raw.phone||'').trim(),
   email:String(raw.email||'').trim().toLowerCase(),
   amka:String(raw.amka||'').replace(/\s/g,''),
@@ -18,6 +18,12 @@ export function normalizeIntakeIdentity(raw:Partial<IntakeIdentity>):IntakeIdent
  };
 }
 export function checkIntakeIdentity(raw:Partial<IntakeIdentity>):DemographicProblem|null {
+ for(const key of ['first_name','last_name','email','amka','phone','contact_phone','address'] as const){
+  if(raw[key]!=null&&typeof raw[key]!=='string')return key;
+ }
+ if(raw.age!=null&&typeof raw.age!=='string'&&typeof raw.age!=='number')return 'age';
+ if(String(raw.first_name||'').trim().length>120)return 'first_name';
+ if(String(raw.last_name||'').trim().length>120)return 'last_name';
  const value=normalizeIntakeIdentity(raw);
  if(!value.first_name)return 'first_name';
  if(!value.last_name)return 'last_name';

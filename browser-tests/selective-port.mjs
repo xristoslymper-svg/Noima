@@ -25,7 +25,7 @@ const folder=JSON.parse(JSON.stringify(baseFixture).replaceAll(baseFixture.patie
 const retsets=new Map((await sql("select proname,bool_or(proretset) is_set from pg_proc where pronamespace='public'::regnamespace group by proname")).map(row=>[row.proname,row.is_set]));
 globalThis.__selectiveRpc=async(name,args)=>{
  assert.match(name,/^[a-z][a-z0-9_]+$/);const role=scope.getStore()||'anon';const names=Object.keys(args);for(const key of names)assert.match(key,/^[a-z][a-z0-9_]+$/);
- const pending=queue.then(()=>transaction(role,async()=>{const parameters=Object.values(args).map(v=>v!==null&&typeof v==='object'&&!Array.isArray(v)?JSON.stringify(v):v);const call='public.'+name+'('+names.map((key,i)=>key+'=> $'+(i+1)).join(',')+')';const rows=await sql('select to_jsonb(result) value from '+call+' result',parameters);return retsets.get(name)?rows.map(row=>row.value):rows[0]?.value}));queue=pending.catch(()=>{});return pending;
+ const pending=queue.then(()=>transaction(role,async()=>{const parameters=Object.values(args).map(v=>v!==null&&typeof v==='object'?JSON.stringify(v):v);const call='public.'+name+'('+names.map((key,i)=>key+'=> $'+(i+1)).join(',')+')';const rows=await sql('select to_jsonb(result) value from '+call+' result',parameters);return retsets.get(name)?rows.map(row=>row.value):rows[0]?.value}));queue=pending.catch(()=>{});return pending;
 };
 const routePlugin={name:'isolated-auth-sql',setup(b){
  b.onResolve({filter:/^@\/lib\/(pilot\/route|patients\/demo-runtime)$/},args=>({path:args.path,namespace:'isolated-auth-sql'}));

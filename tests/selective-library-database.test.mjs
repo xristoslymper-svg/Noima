@@ -23,7 +23,7 @@ test('prior-course SQL is retry-safe, append-only, versioned and isolated withou
  const beforeSessions=await sql('select id,status from demo_sessions where patient_id=$1',[patient.id]);
  const beforeMeds=await sql('select id from demo_medications where patient_id=$1',[patient.id]);
  const request=randomUUID(),text='Synthetic previous course: stable follow-up for approximately two years.';
- const write='select demo_prior_course_save($1,$2,$3,$4,$5,$6) value';
+ const write='select to_jsonb(demo_prior_course_save($1,$2,$3,$4,$5,$6)) value';
  const params=[workspace,patient.id,request,0,'approximately 2 years',text];
  const first=(await asUser(user,()=>sql(write,params)))[0].value;
  const retry=(await asUser(user,()=>sql(write,params)))[0].value;
@@ -40,7 +40,7 @@ test('prior-course SQL is retry-safe, append-only, versioned and isolated withou
 test('new questionnaire-only intake creates exactly one folder on submission and no appointment or visit',async()=>{
  const id=randomUUID(),token=randomBytes(32).toString('hex'),identity={first_name:'Synthetic',last_name:'Library Intake',age:'36',phone:'+302101234567',email:'synthetic-port@example.invalid',amka:'',address:'Synthetic street',contact_phone:''};
  const beforePatients=(await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n;
- await asUser(user,()=>sql("select demo_intake_assign_unattached($1,$2,$3,$4,array['GAD-7'],'email',null)",[workspace,id,token,JSON.stringify(identity)]));
+ await asUser(user,()=>sql("select demo_intake_assign_unattached($1,$2,$3,$4,jsonb_build_array('GAD-7'),'email',null)",[workspace,id,token,JSON.stringify(identity)]));
  assert.equal((await sql('select count(*)::int n from demo_patients where tester_id=$1',[workspace]))[0].n,beforePatients);
  const result=(await anonymous(()=>sql('select demo_intake_submit($1,$2,null,$3) value',[token,JSON.stringify(identity),JSON.stringify({'GAD-7':[1,1,1,1,1,1,1]})])))[0].value;
  assert.equal(result.status,'submitted');assert.ok(result.patient_id);

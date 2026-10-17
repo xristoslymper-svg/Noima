@@ -1,0 +1,38 @@
+name: Prepare selective production port
+on:
+  push:
+    branches: ['feat/production-library-prior-course-20261017']
+    paths: ['scripts/prepare-selective-port.cjs', '.github/workflows/prepare-selective-production-port.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Apply only the pinned library changes and Visits integration
+        run: node scripts/prepare-selective-port.cjs
+      - name: Publish only to the dedicated draft branch
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app components lib supabase tests scripts .github/workflows/prepare-selective-production-port.yml .github/workflows/selective-port-source.yml
+          git commit -m 'Port Greek library intake and inline prior course onto unchanged production folder'
+          git push origin HEAD:refs/heads/feat/production-library-prior-course-20261017
+          echo "GENERATED_COMMIT=$(git rev-parse HEAD)"
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          CLINICAL_DATA_MODE: synthetic
+          EXTERNAL_AI_ENABLED: 'false'

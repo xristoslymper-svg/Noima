@@ -27,7 +27,7 @@ test('previous review is corrected, complete and never copied into the current d
 test('unattributed self-report cannot become verified clinical narrative',async()=>{
  const b=await withSummarySources(seed,tester,async name=>name==='demo_prior_course_get'?[]:[report]);
  const c=buildSummaryContext(b);
- assert.throws(()=>validateNarrative(JSON.stringify({findings:[{text:'Λαμβάνει σίγουρα διαφορετική αγωγή καθημερινά.',source_ids:['patient_report:r'],group_label:'Αγωγή',theme:'medication'}]}),c),/invalid_finding/);
+ assert.throws(()=>validateNarrative({findings:[{text:'Λαμβάνει σίγουρα διαφορετική αγωγή καθημερινά.',source_ids:['patient_report:r'],group_label:'Αγωγή',theme:'medication'}]},c),/invalid_finding/);
 });
 
 test('medication revisions keep explicit original visit lineage without guessing or changing state',async()=>{

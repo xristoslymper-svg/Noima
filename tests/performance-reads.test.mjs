@@ -32,7 +32,7 @@ test('registry retains input order, stable dates, first matches, corrected diagn
  corrections.push({session_id:'old',patch:{assessment:{after:diagnosis('UPDATED')}}});assert.equal((await read('a'))[1].diagnosis.code,'UPDATED');
 });
 function summaryHandler({bundle=async()=>({hash:'fresh'}),cache=async()=>[{context_hash:'fresh',policy_version:7,findings:['verified']}]}={}){
- return load(summary,{'@/lib/clinical/provider-evidence':{providerEvidence:v=>v},'@/lib/pilot/route':{withPilot:f=>f},'@/lib/patients/demo-runtime':{patientBundle:bundle,request:cache},'@/lib/clinical/identity':{isClinicalId:id=>Boolean(id)},'@/lib/clinical/clinical-card':{buildClinicalCard:(b,c,f)=>({hash:b.hash,findings:f})},'@/lib/clinical/summary-context':{buildSummaryContext:()=>({day:'2026-10-09'}),summaryContextHash:async b=>b.hash,SUMMARY_POLICY_VERSION:7}}).GET;
+ return load(summary,{'@/lib/clinical/summary-sources':{withSummarySources:async b=>b},'@/lib/clinical/provider-evidence':{providerEvidence:v=>v},'@/lib/pilot/route':{withPilot:f=>f},'@/lib/patients/demo-runtime':{patientBundle:bundle,request:cache},'@/lib/clinical/identity':{isClinicalId:id=>Boolean(id)},'@/lib/clinical/clinical-card':{buildClinicalCard:(b,c,f)=>({hash:b.hash,findings:f})},'@/lib/clinical/summary-context':{buildSummaryContext:()=>({day:'2026-10-09'}),summaryContextHash:async b=>b.hash,SUMMARY_POLICY_VERSION:7}}).GET;
 }
 const summaryRequest=()=>new Request('https://qa.test/api/clinical/summary?tester=owned&patient_id=patient');
 test('summary reads overlap but never returns before fresh bundle validation',async()=>{

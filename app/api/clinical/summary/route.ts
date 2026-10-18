@@ -149,7 +149,7 @@ async function handlePOST(req:Request){
    const verified=await precomputeClinicalSummary(b.tester,b.patient_id,true);
    const currentBundle=await summaryBundle(b.tester,b.patient_id);const currentContext=buildSummaryContext(currentBundle);
    if(await summaryContextHash(currentBundle,currentContext.day)!==verified.context_hash)throw new Error('stale_generation');
-   return Response.json({...verified,card:buildClinicalCard(currentBundle,currentContext,verified.findings,true),as_of:context.day,mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
+   return Response.json({...verified,card:buildClinicalCard(currentBundle,currentContext,verified.findings,true),as_of:currentContext.day,mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
   }catch(error){
    mode='canonical';const safe=error instanceof Error?error.message:'';
    if(safe==='stale_generation'){

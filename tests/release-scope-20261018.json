@@ -568,7 +568,8 @@
       "tests/summary-route.test.mjs",
       "tests/smooth-record.test.mjs",
       "lib/clinical/medication-lineage.ts",
-      "lib/clinical/patient-record.ts"
+      "lib/clinical/patient-record.ts",
+      "tests/performance-reads.test.mjs"
     ]
   }
 }

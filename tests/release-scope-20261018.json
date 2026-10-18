@@ -607,7 +607,21 @@
       "browser-tests/clinical-cleanup-fixture.tsx",
       "browser-tests/clinical-cleanup.mjs",
       "tests/clinical-assessment-layout.test.mjs",
-      "tests/mse-compact-ui.test.mjs"
+      "tests/mse-compact-ui.test.mjs",
+      "lib/calendar/google-sync.ts",
+      "lib/calendar/google-client.ts",
+      "lib/calendar/google-oauth.ts",
+      "lib/calendar/google-runner.ts",
+      "app/calendar/google-preview/page.tsx",
+      "components/calendar/GoogleCalendarPreview.tsx",
+      "tests/google-calendar-sync.test.mjs",
+      "docs/google-calendar-preview.md",
+      "lib/calendar/google-preview-state.ts",
+      "app/calendar/page.tsx",
+      "tests/calendar-google-entry.test.mjs",
+      "components/calendar/CalendarConnectionMenu.tsx",
+      "components/calendar/CalendarConnectionMenu.module.css",
+      "components/overview/RecordAssistant.module.css"
     ]
   }
 }

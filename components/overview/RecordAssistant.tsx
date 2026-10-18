@@ -98,7 +98,7 @@ export default function RecordAssistant({synthetic:forceSynthetic=false}:{synthe
   <button ref={launcher} type="button" className={styles.launcher} aria-controls={uid+'-panel'} aria-expanded={open} onClick={()=>open?minimize():setOpen(true)}><Sparkles size={20}/><span>Βοηθός Ψ</span>{busy&&<i className={styles.busyDot}/>}</button>
  </div>,document.body);
 }
-export function OverviewShortcuts(){
+export function OverviewShortcuts({searchOnly=false}:{searchOnly?:boolean}={}){
  const [query,setQuery]=useState(''),[patients,setPatients]=useState<SearchPatient[]>([]),[status,setStatus]=useState('');
  const sequence=useRef(0);
  const timer=useRef<ReturnType<typeof setTimeout>|null>(null),pending=useRef<AbortController|null>(null);
@@ -115,11 +115,11 @@ export function OverviewShortcuts(){
   return()=>{if(timer.current)clearTimeout(timer.current);pending.current?.abort()};
  },[query,search]);
  function closeResults(){if(timer.current)clearTimeout(timer.current);pending.current?.abort();sequence.current++;setPatients([]);setStatus('')}
- return <div className={styles.shortcuts}>
-  <div className={styles.searchWrap}><form onSubmit={event=>{event.preventDefault();void search()}}><Search size={16} aria-hidden="true"/><input aria-label="Αναζήτηση ασθενούς" placeholder="Αναζήτηση ασθενούς…" maxLength={100} value={query} onKeyDown={event=>{if(event.key==='Escape')closeResults()}} onChange={event=>{sequence.current++;setQuery(event.target.value);setPatients([]);setStatus('')}}/><button disabled={query.trim().length<2} type="submit">Αναζήτηση</button></form>
+ return <div className={styles.shortcuts+(searchOnly?' '+styles.toolbarSearch:'')}>
+  <div className={styles.searchWrap}><form onSubmit={event=>{event.preventDefault();void search()}}><Search size={16} aria-hidden="true"/><input aria-label="Αναζήτηση ασθενούς" placeholder="Αναζήτηση ασθενούς…" maxLength={100} value={query} onKeyDown={event=>{if(event.key==='Escape')closeResults()}} onChange={event=>{sequence.current++;setQuery(event.target.value);setPatients([]);setStatus('')}}/>{!searchOnly&&<button disabled={query.trim().length<2} type="submit">Αναζήτηση</button>}</form>
    {(patients.length>0||status)&&<div className={styles.results}><button className={styles.close} aria-label="Κλείσιμο αποτελεσμάτων" onClick={closeResults}>×</button><span role="status">{status}</span>{patients.map(patient=><Link key={patient.id} href={'/patients/demo/'+patient.id}>{patient.first_name} {patient.last_name}<small>Φάκελος · {patient.id.slice(-6)}</small></Link>)}</div>}
   </div>
-  <Link className={styles.primary} href="/calendar?new=1">+ Νέο ραντεβού</Link>
-  <Link href="/patients/new">+ Νέος ασθενής</Link>
+  {!searchOnly&&<><Link className={styles.primary} href="/calendar?new=1">+ Νέο ραντεβού</Link>
+  <Link href="/patients/new">+ Νέος ασθενής</Link></>}
  </div>;
 }

@@ -5,6 +5,8 @@ import {useMobileCalendarLayout} from '@/components/mobile/useMobileCalendarLayo
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
 import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
+import {OverviewShortcuts} from '@/components/overview/RecordAssistant';
+import CalendarConnectionMenu from '@/components/calendar/CalendarConnectionMenu';
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
@@ -27,7 +29,6 @@ import {
   Bell,
   CalendarDays,
   Check,
-  ChevronRight,
   Clock,
   Home,
   Menu,
@@ -329,7 +330,7 @@ export default function CalendarPage() {
 
 
   const days = useMemo(() => weekKeys(focusDate), [focusDate]);
-  const gridDays=useMemo(()=>mobileCalendar&&view==='day'?days.filter(day=>day.key===focusDate):days,[mobileCalendar,view,days,focusDate]);
+  const gridDays=useMemo(()=>view==='day'?days.filter(day=>day.key===focusDate):days,[view,days,focusDate]);
   const mobileFocus=(value:string)=>{setFocusDate(value);weekScrollerRef.current?.scrollTo({top:0,left:0,behavior:'instant'})};
 
   const shiftFocus = useCallback((daysToMove: number) => {
@@ -358,7 +359,7 @@ export default function CalendarPage() {
   );
 
   useEffect(() => {
-    if ((!mobileCalendar && view !== "week") || !positionReady || restoringPosition.current) return;
+    if (!positionReady || restoringPosition.current) return;
     const scroller = weekScrollerRef.current;
     if (!scroller) return;
     const target = scroller.querySelector<HTMLElement>(`[data-calendar-day="${focusDate}"]`);
@@ -371,7 +372,7 @@ export default function CalendarPage() {
   useEffect(()=>{
     if(!positionReady)return;
     if(restoringPosition.current){centeredTodayRef.current=currentDay;return}
-    if((!mobileCalendar&&view!=="week")||focusDate!==currentDay){centeredTodayRef.current=null;return}
+    if(focusDate!==currentDay){centeredTodayRef.current=null;return}
     if(loading||savedAppointment||centeredTodayRef.current===currentDay)return;
     const frame=requestAnimationFrame(()=>{
       const scroller=weekScrollerRef.current;
@@ -388,7 +389,7 @@ export default function CalendarPage() {
   },[mobileCalendar,view,focusDate,currentDay,loading,weekWindow.start,weekWindow.end,positionReady,restoringPosition,savedAppointment]);
 
   useEffect(()=>{
-    if(!savedAppointment||!events.some(e=>e.id===savedAppointment.id&&e.scheduled_start===savedAppointment.scheduled_start)||loading||(!mobileCalendar&&view!=="week")||focusDate!==dateKey(new Date(savedAppointment.scheduled_start)))return;
+    if(!savedAppointment||!events.some(e=>e.id===savedAppointment.id&&e.scheduled_start===savedAppointment.scheduled_start)||loading||focusDate!==dateKey(new Date(savedAppointment.scheduled_start)))return;
     const frame=requestAnimationFrame(()=>{const scroller=weekScrollerRef.current;if(!scroller)return;
       const top=(athensMinutes(savedAppointment.scheduled_start)-weekWindow.start)/60*weekHourHeight;
       scroller.scrollTo({top:Math.max(0,top-scroller.clientHeight*.25),behavior:'instant'});
@@ -524,7 +525,7 @@ export default function CalendarPage() {
             <div>
               <h1>Ημερολόγιο</h1>
             </div>
-            {mobileCalendar&&<div className="calendar-page-actions"><PilotProfile/></div>}
+            <div className="calendar-page-actions"><CalendarConnectionMenu/>{mobileCalendar&&<PilotProfile/>}</div>
           </div>
 
           {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
@@ -533,8 +534,8 @@ export default function CalendarPage() {
               <strong>{focusTitle(focusDate)}</strong>
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
-            </div><button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button></div>
-            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
+            </div><button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button><OverviewShortcuts searchOnly/>
+            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label></div><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
             </div>
@@ -548,42 +549,8 @@ export default function CalendarPage() {
           )}
 
           <div className="calendar-page-grid">
-            {view === "day" && !mobileCalendar ? (
-              <section className="calendar-day-card">
-                {loading ? (
-                  <div className="calendar-empty-state">Φόρτωση ημερολογίου…</div>
-                ) : dayEvents.length ? (
-                  dayEvents.map(event => (
-                    <article className={"clinical-event clinical-agenda-row status-"+event.status + (event === nextEvent ? " next" : "")} key={event.id}>
-                      <div className="clinical-event-time">
-                        <strong>{timeLabel(event.scheduled_start)}</strong>
-                        <span>{timeLabel(event.scheduled_end)}</span>
-                      </div>
-                      <div className="clinical-event-line" />
-                      <div className="clinical-event-main">
-                        <div className="agenda-patient">
-                          <button className="agenda-patient-name" onClick={()=>{setQuickError("");setSelectedEvent(event)}}>{event.patient_name}</button>
-                          <span>{event.series_id ? "↻ " : ""}{appointmentType(event.appointment_type)} · {statusLabel(event)}{event.detail ? " · " + event.detail : ""}</span>
-                        </div>
-
-                      </div>
-                      <div className="clinical-event-actions agenda-actions">
-                        {event.patient_id && event.status === "scheduled" && <button className="agenda-session" onClick={() => void openAppointmentSession(event)} disabled={openingSession === event.id}>
-                          <Stethoscope size={14}/>{openingSession === event.id ? "Άνοιγμα…" : event.session_id ? "Συνέχεια" : "Έναρξη"}
-                        </button>}
-                        <button className="agenda-more" onClick={() => {setQuickError("");setSelectedEvent(event)}} aria-label={"Λεπτομέρειες ραντεβού " + event.patient_name}>
-                          <ChevronRight size={17}/>
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <div className="calendar-empty-state">Δεν υπάρχουν ραντεβού για σήμερα.</div>
-                )}
-              </section>
-            ) : (
               <section ref={weekScrollerRef} onScroll={rememberPosition} className="calendar-week-card interactive-week">
-                <div className={"calendar-time-grid"+(mobileCalendar&&view==="day"?" mobile-day-grid":"")}>
+                <div className={"calendar-time-grid"+(view==="day"?" calendar-single-day-grid":"")}>
                   <div className="week-time-corner" />
                   {gridDays.map(day => {
                     const count = visibleEvents.filter(event => segment(event,day.key)).length;
@@ -722,7 +689,6 @@ export default function CalendarPage() {
                   })}
                 </div>
               </section>
-            )}
 
             <aside className="calendar-side-card calendar-day-context">
               <span className="kicker">{focusDate === dateKey(new Date()) ? "ΣΗΜΕΡΑ" : "ΗΜΕΡΑ"}</span>
@@ -878,12 +844,15 @@ export default function CalendarPage() {
         .calendar-page-actions{gap:8px}
         .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
         .calendar-control-bar{min-height:48px;padding:7px 8px 7px 4px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
+        .calendar-control-bar .calendar-filter select{width:132px;max-width:132px}
+        @media(max-width:1100px){.calendar-date-tools{flex:1 1 100%}.calendar-date-nav{flex-basis:100%}}
         .calendar-date-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}.calendar-toolbar-add{flex:0 0 auto;white-space:nowrap;font-size:12px!important;font-weight:700!important}.calendar-control-bar .calendar-filter{margin-left:auto}.calendar-date-nav strong{font-size:13px;color:#334b40;white-space:nowrap}.calendar-date-nav>button{border:0!important;background:transparent!important}
         .calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
         .calendar-view-switch button{border:0!important;border-radius:6px!important;padding:6px 10px!important;background:transparent!important;font-size:10px!important}
         .calendar-view-switch button.active{background:#fff!important;box-shadow:0 1px 4px rgba(48,70,60,.08)!important;color:#315f50!important}
 
         /* Desktop is the product surface: the week owns the available width. */
+        .calendar-time-grid.calendar-single-day-grid{grid-template-columns:64px minmax(0,1fr)!important}
         .calendar-page-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;margin-top:20px}
         .calendar-page-grid>.calendar-side-card{display:none}
         .calendar-week-card{width:100%;border:1px solid #e2e8e4!important;border-radius:14px!important;background:#fff!important;box-shadow:0 8px 28px rgba(45,67,57,.035)!important;overflow:hidden}

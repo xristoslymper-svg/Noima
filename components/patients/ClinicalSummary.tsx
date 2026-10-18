@@ -43,7 +43,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false,bri
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
- if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} onRefresh={()=>setRetry(n=>n+1)}/>;
+ if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} onRefresh={()=>setRefresh(n=>n+1)}/>;
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}

@@ -1015,3 +1015,34 @@ test('copilot questionnaire confirmation preserves tokens and prevents duplicate
  const [accepted]=await asUser(owner,()=>sql('select pilot_mail_claim($1,$2,$3) status',[assessment,'b3'.repeat(32),'fictional@example.invalid']));
  assert.equal(accepted.status,'accepted');
 });
+
+test('pending projection finds undeferred visits without writes; manual completion and undo retain patient and deadline',async()=>{
+ const t='61500000-0000-4000-8000-000000000124';
+ await sql('select demo_tester_bootstrap($1)',[t]);
+ const [patient]=await sql("select * from demo_patient_create_v2($1,'TEST Pending projection')",[t]);
+ const [visit]=await sql("select * from demo_session_start($1,$2,'follow_up')",[t,patient.id]);
+ const {pendingTaskSnapshot}=await import('../lib/overview/pending-task-snapshot.ts');
+ const read=async path=>{
+  const url=new URL('https://fixture.invalid/'+path),offset=Number(url.searchParams.get('offset')),limit=Number(url.searchParams.get('limit'));
+  assert.equal(url.searchParams.get('tester_id'),'eq.'+t);
+  return url.pathname==='/demo_sessions'
+   ?sql("select id,patient_id,status,started_at,updated_at from demo_sessions where tester_id=$1 and status='draft' order by id limit $2 offset $3",[t,limit,offset])
+   :sql('select id,first_name,last_name from demo_patients where tester_id=$1 order by id limit $2 offset $3',[t,limit,offset]);
+ };
+ const initial=await pendingTaskSnapshot(read,t,[]);
+ assert.equal(initial.length,1);assert.equal(initial[0].source_session_id,visit.id);
+ assert.equal((await sql('select count(*)::int n from demo_tasks where tester_id=$1',[t]))[0].n,0);
+ const deadline='2026-11-01T15:00:00.000Z';
+ const [manual]=await sql("select * from demo_task_create($1,'TEST Follow up call',$2,$3)",[t,patient.id,deadline]);
+ for(const status of ['completed','open']){
+  const [updated]=await sql('select * from demo_task_set_status($1,$2,$3)',[t,manual.id,status]);
+  assert.equal(updated.patient_id,patient.id);assert.equal(new Date(updated.due_at).toISOString(),deadline);
+  const tasks=await sql('select * from demo_task_list($1)',[t]);
+  const snapshot=await pendingTaskSnapshot(read,t,tasks);
+  assert.equal(snapshot.length,status==='completed'?1:2);
+ }
+ await sql('select demo_task_for_session($1,$2)',[t,visit.id]);
+ const tasks=await sql('select * from demo_task_list($1)',[t]);
+ const final=await pendingTaskSnapshot(read,t,tasks);
+ assert.equal(final.length,2);assert.equal(final.filter(task=>task.source_session_id===visit.id).length,1);
+});

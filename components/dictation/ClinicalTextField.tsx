@@ -1,5 +1,4 @@
 'use client';
-import {useSyntheticChart} from '@/components/patients/SyntheticChartContext';
 import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import {Check,Mic,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
@@ -7,12 +6,12 @@ import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type Writ
 import {FieldRecorder} from '@/lib/clinical/field-recorder';
 import styles from './ClinicalTextField.module.css';
 export type WritingCommit={pending:WritingPending;provenance:WritingProvenance;rememberProposal:(id:string)=>void};
-type Props={sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;sectionHeading?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
+type Props={toolsDisabled?:boolean;sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;sectionHeading?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
 let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
- const synthetic=useSyntheticChart();
+ const synthetic=Boolean(p.toolsDisabled);
  const [snapshot,setSnapshot]=useState<WritingSnapshot>({phase:'idle',pending:null,error:'',confirmed:p.value});
  const [seconds,setSeconds]=useState(0),[undo,setUndo]=useState<{before:string;after:string;expires:number}|null>(null);
  const [cancelOpen,setCancelOpen]=useState(false);

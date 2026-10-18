@@ -8,7 +8,7 @@ Branch: codex/daily-teleconsultations. No production deployment or database chan
 - Existing FollowupDraftProvider, FollowupField, ContinuityDraft and useClinicalDraft save/recovery mechanism reused. A dependency-injected fixture write replaces only the API persistence in this preview. Normal patient-record default is unchanged.
 - Call and record view share the same mounted draft provider. Stopping a simulated call does not finalize the visit. A failed save blocks closing the visit and preserves text.
 - PHQ-9/GAD-7/history assignment simulation retains the same appointment/patient/visit and deduplicates repeats. Existing intake visual classes reused; these are NOT real sends.
-- SyntheticChartContext disables dictation/AI buttons so fixture identifiers cannot reach shared APIs.
+- The injected preview save transport disables dictation/AI buttons so fixture identifiers cannot reach shared APIs.
 
 ## Daily preparation (NOT live enabled)
 Official API: https://docs.daily.co/reference/rest-api/rooms/create-room

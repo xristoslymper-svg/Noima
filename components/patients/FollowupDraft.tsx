@@ -10,7 +10,7 @@ import ClinicalTextField from '@/components/dictation/ClinicalTextField';
 type Tracking={registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void};
 type Draft=ReturnType<typeof useClinicalDraft<ContinuityDraft>>;
 type Conflict=ReturnType<typeof followupFieldConflicts>[number];
-type Context=Tracking&{draft:Draft;sessionId:string;checkConsistency:(bundle:PatientBundle)=>void};
+type Context=Tracking&{toolsDisabled?:boolean;draft:Draft;sessionId:string;checkConsistency:(bundle:PatientBundle)=>void};
 const FollowupContext=createContext<Context|null>(null);
 export function useFollowupDraft(){const context=useContext(FollowupContext);if(!context)throw new Error('Missing follow-up draft provider');return context;}
 
@@ -37,7 +37,7 @@ export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onD
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν συμφωνήθηκαν οι καταγραφές.')}finally{setBusy(false)}
  }
  const labels={interview:'Κλινική εικόνα',plan:'Αποφάσεις',review:'Επόμενος έλεγχος',adherence:'Λήψη αγωγής'};
- return <FollowupContext.Provider value={{draft,sessionId:session.id,registerFlusher,onDirtyChange,checkConsistency}}>
+ return <FollowupContext.Provider value={{draft,toolsDisabled:Boolean(saveClosure),sessionId:session.id,registerFlusher,onDirtyChange,checkConsistency}}>
   {conflicts.length>0&&<section ref={conflictPanel} className="visit-source-conflicts" role="region" aria-label="Συμφωνία παλαιότερων καταγραφών"><h3>Συμφωνία παλαιότερων καταγραφών</h3><p>Υπάρχουν δύο διαφορετικά κείμενα για το ίδιο πεδίο. Ελέγξτε τα πριν επιλέξετε.</p>{conflicts.map(conflict=><div key={conflict.key}><h4>{labels[conflict.key as keyof typeof labels]}</h4><div className="visit-related-fields"><div><strong>Κοινή καταγραφή επίσκεψης</strong><p>{draft.value[conflict.field]||'Κενό πεδίο'}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'shared')}>Διατήρηση κοινής καταγραφής</button></div><div><strong>Παλαιότερη αναλυτική καταγραφή</strong><p>{conflict.section.content}</p><button type="button" disabled={busy} onClick={()=>void resolve(conflict,'detailed')}>Διατήρηση αναλυτικής καταγραφής</button></div></div></div>)}{error&&<p role="alert">{error}</p>}</section>}
   {children}
   {draft.error&&<p role="alert">{draft.error}</p>}
@@ -45,9 +45,9 @@ export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onD
 }
 
 export function FollowupField({field,title,placeholder='',rows=2,onPendingChange,sectionHeading=false}:{sectionHeading?:boolean;field:keyof Omit<ContinuityDraft,'source'|'writing_provenance'>;title:string;placeholder?:string;rows?:number;onPendingChange?:(pending:boolean)=>void}){
- const {draft,sessionId,registerFlusher,onDirtyChange}=useFollowupDraft();
+ const {draft,sessionId,registerFlusher,onDirtyChange,toolsDisabled}=useFollowupDraft();
  const current=useRef(draft);current.current=draft;
- return <ClinicalTextField sessionId={sessionId} section="closure" fieldKey={field} sectionHeading={sectionHeading} title={title} placeholder={placeholder} rows={rows} maxLength={field==='pinned_context'?2000:20000} value={draft.value[field]} onChange={text=>current.current.change({...current.current.currentValue(),[field]:text})} onBlur={()=>void current.current.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={onPendingChange} onConfirm={async(text,{provenance})=>{
+ return <ClinicalTextField toolsDisabled={toolsDisabled} sessionId={sessionId} section="closure" fieldKey={field} sectionHeading={sectionHeading} title={title} placeholder={placeholder} rows={rows} maxLength={field==='pinned_context'?2000:20000} value={draft.value[field]} onChange={text=>current.current.change({...current.current.currentValue(),[field]:text})} onBlur={()=>void current.current.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={onPendingChange} onConfirm={async(text,{provenance})=>{
   await current.current.flush();const latest=current.current,value=latest.currentValue();
   if(value[field]!==provenance.original)throw new Error('Η αρχική καταγραφή άλλαξε. Ελέγξτε τη νεότερη έκδοση.');
   latest.change({...value,[field]:text,source:provenance.kind==='ai'?'ai_assisted':value.source,writing_provenance:{...value.writing_provenance,[field]:provenance}});

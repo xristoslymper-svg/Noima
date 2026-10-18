@@ -1,0 +1,4 @@
+import type {PendingTask,PendingVisit,TaskPatient} from './pending-tasks.ts';
+export const taskPatients:TaskPatient[]=[{id:'30000000-0000-4000-8000-000000000001',first_name:'Άννα',last_name:'Δείγμα'},{id:'30000000-0000-4000-8000-000000000002',first_name:'Άννα',last_name:'Παράδειγμα'}];
+export const taskVisits:PendingVisit[]=[{id:'40000000-0000-4000-8000-000000000001',patient_id:taskPatients[0].id,status:'draft',started_at:'2026-10-18T10:00:00Z',updated_at:'2026-10-18T10:20:00Z'},{id:'40000000-0000-4000-8000-000000000002',patient_id:taskPatients[1].id,status:'draft',started_at:'2026-10-17T10:00:00Z',updated_at:'2026-10-17T10:30:00Z'}];
+export const fixtureTask:PendingTask={id:'50000000-0000-4000-8000-000000000001',tester_id:'synthetic',patient_id:taskPatients[0].id,source_session_id:null,title:'Επικοινωνία για επόμενο ραντεβού',due_at:'2026-10-17T15:00:00Z',status:'open',completed_at:null,created_at:'2026-10-17T08:00:00Z',updated_at:'2026-10-17T08:00:00Z'};

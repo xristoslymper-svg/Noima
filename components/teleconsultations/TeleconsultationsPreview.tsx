@@ -49,7 +49,7 @@ export default function TeleconsultationsPreview(){
  const dirtyKeys=useRef(new Set<string>());
  const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value){dirtyKeys.current.add(key);setReview(null);reviewedRevision.current=null;setReviewing(false)}else dirtyKeys.current.delete(key);setDirty(dirtyKeys.current.size>0)},[]);
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[dirty]);
- const bundle={...fixture,patient:{...fixture.patient,first_name:'Σοφία',last_name:'Δείγμα'},sessions:[{...fixture.sessions[3],id:sessionId,patient_id:patientId,started_at:initial.appointment.scheduled_start,session_type:'followup',closure_draft:record.notes,closure_version:record.version}],appointments:[{...fixture.appointments[0],...record.appointment}],sections:mse?[mse]:[],risks:risk?[risk]:[]} as unknown as PatientBundle;
+ const bundle={...fixture,patient:{...fixture.patient,first_name:'Σοφία',last_name:'Δείγμα'},sessions:[{...fixture.sessions[3],id:sessionId,patient_id:patientId,started_at:initial.appointment.scheduled_start,session_type:'followup',closure_draft:record.notes,closure_version:record.version}],appointments:[{...reference.appointments[0],...record.appointment}],sections:mse?[mse]:[],risks:risk?[risk]:[]} as unknown as PatientBundle;
  const session=bundle.sessions[0];
  async function saveClosure(notes:ContinuityDraft,version:number|null){
   if(completedRef.current)throw new Error('Η επίσκεψη έχει ήδη καταχωριστεί.');

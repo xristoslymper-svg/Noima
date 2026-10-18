@@ -371,7 +371,7 @@ try{
   await check('treatment-completed-draft-not-offered-after-refresh',async({page,open,nav})=>{
    await open('?tab=treatment');await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).selectOption(visitId);
    state.sessions.find(s=>s.id===visitId).status='completed';
-   await nav('Σύνοψη').click();await nav('Θραπευτικό πλάνο').click();
+   await page.reload();await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).waitFor();
    // A remounted treatment panel resets to unlinked; stale sessions are never offered.
    const select=page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'});assert.equal(await select.inputValue(),'');
    assert.equal(await select.locator('option[value="'+visitId+'"]').count(),0);assert.equal(requests.length,0);

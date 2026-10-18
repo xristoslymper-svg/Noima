@@ -7,9 +7,22 @@ import {emptyContinuity} from '../lib/clinical/continuity.ts';
 const source=JSON.parse(readFileSync('lib/clinical/treatment-preview.json','utf8'));
 const sid='40000000-0000-4000-8000-000000000126',pid=source.patient.id;
 function fixture(){return {...structuredClone(source),sessions:[{id:sid,patient_id:pid,tester_id:source.patient.tester_id,session_type:'follow_up',status:'draft',version:0,closure_version:0,closure_draft:{...emptyContinuity},started_at:'2026-10-18T10:00:00Z',updated_at:'2026-10-18T10:00:00Z',completed_at:null}],sections:[],risks:[],appointments:[],medications:[],medicationEvents:[],medicationSideEffects:[],assessments:[],corrections:[],addenda:[],proposals:[]}}
-test('persistent editing is restricted to the new branch preview, never production or other previews',()=>{
- assert.equal(persistentVisitEnabled({VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/teleconsultation-visit-persistence'}),true);
- for(const env of [{},{VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'codex/teleconsultation-visit-persistence'},{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'main'}])assert.equal(persistentVisitEnabled(env),false);
+test('canonical visit persistence is enabled in production and designated previews only',()=>{
+ for(const env of [
+  {VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'main'},
+  {VERCEL_ENV:'production'},
+  {VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/teleconsultation-visit-persistence'},
+  {VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/teleconsultation-production-notes'}
+ ])assert.equal(persistentVisitEnabled(env),true);
+ for(const env of [{},{VERCEL_ENV:'development'},{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'main'},{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/unrelated'}])assert.equal(persistentVisitEnabled(env),false);
+});
+test('production page and authenticated API share the same persistence gate, without enabling Daily',()=>{
+ const page=readFileSync('app/teleconsultations/page.tsx','utf8');
+ assert.match(page,/if\(persistentVisitEnabled\(process.env\)\)return <TeleconsultationsConnected\/>/);
+ const route=readFileSync('app/api/teleconsultations/route.ts','utf8');
+ assert.match(route,/if\(!persistentVisitEnabled\(process.env\)\)return new Response\(null,\{status:404\}\)/);
+ assert.match(route,/GET=withPilot\(get\)/);
+ assert.doesNotMatch(page+route,/createDailyRoom|getUserMedia|DAILY_API_KEY/);
 });
 test('notes save to the exact visit and reload from canonical draft without creating another session',async()=>{
  let db=fixture(),writes=[];

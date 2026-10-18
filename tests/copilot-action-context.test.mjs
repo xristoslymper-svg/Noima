@@ -17,7 +17,7 @@ function app(intent){
  '@/lib/overview/record-search':{matchPatients,normalizedName},
  '@/lib/mail/crypto':{seal:JSON.stringify,unseal:JSON.parse},
  '@/lib/copilot/provider':{assertCopilotPrivacy(){}},
- '@/lib/copilot/clinical':{understand:async(q,m)=>{seen.understood.push(m);return {tool:'calendar',patient_name:'',use_current_patient:true,question:q,...intent}}},
+ '@/lib/copilot/clinical':{understand:async(q,m)=>{seen.understood.push(structuredClone(m));return {tool:'calendar',patient_name:'',use_current_patient:true,question:q,...intent}}},
  '@/lib/copilot/actions':{prepareAction:async(w,b)=>{seen.prepared.push(b.patient.id);return {proposal:{id:'proposal'},answer:'Confirm first'};}},
  '@/lib/clinical/summary-context':{}
  };

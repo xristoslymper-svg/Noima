@@ -70,3 +70,12 @@ test('preview reuses existing visit draft fields and disables real network tools
  assert.match(ui,/SyntheticChartContext.Provider value=\{true\}/);
  const field=await readFile('components/dictation/ClinicalTextField.tsx','utf8');assert.match(field,/disabled=\{synthetic\|\|busy/);
 });
+
+test('call and notes modes keep one mounted editor and independent scroll',async()=>{
+ const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ assert.equal((ui.match(/<FollowupField field="transcript"/g)||[]).length,1);
+ assert.match(ui,/hidden=\{view!=='notes'\}/);
+ assert.match(ui,/setSelectionRange/);assert.match(ui,/notesPanel.current\?\.scrollTop/);
+ const css=await readFile('components/teleconsultations/Teleconsultations.module.css','utf8');
+ assert.match(css,/position:sticky/);assert.match(css,/overscroll-behavior:contain/);
+});

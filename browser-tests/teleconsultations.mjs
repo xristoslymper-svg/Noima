@@ -16,11 +16,17 @@ try{
   const requests=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.route('**/*',route=>{const url=route.request().url();if(url.includes('/api/')||!url.startsWith(origin)){requests.push(url);return route.abort()}return route.continue()});
   await page.goto(origin);await page.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
+  await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
   const field=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});
   await field.fill('ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');await field.blur();
   await page.getByText('Αποθηκευμένο στο συνθετικό παράδειγμα',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Δοκιμή ροής κλήσης',exact:true}).click();
-  await page.getByRole('button',{name:'Προβολή καταγραφής επίσκεψης',exact:true}).click();
+  await field.evaluate(el=>el.setSelectionRange(8,12));
+  await page.getByRole('button',{name:'Κλήση',exact:true}).click();
+  assert.equal(await field.isVisible(),false);
+  await page.screenshot({path:resolve(out,viewport.width+'-call.png'),fullPage:true});
+  await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
+  assert.deepEqual(await field.evaluate(el=>[el.selectionStart,el.selectionEnd]),[8,12]);
   assert.equal(await field.inputValue(),'ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');
   await page.getByRole('heading',{name:'Συνθετική κλήση σε εξέλιξη'}).waitFor();
   await page.getByRole('button',{name:'Αποστολή τεστ',exact:true}).click();

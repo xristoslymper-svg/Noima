@@ -12,7 +12,7 @@ export default function BriefClinicalSummary({card,patientId,findings,loading,on
  return <section className={styles.section} aria-label="Κλινική σύνοψη">
  <span className="kicker">ΜΕ ΜΙΑ ΜΑΤΙΑ</span><h2>Κλινική σύνοψη</h2>
  {!synthesis.length&&<p className={styles.muted}>{loading?'Φόρτωση σύνθεσης · προσωρινά εμφανίζονται αποσπάσματα φακέλου.':'Σύντομα αποσπάσματα φακέλου · η σύνθεση δεν είναι διαθέσιμη.'}</p>}
- {preview.length?<div className={reading.briefText}>{preview.map((item,index)=><p key={index}>{item.text}</p>)}</div>:<p>Δεν υπάρχει ακόμη ολοκληρωμένη κλινική καταγραφή για σύνοψη.</p>}
+ {preview.length?<div className={reading.briefText}>{preview.map((item,index)=><p key={index}>{item.text}</p>)}</div>:<p>{items.length?'Το διαθέσιμο κείμενο είναι εκτενές· ανοίξτε το παρακάτω για πλήρη ανάγνωση.':'Δεν υπάρχει ακόμη ολοκληρωμένη κλινική καταγραφή για σύνοψη.'}</p>}
  {rest.length>0&&<details><summary>{synthesis.length?'Πλήρης σύνθεση':'Περισσότερα αποσπάσματα'}</summary>{rest.map((item,index)=><p key={index}>{item.text}</p>)}</details>}
  <footer className={reading.briefFooter}><details><summary>Δες καρτέλα</summary>{sources.map(s=><a key={s.id} className="patient-reported-link" href={'/patients/demo/'+encodeURIComponent(patientId)+'?tab='+s.target+(s.session_id?'&session='+encodeURIComponent(s.session_id):'')+(s.kind==='psychometric'?'&assessment='+encodeURIComponent(s.record_id):'')}>{s.label}</a>)}</details><button type="button" className="patient-reported-link" disabled={loading} onClick={onRefresh}>Επαναφόρτωση</button></footer>
  </section>;

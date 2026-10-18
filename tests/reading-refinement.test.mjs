@@ -15,7 +15,8 @@ test('briefing keeps whole statements and every overflow item accessible',()=>{
  assert.equal(result.preview.length,4);
  assert.deepEqual([...result.preview,...result.rest],items);
  const long={text:'Πλήρης πρόταση '.repeat(150)+'.',source_ids:['long']};
- assert.equal(briefPresentation([long]).preview[0].text,long.text.trim());
+ assert.equal(briefPresentation([long]).preview.length,0);
+ assert.equal(briefPresentation([long]).rest[0].text,long.text.trim());
 });
 test('passive read-only summary never generates or writes even when cache is missing',async()=>{
  const calls=[];

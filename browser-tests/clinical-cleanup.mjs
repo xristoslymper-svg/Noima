@@ -28,6 +28,30 @@ try{
   await mse(p).scrollIntoViewIfNeeded();await p.screenshot({path:resolve(out,'desktop-mse.png')});
   assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0);
  });
+ await check('safe draft recovery compares before replacement and restores local work',{width:390,height:844},'/?followup=1&recovery=1',async p=>{
+  const field=p.getByRole('textbox',{name:'Κλινική εικόνα',exact:true});
+  await field.fill('LOCAL UNSAVED TEXT');await field.blur();
+  await p.getByRole('button',{name:'Σύγκριση με αποθηκευμένο πρόχειρο',exact:true}).waitFor();
+  assert.equal(await field.inputValue(),'LOCAL UNSAVED TEXT');
+  await p.getByRole('button',{name:'Σύγκριση με αποθηκευμένο πρόχειρο',exact:true}).click();
+  await p.locator('.conflict-review[aria-label="Σύγκριση προχείρου"]').waitFor();
+  assert.equal(await field.inputValue(),'LOCAL UNSAVED TEXT');
+  await p.getByRole('button',{name:'Χρήση αποθηκευμένου με αντίγραφο ανάκτησης',exact:true}).click();
+  assert.equal(await field.inputValue(),'SERVER RECORDED TEXT');
+  await p.getByRole('button',{name:'Επαναφορά του δικού μου κειμένου',exact:true}).click();
+  assert.equal(await field.inputValue(),'LOCAL UNSAVED TEXT');
+  await p.waitForTimeout(1000);
+  const session=await p.evaluate(()=>window.clinicalQA.bundle.sessions[0]);
+  assert.equal(session.closure_draft.clinical_state_summary,'LOCAL UNSAVED TEXT');
+  assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ });
+ await check('completion readiness uses current blockers and existing section navigation',{width:1280,height:1000},'/',async p=>{
+  const pending=p.locator('[aria-label="Εκκρεμότητες ολοκλήρωσης"]');
+  await pending.getByText('Πριν την ολοκλήρωση',{exact:true}).waitFor();
+  await pending.getByRole('button',{name:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.',exact:true}).click();
+  assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0);
+  await p.getByText('«Συνέχεια αργότερα»: αποθήκευση ως πρόχειρο και προσθήκη στις εκκρεμότητες. Η επίσκεψη δεν οριστικοποιείται.',{exact:true}).waitFor();
+ });
  await check('MSE selection then clearing stays empty, not normal; values and save contract retained',{width:1280,height:1000},'/',async p=>{
   const mood=p.locator('[data-mse-domain="mood"]');await mood.locator(':scope>summary').click();const choice=mood.locator('.mse-options button').first();await choice.click();assert.equal(await choice.getAttribute('aria-pressed'),'true');await mood.getByRole('button',{name:/Εκκαθάριση επιλογών:/}).click();
   assert.equal(await mood.locator('[aria-pressed="true"]').count(),0);assert.equal((await mood.locator('.mse-domain-preview').innerText()).trim(),'');

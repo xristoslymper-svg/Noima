@@ -113,6 +113,14 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
  },[flush]);
  function change(next:T){latest.current=next;setValue(next);callbacks.current.onDirty(JSON.stringify(next)!==saved.current);try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:next,version:v.current}))}catch{};if(timer.current)clearTimeout(timer.current);if(!blocked.current)timer.current=setTimeout(()=>void flush().catch(()=>{}),700)}
  function acceptServer(next:T,nextVersion:number|null){if(timer.current)clearTimeout(timer.current);latest.current=next;saved.current=JSON.stringify(next);v.current=nextVersion;setValue(next);blocked.current=false;setError('');clearRecovery(storageKey);callbacks.current.onDirty(false)}
+ function acceptServerPreservingLocal(next:T,nextVersion:number|null){
+  if(JSON.stringify(latest.current)!==JSON.stringify(next)){
+   // Refuse replacement if a recoverable backup cannot be retained.
+   writeRecovery(sessionStorage,backupKey,JSON.stringify({value:latest.current,version:v.current}));
+   setOlderRecovery(latest.current);
+  }
+  acceptServer(next,nextVersion);
+ }
  function resolve(next:T,server:T,serverVersion:number|null){v.current=serverVersion;saved.current=JSON.stringify(server);blocked.current=false;setError('');change(next)}
  // On a genuine conflict, allowing navigation must not discard local text.
  // Preserve a recoverable copy first; never force a stale server write.
@@ -121,5 +129,5 @@ export function useClinicalDraft<T>({storageKey,initial,version,write,onSaved,on
   if(!blocked.current)return false;
   try{writeRecovery(sessionStorage,storageKey,JSON.stringify({value:latest.current,version:v.current}));return true}catch{return false}
  }
- return {value,currentValue:()=>latest.current,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
+ return {value,dirty:JSON.stringify(latest.current)!==saved.current,acceptServerPreservingLocal,currentValue:()=>latest.current,change,flush,error,hasConflict:blocked.current,saving,savedAt,acceptServer,resolve,preserveConflictForNavigation,olderRecovery,dismissOlderRecovery,version:()=>v.current};
 }

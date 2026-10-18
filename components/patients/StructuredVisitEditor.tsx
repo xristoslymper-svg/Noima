@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {firstAssessmentDocument,initialDocument,mseItems,type VisitDocument,type DocumentField} from '@/lib/clinical/visit-document';
 import type {DemoSection,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
+import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
 import {useClinicalDraft} from './useClinicalDraft';
 import ICD10Picker from './ICD10Picker';
 import MseDomain from './MseDomain';
@@ -77,7 +78,7 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
   </details>}
   {legacyAssessmentFields.length>0&&<details className="assessment-legacy-notes"><summary>Προϋπάρχουσες κλινικές σημειώσεις</summary>{legacyAssessmentFields.map(({field,index})=>firstAssessment?<p key={field.key} style={{whiteSpace:'pre-wrap'}}>{field.text}</p>:renderAssessmentField(field,index))}</details>}
  </>}
- <p role="status" className={draft.error?'save-state error':'visit-save'}>{draft.saving?'Αποθήκευση στο πρόχειρο…':draft.error|| (draft.savedAt?'Το πρόχειρο αποθηκεύτηκε '+draft.savedAt:existing?'Το πρόχειρο αποθηκεύτηκε':'')}</p>
+ <p role="status" className={draft.error?'save-state error':'visit-save'}>{draftSaveStatus({saving:draft.saving,dirty:draft.dirty,error:draft.error,savedAt:draft.savedAt,recorded:Boolean(existing||draft.savedAt)})}</p>
  {draft.error&&<div className="visit-text-button">{draft.hasConflict?<button type="button" onClick={()=>void onSaved().then(b=>{if(b)setConflict((b as PatientBundle).sections.find(s=>s.session_id===sessionId&&s.section_key===kind)||null)}).catch(()=>{})}>Έλεγχος αλλαγών</button>:<button type="button" onClick={()=>void draft.flush().catch(()=>{})}>Δοκιμή αποθήκευσης ξανά</button>}</div>}
  {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><pre>{conflict?.content||'Κενή'}</pre><button onClick={()=>{draft.acceptServer((firstAssessment&&kind==='assessment'?firstAssessmentDocument(conflict?.content,conflict?.document):initialDocument(kind,conflict?.content,conflict?.document)),conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button onClick={()=>{draft.resolve(draft.value,initialDocument(kind,conflict?.content,conflict?.document),conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με τη δική μου</button></div>}
  </div>;

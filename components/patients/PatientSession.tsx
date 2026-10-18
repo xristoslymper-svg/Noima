@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
+import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
 import {journeyReviewFingerprint} from '@/lib/clinical/patient-journey';
 import {JourneyReview} from './PatientJourney';
 import FollowupClosure from './FollowupClosure';
@@ -18,7 +19,7 @@ import SectionEditor from './SectionEditor';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
 import { demoPost } from '@/lib/patients/demo-client';
 import { formatClinicDateTime } from '@/lib/clinic-time';
-import {activeVisitPart,finalizationBlocker,visitSteps,previousMseReference,sessionClinicalTime,mseTimeline} from '@/lib/clinical/visit-workspace-state';
+import {activeVisitPart,finalizationBlocker,finalizationIssues,visitSteps,previousMseReference,sessionClinicalTime,mseTimeline} from '@/lib/clinical/visit-workspace-state';
 
 const definitions=[
  ['interview','Αναφορά ασθενούς & συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
@@ -195,6 +196,7 @@ export default function PatientSession({
  const sharedDraft=(view:React.ReactNode)=>draft.session_type==='follow_up'?<FollowupDraftProvider key={draft.id} bundle={bundle} session={draft} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}>{view}</FollowupDraftProvider>:view;
  if(draft.session_type==='follow_up'&&!detailed)return sharedDraft(<FollowupClosure key={draft.id} bundle={bundle} session={draft} reload={reload} reloadContext={reloadContext} contextReady={contextReady} onDirtyChange={onDirtyChange} registerFlusher={registerFlusher} flushAll={flushAll} onDetailed={()=>void flushAll(true).then(()=>setDetailed(true)).catch(()=>{})} onFinalize={version=>onFinalize(draft.id,true,version)} onFinishLater={onFinishLater?finishLater:undefined} finalizing={finalizing} finalizeError={finalizeError||flushError} />);
  const blocker=finalizationBlocker(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null,draft.session_type==='initial_assessment');
+ const remaining=finalizationIssues(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null,draft.session_type==='initial_assessment');
  const requiredStepState=(key:string)=>{
   if(draft.session_type==='follow_up'&&key==='plan')return Boolean(draft.closure_draft?.treatment_decision.trim()&&draft.closure_draft?.next_review_focus.trim());
   if(draft.session_type==='follow_up'&&key in followupFields)return Boolean(draft.closure_draft?.[followupFields[key as keyof typeof followupFields]]?.trim());
@@ -212,7 +214,7 @@ export default function PatientSession({
   {draft.session_type==='follow_up'&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>Σύντομη καταγραφή</button>}
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{flushing?'Αποθήκευση πρόχειρου…':dirtyCount?dirtyCount+' αλλαγές σε αναμονή':'Το πρόχειρο αποθηκεύτηκε'}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError})}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title="Σημειώσεις επίσκεψης" rows={4}/>}
@@ -227,7 +229,7 @@ export default function PatientSession({
    {draft.session_type==='initial_assessment'&&<VisitPart anchor="history" number="04" title="Ιστορικό">{contextReady?<VisitHistory bundle={bundle} sessionId={draft.id} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<p role="status">Φόρτωση ιστορικού… Μπορείτε να συνεχίσετε την καταγραφή.</p>}</VisitPart>}
    {draft.session_type==='follow_up'&&<VisitPart anchor="psychometrics" number="05" title="Βαθμολογίες έναντι προηγούμενης επίσκεψης">{contextReady?<VisitScores bundle={bundle} sessionId={draft.id} reload={reloadContext}/>:<p role="status">Φόρτωση ψυχομετρικών…</p>}</VisitPart>}
    {draft.session_type==='initial_assessment'&&assessment()}
-   <VisitPart anchor="medication" number="06" title={draft.session_type==='initial_assessment'?'Αγωγή':'Αγωγή & ανασκόπηση θεραπείας'}>{contextReady?<><p className="visit-hint">Οι αλλαγές αγωγής ενημερώνουν τον φάκελο μόλις αποθηκευτούν.</p><MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} editablePlan editableEffects firstAssessment={draft.session_type==='initial_assessment'} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>{draft.session_type==='initial_assessment'?<>{['adherence','effects'].filter(key=>sections.find(s=>s.section_key===key)?.content.trim()).map(key=><details key={key} className="visit-additional"><summary>{key==='adherence'?'Προϋπάρχουσα λήψη αγωγής':'Προϋπάρχουσα ανοχή / παρενέργειες'}</summary><p style={{whiteSpace:'pre-wrap'}}>{sections.find(s=>s.section_key===key)?.content}</p></details>)}</>:<div className="visit-related-fields" data-visit-part="adherence">{editor('adherence','Λήψη αγωγής')}{editor('effects','Συνολική ανοχή / παρενέργειες')}</div>}</>:<p role="status">Φόρτωση αγωγής…</p>}</VisitPart>
+   <VisitPart anchor="medication" number="06" title={draft.session_type==='initial_assessment'?'Αγωγή':'Αγωγή & ανασκόπηση θεραπείας'}>{contextReady?<><p className="visit-hint">Αγωγή · ενημερώνει άμεσα τον φάκελο με την αποθήκευση, ακόμη και σε πρόχειρη επίσκεψη.</p><MedicationTable bundle={bundle} sessionId={draft.id} reload={reloadContext} editablePlan editableEffects firstAssessment={draft.session_type==='initial_assessment'} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>{draft.session_type==='initial_assessment'?<>{['adherence','effects'].filter(key=>sections.find(s=>s.section_key===key)?.content.trim()).map(key=><details key={key} className="visit-additional"><summary>{key==='adherence'?'Προϋπάρχουσα λήψη αγωγής':'Προϋπάρχουσα ανοχή / παρενέργειες'}</summary><p style={{whiteSpace:'pre-wrap'}}>{sections.find(s=>s.section_key===key)?.content}</p></details>)}</>:<div className="visit-related-fields" data-visit-part="adherence">{editor('adherence','Λήψη αγωγής')}{editor('effects','Συνολική ανοχή / παρενέργειες')}</div>}</>:<p role="status">Φόρτωση αγωγής…</p>}</VisitPart>
    {draft.session_type==='follow_up'&&assessment()}
    <VisitPart anchor="plan" number={draft.session_type==='follow_up'?'08':'07'} title={draft.session_type==='initial_assessment'?'Πλάνο & επανεκτίμηση':'Αποφάσεις & επόμενος έλεγχος'}>{draft.session_type==='initial_assessment'?<><SectionEditor key={draft.id+':plan'} sessionId={draft.id} definition={{key:'plan',title:'Πλάνο & επανεκτίμηση'}} placeholder="Θεραπευτικές αποφάσεις, παρεμβάσεις, επόμενα βήματα και τι θα επανεκτιμηθεί..." existing={sections.find(s=>s.section_key==='plan')} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key==='plan')} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>{sections.find(s=>s.section_key==='review')?.content.trim()&&<details className="visit-additional"><summary>Προϋπάρχουσα καταγραφή επανεκτίμησης</summary><p style={{whiteSpace:'pre-wrap'}}>{sections.find(s=>s.section_key==='review')?.content}</p></details>}</>:<div className="visit-related-fields">{editor('plan','Αποφάσεις / παρεμβάσεις')}{editor('review','Τι και πότε θα επανεκτιμηθεί')}</div>}</VisitPart>
    {contextReady&&<VisitPart anchor="appointment" number="09" title="Επόμενο ραντεβού"><VisitNextAppointment bundle={bundle} reload={reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} showHeading={false}/></VisitPart>}
@@ -235,8 +237,10 @@ export default function PatientSession({
   </fieldset>
 
   <p className="visit-hint">Οι κλινικές σημειώσεις αποθηκεύονται ως πρόχειρο όσο εργάζεστε. Η οριστικοποίηση κλείνει την καταγραφή και εντάσσει τις σημειώσεις στη σύνοψη του φακέλου. Οι αποθηκευμένες αλλαγές αγωγής και τα ραντεβού καταχωρίζονται άμεσα, ανεξάρτητα από την οριστικοποίηση.</p>
+  {remaining.length>0&&<div className="visit-finalize-guidance" aria-label="Εκκρεμότητες ολοκλήρωσης"><strong>Πριν την ολοκλήρωση</strong><ul>{remaining.map((item,index)=><li key={item.anchor+index}><button type="button" onClick={()=>goToPart(item.anchor)}>{item.message}</button></li>)}</ul></div>}
+  <p className="visit-hint">«Συνέχεια αργότερα»: αποθήκευση ως πρόχειρο και προσθήκη στις εκκρεμότητες. Η επίσκεψη δεν οριστικοποιείται.</p>
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing?'Αποθήκευση πρόχειρου…':finalizing?'Οριστικοποίηση…':'Έλεγχος πριν την ολοκλήρωση'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?'Αποθήκευση αλλαγών…':finalizing?'Οριστικοποίηση…':'Έλεγχος πριν την ολοκλήρωση'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
 

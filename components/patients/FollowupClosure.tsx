@@ -1,11 +1,12 @@
 'use client';
+import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
 import {journeyReviewFingerprint} from '@/lib/clinical/patient-journey';
 import {JourneyReview} from './PatientJourney';
 import {useEffect,useRef,useState} from 'react';
 import {CalendarDays,ChevronRight,Pencil} from 'lucide-react';
 import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {emptyContinuity,type ContinuityDraft} from '@/lib/clinical/continuity';
-import {mseTimeline,previousMseReference,finalizationBlocker} from '@/lib/clinical/visit-workspace-state';
+import {mseTimeline,previousMseReference,followupCompletionIssues} from '@/lib/clinical/visit-workspace-state';
 import {useFollowupDraft,FollowupField} from './FollowupDraft';
 import RiskEditor from './RiskTreeEditor';
 import StructuredVisitEditor from './StructuredVisitEditor';
@@ -25,6 +26,9 @@ type Props={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>
 export default function FollowupClosure(p:Props){
  const {bundle,session,registerFlusher,onDirtyChange}=p;
  const {draft,checkConsistency}=useFollowupDraft();
+ const closureRoot=useRef<HTMLElement>(null);
+ function goToReadiness(anchor:string){const target=closureRoot.current?.querySelector<HTMLElement>('[data-mobile-section="'+anchor+'"]');if(target instanceof HTMLDetailsElement)target.open=true;target?.scrollIntoView({behavior:'smooth',block:'start'})}
+ const [savedComparison,setSavedComparison]=useState<{value:ContinuityDraft;version:number}|null>(null);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [reviewBundle,setReviewBundle]=useState<PatientBundle|null>(null);
  const [writing,setWriting]=useState<Record<string,boolean>>({});
@@ -42,7 +46,7 @@ export default function FollowupClosure(p:Props){
   change('clinical_state_summary',updated);
  }
  function writingField(key:'transcript'|'clinical_state_summary'|'treatment_decision'|'next_review_focus'|'adherence'|'pinned_context',title:string,placeholder='',rows=2){return <FollowupField field={key} title={title} placeholder={placeholder} rows={rows} onPendingChange={pending=>setWriting(v=>v[key]===pending?v:{...v,[key]:pending})}/>}
- async function finalize(confirm=false){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;checkConsistency(fresh);const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=finalizationBlocker([...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))],fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)});if(blocker){setReviewBundle(null);throw new Error(blocker.message)}if(!confirm){setReviewBundle(fresh);return}if(reviewBundle&&journeyReviewFingerprint(fresh,session.id)!==journeyReviewFingerprint(reviewBundle,session.id)){setReviewBundle(fresh);setError('Η καταγραφή άλλαξε μετά τον έλεγχο. Ελέγξτε τη νέα έκδοση και επιβεβαιώστε ξανά.');return}await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
+ async function finalize(confirm=false){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;checkConsistency(fresh);const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=followupCompletionIssues(draft.currentValue(),sections,fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)})[0];if(blocker){setReviewBundle(null);throw new Error(blocker.message)}if(!confirm){setReviewBundle(fresh);return}if(reviewBundle&&journeyReviewFingerprint(fresh,session.id)!==journeyReviewFingerprint(reviewBundle,session.id)){setReviewBundle(fresh);setError('Η καταγραφή άλλαξε μετά τον έλεγχο. Ελέγξτε τη νέα έκδοση και επιβεβαιώστε ξανά.');return}await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
  const risk=bundle.risks.find(r=>r.session_id===session.id);
  const mse=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse');
  const reference=previousMseReference(bundle,session.id,session.started_at);
@@ -50,7 +54,7 @@ export default function FollowupClosure(p:Props){
  const activeMedications=bundle.medications.filter(m=>m.status==='active');
  const medicationChanges=bundle.medicationEvents.filter(e=>e.session_id===session.id&&e.event_type==='changed'&&!(bundle.medicationRevisions||[]).some(r=>r.event_id===e.id));
  const timeline=p.contextReady?mseTimeline(bundle,session.id,session.started_at):undefined;
- return <section className={styles.closure+(mobileV2Enabled?` ${mobileStyles.followup}`:``)} data-clinical-followup="true">
+ return <section ref={closureRoot} className={styles.closure+(mobileV2Enabled?` ${mobileStyles.followup}`:``)} data-clinical-followup="true">
   {reviewBundle&&<JourneyReview bundle={reviewBundle} session={reviewBundle.sessions.find(s=>s.id===session.id)||session} busy={busy||p.finalizing} error={error||p.finalizeError} onBack={()=>setReviewBundle(null)} onConfirm={()=>void finalize(true)}/>}
   <div hidden={Boolean(reviewBundle)}>
   <header className={styles.heading}><div><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΕΠΙΣΚΕΨΗΣ</span><h2>Επανεξέταση</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Πρόχειρη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
@@ -106,9 +110,13 @@ export default function FollowupClosure(p:Props){
    </div>
   </details>}
   {p.contextReady&&<section className={styles.appointmentCard} aria-label="Επόμενο ραντεβού" data-mobile-section="appointment" tabIndex={mobileV2Enabled?-1:undefined}><div className={styles.appointmentHeading}><CalendarDays size={21} aria-hidden="true"/><h3>Επόμενο ραντεβού</h3></div><div className="visit-part-surface"><VisitNextAppointment bundle={bundle} reload={p.reloadContext} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div></section>}
-  <p role="status">{draft.saving?'Αποθήκευση προχείρου…':draft.error||(draft.savedAt?'Πρόχειρο αποθηκευμένο · '+draft.savedAt:'')}</p>
-  {draft.error&&<button type="button" disabled={Object.values(writing).some(Boolean)} onClick={()=>void p.reload().then(b=>{const s=(b as PatientBundle).sessions.find(s=>s.id===session.id);if(s){draft.acceptServer(s.closure_draft||emptyContinuity,s.closure_version||0)}}).catch(e=>setError(e.message))}>Φόρτωση αποθηκευμένου προχείρου</button>}
+  <p role="status">{draftSaveStatus({saving:draft.saving,dirty:draft.dirty,error:draft.error,savedAt:draft.savedAt})}</p>
+  {draft.error&&<><button type="button" disabled={busy||draft.saving||Object.values(writing).some(Boolean)} onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη αποθήκευσης</button><button type="button" disabled={busy||Object.values(writing).some(Boolean)} onClick={()=>void p.reload().then(b=>{const s=(b as PatientBundle|null)?.sessions.find(s=>s.id===session.id);if(!s)throw new Error('Δεν φορτώθηκε το αποθηκευμένο πρόχειρο.');setSavedComparison({value:s.closure_draft||emptyContinuity,version:s.closure_version||0})}).catch(e=>setError(e.message))}>Σύγκριση με αποθηκευμένο πρόχειρο</button></>}
+  {savedComparison&&<div className="conflict-review" aria-label="Σύγκριση προχείρου"><h4>Έλεγχος πριν αντικαταστήσετε το κείμενο</h4><p>Το δικό σας κείμενο παραμένει στην καταγραφή. Η φόρτωση αποθηκευμένης έκδοσης κρατά αντίγραφο για ανάκτηση σε αυτό το tab.</p>{(['transcript','clinical_state_summary','treatment_decision','next_review_focus','adherence','pinned_context'] as const).filter(key=>draft.value[key]!==savedComparison.value[key]).map(key=><div key={key}><strong>{({transcript:'Σημειώσεις',clinical_state_summary:'Κλινική εικόνα',treatment_decision:'Απόφαση',next_review_focus:'Επανεκτίμηση',adherence:'Λήψη αγωγής',pinned_context:'Σημαντικά θέματα'})[key]}</strong><p>Δικό σας: {draft.value[key]||'Κενό'}</p><p>Αποθηκευμένο: {savedComparison.value[key]||'Κενό'}</p></div>)}<button type="button" disabled={busy||draft.saving||Object.values(writing).some(Boolean)} onClick={()=>{draft.resolve(draft.currentValue(),savedComparison.value,savedComparison.version);setSavedComparison(null)}}>Διατήρηση του δικού μου και επανάληψη αποθήκευσης</button><button type="button" disabled={busy||draft.saving||Object.values(writing).some(Boolean)} onClick={()=>{try{draft.acceptServerPreservingLocal(savedComparison.value,savedComparison.version);setSavedComparison(null)}catch{setError('Δεν κρατήθηκε αντίγραφο ανάκτησης. Το δικό σας κείμενο δεν αντικαταστάθηκε.')}}}>Χρήση αποθηκευμένου με αντίγραφο ανάκτησης</button><button type="button" onClick={()=>setSavedComparison(null)}>Ακύρωση σύγκρισης</button></div>}
+  {draft.olderRecovery&&<div className="conflict-review"><p>Υπάρχει τοπικό αντίγραφο πριν την αντικατάσταση. Διατηρείται προσωρινά σε αυτό το tab.</p><button type="button" disabled={draft.saving||busy||Object.values(writing).some(Boolean)} onClick={()=>{draft.change(draft.olderRecovery!);draft.dismissOlderRecovery()}}>Επαναφορά του δικού μου κειμένου</button></div>}
   {(error||p.finalizeError)&&<p role="alert">{error||p.finalizeError}</p>}
+  {p.contextReady&&<div className="visit-finalize-guidance" aria-label="Εκκρεμότητες ολοκλήρωσης">{followupCompletionIssues(draft.value,bundle.sections.filter(s=>s.session_id===session.id),risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null).map((item,index)=><p key={item.anchor+index}><button type="button" onClick={()=>goToReadiness(item.anchor)}>{item.message}</button></p>)}</div>}
+  <p className={styles.cardMeta}>«Συνέχεια αργότερα»: το πρόχειρο αποθηκεύεται και προστίθεται στις εκκρεμότητες. Η επίσκεψη παραμένει ανοιχτή. Αγωγή και ραντεβού που αποθηκεύτηκαν ισχύουν ήδη στον φάκελο.</p>
   <div className={styles.footerActions}><button type="button" className={styles.actionPrimary} disabled={busy||p.finalizing||Boolean(med)||!p.contextReady} onClick={()=>void finalize()}>{busy||p.finalizing?'Οριστικοποίηση…':'Έλεγχος πριν την ολοκλήρωση'}</button>{p.onFinishLater&&<button type="button" disabled={busy||p.finalizing||Boolean(med)} onClick={()=>void p.onFinishLater?.()}>Συνέχεια αργότερα</button>}</div>
   </div>
   {med&&<MedicationModal bundle={bundle} sessionId={session.id} initialMode={med.mode} initialMedicationId={med.id} onClose={()=>setMed(null)} onSaved={async()=>{await p.reloadContext();setMed(null)}}/>}

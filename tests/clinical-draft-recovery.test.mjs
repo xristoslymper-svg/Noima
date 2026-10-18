@@ -9,7 +9,7 @@ import * as reconciliation from '../lib/clinical/draft-reconciliation.ts';
 const code=ts.transpileModule(readFileSync('components/patients/useClinicalDraft.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 function mount({stored,write,onSaved=async()=>{}}={}){
  const cells=[],effects=[],timers=new Map(),storage=new Map(stored?[['mse',JSON.stringify(stored)]]:[]);
- let cursor=0,timerId=0,props;
+ let cursor=0,timerId=0,props,failStorage=false;
  const changed=(a,b)=>!a||a.length!==b.length||b.some((v,i)=>!Object.is(v,a[i]));
  const react={
   useState(initial){const i=cursor++;if(!(i in cells))cells[i]=initial;return [cells[i],v=>{cells[i]=typeof v==='function'?v(cells[i]):v}]},
@@ -19,11 +19,11 @@ function mount({stored,write,onSaved=async()=>{}}={}){
  };
  const module={exports:{}};
  vm.runInNewContext(code,{module,exports:module.exports,Error,require:id=>id==='react'?react:id.includes('browser-recovery')?browserRecovery:reconciliation,
-  sessionStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
+  sessionStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{if(failStorage)throw new Error('quota');storage.set(k,v)},removeItem:k=>storage.delete(k)},
   setTimeout:fn=>{timers.set(++timerId,fn);return timerId},clearTimeout:id=>timers.delete(id),
  });
  const render=(next={})=>{props={storageKey:'mse',initial:'',version:1,write,onSaved,onDirty:()=>{},...props,...next};cursor=0;const draft=module.exports.useClinicalDraft(props);while(effects.length)effects.shift()();return draft};
- return {render,storage,timers,replay(){for(const c of cells)if(c?.fn&&c?.deps&&'cleanup' in c){c.cleanup?.();c.cleanup=c.fn()}}};
+ return {render,storage,timers,failStorage(){failStorage=true},replay(){for(const c of cells)if(c?.fn&&c?.deps&&'cleanup' in c){c.cleanup?.();c.cleanup=c.fn()}}};
 }
 
 test('same-version recovered MSE retries automatically without a conflict',async()=>{
@@ -50,4 +50,21 @@ test('network error permits retry while a real write conflict blocks it',async()
  for(const [message,conflict] of [['Network unavailable',false],['stale',true]]){
   const h=mount({write:async()=>{throw new Error(message)}});let d=h.render();d.change('local');await assert.rejects(d.flush());d=h.render();assert.equal(d.hasConflict,conflict);assert.equal(d.error,message);assert.ok(h.storage.has('mse'));
  }
+});
+
+test('explicit server recovery preserves local text and can be restored',async()=>{
+ const h=mount({write:async(value,version)=>({value,version:(version||0)+1})});
+ let d=h.render();d.change('my unsaved work');d=h.render();
+ d.acceptServerPreservingLocal('server text',4);d=h.render({initial:'server text',version:4});
+ assert.equal(d.value,'server text');assert.equal(d.olderRecovery,'my unsaved work');
+ assert.equal(JSON.parse(h.storage.get('mse:older-recovery')).value,'my unsaved work');
+ d.change(d.olderRecovery);d=h.render();assert.equal(d.value,'my unsaved work');assert.equal(d.dirty,true);
+ await d.flush();assert.equal(h.render().dirty,false);
+});
+
+test('failed backup refuses replacement and retains local text',()=>{
+ const h=mount({write:async()=>{throw new Error('offline')}});let d=h.render();d.change('keep me');d=h.render();
+ h.failStorage();
+ assert.throws(()=>d.acceptServerPreservingLocal('server',2),/quota/);
+ assert.equal(d.currentValue(),'keep me');assert.equal(d.dirty,true);
 });

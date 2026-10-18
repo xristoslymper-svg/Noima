@@ -1,3 +1,4 @@
+import {draftSaveStatus} from '../lib/clinical/draft-save-status.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -14,6 +15,7 @@ const js=ts.transpileModule(componentSource,{compilerOptions:{module:ts.ModuleKi
 const mod={exports:{}};
 const draftState={current:null};
 const requireMock=name=>{
+ if(name==='@/lib/clinical/draft-save-status')return {draftSaveStatus};
  if(name==='react')return React;
  if(name==='react/jsx-runtime')return jsx;
  if(name==='@/lib/clinical/visit-document')return {initialDocument,mseItems};

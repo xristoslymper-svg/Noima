@@ -155,7 +155,7 @@ try{
   await check('second-medication-isolation',async({page,open})=>{
    await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
    const row=table.locator('.med-new-row');await row.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA SECOND MEDICATION');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('10');await row.getByRole('button',{name:'Πρωί',exact:true}).click();await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();
-   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);
+   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);assert.equal(requests.find(r=>r.action==='medication_start').session_id,visitId);assert.equal(await page.getByRole('dialog').count(),0);
    await page.reload();await table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'}).waitFor();assert.equal(await table.locator('.med-new-row').count(),0);
   });
   await check('ux-new-folder-received-history-source-boundaries',async({page,open,nav})=>{
@@ -338,43 +338,56 @@ try{
    await page.locator('.patient-visit-surface:not([hidden])').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),s.id);
   });
-  await check('treatment-multiple-drafts-explicit-association-and-unsaved-guard',async({page,open})=>{
+  await check('treatment-contextual-choice-cancel-and-independent-writes',async({page,open})=>{
    const original=state.sessions.find(s=>s.id===visitId);const second={...original,id:'20000000-0000-4000-8000-000000000088',started_at:new Date(Date.now()-86400000).toISOString()};state.sessions.push(second);
-   await open('?tab=treatment');const select=page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'});
-   assert.equal(await select.inputValue(),'');
-   await select.selectOption(second.id);
+   await open('?tab=treatment');
+   assert.equal(await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).count(),0);
    const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
-   await row.getByRole('button',{name:'Παρενέργεια',exact:true}).click();
-   await row.getByRole('textbox',{name:'Νέα παρενέργεια — '+state.medications[0].medication_name,exact:true}).fill('QA LINKED EFFECT');
-   await row.getByRole('combobox',{name:'Βαρύτητα — '+state.medications[0].medication_name,exact:true}).selectOption('mild');
-   await row.locator('.med-inline-effect .primary').click();
-   await row.getByText('QA LINKED EFFECT',{exact:true}).waitFor();
-   assert.equal(requests.find(r=>r.action==='medication_side_effect').session_id,second.id);
-   await row.getByRole('button',{name:'Τροποποίηση',exact:true}).click();await row.getByRole('textbox',{name:'Δόση '+state.medications[0].medication_name,exact:true}).fill('75');
-   await select.selectOption(visitId);await page.getByRole('alert').filter({hasText:'Ολοκλήρωσε ή ακύρωσε'}).waitFor();
-   assert.equal(await select.inputValue(),second.id);
+   await row.getByRole('button',{name:'Τροποποίηση',exact:true}).click();
+   const dose=row.getByRole('textbox',{name:'Δόση '+state.medications[0].medication_name,exact:true});await dose.fill('75');
    await row.getByRole('button',{name:'Αποθήκευση',exact:true}).click();
+   const dialog=page.getByRole('dialog');const choice=dialog.getByRole('combobox',{name:'Καταχώριση αλλαγής αγωγής'});
+   await choice.waitFor();assert.equal(requests.length,0);assert.equal(await choice.inputValue(),'');
+   await choice.selectOption(second.id);await page.keyboard.press('Escape');
+   await dialog.waitFor({state:'detached'});assert.equal(await dose.inputValue(),'75');assert.equal(requests.length,0);
+   await row.getByRole('button',{name:'Αποθήκευση',exact:true}).click();await choice.selectOption(second.id);
+   await dialog.getByRole('button',{name:'Αποθήκευση αλλαγής',exact:true}).click();
    await row.getByRole('button',{name:'Τροποποίηση',exact:true}).waitFor();
-   const write=requests.find(r=>r.action==='medication_event');assert.ok(write);assert.equal(write.session_id,second.id);
-   await select.selectOption('');await page.getByRole('alert').waitFor({state:'detached'});
+   assert.equal(requests.find(r=>r.action==='medication_event').session_id,second.id);
    await row.getByRole('button',{name:'Διακοπή',exact:true}).click();await row.getByRole('button',{name:'Επιβεβαίωση διακοπής',exact:true}).click();
+   await choice.waitFor();assert.equal(await choice.inputValue(),'');
+   await dialog.getByRole('button',{name:'Αποθήκευση αλλαγής',exact:true}).click();
    await page.getByText('Παλαιότερη αγωγή',{exact:true}).waitFor();assert.equal(requests.find(r=>r.action==='medication_stop').session_id,null);
   });
   await check('treatment-new-medication-never-infers-an-open-draft',async({page,open})=>{
    await open('?tab=treatment');await page.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
    await page.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA EXPLICIT UNLINKED');
    const row=page.locator('.med-new-row');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('25');
-   await row.getByRole('button',{name:'Πρωί',exact:true}).click();
-   await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();await page.getByText('QA EXPLICIT UNLINKED',{exact:true}).waitFor();
+   await row.getByRole('button',{name:'Πρωί',exact:true}).click();await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();
+   const dialog=page.getByRole('dialog');await dialog.waitFor();assert.equal(requests.filter(r=>r.action==='medication_start').length,0);
+   assert.equal(await dialog.getByRole('combobox',{name:'Καταχώριση αλλαγής αγωγής'}).inputValue(),'');
+   await dialog.getByRole('button',{name:'Αποθήκευση αλλαγής',exact:true}).click();await page.getByText('QA EXPLICIT UNLINKED',{exact:true}).waitFor();
    assert.equal(requests.find(r=>r.action==='medication_start').session_id,null);
   });
-  await check('treatment-completed-draft-not-offered-after-refresh',async({page,open,nav})=>{
-   await open('?tab=treatment');await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).selectOption(visitId);
-   state.sessions.find(s=>s.id===visitId).status='completed';
-   await page.reload();await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).waitFor();
-   // A remounted treatment panel resets to unlinked; stale sessions are never offered.
-   const select=page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'});assert.equal(await select.inputValue(),'');
-   assert.equal(await select.locator('option[value="'+visitId+'"]').count(),0);assert.equal(requests.length,0);
+  await check('treatment-without-drafts-saves-without-a-question',async({page,open})=>{
+   state.sessions.filter(s=>s.status==='draft').forEach(s=>s.status='completed');
+   await open('?tab=treatment');
+   const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
+   await row.getByRole('button',{name:'Τροποποίηση',exact:true}).click();
+   await row.getByRole('textbox',{name:'Δόση '+state.medications[0].medication_name,exact:true}).fill('75');
+   await row.getByRole('button',{name:'Αποθήκευση',exact:true}).click();await row.getByRole('button',{name:'Τροποποίηση',exact:true}).waitFor();
+   assert.equal(await page.getByRole('dialog').count(),0);assert.equal(requests.find(r=>r.action==='medication_event').session_id,null);
+  });
+  await check('treatment-side-effect-attribution-is-per-save',async({page,open})=>{
+   await open('?tab=treatment');const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
+   await row.getByRole('button',{name:'Καταγραφή ανεπιθύμητης ενέργειας',exact:true}).click();
+   await row.getByRole('textbox',{name:'Νέα παρενέργεια — '+state.medications[0].medication_name,exact:true}).fill('QA LINKED EFFECT');
+   await row.getByRole('combobox',{name:'Βαρύτητα — '+state.medications[0].medication_name,exact:true}).selectOption('mild');
+   await row.locator('.med-inline-effect .primary').click();
+   const dialog=page.getByRole('dialog');await dialog.getByRole('combobox',{name:'Καταχώριση αλλαγής αγωγής'}).selectOption(visitId);
+   assert.equal(requests.filter(r=>r.action==='medication_side_effect').length,0);
+   await dialog.getByRole('button',{name:'Αποθήκευση αλλαγής',exact:true}).click();
+   await row.getByText('QA LINKED EFFECT',{exact:true}).waitFor();assert.equal(requests.find(r=>r.action==='medication_side_effect').session_id,visitId);
   });
   await check('treatment-empty-state-and-measurement-source',async({page,open})=>{
    state.medications=[];state.medicationEvents=[];state.medicationSideEffects=[];

@@ -633,7 +633,8 @@
       "components/teleconsultations/TeleconsultationsLink.tsx",
       "app/patients/page.tsx",
       "app/psychometrics/page.tsx",
-      "app/page.tsx"
+      "app/page.tsx",
+      "lib/pilot/browser-session.ts"
     ]
   }
 }

@@ -32,3 +32,6 @@ Visit lifecycle: end-call opens the existing editable draft without completing i
 
 
 Notes-oriented polish: removed the tall visit title/stepper card; primary visit notes occupy the writing area. Optional chart reference is inline and read-only. Today's existing MSE/risk editors and continuity fields remain mounted under two initially closed native disclosures; missing completion requirements reveal them during review. No clinical fields or requirements were removed or inferred. Same tokens, font, controls and finalization contract.
+
+
+General entry: scheduled and immediate synthetic visits, patient search after two characters, separate retained workspace per session. Returning to the list keeps mounted drafts and completion state in the open page. Invitations use a visibly demo-only, expiring URL fragment carrying only synthetic scope. The exact public guest-preview path is gated server-side to this Vercel preview branch; it renders no chart data and never requests media. The demo link is not an authentication credential, cannot connect Daily, cannot notify/admit a real guest and must never be reused as production authorization. Real invitations still require an authenticated durable invitation/meeting-token service and the real Daily integration.

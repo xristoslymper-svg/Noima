@@ -1,0 +1,32 @@
+{
+  "base": "27e61cefd3a7bb568a73a02a4e08ebf70a9a762a",
+  "source": "a095f231c97bd653f110b152ff4c7144f9f84645",
+  "hashes": {
+    "app/page.tsx": "1d07efc7542474df9c57f466c31a3b1452930ac30b9704492052e105ea38adab",
+    "app/patients/page.tsx": "d469034d87f6b698de787cecb719e4375aa0e44b1d9c541c56ef1a7abe918ecf",
+    "app/patients/new/page.tsx": "545bae0aa2b825857c4d2029186bd46a6b4b34dec10b0285a0f3c75cd17bb0c1",
+    "app/calendar/page.tsx": "46d24fec59c91f69c7c5d234c72940cb8100abd056cf6e4351b6ed00cb21c67e",
+    "components/intake/IntakeLauncher.tsx": "299a49134980c11c91be0ad4261806ce2681a3f33ac0568dd9ae12363ac2df11",
+    "components/patients/MedicationTable.tsx": "4bcd1820a381d35c868026fc0385f52844de4904aa589391fea9fac8cd1679d9",
+    "components/patients/PatientRecord.module.css": "1cc6ab3f9ace9f8ad7231cc351bf31e74faff006ffcda025367d0c5990f039c2",
+    "components/patients/PatientPanels.tsx": "bad59340d7d3a7591606af96a485f5b8a14396ba6ca12f15b4b04c9265c08746",
+    "components/patients/PatientTreatment.tsx": "0d96e45ccb5ff3bb2934f6774e62d81bda430fba43832af8615e65c6c8fe4b63",
+    "components/patients/PatientRecordSummary.tsx": "94ff1c61eebef93d4864e3a2f9a8a6f367822559bc0b7109d22690197c8545ab",
+    "components/patients/ClinicalSummary.tsx": "664bbd133ab564a4d3a46393f0dbad2b4100eb2c7ab3d210cf1d3be361d100a9",
+    "components/patients/VisitWorkspace.tsx": "0205f2c7f438b3ad32c9a543f109c35d51454733359ee8b257136f5a4a1d813b",
+    "components/patients/PatientSession.tsx": "9369d4cb8876d64cfa9add7424ad6fe0722d64242528e13023f75a999f002b8f",
+    "components/patients/FollowupClosure.tsx": "9079b73dc2191dfe5ac3eaad477a0ede423ded123c47af4345e7458fdb851306",
+    "app/api/patients/demo/runtime/route.ts": "fcb23f330d740c620883306921b5c3dba7944f87661465650e05add76b642760",
+    "lib/patients/demo-runtime.ts": "4b0e1cb402065c19c1ee0c6ec16d57fdb2656896de7300165158bd7f94856375",
+    "lib/clinical/summary-context.ts": "374fcf10892d89514e89e749b3ad9106ba520eb3d51f5f5e4a249843d10c6285",
+    "lib/clinical/provider-evidence.ts": "1755e370a8c35c81624ced0f6e3a428e0a0ad148a36e18e5bb6a712f8295708a",
+    "lib/psychometrics/instruments.ts": "71750ad4ad17d88768918459d91ebb6025c57ad0ead10380935fcdccc8178575",
+    "lib/intake/history.ts": "e492da7b51f438f47a1d4d2f0842cb0bf05a35f176e26f7b720babd59b378b44",
+    "app/layout.tsx": "69391993ad4ac4ce34c2b4abbf93f31b8e5cb24f4c8706780ce474a513adaf17",
+    "app/globals.css": "cc4833dbe1a5bc98dfa7057f968c4549fe33aebb68aa5375238cac5ccb284b93",
+    "middleware.ts": "a43e838064fc5ef3cd5188dbc5a2630f2702e90d8a270326433af437c604667e",
+    "package.json": "dd79cf14b0986e781199cd1d96e3ecc61ec9c83a570c3e979e041907942c0f5e",
+    "package-lock.json": "9e2c6487bd133817e091db1aaebef94f7a684002a1f21b9373dc1cf0f23e7acc"
+  },
+  "workspaceHash": "46319b8fcf9a46d7fd71c1a6cf5d0d38812378c8d1e736d443b4d224c03837c0"
+}

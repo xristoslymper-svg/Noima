@@ -25,7 +25,7 @@ test('follow-up presents a single next-visit focus field and distinct appointmen
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Ψυχομετρικές μετρήσεις'));
  assert.ok(followup.indexOf('className={styles.appointmentCard}')>followup.indexOf('Σημαντικά θέματα προηγούμενων καταγραφών'));
  assert.doesNotMatch(followup,/Με την οριστικοποίηση επιβεβαιώνετε ότι/);
- assert.match(followup,/Ολοκλήρωση καταγραφής/);
+ assert.match(followup,/Έλεγχος πριν την ολοκλήρωση/);assert.match(followup,/JourneyReview/);
 });
 
 test('signposting is by field placeholder instead of long doctor-facing explanations',()=>{

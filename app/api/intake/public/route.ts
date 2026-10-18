@@ -1,4 +1,6 @@
 import {rpc} from '@/lib/patients/demo-runtime';
+import {checkIntakeIdentity,normalizeIntakeIdentity} from '@/lib/intake/demographics';
+import type {IntakeIdentity} from '@/lib/intake/history';
 export const dynamic='force-dynamic';
 const hex=/^[a-f0-9]{64}$/;
 function sameOrigin(req:Request){const origin=req.headers.get('origin');const site=req.headers.get('sec-fetch-site');return (!origin||origin===new URL(req.url).origin)&&site!=='cross-site'}
@@ -6,7 +8,16 @@ export async function POST(request:Request){
  const mode=process.env.CLINICAL_DATA_MODE?.trim().toLowerCase();
  if(mode&&!['demo','synthetic'].includes(mode))return Response.json({error:'Η πραγματική κλινική πρόσβαση δεν έχει ενεργοποιηθεί.',code:'clinical_data_disabled'},{status:403,headers:{'Cache-Control':'private, no-store'}});
  if(!sameOrigin(request))return Response.json({error:'Μη έγκυρη προέλευση.'},{status:403});
- const b=await request.json().catch(()=>({}));
+ const b=await request.json().catch(()=>null);
+ if(!b||typeof b!=='object'||Array.isArray(b))return Response.json({error:'Μη έγκυρο αίτημα.'},{status:400,headers:{'Cache-Control':'private, no-store'}});
+ const newIdentity=b.identity;
+ if(['submit','device_submit'].includes(b.action)&&newIdentity!=null){
+  if(typeof newIdentity!=='object'||Array.isArray(newIdentity))return Response.json({error:'Μη έγκυρα στοιχεία ασθενή.'},{status:422});
+  const issue=checkIntakeIdentity(newIdentity as Partial<IntakeIdentity>);
+  if(issue)return Response.json({error:'Ελέγξτε τα βασικά στοιχεία ασθενή ('+issue+').',code:'invalid_patient_details'},{status:422});
+  b.identity=normalizeIntakeIdentity(newIdentity as Partial<IntakeIdentity>);
+ }
+
  try{
   if(b.action==='open'){if(typeof b.token!=='string'||!hex.test(b.token))return Response.json({error:'Ο σύνδεσμος δεν είναι έγκυρος.'},{status:400});return Response.json(await rpc('demo_intake_open',{p_token:b.token}),{headers:{'Cache-Control':'no-store'}})}
   if(b.action==='submit'){if(typeof b.token!=='string'||!hex.test(b.token))return Response.json({error:'Ο σύνδεσμος δεν είναι έγκυρος.'},{status:400});return Response.json(await rpc('demo_intake_submit',{p_token:b.token,p_identity:b.identity||null,p_history:b.history||null,p_psych:b.psychometrics||{}}),{headers:{'Cache-Control':'no-store'}})}

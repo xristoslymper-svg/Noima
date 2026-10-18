@@ -1,4 +1,6 @@
 'use client';
+import {JourneyOrientation} from './PatientJourney';
+import journeyStyles from './PatientJourney.module.css';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {riskFindings,riskFindingLabel} from '@/lib/clinical/risk-findings';
 import {clinicalDate,patientRecord} from '@/lib/clinical/patient-record';
@@ -21,15 +23,18 @@ export default function PatientRecordSummary({bundle,reload,onVisit,onTimeline,o
    {record.activeEffects.map(e=><p key={e.id}><strong>{e.effect_text}</strong> · {bundle.medications.find(m=>m.id===e.medication_id)?.medication_name||'Αγωγή'} <button className={styles.link} onClick={onTreatment}>Ανοχή</button></p>)}
    {record.safetyAlerts.length>0&&<p>{record.safetyAlerts.join(' · ')} · τελευταία καταγεγραμμένη εκτίμηση. <button className={styles.link} onClick={()=>onVisit(record.latestVisit?.id)}>Έλεγχος κινδύνου</button></p>}
   </section>}
-  <ClinicalSummary bundle={bundle} onSessions={onVisit} onPsychometrics={onMeasurements} onMedications={onTreatment} onHistory={onHistory}/>
-  <section className={styles.section}><span className="kicker">ΤΕΛΕΥΤΑΙΑ ΚΑΤΑΓΕΓΡΑΜΜΕΝΗ ΕΙΚΟΝΑ</span><div className={styles.currentRows}>
+  <PatientReportedHistory patientId={bundle.patient.id} compact onOpen={onHistory}/>
+  <ClinicalSummary bundle={bundle} brief readOnly onSessions={onVisit} onPsychometrics={onMeasurements} onMedications={onTreatment} onHistory={onHistory}/>
+  <details className={journeyStyles.details}><summary>Καταγραφές και πηγές φακέλου</summary>
+  <section className={styles.section}><span className="kicker">ΤΙ ΑΛΛΑΞΕ ΜΕΤΑ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΕΠΙΣΚΕΨΗ</span>{record.sinceLatest.length?<ul className={styles.list}>{record.sinceLatest.slice(0,4).map(event=><li key={event.id}><span className={styles.muted}>{recordDate(event.date)}</span> · <strong>{event.title}</strong> · {event.detail}{event.assessmentId&&<> <button className={styles.link} onClick={()=>onMeasurements(event.assessmentId)}>Ανασκόπηση</button></>}</li>)}</ul>:<p className={styles.muted}>Δεν υπάρχουν νέες κλινικές καταχωρήσεις.</p>}{record.sinceLatest.length>4&&<button className={styles.link} onClick={onTimeline}>Όλες οι αλλαγές στις Επισκέψεις</button>}</section>
+  <JourneyOrientation bundle={bundle} onVisit={id=>onVisit(id)}/>
+  <section className={styles.section}><span className="kicker">ΜΕΤΡΗΣΕΙΣ ΚΑΙ ΤΕΛΕΥΤΑΙΑ ΕΚΤΙΜΗΣΗ</span><div className={styles.currentRows}>
    <div><strong>Μετρήσεις</strong><p>{record.latestScores.length?record.latestScores.map(({current,previous})=><span key={current.id}><button className={styles.link} onClick={()=>onMeasurements(current.id)}>{current.instrument} {previous?previous.score+' → ':''}{current.score}</button> <span className={styles.muted}>({recordDate(current.completed_at!)}) · {assessmentLinkLabel(bundle,current)}</span>{' '}</span>):'Δεν υπάρχει ολοκληρωμένη μέτρηση.'}</p></div>
    <div><strong>Κίνδυνος</strong><p>{riskFinding?riskFinding.label+' '+riskFindingLabel(riskFinding): 'Δεν υπάρχει εκτίμηση στην τελευταία ολοκληρωμένη επίσκεψη.'}{record.risk&&record.latestVisit&&<> <span className={styles.muted}>· {recordDate(clinicalDate(bundle,record.latestVisit))}</span> <button className={styles.link} onClick={()=>onVisit(record.latestVisit!.id)}>Καταγραφή</button></>}</p></div>
   </div></section>
-  <section className={styles.section}><span className="kicker">ΝΕΟΤΕΡΕΣ ΚΑΤΑΓΡΑΦΕΣ</span>{record.sinceLatest.length?<ul className={styles.list}>{record.sinceLatest.slice(0,4).map(event=><li key={event.id}><span className={styles.muted}>{recordDate(event.date)}</span> · <strong>{event.title}</strong> · {event.detail}{event.assessmentId&&<> <button className={styles.link} onClick={()=>onMeasurements(event.assessmentId)}>Ανασκόπηση</button></>}</li>)}</ul>:<p className={styles.muted}>Δεν υπάρχουν νέες κλινικές καταχωρήσεις.</p>}{record.sinceLatest.length>4&&<button className={styles.link} onClick={onTimeline}>Όλες οι αλλαγές στις Επισκέψεις</button>}</section>
   <PatientContext key={bundle.patient.id} bundle={bundle} reload={reload} onVisit={id=>onVisit(id)}/>
   {!hasOpenIssues&&<p className={styles.muted}>Δεν υπάρχουν καταγεγραμμένα ανοιχτά κλινικά θέματα.</p>}
-  <PatientReportedHistory patientId={bundle.patient.id} compact onOpen={onHistory}/>
 
+  </details>
  </div>;
 }

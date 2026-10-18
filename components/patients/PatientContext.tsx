@@ -2,11 +2,13 @@
 import {useRef,useState} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {continuityContexts} from '@/lib/clinical/continuity-context';
+import {groupContextSources} from '@/lib/clinical/context-presentation';
 import {demoPost} from '@/lib/patients/demo-client';
 import {formatClinicDateTime} from '@/lib/clinic-time';
 import styles from './PatientRecord.module.css';
 export default function PatientContext({bundle,reload,onVisit}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onVisit:(id:string)=>void}){
  const items=continuityContexts(bundle),active=items.filter(i=>i.status==='active');
+ const groups=groupContextSources(active);
  const [editing,setEditing]=useState<{id:string;revision:number;content:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const request=useRef<{id:string;action:string;content:string;requestId:string}|null>(null),flight=useRef(false);
  async function revise(item:typeof items[number],action:'updated'|'resolved',content:string){
@@ -20,5 +22,6 @@ export default function PatientContext({bundle,reload,onVisit}:{bundle:PatientBu
  }
  if(!items.length)return null;
  const row=(item:typeof items[number])=><article key={item.id}><p>{item.content}</p><small>Επιβεβαιωμένη πηγή · {formatClinicDateTime(item.sourceDate)}{item.revision>0&&<> · Ενημερώθηκε {formatClinicDateTime(item.updatedAt)}</>} <button type="button" className={styles.link} onClick={()=>onVisit(item.sourceSessionId)}>Επίσκεψη</button></small>{editing?.id===item.id?<div><label>Ενημέρωση σημαντικού context<textarea maxLength={2000} rows={2} value={editing.content} onChange={e=>setEditing({...editing,content:e.target.value})}/></label><button type="button" disabled={busy||!editing.content.trim()} onClick={()=>void revise(item,'updated',editing.content.trim())}>Αποθήκευση ενημέρωσης</button><button type="button" disabled={busy} onClick={()=>{setEditing(null);setError('')}}>Ακύρωση</button></div>:<div><button type="button" className={styles.link} disabled={busy} onClick={()=>{setEditing({id:item.id,revision:item.revision,content:item.content});setError('')}}>Ενημέρωση</button> · <button type="button" className={styles.link} disabled={busy} onClick={()=>void revise(item,'resolved','')}>Έκλεισε</button></div>}</article>;
- return <section className={styles.section}><span className="kicker">ΣΗΜΑΝΤΙΚΟ ΕΝΕΡΓΟ CONTEXT</span>{active.slice(0,3).map(row)}{!active.length&&<p className={styles.muted}>Δεν υπάρχει ενεργό context.</p>}{active.length>3&&<details><summary>Περισσότερα ενεργά · {active.length-3}</summary>{active.slice(3).map(row)}</details>}{items.some(i=>i.history.length>0)&&<details><summary>Ιστορικό context</summary>{items.filter(i=>i.history.length>0).map(i=><article key={i.id}><p>Αρχική επιβεβαίωση · {formatClinicDateTime(i.approvedAt)} · {i.original}</p>{i.history.map(r=><p key={r.id}>{formatClinicDateTime(r.created_at)} · {r.action==='resolved'?'Έκλεισε':'Ενημερώθηκε'} · {r.content}</p>)}</article>)}</details>}{error&&<p role="alert">{error}</p>}</section>;
+ const groupRow=(group:typeof items)=><div key={group[0].id} data-context-group>{row(group[0])}{group.length>1&&<details><summary>Ίδια καταγραφή σε {group.length-1} ακόμη {group.length===2?'επίσκεψη':'επισκέψεις'}</summary>{group.slice(1).map(row)}</details>}</div>;
+ return <section className={styles.section}><span className="kicker">ΣΗΜΑΝΤΙΚΑ ΓΙΑ ΤΗ ΣΥΝΕΧΕΙΑ</span>{groups.slice(0,3).map(groupRow)}{!active.length&&<p className={styles.muted}>Δεν υπάρχει ενεργό context.</p>}{groups.length>3&&<details><summary>Περισσότερα ενεργά · {groups.length-3}</summary>{groups.slice(3).map(groupRow)}</details>}{items.some(i=>i.history.length>0)&&<details><summary>Ιστορικό context</summary>{items.filter(i=>i.history.length>0).map(i=><article key={i.id}><p>Αρχική επιβεβαίωση · {formatClinicDateTime(i.approvedAt)} · {i.original}</p>{i.history.map(r=><p key={r.id}>{formatClinicDateTime(r.created_at)} · {r.action==='resolved'?'Έκλεισε':'Ενημερώθηκε'} · {r.content}</p>)}</article>)}</details>}{error&&<p role="alert">{error}</p>}</section>;
 }

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {patientRecord,visitTimelineContext} from '../lib/clinical/patient-record.ts';
+import {patientRecord,visitTimelineContext,patientTimeline} from '../lib/clinical/patient-record.ts';
 
 const now=new Date('2026-10-08T09:00:00Z');
 function bundle(overrides={}){return {clinical_day:'2026-10-08',patient:{id:'p'},sessions:[],appointments:[],medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],assessments:[],risks:[],history:null,...overrides}}
@@ -74,7 +74,7 @@ test('visit context requires explicit patient and visit links and respects medic
  assert.deepEqual(context.get('visit').treatment.map(e=>e.id),['med-valid']);
  assert.equal(context.get('visit').treatment[0].detail,'Drug · 50 mg → 100 mg');
  assert.equal(context.get('visit').treatment[0].scheduled,true);
- assert.equal(context.has('draft'),false);assert.equal(JSON.stringify(input),original);
+ assert.deepEqual(context.get('draft').treatment.map(e=>e.id),['med-draft']);assert.equal(JSON.stringify(input),original);
 });
 test('linked completed measurements compare strictly earlier results of the same instrument and version',()=>{
  const assessment=(id,date,score,extra={})=>({id,patient_id:'p',instrument:'PHQ-9',instrument_version:'v1',status:'completed',completed_at:date,score,...extra});
@@ -88,4 +88,37 @@ test('linked completed measurements compare strictly earlier results of the same
  assessment('pending',null,null,{session_id:'visit',status:'assigned'})]});
  const rows=visitTimelineContext(input,now).get('visit').measurements;
  assert.deepEqual(rows.map(m=>m.current.id),['current']);assert.equal(rows[0].previous.id,'previous');assert.equal(rows[0].current.item9_review,true);
+});
+
+test('draft-linked medication stays beside its real source visit; unlinked stop is never guessed from dates',()=>{
+ const input=bundle({sessions:[
+  {id:'draft',patient_id:'p',status:'draft',session_type:'follow_up',started_at:'2026-10-07T09:00:00Z'},
+  {id:'completed',patient_id:'p',status:'completed',session_type:'follow_up',started_at:'2026-10-06T09:00:00Z'},
+  {id:'foreign',patient_id:'other',status:'draft',started_at:'2026-10-07T09:00:00Z'}
+ ],medicationEvents:[
+  {id:'start',patient_id:'p',session_id:'draft',event_type:'started',effective_on:'2026-10-08',new_state:{medication_name:'Synthetic drug',dose:50,unit:'mg'}},
+  {id:'stop',patient_id:'p',session_id:null,event_type:'stopped',effective_on:'2026-10-08'},
+  {id:'missing',patient_id:'p',session_id:'unavailable',event_type:'changed',effective_on:'2026-10-08'},
+  {id:'cross-patient',patient_id:'p',session_id:'foreign',event_type:'changed',effective_on:'2026-10-08'},
+  {id:'foreign-event',patient_id:'other',session_id:'draft',event_type:'started',effective_on:'2026-10-08'}
+ ]});
+ const saved=JSON.stringify(input),result=patientTimeline(input,now);
+ assert.deepEqual(result.visits.map(e=>e.sessionId),['draft','completed']);
+ assert.equal(result.visits[0].draft,true);assert.match(result.visits[0].detail,/δεν έχει οριστικοποιηθεί/);
+ assert.deepEqual(result.context.get('draft').treatment.map(e=>e.id),['med-start']);
+ assert.deepEqual(new Set(result.unlinked.map(e=>e.id)),new Set(['med-stop','med-missing','med-cross-patient']));
+ assert.equal(result.unlinked.some(e=>e.id==='med-start'),false);
+ assert.equal(patientRecord(input,now).events.some(e=>e.id==='visit-draft'),false,'drafts must not enter confirmed history');
+ assert.equal(JSON.stringify(input),saved,'presentation never writes or relinks data');
+});
+test('completed measurements link beside draft visits by explicit session or appointment; no same-day guessing',()=>{
+ const input=bundle({sessions:[{id:'draft',patient_id:'p',status:'draft',started_at:'2026-10-07T09:00:00Z'}],appointments:[{id:'appt',session_id:'draft'}],assessments:[
+ {id:'direct',patient_id:'p',session_id:'draft',instrument:'PHQ-9',instrument_version:'v1',status:'completed',score:8,completed_at:'2026-10-07T10:00:00Z'},
+ {id:'appointment',patient_id:'p',appointment_id:'appt',instrument:'GAD-7',instrument_version:'v1',status:'completed',score:6,completed_at:'2026-10-07T10:01:00Z'},
+ {id:'unlinked',patient_id:'p',instrument:'PHQ-9',instrument_version:'v1',status:'completed',score:7,completed_at:'2026-10-07T10:02:00Z'},
+ {id:'foreign',patient_id:'other',session_id:'draft',instrument:'PHQ-9',instrument_version:'v1',status:'completed',score:2,completed_at:'2026-10-07T10:03:00Z'}
+ ]});
+ const result=patientTimeline(input,now);
+ assert.deepEqual(new Set(result.context.get('draft').measurements.map(m=>m.current.id)),new Set(['direct','appointment']));
+ assert.deepEqual(result.unlinked.map(e=>e.id),['measurement-unlinked']);
 });

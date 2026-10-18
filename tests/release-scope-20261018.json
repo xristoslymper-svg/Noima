@@ -541,5 +541,19 @@
     "tests/selective-library-database.test.mjs": "90ff185758886854483bf0d16d73de5be40d5490",
     "tests/selective-production-contract.json": "eb01f94fd4a94159fbfdbf2297cd7cf9b5c287d8",
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
+  },
+  "followupApproved": {
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113",
+    "paths": [
+      "lib/clinical/treatment-plan.ts",
+      "components/patients/PatientTreatment.tsx",
+      "components/patients/PatientTreatment.module.css",
+      "components/patients/PatientWorkspace.tsx",
+      "components/patients/PatientPanels.tsx",
+      "components/patients/MedicationTable.tsx",
+      "components/patients/MedicationTimeline.tsx",
+      "browser-tests/clinical-reliability.mjs",
+      "app/patients/demo/treatment-preview/page.tsx"
+    ]
   }
 }

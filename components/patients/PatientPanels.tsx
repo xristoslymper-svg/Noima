@@ -5,6 +5,7 @@ import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
 import MedicationTimeline from './MedicationTimeline';
 import MedicationTable from './MedicationTable';
+import {medicationSessionId} from '@/lib/clinical/treatment-plan';
 import MedicationFrequency from './MedicationFrequency';
 import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
@@ -99,7 +100,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  </section>
 }
 
-export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;currentOnly?:boolean}){
+export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false,sessionId}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;currentOnly?:boolean;sessionId?:string}){
  const flushers=useRef(new Map<string,()=>Promise<void>>()),dirty=useRef(new Set<string>());
  const registerFlusher=useCallback((key:string,flush:()=>Promise<void>)=>{flushers.current.set(key,flush);return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)}},[]);
  const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value)dirty.current.add(key);else dirty.current.delete(key)},[]);
@@ -109,11 +110,11 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
   <div className="panel-heading medication-record-head">
    <div><span className="kicker">ΑΓΩΓΗ</span><h2>{currentOnly?'Τρέχουσα αγωγή':'Αγωγή'}</h2></div>
   </div>
-  <MedicationTable bundle={currentOnly?{...bundle,medications:bundle.medications.filter(m=>m.status==='active'||m.status==='planned')}:bundle} reload={reload} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
+  <MedicationTable bundle={currentOnly?{...bundle,medications:bundle.medications.filter(m=>m.status==='active'||m.status==='planned')}:bundle} reload={reload} sessionId={sessionId} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}
   <details className="medication-history-details">
    <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
-   <MedicationTimeline bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
+   <MedicationTimeline bundle={bundle} reload={reload} sessionId={sessionId} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   </details>
  </section>
 }
@@ -154,13 +155,12 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
   savingRef.current=true;setSaving(true);setError('');
   let committed=false;
   try{
-   const draft=bundle.sessions.find(x=>sessionId?x.id===sessionId&&x.status==='draft':x.status==='draft');
-   if(sessionId&&!draft)throw new Error('Το συγκεκριμένο πρόχειρο δεν είναι διαθέσιμο.');
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:draft?.id||null,name,dose:Number(dose),unit,frequency,started_on:effective,stopped_on:stopped,reason});
-   if(mode==='start')await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:draft?.id||null,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='change')await demoPost({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:draft?.id||null,effective_on:effective,reason});
-   if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:draft?.id||null,effect,severity,impact,noted_on:effective,note:reason});
+   const linkedSession=medicationSessionId(bundle,sessionId);
+   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,started_on:effective,stopped_on:stopped,reason});
+   if(mode==='start')await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
+   if(mode==='change')await demoPost({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,dose:Number(dose),unit,frequency,effective_on:effective,reason});
+   if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,effective_on:effective,reason});
+   if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:linkedSession,effect,severity,impact,noted_on:effective,note:reason});
    committed=true;
    try{await onSaved()}catch{/* mutation is committed; the folder can refresh independently */}
    setTouched(false);onClose();

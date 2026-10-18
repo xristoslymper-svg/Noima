@@ -5,6 +5,7 @@ import {Ban,Check,Pencil,Plus,Search,X} from 'lucide-react';
 import type {DemoMedication,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
 import MedicationFrequency from './MedicationFrequency';
+import {medicationSessionId} from '@/lib/clinical/treatment-plan';
 import {formatClinicDate} from '@/lib/clinic-time';
 import {placeMedicationMenu,type MedicationMenuPlacement} from '@/lib/clinical/medication-menu-placement';
 import {useClinicalDraft} from './useClinicalDraft';
@@ -14,15 +15,17 @@ type Tracking={firstAssessment?:boolean;registerFlusher?:(key:string,flush:()=>P
 type MedicationOption={id:string;brand:string;active:string;form?:string};
 
 export default function MedicationTable({bundle,sessionId,onManage,reload,editableEffects=false,editablePlan=false,firstAssessment=false,registerFlusher,onDirtyChange}:{bundle:PatientBundle;sessionId?:string;onManage?:(mode:Mode,id?:string)=>void;reload:()=>Promise<unknown>;editableEffects?:boolean;editablePlan?:boolean}&Tracking){
+ const [emptyEditor,setEmptyEditor]=useState(false);
  const today=bundle.clinical_day||new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const medications=[...bundle.medications].sort((a,b)=>{const rank=(s:string)=>s==='active'?0:s==='planned'?1:2;return rank(a.status)-rank(b.status)||Date.parse(b.started_at)-Date.parse(a.started_at)});
  function durationLabel(start:string,end?:string|null){const days=Math.max(0,Math.floor((Date.parse((end||today).slice(0,10))-Date.parse(start.slice(0,10)))/86400000));if(!sessionId&&days===0&&!end&&start.slice(0,10)===today)return 'Έναρξη σήμερα';if(days<31)return days===1?'1 ημέρα':days+' ημέρες';const months=Math.max(1,Math.round(days/30.44));if(months<12)return months===1?'1 μήνας':months+' μήνες';const years=Math.floor(months/12),rest=months%12;return years+(years===1?' έτος':' έτη')+(rest?' · '+rest+' μ.':'')}
  const actionColumn=editablePlan||Boolean(onManage);
+ if(!medications.length&&editablePlan&&!emptyEditor)return <div className="medication-empty"><p>Δεν έχει καταγραφεί τρέχουσα ή προγραμματισμένη αγωγή.</p><button type="button" className="patient-reported-link" onClick={()=>setEmptyEditor(true)}><Plus size={15}/> Προσθήκη φαρμάκου</button></div>;
  return <div className={'clinical-table-wrap medication-table-editor'+(firstAssessment?' first-assessment-medications':'')}><table className="clinical-lean-table medication-lean-table"><caption className="sr-only">Αγωγή</caption><thead><tr><th>Φάρμακο{editablePlan&&<b className="required-star"> *</b>}</th><th>Δόση{editablePlan&&<b className="required-star"> *</b>}</th><th>Συχνότητα{editablePlan&&<b className="required-star"> *</b>}</th><th>Περίοδος / διάρκεια</th><th>Κατάσταση</th><th>Παρενέργειες</th>{actionColumn&&<th className="med-actions-head"><span>Ενέργειες</span></th>}</tr></thead><tbody>
  {medications.map(m=>editablePlan
   ?<EditableMedicationRow key={m.id} medication={m} bundle={bundle} today={today} sessionId={sessionId} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} durationLabel={durationLabel}/>
   :<ReadOnlyMedicationRow key={m.id} medication={m} bundle={bundle} today={today} sessionId={sessionId} reload={reload} editableEffects={editableEffects} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onManage={onManage} durationLabel={durationLabel}/>)}
- {editablePlan&&<NewMedicationRow bundle={bundle} today={today} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}
+ {editablePlan&&<NewMedicationRow initialOpen={emptyEditor} onClose={()=>setEmptyEditor(false)} bundle={bundle} today={today} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}
  {!medications.length&&!editablePlan&&<tr><td colSpan={actionColumn?7:6} className="med-empty">Δεν έχει καταγραφεί αγωγή.</td></tr>}
  </tbody></table></div>;
 }
@@ -50,14 +53,14 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   try{
    const effectiveOn=m.status==='planned'?m.started_at.slice(0,10):today;
    const sameDay=bundle.medicationEvents.find(e=>e.medication_id===m.id&&e.effective_on===effectiveOn&&!bundle.medicationRevisions.some(r=>r.event_id===e.id));
-   await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:sessionId||null,dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
+   await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
    setEditing(false);await reload();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{setSaving(false)}
  }
  async function stopMedication(){
   if(saving||!stopDate)return;
   setSaving(true);setError('');
-  try{await demoPost({action:'medication_stop',medication_id:m.id,session_id:sessionId||null,effective_on:stopDate,reason:''});setStopping(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν καταγράφηκε η διακοπή.')}finally{setSaving(false)}
+  try{await demoPost({action:'medication_stop',medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),effective_on:stopDate,reason:''});setStopping(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν καταγράφηκε η διακοπή.')}finally{setSaving(false)}
  }
  const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10),editable=m.status!=='stopped';
  return <tr className={editing?'med-row-editing':''}>
@@ -71,15 +74,15 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
  </tr>;
 }
 
-function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange}:{bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
- const [open,setOpen]=useState(false),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
+function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange,initialOpen=false,onClose}:{initialOpen?:boolean;onClose?:()=>void;bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
+ const [open,setOpen]=useState(initialOpen),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [needsAction,setNeedsAction]=useState(false);
  const newRowRef=useRef<HTMLTableRowElement>(null);
  const key='medication-new';
  const dirty=open&&Boolean(name.trim()||dose.trim()||frequency.trim()||mode==='history'||start!==today||unit!=='mg');
  const complete=Boolean(name.trim()&&dose.trim()&&frequency.trim()&&start&&(mode==='start'||stop));
  const pending=dirty||saving;
- const reset=()=>{setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
+ const reset=()=>{onClose?.();setOpen(false);setNeedsAction(false);setName('');setDose('');setUnit('mg');setFrequency('');setStart(today);setMode('start');setStop(today);setError('')};
  const guard=useCallback(async()=>{
   if(!pending)return;
   setNeedsAction(true);
@@ -94,9 +97,9 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
   if(!Number.isFinite(numericDose)||numericDose<=0){setError('Η δόση δεν είναι έγκυρη.');return}
   setSaving(true);setError('');
   try{
-   const draft=bundle.sessions.find(x=>sessionId?x.id===sessionId&&x.status==='draft':x.status==='draft');
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:draft?.id||null,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),started_on:start,stopped_on:stop,reason:''});
-   else await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:draft?.id||null,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),effective_on:start,reason:''});
+   const linkedSession=medicationSessionId(bundle,sessionId);
+   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),started_on:start,stopped_on:stop,reason:''});
+   else await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),effective_on:start,reason:''});
    reset();await reload();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν προστέθηκε η αγωγή.')}finally{setSaving(false)}
  }
@@ -168,7 +171,7 @@ function MedicationSearchInput({value,onChange,disabled}:{value:string;onChange:
 
 function MedicationEffects({medication,bundle,sessionId,today,reload,editableEffects,firstAssessment=false,registerFlusher,onDirtyChange}:{medication:DemoMedication;bundle:PatientBundle;sessionId?:string;today:string;reload:()=>Promise<unknown>;editableEffects:boolean}&Tracking){
  const effects=bundle.medicationSideEffects.filter(e=>e.medication_id===medication.id);
- return <>{effects.map(e=>firstAssessment&&sessionId&&e.session_id===sessionId&&!e.resolved_on?<DraftSideEffect key={e.id} effect={e} medication={medication} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<div className={'med-effect '+(e.resolved_on?'resolved':'')} key={e.id}><span>{e.effect_text}</span><small>{e.severity==='severe'?'Σοβαρή':e.severity==='mild'?'Ήπια':'Μέτρια'} · {formatClinicDate(e.noted_on)}{e.resolved_on?' · επιλύθηκε '+formatClinicDate(e.resolved_on):''}</small></div>)}{!effects.length&&!editableEffects&&<span className="med-empty-cell">—</span>}{editableEffects&&<SideEffectEntry medication={medication} sessionId={sessionId} today={today} reload={reload} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</>;
+ return <>{effects.map(e=>firstAssessment&&sessionId&&e.session_id===sessionId&&!e.resolved_on?<DraftSideEffect key={e.id} effect={e} medication={medication} sessionId={sessionId} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<div className={'med-effect '+(e.resolved_on?'resolved':'')} key={e.id}><span>{e.effect_text}</span><small>{e.severity==='severe'?'Σοβαρή':e.severity==='mild'?'Ήπια':'Μέτρια'} · {formatClinicDate(e.noted_on)}{e.resolved_on?' · επιλύθηκε '+formatClinicDate(e.resolved_on):''}</small></div>)}{!effects.length&&!editableEffects&&<span className="med-empty-cell">—</span>}{editableEffects&&<SideEffectEntry medication={medication} bundle={bundle} sessionId={sessionId} today={today} reload={reload} firstAssessment={firstAssessment} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}</>;
 }
 
 function DraftSideEffect({effect,medication,sessionId,reload,registerFlusher,onDirtyChange}:{effect:PatientBundle['medicationSideEffects'][number];medication:DemoMedication;sessionId:string;reload:()=>Promise<unknown>}&Tracking){
@@ -185,7 +188,7 @@ function DraftSideEffect({effect,medication,sessionId,reload,registerFlusher,onD
  return <div className="med-effect"><input aria-label={'Παρενέργεια — '+medication.medication_name} value={draft.value} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})}/><small>{formatClinicDate(effect.noted_on)} · {effect.severity==='severe'?'Σοβαρή':effect.severity==='mild'?'Ήπια':'Μέτρια'}</small>{effect.note&&<details><summary>Ιστορικό καταγραφής</summary><p style={{whiteSpace:'pre-wrap'}}>{effect.note}</p></details>}{draft.error&&<div role="alert">{draft.error} {draft.hasConflict?<><button type="button" onClick={()=>void reload()}>Ανανέωση αποθηκευμένης καταγραφής</button><p>Αποθηκευμένη καταγραφή: {effect.effect_text}</p><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.acceptServer(effect.effect_text,Date.parse(effect.updated_at))}}>Χρήση αποθηκευμένου</button><button type="button" onClick={()=>{savedVersion.current=effect.updated_at;draft.resolve(draft.value,effect.effect_text,Date.parse(effect.updated_at))}}>Διατήρηση της δικής μου διόρθωσης</button></>:<button type="button" onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button>}</div>}</div>;
 }
 
-function SideEffectEntry({medication,sessionId,today,reload,registerFlusher,onDirtyChange}:{medication:DemoMedication;sessionId?:string;today:string;reload:()=>Promise<unknown>}&Tracking){
+function SideEffectEntry({medication,bundle,sessionId,today,reload,registerFlusher,onDirtyChange}:{medication:DemoMedication;bundle:PatientBundle;sessionId?:string;today:string;reload:()=>Promise<unknown>}&Tracking){
  const [open,setOpen]=useState(false),[text,setText]=useState(''),[severity,setSeverity]=useState(''),[date,setDate]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const key='medication-effect:'+medication.id,pending=open&&Boolean(text.trim()||severity||date!==today)||saving;
  const guard=useCallback(async()=>{if(pending)throw new Error('Ολοκλήρωσε ή ακύρωσε την παρενέργεια του '+medication.medication_name+'.')},[pending,medication.medication_name]);
@@ -194,7 +197,7 @@ function SideEffectEntry({medication,sessionId,today,reload,registerFlusher,onDi
  async function save(){
   if(saving||text.trim().length<2||!severity||!date)return;
   setSaving(true);setError('');
-  try{await demoPost({action:'medication_side_effect',medication_id:medication.id,session_id:sessionId||null,effect:text,severity,noted_on:date});setText('');setSeverity('');setDate(today);setOpen(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η παρενέργεια.')}finally{setSaving(false)}
+  try{await demoPost({action:'medication_side_effect',medication_id:medication.id,session_id:medicationSessionId(bundle,sessionId),effect:text,severity,noted_on:date});setText('');setSeverity('');setDate(today);setOpen(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η παρενέργεια.')}finally{setSaving(false)}
  }
  const cancel=()=>{setText('');setSeverity('');setDate(today);setError('');setOpen(false)};
  if(!open)return <button type="button" className="med-add-effect" onClick={()=>setOpen(true)}><Plus size={12}/> {sessionId?'Παρενέργεια':'Καταγραφή ανεπιθύμητης ενέργειας'}</button>;

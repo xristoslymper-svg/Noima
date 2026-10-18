@@ -7,6 +7,7 @@ import {FollowupDraftProvider,FollowupField,useFollowupDraft} from '@/components
 import {SyntheticChartContext} from '@/components/patients/SyntheticChartContext';
 import StructuredVisitEditor from '@/components/patients/StructuredVisitEditor';
 import RiskTreeEditor,{RiskTreeRead} from '@/components/patients/RiskTreeEditor';
+import {mseDomainLabel} from '@/lib/clinical/mse-presentation';
 import {riskTreeChoices} from '@/lib/clinical/risk-tree';
 import type {VisitDocument} from '@/lib/clinical/visit-document';
 import {reviewFixtureVisit,visitRevision,completeFixtureVisit} from '@/lib/teleconsultations/visit-lifecycle';
@@ -24,7 +25,7 @@ function SaveNotes({saveAll}:{saveAll:()=>Promise<void>}){
  return <div className={styles.save}><span role="status">{draft.error?'Δεν αποθηκεύτηκε':draft.saving?'Αποθήκευση…':draft.dirty?'Μη αποθηκευμένες αλλαγές':'Αποθηκευμένο στο συνθετικό παράδειγμα'}</span><button type="button" className="small-button" onClick={()=>void saveAll().catch(()=>{})} disabled={draft.saving}><Check size={15}/>Αποθήκευση προσχεδίου</button></div>;
 }
 function VisitReadback({notes,mse,risk}:{notes:ContinuityDraft;mse?:DemoSection;risk?:DemoRisk}){
- return <div className={styles.readback}>{([['transcript','Σημειώσεις επίσκεψης'],['clinical_state_summary','Σημερινή κλινική εικόνα'],['adherence','Λήψη αγωγής'],['treatment_decision','Απόφαση / παρεμβάσεις'],['next_review_focus','Τι θα επανεκτιμηθεί']] as const).map(([key,label])=><section key={key}><h3>{label}</h3><p>{notes[key]||'Δεν καταγράφηκε'}</p></section>)}<section><h3>Σημερινή ψυχική κατάσταση</h3>{mse?.document?.fields.filter(field=>field.text.trim()).map(field=><p key={field.key}><strong>{field.label}</strong><br/>{field.text}</p>)}</section><section><h3>Εκτίμηση κινδύνου</h3>{risk?.tree&&<RiskTreeRead tree={risk.tree} includeHidden={false}/>}<p>Αυτοτραυματισμός: {riskTreeChoices.find(([value])=>value===risk?.self_harm)?.[1]||'Δεν καταγράφηκε'} · Ιστορικό απόπειρας: {riskTreeChoices.find(([value])=>value===risk?.attempt_history)?.[1]||'Δεν καταγράφηκε'}</p><p>{risk?.protective_factors}</p><p>{risk?.clinical_note}</p></section></div>;
+ return <div className={styles.readback}>{([['transcript','Σημειώσεις επίσκεψης'],['clinical_state_summary','Σημερινή κλινική εικόνα'],['adherence','Λήψη αγωγής'],['treatment_decision','Απόφαση / παρεμβάσεις'],['next_review_focus','Τι θα επανεκτιμηθεί']] as const).map(([key,label])=><section key={key}><h3>{label}</h3><p>{notes[key]||'Δεν καταγράφηκε'}</p></section>)}<section><h3>Σημερινή ψυχική κατάσταση</h3>{mse?.document?.fields.filter(field=>field.text.trim()).map(field=><p key={field.key}><strong>{mseDomainLabel(field)}</strong><br/>{field.text}</p>)}</section><section><h3>Εκτίμηση κινδύνου</h3>{risk?.tree&&<RiskTreeRead tree={risk.tree} includeHidden={false}/>}<p>Αυτοτραυματισμός: {riskTreeChoices.find(([value])=>value===risk?.self_harm)?.[1]||'Δεν καταγράφηκε'} · Ιστορικό απόπειρας: {riskTreeChoices.find(([value])=>value===risk?.attempt_history)?.[1]||'Δεν καταγράφηκε'}</p><p>{risk?.protective_factors}</p><p>{risk?.clinical_note}</p></section></div>;
 }
 export default function TeleconsultationsPreview(){
  const [record,setRecord]=useState(initial),[opened,setOpened]=useState(false),[inCall,setInCall]=useState(false),[mic,setMic]=useState(true),[camera,setCamera]=useState(true),[view,setView]=useState<'call'|'notes'>('call'),[tool,setTool]=useState<'PHQ-9'|'GAD-7'|'history'|null>(null),[message,setMessage]=useState(''),[fail,setFail]=useState(false),[dirty,setDirty]=useState(false);
@@ -81,7 +82,7 @@ export default function TeleconsultationsPreview(){
   try{await saveAll();
    const issues=reviewFixtureVisit(current.current,clinical.current.mse,clinical.current.risk);
    setReview(issues);
-   if(!issues.length){reviewedRevision.current=visitRevision(current.current,clinical.current.mse,clinical.current.risk);setReviewing(true)}
+   if(!issues.length){reviewedRevision.current=visitRevision(current.current,clinical.current.mse,clinical.current.risk);setReviewing(true);setMessage('')}
   }catch{setReview(['Αποθηκεύστε πρώτα τις εκκρεμείς αλλαγές.'])}
   finally{setBusy(false)}
  }

@@ -27,9 +27,12 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
       - run: node browser-tests/teleconsultations.mjs
+      - run: node browser-tests/teleconsultation-persistence.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: teleconsultations-synthetic-evidence
-          path: test-results/teleconsultations
+          path: |
+            test-results/teleconsultations
+            test-results/teleconsultation-persistence
           retention-days: 7

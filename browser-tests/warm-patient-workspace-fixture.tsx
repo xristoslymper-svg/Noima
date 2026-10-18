@@ -13,9 +13,10 @@ import CalendarPage from '../app/calendar/page';
 import Patients from '../app/patients/page';
 import SyntheticPatientWorkspace from '../components/patients/SyntheticPatientWorkspace';
 import type {PatientBundle} from '../lib/patients/demo-runtime';
+import RecordAssistant from '../components/overview/RecordAssistant';
 import PatientWorkspace from '../components/patients/PatientWorkspace';
 
 createRoot(document.getElementById('root')!).render(<>
   <div className="fictional-pilot-notice">LOCAL QA · μόνο υποθετικοί ασθενείς · προσομοιωμένο API</div>
-  {location.pathname==='/timeline-preview'?<SyntheticPatientWorkspace bundle={fixture as unknown as PatientBundle}/>:location.pathname==='/calendar'?<CalendarPage/>:location.pathname==='/received-history-preview'?<ReceivedHistoryPreview/>:location.pathname==='/patients'?<Patients/>:<PatientWorkspace patientRef={fixture.patient.id}/>}
+  {(location.pathname==='/timeline-preview'||location.pathname==='/patients/demo/treatment-preview')?<><SyntheticPatientWorkspace bundle={fixture as unknown as PatientBundle}/>{location.pathname==='/patients/demo/treatment-preview'&&<RecordAssistant/>}</>:location.pathname==='/calendar'?<CalendarPage/>:location.pathname==='/received-history-preview'?<ReceivedHistoryPreview/>:location.pathname==='/patients'?<Patients/>:<PatientWorkspace patientRef={fixture.patient.id}/>}
 </>);

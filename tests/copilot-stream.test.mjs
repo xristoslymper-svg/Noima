@@ -119,3 +119,27 @@ test('actual single provider request masks chart notes, question and prior conve
  assert.match(payload.previous.answer,/EMAIL/);
  assert.match(calls[0].input,/2026-09-10|Fictional A/);
 });
+
+test('treatment preview sends its own fixed chart and excludes foreign conversation',async()=>{
+ const calls=setup([delta,complete]);
+ Object.assign(process.env,{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/copilot-preview-scope',COPILOT_INTERACTIVE_SYNTHETIC:'true'});
+ for await(const event of syntheticAnswer('Ποια είναι η αγωγή;', {patient_id:'foreign',question:'FOREIGN_CHART_SECRET',answer:'FOREIGN_ANSWER',expires:Date.now()+1000},undefined,'treatment')){}
+ assert.equal(calls.length,1);assert.match(calls[0].input,/Σερτραλίνη|σερτραλίν/);
+ assert.doesNotMatch(calls[0].input,/FOREIGN_CHART_SECRET|FOREIGN_ANSWER|Fictional A/);
+ assert.match(calls[0].instructions,/διοικητική ένδειξη/);
+ assert.match(calls[0].instructions,/Δεν υπάρχει καταγεγραμμένη ολοκλήρωση επίσκεψης/);
+ await assert.rejects(async()=>{for await(const event of syntheticAnswer('Πορεία;',null,undefined,'arbitrary')){}},/synthetic_chart_invalid/);
+ assert.equal(calls.length,1);
+});
+
+test('new chart preview is branch-scoped, synthetic-only and respects AI off switch',async()=>{
+ const calls=setup([delta,complete]);
+ Object.assign(process.env,{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/copilot-preview-scope',COPILOT_INTERACTIVE_SYNTHETIC:'false'});
+ for await(const event of syntheticAnswer('Αγωγή;',null,undefined,'treatment')){}
+ assert.equal(calls.length,1);
+ for(const patch of [{CLINICAL_DATA_MODE:'real'},{EXTERNAL_AI_ENABLED:'false'},{VERCEL_GIT_COMMIT_REF:'other-branch'}]){
+  Object.assign(process.env,{CLINICAL_DATA_MODE:'synthetic',EXTERNAL_AI_ENABLED:'true',VERCEL_GIT_COMMIT_REF:'codex/copilot-preview-scope'},patch);
+  await assert.rejects(async()=>{for await(const event of syntheticAnswer('Αγωγή;',null,undefined,'treatment')){}},/synthetic_preview_disabled/);
+ }
+ assert.equal(calls.length,1);
+});

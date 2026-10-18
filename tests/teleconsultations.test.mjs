@@ -99,7 +99,7 @@ test('teleconsultation uses existing MSE and risk editors with isolated persiste
  assert.match(ui,/saveDocument=\{saveMse\}/);
  assert.match(ui,/saveRisk=\{saveRisk\}/);
  assert.match(ui,/reviewFixtureVisit\(/);
- assert.doesNotMatch(ui,/<StructuredVisitEditor[^>]*baseline=/);
+ assert.match(ui,/baseline=\{connection\?/);
  for(const path of ['StructuredVisitEditor','RiskTreeEditor']){
   const editor=await readFile('components/patients/'+path+'.tsx','utf8');
   assert.match(editor,/if\(save(?:Document|Risk)\)return save(?:Document|Risk)\(/);

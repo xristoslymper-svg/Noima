@@ -5,6 +5,8 @@ import {useMobileCalendarLayout} from '@/components/mobile/useMobileCalendarLayo
 import MobileClinicalNav from '@/components/mobile/MobileClinicalNav';
 import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
+import {OverviewShortcuts} from '@/components/overview/RecordAssistant';
+import CalendarConnectionMenu from '@/components/calendar/CalendarConnectionMenu';
 import PilotProfile from '@/components/PilotProfile';
 
 import Link from "next/link";
@@ -523,8 +525,10 @@ export default function CalendarPage() {
             <div>
               <h1>Ημερολόγιο</h1>
             </div>
-            <div className="calendar-page-actions"><Link href="/calendar/google-preview" className="calendar-today-jump">Σύνδεση Google Calendar</Link>{mobileCalendar&&<PilotProfile/>}</div>
+            <div className="calendar-page-actions"><CalendarConnectionMenu/>{mobileCalendar&&<PilotProfile/>}</div>
           </div>
+
+          <OverviewShortcuts searchOnly/>
 
           {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-tools"><div className="calendar-date-nav">

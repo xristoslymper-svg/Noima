@@ -1,0 +1,6 @@
+.root{position:relative;display:inline-block}
+.trigger{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;color:#315f50;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.trigger:hover{background:#f4f7f5}.trigger:focus-visible{outline:2px solid #315f50;outline-offset:3px}
+.options{position:absolute;right:0;top:calc(100% + 7px);z-index:30;width:290px;max-width:calc(100vw - 32px);padding:6px;background:#fff;border:1px solid #dfe6e2;border-radius:12px;box-shadow:0 14px 38px rgba(37,57,48,.14)}
+.options>a,.options>button{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:8px;background:transparent;color:#344b40;text-decoration:none;text-align:left;font:inherit;box-sizing:border-box}
+.options>a:hover{background:#f0f5f2}.options>button:disabled{opacity:.55;cursor:not-allowed}.options strong{display:block;font-size:12px;font-weight:650}.options small{display:block;margin-top:3px;font-size:10px;color:#718078}.options p{margin:6px 10px;padding-top:8px;border-top:1px solid #edf1ee;font-size:10px;line-height:1.5;color:#718078}

@@ -32,3 +32,6 @@ The synthetic UI starts disconnected. A checkbox and explicit connect button ena
 
 ## Free live-test preparation
 User authorized only $0. Supabase quoted $0/month and a separate project Noima Calendar Preview (yncfbugkneywrwotuyls, eu-central-1) was created. It is isolated from production mgpnaxaquzeoomxdzhic. No existing projects were altered. The new project is not yet wired to app credentials or calendar data. Dedicated Google OAuth client/Calendar API and preview redirect setup remain required before real authentication can be tested. Never change NOIMA login or mail OAuth client settings for this test.
+
+## Calendar search and provider control
+No historical calendar-wide patient search was found in the inspected main history/branches; the user clarified they want a patient-finding bar. Reuse the existing OverviewShortcuts patient search in searchOnly mode, preserving the home page default. Results open the existing patient chart. The existing Today/date controls remain calendar navigation, not a substitute for search. A compact disclosure lists Google and disabled Outlook/Hotmail with icons, preserves explicit opt-in and closes on Escape/outside click.

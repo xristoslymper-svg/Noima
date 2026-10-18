@@ -38,7 +38,7 @@ try{
   await p.getByLabel('Ασθενής (προαιρετικά)',{exact:true}).fill('Ά');assert.equal(await p.getByRole('list',{name:'Αποτελέσματα ασθενών'}).count(),0);
   await p.getByLabel('Ασθενής (προαιρετικά)',{exact:true}).fill('Άν');
   await p.getByRole('button',{name:'Άννα Παράδειγμα',exact:true}).click();
-  await p.getByLabel('Προθεσμία (προαιρετικά, τοπική ώρα)',{exact:true}).fill('2026-10-20T17:00');
+  await p.getByLabel('Προθεσμία (προαιρετικά, ώρα Ελλάδας)',{exact:true}).fill('2026-10-20T17:00');
   await p.getByRole('button',{name:'Προσθήκη',exact:true}).click();
   const row=p.locator('.todo-row').filter({hasText:'Έλεγχος απάντησης'});await row.waitFor();
   assert.equal(await row.getByRole('link').getAttribute('href'),'/patients/demo/30000000-0000-4000-8000-000000000002');

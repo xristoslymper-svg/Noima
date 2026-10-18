@@ -38,6 +38,11 @@ async function post(req:Request){
   if(selected&&memory?.patient_id!==selected.id)memory={patient_id:selected.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
   if(memory?.pending_action&&memory.pending_action.expires<Date.now())delete memory.pending_action;
   const intent=await understand(b.query,memory,usage);
+  if(memory?.pending_action&&intent.tool==='clarify'){
+   const answer=intent.clarification||'Διευκρίνισε το στοιχείο που λείπει.';
+   memory.pending_action.turns=[...memory.pending_action.turns,{query:b.query.slice(0,700),answer:answer.slice(0,500)}].slice(-4);
+   return Response.json({patient:selected,answer,sources:[],conversation:seal(memory,'copilot:'+b.tester)});
+  }
   if(intent.tool==='clarify')return Response.json({patient:selected,answer:intent.clarification||'Διευκρινίστε την ερώτηση. Ο βοηθός δεν συνταγογραφεί ούτε μεταβάλλει κλινικές καταγραφές.',sources:[]});
   let matches=intent.patient_name?matchPatients(roster,intent.patient_name):selected?[selected]:intent.use_current_patient&&memory?roster.filter(p=>p.id===memory!.patient_id):[];
   if(intent.patient_name){

@@ -12,7 +12,7 @@ type Proposal={id:string;kind:string;expires_at:string};
 export async function prepareAction(workspace:string,bundle:PatientBundle,query:string,kind:'calendar'|'questionnaires',usage:Usage,pending?:PendingAction){
  const patient=bundle.patient;
  const context=pending?.kind===kind&&pending.expires>Date.now()?pending:undefined;
- const clarify=(answer:string,slots:Record<string,unknown>)=>({answer,sources:[],pending_action:{kind,turns:[...(context?.turns||[]),{query,answer}].slice(-6),slots,expires:Date.now()+5*60000}});
+ const clarify=(answer:string,slots:Record<string,unknown>)=>({answer,sources:[],pending_action:{kind,turns:[...(context?.turns||[]),{query:query.slice(0,700),answer:answer.slice(0,500)}].slice(-4),slots,expires:Date.now()+5*60000}});
  const dialogue=context?.turns||[];
  let payload:Record<string,unknown>,summary:string;
  if(kind==='calendar'){

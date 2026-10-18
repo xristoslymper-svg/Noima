@@ -13,8 +13,11 @@ export function selectAppointment<T extends Event>(events:T[],p:{event_id:string
   let h=Number(explicit[1]);const minute=explicit[2]||'00';
   if((explicit[3]==='απογευμα'||explicit[3]==='βραδυ')&&h<12)h+=12;
   if(explicit[3]||h>=13||explicit[2])time=String(h).padStart(2,'0')+':'+minute;
-  else if(events.filter(e=>{const t=appointmentWallTime(e.scheduled_start);return (!p.target_date||t.local_date===p.target_date)&&Number(t.local_time.slice(0,2))%12===h%12&&t.local_time.slice(3)===minute}).length!==1)return {answer:'Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;'};
-  else if(!time)return {answer:'Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;'};
+  else {
+   const possible=events.filter(e=>{const t=appointmentWallTime(e.scheduled_start);return (!p.target_date||t.local_date===p.target_date)&&Number(t.local_time.slice(0,2))%12===h%12&&t.local_time.slice(3)===minute});
+   if(possible.length!==1)return {answer:'Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;'};
+   time=appointmentWallTime(possible[0].scheduled_start).local_time;
+  }
  }
  const constrained=Boolean(p.target_date||time);
  const matches=events.filter(e=>{const local=appointmentWallTime(e.scheduled_start);return (!p.target_date||local.local_date===p.target_date)&&(!time||local.local_time===time)});

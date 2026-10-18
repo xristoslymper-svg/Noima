@@ -616,7 +616,9 @@
       "components/calendar/GoogleCalendarPreview.tsx",
       "tests/google-calendar-sync.test.mjs",
       "docs/google-calendar-preview.md",
-      "lib/calendar/google-preview-state.ts"
+      "lib/calendar/google-preview-state.ts",
+      "app/calendar/page.tsx",
+      "tests/calendar-google-entry.test.mjs"
     ]
   }
 }

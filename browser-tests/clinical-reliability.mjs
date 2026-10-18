@@ -63,7 +63,7 @@ const server=createServer(async(req,res)=>{
   try{
    if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
    if(req.method!=='GET'){let raw='';for await(const chunk of req)raw+=chunk;return res.end(JSON.stringify(handle(JSON.parse(raw||'{}'))))}
-   if(url.pathname==='/api/patients/demo/runtime')return res.end(JSON.stringify({patients:state.registry}));
+   if(url.pathname==='/api/patients/demo/runtime'&&!url.searchParams.has('patient'))return res.end(JSON.stringify({patients:state.registry}));
    if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
    if(url.pathname.includes('medications/search'))return res.end(JSON.stringify({items:[]}));
    const sid=url.searchParams.get('session');return res.end(JSON.stringify({bundle:sid?{...state,sessions:state.sessions.filter(s=>s.id===sid)}:state}));
@@ -201,13 +201,13 @@ try{
   await check('registry-refresh-preserves-controls-and-recovers',async({page})=>{
    await page.clock.install();
    await page.goto(origin+'/patients');
-   await page.getByRole('link',{name:/Ira Pira/}).waitFor();
+   await page.locator('.registry-patient-link').filter({hasText:'Ira Pira'}).waitFor();
    await page.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('Pira');
    await page.getByRole('button',{name:'Ενεργοί',exact:true}).click();
    await page.getByRole('combobox',{name:'Ταξινόμηση'}).selectOption('name');
    state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000099',first_name:'Synthetic',registry_number:2});
    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-   await page.getByRole('link',{name:/Synthetic Pira/}).waitFor();
+   await page.locator('.registry-patient-link').filter({hasText:'Synthetic Pira'}).waitFor();
    assert.equal(await page.getByRole('searchbox').inputValue(),'Pira');
    assert.equal(await page.getByRole('button',{name:'Ενεργοί',exact:true}).getAttribute('aria-pressed'),'true');
    assert.equal(await page.getByRole('combobox',{name:'Ταξινόμηση'}).inputValue(),'name');
@@ -215,12 +215,12 @@ try{
    await page.route('**/api/patients/demo/runtime?*',route=>fail?route.fulfill({status:503,json:{error:'synthetic unavailable'}}):route.continue());
    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
    await page.getByRole('alert').waitFor();
-   assert.equal(await page.getByRole('link',{name:/Synthetic Pira/}).count(),1);
+   assert.equal(await page.locator('.registry-patient-link').filter({hasText:'Synthetic Pira'}).count(),1);
    fail=false;await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
    await page.getByRole('alert').waitFor({state:'detached'});
    state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000098',first_name:'Polling',registry_number:3});
    await page.clock.runFor(60_100);
-   await page.getByRole('link',{name:/Polling Pira/}).waitFor();
+   await page.locator('.registry-patient-link').filter({hasText:'Polling Pira'}).waitFor();
    assert.equal(requests.length,0,'registry refresh uses reads only');
   });
 

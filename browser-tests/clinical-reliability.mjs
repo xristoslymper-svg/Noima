@@ -12,7 +12,7 @@ const patientId=seed.patient.id,visitId='20000000-0000-4000-8000-000000000012',a
 const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 let state,requests,completionMode;
 function reset(){
- state=structuredClone(seed);requests=[];completionMode='ok';state.clinical_day=day();
+ state=structuredClone(seed);state.intakes=[];requests=[];completionMode='ok';state.clinical_day=day();
  state.sessions=state.sessions.filter(s=>s.status==='completed');
  const first=state.sessions[0],now=new Date().toISOString();
  const current={...first,id:visitId,status:'draft',version:20,closure_version:0,closure_draft:null,continuity:null,started_at:now,updated_at:now,completed_at:null};
@@ -30,7 +30,8 @@ await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bu
 function handle(body){
  requests.push(structuredClone(body));
  const s=state.sessions.find(s=>s.id===body.session_id);
- if(body.action==='list'||body.action==='mark_viewed')return {intakes:[]};
+ if(body.action==='list')return {intakes:state.intakes};
+ if(body.action==='mark_viewed')return {ok:true};
  if(body.action==='review'){const a=state.assessments.find(a=>a.id===body.id);assert.ok(a);a.reviewed_at=new Date().toISOString();return {assessment:a}}
  if(body.action==='update_patient'){
   assert.equal(body.patient_id,patientId);assert.equal(body.expected_updated_at,state.patient.updated_at);
@@ -71,7 +72,7 @@ const server=createServer(async(req,res)=>{
  res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="el"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/fixture.css"><div id="root"></div><script src="/fixture.js"></script></html>');
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
-const browser=await chromium.launch({headless:true});const results=[];
+const browser=await chromium.launch({headless:true});const results=[],uxFindings=[];
 try{
  for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
   async function check(name,fn){
@@ -143,7 +144,46 @@ try{
    const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);
    await page.reload();await table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'}).waitFor();assert.equal(await table.locator('.med-new-row').count(),0);
   });
+  await check('ux-new-folder-received-history-source-boundaries',async({page,open,nav})=>{
+   state.sessions=[];state.sections=[];state.risks=[];state.medications=[];state.medicationEvents=[];state.medicationSideEffects=[];state.assessments=[];
+   state.intakes=[{id:'70000000-0000-4000-8000-000000000077',status:'submitted',tools:['history'],channel:'email',submitted_at:new Date().toISOString(),history_answers:{reasons:['Άγχος'],duration:'gt1y',current_meds:'yes',current_medication_name:'SYNTHETIC SELF REPORT ONLY',suicide_attempt:'yes',self_harm:'yes'}}];
+   await open('?tab=summary');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});await compact.waitFor();
+   const summaryText=await compact.innerText();
+   assert.match(summaryText,/χωρίς κλινική επιβεβαίωση/);
+   assert.equal(state.sessions.length,0);assert.equal(state.medications.length,0);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'||r.action==='start_session'),false);
+   const hiddenAttempt=!summaryText.includes('Αναφέρει ιστορικό απόπειρας');
+   const hiddenSelfHarm=!summaryText.includes('Αναφέρει ιστορικό αυτοτραυματισμού');
+   if(hiddenAttempt||hiddenSelfHarm){
+    const finding={id:'UX-HISTORY-SAFETY-PREVIEW',size,severity:'high',status:'confirmed',boundary:'received patient history -> compact Summary',hiddenAttempt,hiddenSelfHarm,visibleText:summaryText};
+    uxFindings.push(finding);console.log('UX FINDING',JSON.stringify(finding));
+   }
+   const viewed=page.waitForResponse(response=>response.url().endsWith('/api/intake')&&response.request().postDataJSON()?.action==='mark_viewed');
+   await compact.getByRole('button',{name:'Όλες οι απαντήσεις →',exact:true}).click();
+   await page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true}).waitFor();
+   const full=page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true});
+   assert.match(await full.innerText(),/Αναφέρει ιστορικό απόπειρας/);assert.match(await full.innerText(),/Αναφέρει ιστορικό αυτοτραυματισμού/);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'),false,'reading history cannot approve or overwrite clinician history');
+   await viewed;
+   assert.equal(requests.some(r=>r.action==='mark_viewed'),true,'full history records a passive read receipt in the synthetic fixture only');
+   await nav('Σύνοψη').click();await compact.waitFor();
+   assert.equal(state.sessions.length,0);assert.equal(state.medications.length,0);
+  });
+  await check('ux-history-list-failure-is-explicit-in-detail',async({page,open,nav})=>{
+   await page.route('**/api/intake',async route=>{
+    const body=route.request().postDataJSON();if(body?.action==='list')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic unavailable intake service'})});
+    return route.continue();
+   });
+   await open('?tab=summary');
+   await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).waitFor();
+   await nav('Στοιχεία & ιστορικό').click();
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
+   assert.equal(await page.getByRole('button',{name:'Επανάληψη',exact:true}).count(),1);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'),false);
+  });
+
  }
-}finally{writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes. Server scoring/RPC tested independently in PGlite.',results},null,2));await browser.close();await new Promise(r=>server.close(r))}
+}finally{writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes. Server scoring/RPC tested independently in PGlite.',results,uxFindings},null,2));await browser.close();await new Promise(r=>server.close(r))}
 assert.equal(results.filter(r=>r.status==='failed').length,0,JSON.stringify(results.filter(r=>r.status==='failed')));
 console.log(`Passed ${results.length} clinical workflow browser checks.`);

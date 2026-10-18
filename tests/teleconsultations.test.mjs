@@ -7,8 +7,12 @@ import {createDailyRoom} from '../lib/teleconsultations/daily.ts';
 const appointment={id:'appointment-a',patient_id:'patient-a',session_id:'session-a',status:'scheduled',scheduled_start:'2026-10-18T14:00:00Z',scheduled_end:'2026-10-18T14:50:00Z'};
 const notes={clinical_state_summary:'',treatment_decision:'',next_review_focus:'',adherence:'',pinned_context:'',transcript:'Original',source:'manual'};
 const record={appointment,patientId:'patient-a',sessionId:'session-a',version:0,notes,assignments:[]};
-test('teleconsultations restricted to exact preview branch',()=>{
- assert.equal(previewEnabled({VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'codex/daily-teleconsultations'}),false);
+test('memory-only teleconsultation simulation is available in production and its designated previews',()=>{
+ assert.equal(previewEnabled({VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'main'}),true);
+ assert.equal(previewEnabled({VERCEL_ENV:'production'}),true);
+ assert.equal(previewEnabled({VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/teleconsultations-production-demo'}),true);
+ assert.equal(previewEnabled({}),false);
+ assert.equal(previewEnabled({VERCEL_ENV:'development',VERCEL_GIT_COMMIT_REF:'main'}),false);
  assert.equal(previewEnabled({VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'main'}),false);
  assert.equal(previewEnabled({VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/daily-teleconsultations'}),true);
 });
@@ -99,5 +103,14 @@ test('teleconsultation uses existing MSE and risk editors with isolated persiste
  for(const path of ['StructuredVisitEditor','RiskTreeEditor']){
   const editor=await readFile('components/patients/'+path+'.tsx','utf8');
   assert.match(editor,/if\(save(?:Document|Risk)\)return save(?:Document|Risk)\(/);
+ }
+});
+
+test('production simulation retains explicit notices and no live network persistence',async()=>{
+ for(const path of ['TeleconsultationsLobby','TeleconsultationsPreview']){
+  const ui=await readFile('components/teleconsultations/'+path+'.tsx','utf8');
+  assert.match(ui,/Προσομοίωση τηλεσυνεδρίας/);
+  assert.match(ui,/χάνονται με ανανέωση/);
+  assert.doesNotMatch(ui,/fetch\(|createDailyRoom\(|getUserMedia\(/);
  }
 });

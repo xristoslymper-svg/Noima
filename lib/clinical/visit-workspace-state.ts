@@ -108,17 +108,21 @@ export function activeVisitPart(parts:{key:string;top:number}[],readingLine:numb
  return parts.filter(p=>p.top<=readingLine+1).at(-1)?.key||parts[0]?.key||'interview';
 }
 const requiredSections=[['interview','Ψυχιατρική συνέντευξη'],['mse','MSE'],['assessment','Κλινική αξιολόγηση'],['plan','Θεραπευτικό πλάνο'],['review','Επανεκτίμηση']] as const;
-export function finalizationBlocker(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null,firstAssessment=false){
- if(!risk||risk.suicidal_ideation==='not_assessed')return {anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'};
- if(risk.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))return {anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'};
+export function finalizationIssues(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null,firstAssessment=false){
+ const issues:{anchor:string;message:string}[]=[];
+ if(!risk||risk.suicidal_ideation==='not_assessed')issues.push({anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'});
+ if(risk?.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))issues.push({anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'});
  const currentMse=sections.find(s=>s.section_key==='mse');
  if(previousMse&&currentMse?.document){
   const pending=previousMse.fields.filter(old=>old.key!=='legacy'&&old.text.trim()&&!currentMse.document?.fields.some(f=>f.key===old.key&&(f.review||f.text.trim())));
-  if(pending.length)return {anchor:'mse',message:`Υπάρχουν ${pending.length} ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα. Διατηρήστε, αλλάξτε ή σημειώστε «Δεν αξιολογήθηκε σήμερα».`};
+  if(pending.length)issues.push({anchor:'mse',message:`Υπάρχουν ${pending.length} ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα. Διατηρήστε, αλλάξτε ή σημειώστε «Δεν αξιολογήθηκε σήμερα».`});
  }
- const missing=requiredSections.find(([key])=>(!firstAssessment||key!=='review')&&!sections.some(s=>s.section_key===key&&s.content.trim()));
- return missing?{anchor:missing[0]==='review'?'plan':missing[0],message:'Χρειάζεται καταγραφή: '+missing[1]+'.'}:null;
+ const missing=requiredSections.filter(([key])=>(!firstAssessment||key!=='review')&&!sections.some(s=>s.section_key===key&&s.content.trim()));
+ for(const item of missing)issues.push({anchor:item[0]==='review'?'plan':item[0],message:'Χρειάζεται καταγραφή: '+item[1]+'.'});
+ return issues;
 }
+export function finalizationBlocker(...args:Parameters<typeof finalizationIssues>){return finalizationIssues(...args)[0]||null}
+
 export function sessionClinicalTime(bundle:Pick<PatientBundle,'appointments'>,session:{id:string;started_at:string}){
  return session.started_at;
 }

@@ -1,4 +1,5 @@
 'use client';
+import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
 import {readRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import ClinicalTextField,{type WritingCommit} from '@/components/dictation/ClinicalTextField';
@@ -35,7 +36,7 @@ export default function SectionEditor({sessionId,definition,existing,proposals,o
  async function compare(){const fresh=await onSaved() as PatientBundle|null;if(fresh)setConflict(fresh.sections.find(s=>s.session_id===sessionId&&s.section_key===definition.key)||null)}
  return <div className="clinical-section">
   <ClinicalTextField sessionId={sessionId} section={definition.key} fieldKey="narrative" sectionHeading={sectionHeading} placeholder={placeholder} title={definition.title+(required.has(definition.key)?' *':'')} rows={rows} className="section-editor" fullMicLabel={definition.key==='interview'} value={draft.value} onChange={draft.change} onBlur={()=>void draft.flush().catch(()=>{})} onConfirm={confirm} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={setPending} recovery={recovery} onRecoveryConsumed={()=>setRecovery(null)}/>
-  <div role="status">{draft.saving?'Αποθήκευση στο πρόχειρο…':draft.error||(draft.savedAt?'Το πρόχειρο αποθηκεύτηκε '+draft.savedAt:existing?'Το πρόχειρο αποθηκεύτηκε':'Δεν έχει καταγραφεί')}</div>
+  <div role="status">{draftSaveStatus({saving:draft.saving,dirty:draft.dirty,error:draft.error,savedAt:draft.savedAt,recorded:Boolean(existing||draft.savedAt)})}</div>
   {draft.error&&<><button onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη</button><button onClick={()=>void compare()}>Σύγκριση με αποθηκευμένο</button></>}
   {conflict!==undefined&&<div className="conflict-review"><h4>Αποθηκευμένη έκδοση</h4><p>{conflict?.content||'Κενή ενότητα'}</p><p>Το δικό σας κείμενο παραμένει στον επεξεργαστή.</p><button disabled={pending} onClick={()=>{draft.acceptServer(conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Χρήση αποθηκευμένου</button><button disabled={pending} onClick={()=>{draft.resolve(draft.value,conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Ρητή αντικατάσταση με το δικό μου</button><button disabled={pending} onClick={()=>{draft.resolve([conflict?.content,draft.value].filter(Boolean).join('\n\n'),conflict?.content||'',conflict?.version??null);setConflict(undefined)}}>Συνένωση των δύο</button></div>}
   {!pending&&<>{proposals.filter(p=>p.status==='proposal').slice(0,3).map(p=><button type="button" key={p.id} onClick={()=>recover(p)}>Συνέχεια ελέγχου πρότασης · {fmt(p.created_at)}</button>)}{recoverable&&<button type="button" className="text-button" onClick={()=>recover()}>Ανάκτηση τελευταίας μεταγραφής</button>}</>}

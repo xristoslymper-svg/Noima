@@ -108,6 +108,7 @@ try{
   await page.getByText('Δεν έχει καταγραφεί ενεργή αγωγή.',{exact:true}).waitFor();
   await page.locator('summary').filter({hasText:'Φάκελος ασθενή'}).filter({visible:true}).click();
   await page.locator('summary').filter({hasText:'Πρόσκληση με link'}).filter({visible:true}).click();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   const invitation=await page.getByRole('textbox',{name:'Link πρόσκλησης',exact:true}).inputValue();
   const inviteUrl=new URL(invitation);assert.equal(inviteUrl.pathname,'/assessment/teleconsultation-preview');
   assert.equal(inviteUrl.hash.split('~')[2],'1');

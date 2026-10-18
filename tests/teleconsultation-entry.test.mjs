@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {findDemoPatients,newDemoVisit,demoPatients,demoInvitation,readDemoInvitation} from '../lib/teleconsultations/entry.ts';
+import {demoPatientContext,findDemoPatients,newDemoVisit,demoPatients,demoInvitation,readDemoInvitation} from '../lib/teleconsultations/entry.ts';
 import {isPublicAccountPage} from '../lib/pilot/browser-session.ts';
 const now=Date.parse('2026-10-18T18:00:00Z'),nonce='11111111-1111-4111-8111-111111111111';
 test('patient selection needs two letters and tolerates Greek accents',()=>{
@@ -31,4 +31,12 @@ test('only the exact synthetic guest page is public and its server renderer is p
  assert.doesNotMatch(page,/demoPost|supabase|fetch\(/);
  const guest=readFileSync('components/teleconsultations/TeleGuestPreview.tsx','utf8');
  assert.doesNotMatch(guest,/getUserMedia|fetch\(|PatientBundle|demo-runtime/);
+});
+
+test('switching synthetic patient never inherits another chart or demographic details',()=>{
+ const source=JSON.parse(readFileSync('lib/clinical/treatment-preview.json','utf8'));
+ const second=demoPatientContext(source,demoPatients[1]);
+ assert.equal(second.patient.id,demoPatients[1].id);assert.equal(second.patient.reported_age,null);assert.equal(second.history,null);
+ for(const key of ['sessions','sections','risks','medications','medicationEvents','medicationSideEffects','medicationRevisions','proposals','addenda','corrections','assessments','appointments'])assert.deepEqual(second[key],[]);
+ assert.equal(source.patient.id,demoPatients[0].id);
 });

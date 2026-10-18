@@ -1,3 +1,4 @@
+import type {PatientBundle} from '../patients/demo-runtime';
 import {emptyContinuity} from '../clinical/continuity.ts';
 import type {FixtureRecord} from './preview';
 export const demoPatients=[{id:'10000000-0000-4000-8000-000000000006',name:'Σοφία Δείγμα',first:'Σοφία',last:'Δείγμα'},{id:'tele-demo-patient-nikos',name:'Νίκος Παράδειγμα',first:'Νίκος',last:'Παράδειγμα'}] as const;
@@ -21,4 +22,9 @@ export function readDemoInvitation(token:string,now:number):DemoInvitation|null{
  const patient=demoPatients[Number(fields[2])],expiresAt=Number(fields[4]),seconds=Math.floor(now/1000);
  if(!patient||!Number.isFinite(now)||expiresAt<=seconds||expiresAt>seconds+3600)return null;
  return {token,patientId:patient.id,sessionId:fields[3],expiresAt};
+}
+
+export function demoPatientContext(source:PatientBundle,patient:DemoTelePatient):PatientBundle{
+ if(source.patient.id===patient.id)return {...source,patient:{...source.patient,first_name:patient.first,last_name:patient.last}};
+ return {patient:{id:patient.id,tester_id:'synthetic-tele-tester',first_name:patient.first,last_name:patient.last,reported_age:null,phone:'',landline:'',contact_phone:'',amka:'',address:'',email:'',chief_complaint:'',note:'',status:'active',created_at:'2026-10-18T00:00:00Z',updated_at:'2026-10-18T00:00:00Z'},sessions:[],sections:[],risks:[],history:null,medications:[],medicationEvents:[],medicationSideEffects:[],medicationRevisions:[],proposals:[],addenda:[],corrections:[],assessments:[],appointments:[]};
 }

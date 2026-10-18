@@ -19,7 +19,7 @@ import fixture from '@/lib/clinical/treatment-preview.json';
 import {saveFixtureNotes,assignFixture,type FixtureRecord} from '@/lib/teleconsultations/preview';
 import TeleInvitation from './TeleInvitation';
 import TeleconsultationsLobby from './TeleconsultationsLobby';
-import {demoPatients,type DemoTelePatient} from '@/lib/teleconsultations/entry';
+import {demoPatientContext,demoPatients,type DemoTelePatient} from '@/lib/teleconsultations/entry';
 import styles from './Teleconsultations.module.css';
 const patientId='10000000-0000-4000-8000-000000000006',sessionId='tele-preview-visit';
 const initial:FixtureRecord={appointment:{id:'tele-preview-appointment',patient_id:patientId,session_id:sessionId,status:'scheduled',scheduled_start:'2026-10-18T17:00:00+03:00',scheduled_end:'2026-10-18T17:50:00+03:00'},patientId,sessionId,version:0,notes:{...emptyContinuity,transcript:'Συνθετική επίσκεψη · συζήτηση για ύπνο και καθημερινή λειτουργικότητα.'},assignments:[]};
@@ -48,7 +48,7 @@ function TeleconsultationWorkspace({initialRecord,patient,onBack,onComplete}:{in
  const [assessmentOpen,setAssessmentOpen]=useState(false),[planOpen,setPlanOpen]=useState(false);
  const clinical=useRef<{mse?:DemoSection;risk?:DemoRisk}>({});
  const sendMenu=useRef<HTMLDetailsElement>(null);
- const reference=fixture as unknown as PatientBundle;
+ const reference=demoPatientContext(fixture as unknown as PatientBundle,patient);
  const lastVisit=reference.sessions.filter(row=>row.patient_id===patientId&&row.status==='completed').sort((a,b)=>Date.parse(b.completed_at||b.started_at)-Date.parse(a.completed_at||a.started_at))[0];
  const activeMedications=fixture.medications.filter(row=>row.patient_id===patientId&&row.status==='active');
  const latestScores=Object.values(Object.fromEntries(fixture.assessments.filter(row=>row.patient_id===patientId&&row.status==='completed').sort((a,b)=>Date.parse(a.completed_at||a.created_at)-Date.parse(b.completed_at||b.created_at)).map(row=>[row.instrument,row])));
@@ -64,7 +64,7 @@ function TeleconsultationWorkspace({initialRecord,patient,onBack,onComplete}:{in
  const dirtyKeys=useRef(new Set<string>());
  const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value){dirtyKeys.current.add(key);setReview(null);reviewedRevision.current=null;setReviewing(false)}else dirtyKeys.current.delete(key);setDirty(dirtyKeys.current.size>0)},[]);
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[dirty]);
- const bundle={...fixture,patient:{...fixture.patient,id:patientId,first_name:patient.first,last_name:patient.last},sessions:[{...fixture.sessions[3],id:sessionId,patient_id:patientId,status:'draft',completed_at:null,continuity:null,version:0,started_at:initialRecord.appointment.scheduled_start,session_type:'followup',closure_draft:record.notes,closure_version:record.version}],appointments:[{...reference.appointments[0],...record.appointment}],sections:mse?[mse]:[],risks:risk?[risk]:[]} as unknown as PatientBundle;
+ const bundle={...reference,patient:{...fixture.patient,id:patientId,first_name:patient.first,last_name:patient.last},sessions:[{...fixture.sessions[3],id:sessionId,tester_id:reference.patient.tester_id,patient_id:patientId,status:'draft',completed_at:null,continuity:null,version:0,started_at:initialRecord.appointment.scheduled_start,session_type:'followup',closure_draft:record.notes,closure_version:record.version}],appointments:[{...reference.appointments[0],...record.appointment}],sections:mse?[mse]:[],risks:risk?[risk]:[]} as unknown as PatientBundle;
  const session=bundle.sessions[0];
  async function saveClosure(notes:ContinuityDraft,version:number|null){
   if(completedRef.current)throw new Error('Η επίσκεψη έχει ήδη καταχωριστεί.');

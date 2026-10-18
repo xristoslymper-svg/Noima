@@ -328,7 +328,7 @@ try{
 
 
   await check('visit-filters-preview-allows-reading-without-enabling-writes',async({page})=>{
-   const clinicalRequests=[];page.on('request',r=>{if(/\\/api\\/(patients|clinical|intake|psychometrics)/.test(new URL(r.url()).pathname))clinicalRequests.push(r.url())});
+   const clinicalRequests=[];page.on('request',r=>{if(['/api/patients','/api/clinical','/api/intake','/api/psychometrics'].some(prefix=>new URL(r.url()).pathname.startsWith(prefix)))clinicalRequests.push(r.url())});
    await page.goto(origin+'/timeline-preview?tab=timeline');const filters=page.getByLabel('Φίλτρα πορείας');
    await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
    assert.equal(await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).getAttribute('aria-pressed'),'true');

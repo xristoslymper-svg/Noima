@@ -573,7 +573,8 @@
       "components/patients/MedicationSaveScope.tsx",
       "components/patients/PatientTimeline.tsx",
       "tests/release-scope-20261018.json",
-      "browser-tests/warm-patient-workspace-fixture.tsx"
+      "browser-tests/warm-patient-workspace-fixture.tsx",
+      "browser-tests/warm-patient-workspace.mjs"
     ]
   }
 }

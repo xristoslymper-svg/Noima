@@ -1037,12 +1037,12 @@ test('pending projection finds undeferred visits without writes; manual completi
  for(const status of ['completed','open']){
   const [updated]=await sql('select * from demo_task_set_status($1,$2,$3)',[t,manual.id,status]);
   assert.equal(updated.patient_id,patient.id);assert.equal(new Date(updated.due_at).toISOString(),deadline);
-  const tasks=await sql('select * from demo_task_list($1)',[t]);
+  const [{tasks}]=await sql('select demo_task_list($1) tasks',[t]);
   const snapshot=await pendingTaskSnapshot(read,t,tasks);
   assert.equal(snapshot.length,status==='completed'?1:2);
  }
  await sql('select demo_task_for_session($1,$2)',[t,visit.id]);
- const tasks=await sql('select * from demo_task_list($1)',[t]);
+ const [{tasks}]=await sql('select demo_task_list($1) tasks',[t]);
  const final=await pendingTaskSnapshot(read,t,tasks);
  assert.equal(final.length,2);assert.equal(final.filter(task=>task.source_session_id===visit.id).length,1);
 });

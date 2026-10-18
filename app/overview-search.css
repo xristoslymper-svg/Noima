@@ -38,7 +38,7 @@
 .pending-matches{list-style:none;padding:0;margin:6px 0}
 .pending-matches button{width:100%;text-align:left}
 .pending-row-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.pending-undo{display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:13px;margin:12px 0}
+.pending-undo{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;font-size:13px;margin:12px 0}
 @media(max-width:600px){.pending-options{grid-template-columns:1fr}.pending-undo{align-items:flex-start}}
 
 .pending-options input{border:1px solid #dfe7e2;border-radius:12px;background:#fbfcfb;padding:11px 12px;font:inherit;font-size:13px;color:#2c4238}

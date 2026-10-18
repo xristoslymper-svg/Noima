@@ -8,6 +8,10 @@ export function appointmentWallTime(iso:string){
 export function selectAppointment<T extends Event>(events:T[],p:{event_id:string;target_date:string;target_time:string},query:string):{event?:T;answer:string}{
  let time=p.target_time||'';
  const q=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ if(/επομεν/.test(q)&&!p.target_date&&!p.target_time){
+  const future=events.filter(e=>Date.parse(e.scheduled_start)>Date.now()).sort((a,b)=>a.scheduled_start.localeCompare(b.scheduled_start));
+  if(future.length&&(!future[1]||Date.parse(future[0].scheduled_start)!==Date.parse(future[1].scheduled_start)))return {event:future[0],answer:''};
+ }
  const explicit=q.match(/(?:στις|ωρα)\s+(\d{1,2})(?::(\d{2}))?(?:\s*(?:το|τη|την))?\s*(απογευμα|βραδυ|πρωι)?/);
  if(explicit){
   let h=Number(explicit[1]);const minute=explicit[2]||'00';

@@ -74,3 +74,12 @@ test('chart switch drops pending action and expiry removes it before model call'
  const b=app({});await b.post({patient_id:first.id,conversation:JSON.stringify({...memory,pending_action:{...pending,expires:0}})});
  assert.equal(b.seen.understood[0].pending_action,undefined);
 });
+
+test('ναι after a clarification retains pending context and still requires the execution button',async()=>{
+ const pending={kind:'calendar',turns:[{query:'στις 4',answer:'Εννοείς 16:00;'}],slots:{target_time:'16:00'},expires:Date.now()+60000};
+ const a=app({tool:'clarify',clarification:'Ποια ημερομηνία;'});
+ const r=await a.post({patient_id:first.id,query:'ναι',conversation:JSON.stringify({patient_id:first.id,medication_ids:[],question:'ακύρωσε το αυριανό',pending_action:pending,expires:Date.now()+60000})});
+ assert.equal(r.status,200);assert.equal(JSON.parse(r.body.conversation).pending_action.slots.target_time,'16:00');
+ assert.equal(JSON.parse(r.body.conversation).pending_action.turns.at(-1).query,'ναι');
+ assert.deepEqual(a.seen.prepared,[]);assert.equal(r.body.proposal,undefined);
+});

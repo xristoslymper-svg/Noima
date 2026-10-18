@@ -328,7 +328,7 @@ try{
 
 
   await check('treatment-confirmed-plan-and-visit-source',async({page,open})=>{
-   const s=state.sessions.find(s=>s.status==='completed');
+   const s=state.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at))[0];
    state.sections=state.sections.filter(x=>x.session_id!==s.id||!['plan','review'].includes(x.section_key));
    state.sections.push({id:'qa-plan',session_id:s.id,section_key:'plan',content:'QA CONFIRMED PLAN',version:1},{id:'qa-review',session_id:s.id,section_key:'review',content:'QA NEXT REVIEW',version:1});
    await open('?tab=treatment');const plan=page.getByRole('region',{name:'Τελευταίο επιβεβαιωμένο πλάνο'});

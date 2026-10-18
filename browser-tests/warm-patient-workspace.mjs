@@ -30,16 +30,23 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});const results=[];
-try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
+try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},tablet:{width:768,height:1024},mobile:{width:390,height:844},sidebar:{width:320,height:844}})){
  const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
  for(const tab of ['summary','timeline','treatment','history','record']){
   await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.locator('.patient-hero h1').waitFor();assert.equal(await page.locator('.patient-hero h1').innerText(),'Ira Pira');await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor();if(tab==='record')await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
   assert.deepEqual(errors,[],'workspace must remain mounted without browser exceptions');
   const styles=await page.evaluate(()=>{const w=document.querySelector('section.workspace'),nav=document.querySelector('nav[aria-label="Καρτέλες φακέλου"]');if(!w||!nav||!nav.nextElementSibling)throw new Error('Expected patient workspace is missing');return {canvas:getComputedStyle(w).backgroundColor,ink:getComputedStyle(w).color,navigation:getComputedStyle(nav).backgroundColor,surface:getComputedStyle(nav.nextElementSibling).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
-  if(size==='mobile'){
+  {
    const positions=await page.locator('nav[aria-label="Καρτέλες φακέλου"] > button').evaluateAll(buttons=>buttons.map(b=>Math.round(b.getBoundingClientRect().top)));
    assert.equal(positions.length,4);assert.equal(new Set(positions).size,1,'the four patient tabs occupy one balanced row');
+   for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό']){
+    const button=page.getByRole('navigation',{name:'Καρτέλες φακέλου'}).getByRole('button',{name:label,exact:true});
+    assert.equal(await button.locator('svg').isVisible(),true,label+' retains its visible icon');
+    assert.equal(await button.locator('span').last().isVisible(),true,label+' retains its visible label');
+   }
+   const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,children:[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().height)}));
+   assert.ok(navBox.height<=Math.max(...navBox.children)+16,'no reserved second navigation row');
   }
   if(tab==='record'){
    assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');

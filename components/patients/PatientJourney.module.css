@@ -42,7 +42,7 @@
 @media(max-width:760px){
  .workspace .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:4px}
  .workspace .tabs>button{min-width:0;min-height:54px;padding:6px 3px;font-size:11px;line-height:1.35;justify-content:center;text-align:center}
- .tabs>button>svg{display:none}
+
  .tabs>details{position:absolute;right:0;top:-54px}.tabs>details[open]{z-index:25}
  .workspace :global(.patient-hero){padding-right:48px!important}
  .workspace .focusedHero{padding-top:2px!important}
@@ -88,3 +88,48 @@
  .reference>details>summary small{grid-column:1;grid-row:2;margin:0}
  .reference>details>summary:after{grid-column:2;grid-row:1/3}
 }
+
+/* Consistent patient navigation: icon and full label at every width. */
+.workspace{container-type:inline-size;container-name:patient-journey}
+.workspace .tabs{gap:5px;padding:6px;box-shadow:none}
+.workspace .tabs>button{min-height:46px;gap:9px;font-size:13px;font-weight:550;color:#52695d;transition:background .15s,color .15s}
+.workspace .tabs>button:hover{background:#edf3ed;color:#315f52}
+.workspace .tabs>button[aria-current="page"]{background:#fffefa;color:#285d4c;font-weight:700;box-shadow:inset 0 0 0 1px #cfdfd4,0 2px 5px rgba(38,58,50,.045)}
+.tabIcon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;color:#70877a}
+.tabIcon svg{display:block;width:18px;height:18px;stroke-width:1.7}
+.tabs>button[aria-current="page"] .tabIcon{color:#2f6f63}
+.tabLabel{display:block;line-height:1.4}
+.tabs>button:focus-visible{outline:2px solid #356e59;outline-offset:3px}
+.folderSurface{box-shadow:none!important}
+.workspace :global(.patient-hero){gap:16px}
+.folderSurface :global(.panel-heading h2){font-size:24px;letter-spacing:-.025em}
+.folderSurface :global(.panel-heading p){line-height:1.65;max-width:64ch;color:#63766b}
+.folderSurface :global(.patient-details-card){background:transparent;border:0;border-top:1px solid #e1e7e3;border-radius:0;box-shadow:none;padding:22px 0;margin-top:18px}
+.folderSurface :global(.patient-demographics){gap:0 24px}
+.folderSurface :global(.patient-demographics-value){line-height:1.6}
+.folderSurface :global(.patient-demographics-row){padding:14px 0;border-color:#e7ece8}
+.folderSurface :global(button:focus-visible),.folderSurface :global(summary:focus-visible){outline:2px solid #356e59;outline-offset:3px}
+.stateHeading{display:flex;align-items:center;gap:12px;font-size:25px;line-height:1.25;letter-spacing:-.025em}
+.stateHeading svg{flex:0 0 auto;color:#356e59}
+.review .rows{padding:20px 0;border-top:1px solid #e1e7e3;border-bottom:1px solid #e1e7e3;line-height:1.7}
+.completion{padding:22px 0}
+.completion ul{list-style:none;padding:0;margin:24px 0}
+.completion li{padding:12px 0;border-bottom:1px solid #e7ece8;line-height:1.6}
+.saveBoundary{border-radius:0 8px 8px 0;background:#f1f5ef}
+@container patient-journey (max-width:700px){
+ .workspace .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px}
+ .workspace .tabs>button{display:flex;flex-direction:column;min-width:0;min-height:84px;gap:7px;padding:9px 3px;font-size:12px;justify-content:center}
+ .tabIcon svg{width:19px;height:19px}
+ .tabLabel{min-height:34px;display:flex;align-items:center;justify-content:center;white-space:normal;overflow-wrap:normal}
+ .workspace .tabs>details{position:absolute;right:0;top:-54px}
+ .workspace .tabs>details>summary{min-width:44px;min-height:44px}
+ .folderSurface :global(.panel-heading h2){font-size:22px}
+ .stateHeading{font-size:22px}
+ .reference>details>summary{min-height:44px}
+ .visitSurface>header>button{min-height:44px}
+}
+@container patient-journey (max-width:340px){
+ .workspace .tabs>button{font-size:11px;min-height:88px}
+ .tabLabel{min-height:42px}
+}
+@media(prefers-reduced-motion:reduce){.workspace .tabs>button{transition:none}}

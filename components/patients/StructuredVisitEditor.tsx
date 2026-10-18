@@ -12,7 +12,7 @@ import type {mseTimeline} from '@/lib/clinical/visit-workspace-state';
 import {formatClinicDateTime} from '@/lib/clinic-time';
 import {visibleMseField,recordMseField,mseReviewCounts,confirmMseUnchanged} from '@/lib/clinical/mse-review';
 const assessmentLabels:Record<string,string>={diagnosis:'Διάγνωση',formulation:'Κλινικές σημειώσεις',impression:'Κλινική εκτίμηση'};
-export default function StructuredVisitEditor({sessionId,kind,existing,followup,baseline,timeline,onSaved,registerFlusher,onDirtyChange,compact=false,firstAssessment=false}:{firstAssessment?:boolean;compact?:boolean;sessionId:string;kind:'mse'|'assessment';existing?:DemoSection;followup:boolean;baseline?:DemoSection|null;timeline?:ReturnType<typeof mseTimeline>;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
+export default function StructuredVisitEditor({sessionId,kind,existing,followup,baseline,timeline,onSaved,registerFlusher,onDirtyChange,compact=false,firstAssessment=false,saveDocument}:{saveDocument?:(document:VisitDocument,version:number|null)=>Promise<{value:VisitDocument;version:number}>;firstAssessment?:boolean;compact?:boolean;sessionId:string;kind:'mse'|'assessment';existing?:DemoSection;followup:boolean;baseline?:DemoSection|null;timeline?:ReturnType<typeof mseTimeline>;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
  const [domainsOpen,setDomainsOpen]=useState(false);
  const [writingFields,setWritingFields]=useState<Record<string,boolean>>({});
  const key='section:'+kind;const [conflict,setConflict]=useState<DemoSection|null|undefined>();
@@ -21,7 +21,7 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
  const initialValue=firstAssessment&&kind==='assessment'?firstAssessmentDocument(existing?.content,existing?.document):initialDocument(kind,existing?.content,existing?.document);
  const [additionalOpen,setAdditionalOpen]=useState(()=>kind==='assessment'&&initialValue.fields.some(field=>field.key!=='diagnosis'&&field.key!=='impression'&&field.key!=='formulation'&&Boolean(field.text.trim()||field.codes?.length)));
  const mseContainer=useRef<HTMLDivElement>(null);
- const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialValue,version:existing?.version??null,write:async(document,version)=>{const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
+ const draft=useClinicalDraft<VisitDocument>({storageKey:sessionId+':structured:'+kind,initial:initialValue,version:existing?.version??null,write:async(document,version)=>{if(saveDocument)return saveDocument(document,version);const d=await demoPost({action:'save_document',session_id:sessionId,section_key:kind,document,expected_version:version});return {value:d.section.document,version:d.section.version}},onSaved,onDirty:dirty=>onDirtyChange(key,dirty)});
  const currentDraft=useRef(draft);currentDraft.current=draft;
  useEffect(()=>registerFlusher(key,draft.flush),[key,registerFlusher,draft.flush]);
  function change(index:number,field:Partial<DocumentField>){const value=currentDraft.current.currentValue();draft.change({...value,fields:value.fields.map((f,i)=>i===index?{...f,...field}:f)})}

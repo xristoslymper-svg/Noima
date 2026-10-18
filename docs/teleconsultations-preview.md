@@ -23,3 +23,6 @@ Durable transactional reservations shared across all users and deployment instan
 Host authorization and expiring guest tokens, admission, cancellation revocation, link delivery and cross-patient access tests. Bind actual room to canonical appointment/visit and use existing note persistence/intake flows, never fixture transport.
 Real two-browser/media/mobile testing and privacy configuration review.
 No claim of live Daily integration or guaranteed zero-cost production usage is made by this preview.
+
+
+Stitch composition: dark video with internal controls; separate visit/transcript/MSE/risk/continuity cards. Existing StructuredVisitEditor and RiskTreeEditor receive optional in-memory persistence adapters; defaults remain unchanged. Current MSE/risk begin unassessed. Existing followupCompletionIssues runs only after flushing all drafts; synthetic review cannot finalize a real visit.

@@ -87,3 +87,17 @@ test('polished workspace has one note source and optional scoped read-only refer
  assert.match(ui,/row.patient_id===patientId/);
  assert.match(ui,/role="dialog"/);
 });
+
+test('teleconsultation uses existing MSE and risk editors with isolated persistence',async()=>{
+ const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ assert.match(ui,/<StructuredVisitEditor[^>]*kind="mse"/);
+ assert.match(ui,/<RiskTreeEditor/);
+ assert.match(ui,/saveDocument=\{saveMse\}/);
+ assert.match(ui,/saveRisk=\{saveRisk\}/);
+ assert.match(ui,/followupCompletionIssues\(/);
+ assert.doesNotMatch(ui,/<StructuredVisitEditor[^>]*baseline=/);
+ for(const path of ['StructuredVisitEditor','RiskTreeEditor']){
+  const editor=await readFile('components/patients/'+path+'.tsx','utf8');
+  assert.match(editor,/if\(save(?:Document|Risk)\)return save(?:Document|Risk)\(/);
+ }
+});

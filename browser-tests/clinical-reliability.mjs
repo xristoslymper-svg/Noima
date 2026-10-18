@@ -327,6 +327,30 @@ try{
   });
 
 
+  await check('copilot-preview-binds-visible-chart-and-keeps-actions-disabled',async({page})=>{
+   const calls=[];const clinicalRequests=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/patients/'))clinicalRequests.push(r.url())});
+   await page.route('**/api/copilot/synthetic',async route=>{
+    const body=route.request().postDataJSON();calls.push(body);
+    assert.equal(body.chart,'treatment');assert.equal(body.patient_id,undefined);assert.equal(body.bundle,undefined);
+    const events=[{type:'meta',patient:{id:patientId,first_name:'Ira',last_name:'Pira'}},{type:'delta',text:'QA συνθετική αγωγή.'},{type:'done',answer:'QA συνθετική αγωγή.',conversation:'qa-conversation'}];
+    await route.fulfill({contentType:'text/event-stream',body:events.map(e=>'data: '+JSON.stringify(e)+String.fromCharCode(10,10)).join('')});
+   });
+   await page.goto(origin+'/patients/demo/treatment-preview?tab=timeline');
+   await page.getByRole('button',{name:'Βοηθός Ψ',exact:true}).click();
+   const chat=page.getByRole('region',{name:'Συνομιλία με τον Βοηθό Ψ'});
+   await chat.getByText('Ira Pira',{exact:true}).waitFor();
+   assert.equal(await chat.getByRole('button',{name:'Ενέργεια',exact:true}).count(),0);
+   await chat.getByRole('button',{name:'Ποια είναι η καταγεγραμμένη αγωγή;',exact:true}).click();
+   await chat.getByText('QA συνθετική αγωγή.',{exact:true}).waitFor();
+   const input=chat.getByRole('textbox',{name:'Μήνυμα στον Βοηθό Ψ'});await input.fill('Και η τελευταία επίσκεψη;');
+   await chat.getByRole('button',{name:'Αποστολή ερώτησης'}).click();
+   await chat.getByText('QA συνθετική αγωγή.',{exact:true}).nth(1).waitFor();
+   assert.equal(calls.length,2);assert.equal(calls[1].conversation,'qa-conversation');
+   await chat.getByRole('button',{name:'Νέα συζήτηση',exact:true}).click();
+   await chat.getByRole('heading',{name:'Τι θα ήθελες να δούμε;'}).waitFor();
+   assert.deepEqual(clinicalRequests,[]);assert.equal(requests.length,0);
+   await page.screenshot({path:resolve(out,size+'-copilot-preview.png')});
+  });
   await check('visit-filters-preview-allows-reading-without-enabling-writes',async({page})=>{
    const clinicalRequests=[];page.on('request',r=>{if(['/api/patients','/api/clinical','/api/intake','/api/psychometrics'].some(prefix=>new URL(r.url()).pathname.startsWith(prefix)))clinicalRequests.push(r.url())});
    await page.goto(origin+'/timeline-preview?tab=timeline');const filters=page.getByLabel('Φίλτρα πορείας');

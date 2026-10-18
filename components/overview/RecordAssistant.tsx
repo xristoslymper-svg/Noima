@@ -5,16 +5,18 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {Search,Send,Sparkles,Minus,Plus,Square,MessageCircle,ArrowUpRight} from 'lucide-react';
 import type {SearchAnswer,SearchPatient} from '@/lib/overview/record-search';
+import {syntheticChartAt} from '@/lib/copilot/chart-scope';
 import {sseData} from '@/lib/copilot/stream';
 import styles from './RecordAssistant.module.css';
 type Reply=SearchAnswer&{conversation?:string;blocks?:{title:string;text:string;sources:SearchAnswer['sources']}[];proposal?:{id:string;summary:string;expires_at:string};status?:string};
 type Turn={question:string;choice?:string;result?:Reply;error?:string;executing?:boolean;done?:boolean;firstMs?:number;totalMs?:number};
-export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
+export default function RecordAssistant({synthetic:forceSynthetic=false}:{synthetic?:boolean}){
  const [mounted,setMounted]=useState(false),[open,setOpen]=useState(false),[actionMode,setActionMode]=useState(false);
  const [query,setQuery]=useState(''),[turns,setTurns]=useState<Turn[]>([]),[busy,setBusy]=useState(false),[patient,setPatient]=useState<SearchPatient|null>(null);
  const context=useRef<string|undefined>(undefined),locked=useRef(false),sequence=useRef(0),pending=useRef<AbortController|null>(null);
  const scroll=useRef<HTMLDivElement|null>(null),follow=useRef(true),input=useRef<HTMLTextAreaElement|null>(null),launcher=useRef<HTMLButtonElement|null>(null);
  const uid=useId(),pathname=usePathname(),inChart=pathname.startsWith('/patients/demo/');
+ const syntheticChart=syntheticChartAt(pathname),synthetic=forceSynthetic||Boolean(syntheticChart);
  useEffect(()=>setMounted(true),[]);
  useEffect(()=>{sequence.current++;pending.current?.abort();context.current=undefined;locked.current=false;setBusy(false);setPatient(null);setTurns([]);setQuery('');setActionMode(false)},[pathname]);
  useEffect(()=>()=>pending.current?.abort(),[]);
@@ -32,7 +34,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
   const update=(result:Reply,totalMs?:number)=>setTurns(t=>t.map((turn,i)=>i===t.length-1?{question,choice,result,firstMs,totalMs}:turn));
   try{
    const endpoint=synthetic?'/api/copilot/synthetic':actionMode?'/api/copilot':'/api/copilot/chat';
-   const payload=synthetic?{query:question,conversation:context.current}:{query:question,choice_id:choice,conversation:context.current,patient_id:choice||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]};
+   const payload=synthetic?{query:question,conversation:context.current,chart:syntheticChart?.key||'copilot'}:{query:question,choice_id:choice,conversation:context.current,patient_id:choice||patient?.id||pathname.match(/^\/patients\/demo\/([^/]+)/)?.[1]};
    const r=await fetch(endpoint,{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
    let data:Reply;
    if(r.ok&&r.headers.get('content-type')?.includes('text/event-stream')&&r.body){
@@ -67,7 +69,7 @@ export default function RecordAssistant({synthetic=false}:{synthetic?:boolean}){
   finally{if(current===sequence.current){locked.current=false;setBusy(false);}}
  }
  const examples=actionMode?['Κλείσε ραντεβού για τον…','Στείλε PHQ-9 στον…']:inChart||patient?['Τι άλλαξε στην τελευταία επίσκεψη;','Ποια είναι η καταγεγραμμένη αγωγή;','Πώς εξελίχθηκε ο ύπνος;']:['Πώς εξελίχθηκε η κατάσταση της…','Τι αγωγή παίρνει η…'];
- const patientLabel=synthetic?'Μαρία Δοκιμαστική':patient?patient.first_name+' '+patient.last_name:inChart?'Στον ανοιχτό φάκελο':'Διάλεξε ασθενή στη συζήτηση';
+ const patientLabel=synthetic?(syntheticChart?.label||'Μαρία Δοκιμαστική'):patient?patient.first_name+' '+patient.last_name:inChart?'Στον ανοιχτό φάκελο':'Διάλεξε ασθενή στη συζήτηση';
  if(!mounted)return null;
  return createPortal(<div className={styles.dock}>
   <section id={uid+'-panel'} className={styles.panel} hidden={!open} aria-label="Συνομιλία με τον Βοηθό Ψ" onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();minimize();}}}>

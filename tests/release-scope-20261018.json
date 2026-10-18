@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -574,7 +574,15 @@
       "components/patients/PatientTimeline.tsx",
       "tests/release-scope-20261018.json",
       "browser-tests/warm-patient-workspace-fixture.tsx",
-      "browser-tests/warm-patient-workspace.mjs"
+      "browser-tests/warm-patient-workspace.mjs",
+      "lib/copilot/chart-scope.ts",
+      "components/overview/RecordAssistant.tsx",
+      "lib/copilot/preview.ts",
+      "app/api/copilot/synthetic/route.ts",
+      "lib/copilot/fast.ts",
+      "lib/copilot/clinical.ts",
+      "tests/copilot-stream.test.mjs",
+      "tests/copilot-preview-scope.test.mjs"
     ]
   }
 }

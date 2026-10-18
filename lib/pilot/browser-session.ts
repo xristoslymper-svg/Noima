@@ -18,5 +18,5 @@ export function notifyAccountChange() {
 }
 
 export function isPublicAccountPage(path: string) {
-  return ['/login', '/forgot-password', '/reset-password', '/assessment'].includes(path);
+  return ['/login', '/forgot-password', '/reset-password', '/assessment', '/assessment/teleconsultation-preview'].includes(path);
 }

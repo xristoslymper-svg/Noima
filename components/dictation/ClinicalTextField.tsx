@@ -6,11 +6,12 @@ import {ClinicalWriting,recoverWriting,writingBusy,type WritingPending,type Writ
 import {FieldRecorder} from '@/lib/clinical/field-recorder';
 import styles from './ClinicalTextField.module.css';
 export type WritingCommit={pending:WritingPending;provenance:WritingProvenance;rememberProposal:(id:string)=>void};
-type Props={sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;sectionHeading?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
+type Props={toolsDisabled?:boolean;sessionId:string;section:string;fieldKey:string;title:string;value:string;onChange:(text:string)=>void;onConfirm:(text:string,commit:WritingCommit)=>Promise<void>;onBlur?:()=>void;rows?:number;placeholder?:string;maxLength?:number;className?:string;fullMicLabel?:boolean;sectionHeading?:boolean;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;onPendingChange?:(pending:boolean)=>void;recovery?:WritingPending|null;onRecoveryConsumed?:()=>void};
 let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
+ const synthetic=Boolean(p.toolsDisabled);
  const [snapshot,setSnapshot]=useState<WritingSnapshot>({phase:'idle',pending:null,error:'',confirmed:p.value});
  const [seconds,setSeconds]=useState(0),[undo,setUndo]=useState<{before:string;after:string;expires:number}|null>(null);
  const [cancelOpen,setCancelOpen]=useState(false);
@@ -86,8 +87,8 @@ export default function ClinicalTextField(p:Props){
  const status=snapshot.phase==='permission'?'Μικρόφωνο…':snapshot.phase==='transcribing'?'Μεταγραφή…':snapshot.phase==='paused'?'Σε παύση':'Ηχογράφηση';
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
-   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
-   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>Διατύπωση AI</span></button>
+   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={synthetic||busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
+   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={synthetic||busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>Διατύπωση AI</span></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>

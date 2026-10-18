@@ -1,0 +1,12 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import TeleGuestPreview from '../components/teleconsultations/TeleGuestPreview';
+import TeleconsultationsPreview from '../components/teleconsultations/TeleconsultationsPreview';
+import '../app/globals.css';
+import '../app/clinical-refinement.css';
+import '../app/visit-workspace.css';
+import '../app/mobile.css';
+import '../app/initial-assessment.css';
+import '../app/clinical-editor.css';
+import '../app/noima-ui.css';
+createRoot(document.getElementById('root')!).render(location.pathname==='/assessment/teleconsultation-preview'?<TeleGuestPreview/>:<TeleconsultationsPreview/>);

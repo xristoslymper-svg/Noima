@@ -40,7 +40,7 @@ export default function TeleconsultationsPreview(){
  const flushers=useRef(new Map<string,()=>Promise<void>>());
  const registerFlusher=useCallback((key:string,flush:()=>Promise<void>)=>{flushers.current.set(key,flush);return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)}},[]);
  const dirtyKeys=useRef(new Set<string>());
- const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value)dirtyKeys.current.add(key);else dirtyKeys.current.delete(key);setDirty(dirtyKeys.current.size>0)},[]);
+ const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value){dirtyKeys.current.add(key);setReview(null)}else dirtyKeys.current.delete(key);setDirty(dirtyKeys.current.size>0)},[]);
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[dirty]);
  const bundle={...fixture,patient:{...fixture.patient,first_name:'Σοφία',last_name:'Δείγμα'},sessions:[{...fixture.sessions[3],id:sessionId,patient_id:patientId,closure_draft:record.notes,closure_version:record.version}],sections:mse?[mse]:[],risks:risk?[risk]:[]} as unknown as PatientBundle;
  const session=bundle.sessions[0];

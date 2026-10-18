@@ -52,6 +52,13 @@ try{
   await page.getByRole('checkbox',{name:'Προσομοίωση αποτυχίας αποθήκευσης'}).uncheck();
   await page.getByRole('button',{name:'Αποθήκευση προσχεδίου',exact:true}).click();
   await page.getByText('Αποθηκευμένο στο συνθετικό παράδειγμα',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Έλεγχος καταγραφής',exact:true}).click();
+  await page.getByText('Έλεγχος συνθετικής επίσκεψης',{exact:true}).waitFor();
+  assert.ok((await page.getByRole('region',{name:'Σημειώσεις συνδεδεμένης επίσκεψης'}).innerText()).includes('Χρειάζεται'));
+  const mse=page.locator('.visit-structured.mse');
+  assert.equal(await mse.locator('button[aria-pressed="true"]').count(),0);
+  const risk=page.locator('.risk-tree-editor');
+  await risk.getByRole('button',{name:/^Ευχ/}).count(); // No prior clinical findings are selected.
   await page.screenshot({path:resolve(out,viewport.width+'-workspace.png'),fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);

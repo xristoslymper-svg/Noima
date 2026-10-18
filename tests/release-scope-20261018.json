@@ -603,7 +603,9 @@
       "tests/clinical-draft-recovery.test.mjs",
       "tests/safe-visit-drafts.test.mjs",
       "components/patients/StructuredVisitEditor.tsx",
-      "components/patients/RiskTreeEditor.tsx"
+      "components/patients/RiskTreeEditor.tsx",
+      "browser-tests/clinical-cleanup-fixture.tsx",
+      "browser-tests/clinical-cleanup.mjs"
     ]
   }
 }

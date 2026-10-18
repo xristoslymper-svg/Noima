@@ -41,6 +41,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});const results=[];
 try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},tablet:{width:768,height:1024},mobile:{width:390,height:844},sidebar:{width:320,height:844}})){
  const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
+ let summaryTypography;
  for(const tab of ['summary','timeline','treatment','history','record']){
   await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=${tab}${tab==='record'?'&session='+bundle.sessions.at(-1).id:''}`);await page.locator('.patient-hero h1').waitFor();assert.equal(await page.locator('.patient-hero h1').innerText(),'Ira Pira');await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor();if(tab==='record')await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
   assert.deepEqual(errors,[],'workspace must remain mounted without browser exceptions');
@@ -56,6 +57,11 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    }
    const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,top:Math.min(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().top)),bottom:Math.max(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().bottom))}));
    assert.ok(navBox.height<=navBox.bottom-navBox.top+16,'no reserved second navigation row');
+  }
+  if(tab==='summary'||tab==='timeline'){
+   const heading=await page.getByRole('heading',{name:tab==='summary'?'Κλινική σύνοψη':'Επισκέψεις',exact:true}).evaluate(e=>{const s=getComputedStyle(e);return{font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,spacing:s.letterSpacing,color:s.color}});
+   if(tab==='summary')summaryTypography=heading;
+   else assert.deepEqual(summaryTypography,heading,'Summary heading matches existing patient panel typography');
   }
   if(tab==='treatment'&&size!=='desktop'){
    const widths=await page.locator('.medication-table-editor').first().evaluate(e=>({content:e.scrollWidth,available:e.clientWidth}));

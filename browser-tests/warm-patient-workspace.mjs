@@ -83,9 +83,9 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
     assert.equal(layout.right,true,'treatment context is right of the visit');
     assert.equal(layout.aligned,true,'visit and context share a row');
    }
-   await page.getByRole('button',{name:'Θεραπεία',exact:true}).click();
+   await page.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
    assert.equal(await row.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1);
-   await page.getByRole('button',{name:'Όλα',exact:true}).click();
+   await page.getByRole('button',{name:'Όλες οι επισκέψεις',exact:true}).click();
   }
   if(tab==='record'){
    assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');

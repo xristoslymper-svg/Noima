@@ -54,3 +54,26 @@ test('opening received history clears its inbox notification without clinical ap
  assert.match(migration,/private\.pilot_assert_owner/);
  assert.doesNotMatch(migration,/SET reviewed_at=now\(\)/i);
 });
+
+test('compact preview retains both positive historical self-reports before routine details',()=>{
+ const h=normalizedPatientHistory({reasons:['Άγχος'],duration:'gt1y',current_meds:'yes',current_medication_name:'SYNTHETIC',suicide_attempt:'yes',self_harm:'yes'});
+ const preview=patientReportedHighlights(h).slice(0,3).join('\n');
+ assert.match(preview,/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+ assert.match(preview,/Αναφέρει ιστορικό αυτοτραυματισμού/);
+});
+test('missing and negative answers are never promoted to positive safety self-reports',()=>{
+ for(const raw of [{},{suicide_attempt:'no',self_harm:'no'}]){
+  assert.doesNotMatch(patientReportedHighlights(normalizedPatientHistory(raw)).join('\n'),/απόπειρας|αυτοτραυματισμού/);
+ }
+});
+
+test('received-history showcase is preview-only and uses synthetic context without transport',()=>{
+ const route=readFileSync('app/patients/demo/received-history-preview/page.tsx','utf8');
+ const demo=readFileSync('components/patients/ReceivedHistoryPreview.tsx','utf8');
+ assert.match(route,/VERCEL_ENV!=='preview'/);
+ assert.match(route,/VERCEL_GIT_COMMIT_REF!=='codex\/patient-journey-on-111'/);
+ assert.match(route,/notFound\(\)/);
+ assert.match(demo,/SyntheticChartContext.Provider value=\{true\}/);
+ assert.match(demo,/PatientReportedHistory/);
+ assert.doesNotMatch(demo,/fetch\(|\/api\/|supabase/);
+});

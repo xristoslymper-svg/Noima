@@ -17,7 +17,6 @@ import {useCalendarDialog} from "@/components/calendar/useCalendarDialog";
 import {useCalendarPosition} from "@/components/calendar/useCalendarPosition";
 import {applyPaymentUpdate, nextWeekDate, upcomingAppointments} from "@/lib/calendar/appointment-context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CalendarVoiceCommand from "@/components/calendar/CalendarVoiceCommand";
 import { getDemoTesterId } from "@/lib/demo-tester";
 import {
   FolderOpen,
@@ -32,7 +31,6 @@ import {
   Clock,
   Home,
   Menu,
-  Mic2,
   Search,
   Settings,
   Sparkles,
@@ -182,7 +180,6 @@ export default function CalendarPage() {
   const [mobileNav, setMobileNav] = useMobileNavigation();
   const mobileCalendar=useMobileCalendarLayout();
   const [view, setView] = useState<"day" | "week">("week");
-  const [voice, setVoice] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,11 +288,6 @@ export default function CalendarPage() {
       url.searchParams.delete("patient");
       window.history.replaceState({}, "", url.pathname + url.search);
       return;
-    }
-    if (url.searchParams.get("voice") === "1") {
-      setVoice(true);
-      url.searchParams.delete("voice");
-      window.history.replaceState({}, "", url.pathname + url.search);
     }
   }, [patients, focusDate]);
 
@@ -532,24 +524,16 @@ export default function CalendarPage() {
             <div>
               <h1>Ημερολόγιο</h1>
             </div>
-            <div className="calendar-page-actions">
-              {mobileCalendar?<PilotProfile/>:<>
-              <button className="voice-calendar-button" onClick={() => setVoice(true)}>
-                <Mic2 size={16} /> Φωνητική εντολή
-              </button>
-              <button className="add-appointment" aria-label={mobileCalendar?"Νέο ραντεβού":undefined} onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>{mobileCalendar?"+ Νέο":"+ Νέο ραντεβού"}</button>
-              </>}
-            </div>
+            {mobileCalendar&&<div className="calendar-page-actions"><PilotProfile/></div>}
           </div>
 
           {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
-            <div className="calendar-date-nav">
+            <div className="calendar-date-tools"><div className="calendar-date-nav">
               <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
               <strong>{focusTitle(focusDate)}</strong>
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
-            </div>
-            <span className="calendar-day-count">{dayEvents.length ? dayEvents.length + " ραντεβού" : "Χωρίς ραντεβού"}</span>
+            </div><button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button></div>
             <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
@@ -891,11 +875,11 @@ export default function CalendarPage() {
         .calendar-page-content{max-width:1500px;margin:0 auto;padding:32px 38px 64px}
         .calendar-page-heading{align-items:center;margin-bottom:20px}
         .calendar-page-heading h1{font-size:34px;letter-spacing:-.045em;margin:0;color:#263c33}
-        .calendar-page-actions{gap:8px}.voice-calendar-button{border:0!important;background:transparent!important;box-shadow:none!important;color:#647a70!important}
+        .calendar-page-actions{gap:8px}
         .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
         .calendar-control-bar{min-height:48px;padding:7px 8px 7px 4px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
-        .calendar-date-nav strong{font-size:13px;color:#334b40}.calendar-date-nav>button{border:0!important;background:transparent!important}
-        .calendar-day-count{margin-left:auto;color:#8a9690;font-size:10px}.calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
+        .calendar-date-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}.calendar-toolbar-add{flex:0 0 auto;white-space:nowrap;font-size:12px!important;font-weight:700!important}.calendar-control-bar .calendar-filter{margin-left:auto}.calendar-date-nav strong{font-size:13px;color:#334b40;white-space:nowrap}.calendar-date-nav>button{border:0!important;background:transparent!important}
+        .calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
         .calendar-view-switch button{border:0!important;border-radius:6px!important;padding:6px 10px!important;background:transparent!important;font-size:10px!important}
         .calendar-view-switch button.active{background:#fff!important;box-shadow:0 1px 4px rgba(48,70,60,.08)!important;color:#315f50!important}
 
@@ -965,7 +949,7 @@ export default function CalendarPage() {
 
         .week-event.status-completed{background:#f0f1f0!important;border-left-color:#a5b1aa!important}.week-event.status-cancelled{background:#fae9e8!important;border-left-color:#c7908c!important}.week-event.status-cancelled span{text-decoration:line-through}.week-event.status-cancelled.paired-cancelled-history{padding:7px 5px!important}.week-event.status-cancelled.paired-cancelled-history span{font-size:9px!important}.week-event.status-cancelled.paired-cancelled-history strong{font-size:8px!important}.calendar-now-line{position:absolute;left:0;right:0;z-index:6;height:1px;background:#b97263;pointer-events:none}.calendar-now-line:before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:#b97263}.calendar-now-line span{position:absolute;left:5px;top:-16px;padding:2px 5px;border-radius:6px;background:#fff7f4;color:#9b5f52;font-size:8px;font-weight:800;box-shadow:0 1px 4px rgba(90,55,45,.08)}.week-event:focus-visible{outline:2px solid #356b59;outline-offset:2px}.calendar-filter select,.calendar-date-input{border:1px solid #e2e8e4;border-radius:6px;padding:5px;color:#536a5f;background:white;font-size:11px;max-width:180px}.calendar-filter{margin-left:8px}.calendar-date-input{margin-left:6px}.calendar-refresh{border:0;background:transparent;color:#536a5f;font-size:18px;cursor:pointer}.calendar-recurrence-preview{padding:10px;background:#f2f6f3;border-radius:8px;font-size:12px;color:#536a5f}.calendar-control-bar{flex-wrap:wrap;gap:5px}.calendar-popover-actions{flex-wrap:wrap}.calendar-dialog-confirm{padding:12px;background:#fbf4eb;border-radius:8px;font-size:13px}.calendar-dialog-confirm button{margin:8px 8px 0 0}.calendar-form-actions-disabled{pointer-events:none;opacity:.6}
         /* Mobile only degrades gracefully; design decisions are desktop-first. */
-        @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}.calendar-day-count{display:none}}
+        @media(max-width:1050px){.calendar-page-content{padding:26px 20px 52px}.calendar-time-grid{min-width:980px!important}.calendar-week-card{overflow-x:auto}}
 
         .appointment-datetime-context{display:flex;align-items:center;gap:10px;margin:4px 0 14px;padding:11px 12px;border-radius:12px;background:#f7f9f7;color:#53685f}.appointment-datetime-context>div{display:flex;flex-direction:column;gap:2px}.appointment-datetime-context span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8b9992;font-weight:800}.appointment-datetime-context strong{font-size:12px;color:#33483f}.appointment-past-warning{display:flex;align-items:flex-start;gap:9px;margin:-4px 0 14px;padding:10px 12px;border-radius:11px;background:#fbf3e7;border:1px solid #f0dfc5;color:#806841}.appointment-past-warning div{display:flex;flex-direction:column;gap:2px}.appointment-past-warning strong{font-size:11px}.appointment-past-warning span{font-size:10px;color:#927b58}.calendar-cancelled-actions{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}.calendar-rebook-slot{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:9px;background:#edf4f0;color:#356b59;padding:8px 10px;font-size:10px;font-weight:750;cursor:pointer}
                 .calendar-sms-setting{margin:14px 0;padding:14px;background:#f3f7f4;border-radius:14px;color:#496759}.calendar-sms-setting label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}.calendar-sms-setting input{width:16px;height:16px;accent-color:#356b59}.calendar-sms-setting small{display:block;margin:7px 0 0;font-size:11px;color:#7c8d83}.calendar-sms-status{font-size:11px!important;margin-top:14px!important;color:#6e8378!important}
@@ -1006,18 +990,7 @@ export default function CalendarPage() {
         @media(max-width:650px){.calendar-week-card.interactive-week{height:55dvh;min-height:240px}}
       `}</style>
 
-      {voice && (
-        <CalendarVoiceCommand
-          onClose={() => setVoice(false)}
-          onApplied={async (event) => {
-            await refreshEvents();
-            if (event?.scheduled_start) {
-              setFocusDate(dateKey(new Date(event.scheduled_start)));
-              setView("day");
-            }
-          }}
-        />
-      )}
+
     </main>
   );
 }

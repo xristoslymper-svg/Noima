@@ -29,7 +29,6 @@ import {
   CreditCard,
   FolderOpen,
   Home,
-  Mic2,
   Menu,
   ListTodo,
   Search,
@@ -255,7 +254,7 @@ export default function Page() {
 
           <div className="calendar-body">
             <div className="calendar-agenda">
-              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} ραντεβού</span></div><div className="calendar-head-actions"><Link href="/calendar?voice=1" className="voice-calendar-button" onClick={()=>setCalendarOpen(false)}><Mic2 size={16}/> Φωνητική εντολή</Link><Link href="/calendar?new=1" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
+              <div className="agenda-title"><div><h3>Σήμερα</h3><span>{todaySchedule.length} ραντεβού</span></div><div className="calendar-head-actions"><Link href="/calendar?new=1" className="add-appointment" onClick={()=>setCalendarOpen(false)}>+ Νέο ραντεβού</Link></div></div>
               {todaySchedule.length?todaySchedule.map(event=><div className="agenda-event" key={event.id}>
                 <div className="agenda-time"><strong>{overviewTime(event.scheduled_start)}</strong><span>{Math.round((new Date(event.scheduled_end).getTime()-new Date(event.scheduled_start).getTime())/60000)}′</span></div>
                 <div className="agenda-line"></div>

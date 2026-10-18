@@ -25,11 +25,12 @@ export function normalizedPatientHistory(raw:Partial<HistoryAnswers>|null):Histo
 }
 export function patientReportedHighlights(h:HistoryAnswers){
  const facts:string[]=[];
+ // Historical self-reports stay visible before the compact preview is truncated.
+ if(h.suicide_attempt==='yes')facts.push('Αναφέρει ιστορικό απόπειρας αυτοκτονίας');
+ if(h.self_harm==='yes')facts.push('Αναφέρει ιστορικό αυτοτραυματισμού');
  if(h.reasons.length)facts.push('Λόγοι προσέλευσης: '+h.reasons.join(', '));
  if(h.duration)facts.push('Διάρκεια συμπτωμάτων: '+(({lt1m:'Λιγότερο από 1 μήνα','1-6m':'1–6 μήνες','6-12m':'6–12 μήνες',gt1y:'Πάνω από 1 χρόνο'} as Record<string,string>)[h.duration]||h.duration));
  if(h.current_meds==='yes')facts.push('Αναφερόμενη αγωγή: '+(h.current_medication_name||'χωρίς λεπτομέρειες'));
  else if(h.current_meds==='no')facts.push('Κατά τη συμπλήρωση ανέφερε ότι δεν λάμβανε αγωγή');
- if(h.suicide_attempt==='yes')facts.push('Αναφέρει ιστορικό απόπειρας αυτοκτονίας');
- if(h.self_harm==='yes')facts.push('Αναφέρει ιστορικό αυτοτραυματισμού');
  return facts.slice(0,5);
 }

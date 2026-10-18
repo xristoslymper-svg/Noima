@@ -139,3 +139,20 @@
 .folderSurface :global(.panel-stack) > :global(.patient-reported-muted){margin:0;padding:12px 14px;border-radius:8px;background:#f1f4ee;font-size:13px;line-height:1.6}
 .folderSurface :global(.patient-details-head){margin-bottom:12px}
 .folderSurface :global(.patient-doctor-notes){margin-top:0;padding:16px 0;border:0;border-top:1px solid #e1e7e3;border-radius:0;background:transparent}
+
+/* The treatment tab uses the same readable medication layout as the visit. */
+@container patient-journey (max-width:700px){
+ .workspace .folderSurface :global(.medication-table-editor){overflow:visible}
+ .workspace .folderSurface :global(.medication-lean-table){display:block;min-width:0!important;width:100%;table-layout:auto}
+ .workspace .folderSurface :global(.medication-lean-table thead){display:none}
+ .workspace .folderSurface :global(.medication-lean-table tbody){display:block}
+ .workspace .folderSurface :global(.medication-lean-table tbody tr){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:16px;border-bottom:1px solid #e1e7e3}
+ .workspace .folderSurface :global(.medication-lean-table tbody th),.workspace .folderSurface :global(.medication-lean-table tbody td){display:block;min-width:0!important;width:auto!important;padding:0!important;border:0;overflow-wrap:anywhere}
+ .workspace .folderSurface :global(.medication-lean-table tbody th){grid-column:1/-1;font-size:16px}
+ .workspace .folderSurface :global(.medication-lean-table td[data-label]):before{content:attr(data-label);display:block;color:#708277;font-size:11px;margin-bottom:6px}
+ .workspace .folderSurface :global(.medication-lean-table td[data-label="Παρενέργειες"]),.workspace .folderSurface :global(.medication-lean-table td:last-child){grid-column:1/-1}
+ .workspace .folderSurface :global(.medication-lean-table .med-row-editing),.workspace .folderSurface :global(.medication-lean-table .med-new-row){grid-template-columns:minmax(0,1fr)}
+ .workspace .folderSurface :global(.med-frequency){min-width:0}
+ .workspace .folderSurface :global(.med-frequency-times){flex-wrap:wrap}
+ .workspace .folderSurface :global(.medication-lean-table tbody tr:last-child){border-bottom:0}
+}

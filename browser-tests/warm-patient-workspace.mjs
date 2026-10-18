@@ -48,6 +48,10 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,top:Math.min(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().top)),bottom:Math.max(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().bottom))}));
    assert.ok(navBox.height<=navBox.bottom-navBox.top+16,'no reserved second navigation row');
   }
+  if(tab==='treatment'&&size!=='desktop'){
+   const widths=await page.locator('.medication-table-editor').first().evaluate(e=>({content:e.scrollWidth,available:e.clientWidth}));
+   assert.ok(widths.content<=widths.available+1,'treatment medication remains readable without horizontal dragging');
+  }
   if(tab==='record'){
    assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');
    assert.equal(await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).locator('details').first().getAttribute('open'),null,'previous context begins collapsed');

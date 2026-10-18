@@ -27,3 +27,22 @@
 .overview-shell .pilot-badge{border-radius:999px}
 @media(max-width:1100px){.overview-shell .topbar{height:auto!important;min-height:72px;flex-wrap:wrap;padding-top:12px!important;padding-bottom:12px!important}}
 @media(max-width:760px){.overview-shell .content{padding:24px 14px}.overview-shell .page-heading p:not(.eyebrow){font-size:13px}.overview-shell .metric-grid{gap:12px;margin-bottom:22px}.overview-shell .metric{padding:16px;min-height:128px;border-radius:20px}.overview-shell .metric>span{font-size:12px}.overview-shell .metric-icon{top:16px;right:16px}.overview-shell .sessions{padding:20px}}
+
+/* Pending tasks reuse the widget's existing controls, typography and palette. */
+.pending-help{font-size:13px;line-height:1.6;color:inherit;opacity:.8;margin:0 0 16px}
+.pending-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.pending-options label{display:block;font-size:12px;margin-bottom:6px}
+.pending-options input{width:100%;min-width:0}
+.pending-patient-search{position:relative}
+.pending-options small{display:block;margin-top:6px}
+.pending-matches{list-style:none;padding:0;margin:6px 0}
+.pending-matches button{width:100%;text-align:left}
+.pending-row-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.pending-undo{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;font-size:13px;margin:12px 0}
+@media(max-width:600px){.pending-options{grid-template-columns:1fr}.pending-undo{align-items:flex-start}}
+
+.pending-options input{border:1px solid #dfe7e2;border-radius:12px;background:#fbfcfb;padding:11px 12px;font:inherit;font-size:13px;color:#2c4238}
+.pending-options input:focus{outline:2px solid #9abaaa;outline-offset:1px}
+.pending-options button,.pending-undo button,.pending-row-actions>.todo-done{display:inline-flex;align-items:center;gap:5px;border:1px solid #dce6e0;border-radius:10px;background:#f6f9f7;color:#3f705e;padding:8px 10px;font-size:11px;font-weight:700;text-decoration:none;cursor:pointer}
+.dashboard-widget-row>.pending-row-actions{display:flex;gap:8px}
+.pending-row-actions button:disabled{opacity:.5;cursor:wait}

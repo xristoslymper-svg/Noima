@@ -7,6 +7,9 @@ on:
       - 'components/dictation/ClinicalTextField.tsx'
       - 'lib/teleconsultations/**'
       - 'browser-tests/teleconsultations*'
+      - 'browser-tests/teleconsultation-persistence*'
+      - 'tests/teleconsultation-persistence.test.mjs'
+      - 'tests/teleconsultation-database.test.mjs'
       - '.github/workflows/teleconsultations.yml'
 permissions:
   contents: read

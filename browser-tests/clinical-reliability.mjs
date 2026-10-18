@@ -327,6 +327,60 @@ try{
   });
 
 
+  await check('visit-filters-preview-allows-reading-without-enabling-writes',async({page})=>{
+   const clinicalRequests=[];page.on('request',r=>{if(/\\/api\\/(patients|clinical|intake|psychometrics)/.test(new URL(r.url()).pathname))clinicalRequests.push(r.url())});
+   await page.goto(origin+'/timeline-preview?tab=timeline');const filters=page.getByLabel('Φίλτρα πορείας');
+   await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
+   assert.equal(await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).getAttribute('aria-pressed'),'true');
+   await filters.getByRole('button',{name:'Με μετρήσεις',exact:true}).click();
+   await filters.getByRole('button',{name:'Όλες οι επισκέψεις',exact:true}).click();
+   const actions=page.locator('[data-visit-row] button');
+   assert.ok(await actions.count()>0);for(const action of await actions.all())assert.equal(await action.isEnabled(),false);
+   assert.deepEqual(clinicalRequests,[]);assert.equal(requests.length,0);
+  });
+  await check('visit-filters-keep-exact-links-and-independent-records',async({page,open})=>{
+   const approved=state.sessions.filter(s=>s.status==='completed');const target=approved[0],other=approved[1];
+   state.medicationEvents=[{id:'qa-linked-change',patient_id:patientId,medication_id:state.medications[0].id,session_id:target.id,event_type:'changed',effective_on:target.started_at.slice(0,10),created_at:target.started_at,previous_state:{dose:50,unit:'mg'},new_state:{dose:100,unit:'mg'}}];
+   state.medicationRevisions=[];state.medicationSideEffects=[];
+   const template=state.assessments.find(a=>a.status==='completed');
+   state.assessments=[{...template,id:'qa-linked-measurement',patient_id:patientId,session_id:other.id,appointment_id:null},{...template,id:'qa-independent-measurement',patient_id:patientId,session_id:null,appointment_id:null}];
+   await open('?tab=timeline');const filters=page.getByLabel('Φίλτρα πορείας');assert.equal(await filters.getByRole('button').count(),3);
+   const all=filters.getByRole('button',{name:'Όλες οι επισκέψεις',exact:true});
+   const rows=page.locator('[data-visit-row]');assert.equal(await rows.count(),state.sessions.length);
+   const independent=page.locator('[data-unlinked-events]');await independent.locator('summary').click();await independent.getByText(/Ολοκληρωμένη μέτρηση/).waitFor();
+   await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
+   assert.equal(await rows.count(),1);assert.equal(await rows.first().getAttribute('data-session-id'),target.id);
+   assert.equal(await page.locator('[data-treatment-event="med-qa-linked-change"]').count(),1);
+   assert.equal(await rows.locator('[data-assessment-id]').count(),0);assert.equal(await independent.count(),1);assert.equal(await independent.getAttribute('open'),'');
+   await filters.getByRole('button',{name:'Με μετρήσεις',exact:true}).click();
+   assert.equal(await rows.count(),1);assert.equal(await rows.first().getAttribute('data-session-id'),other.id);
+   assert.equal(await rows.locator('[data-treatment-event]').count(),0);assert.equal(await rows.locator('[data-assessment-id="qa-linked-measurement"]').count(),1);
+   assert.equal(await independent.count(),1);await all.click();assert.equal(await rows.count(),state.sessions.length);assert.equal(requests.length,0);
+   await page.screenshot({path:resolve(out,size+'-visit-filters.png')});
+  });
+  await check('visit-filters-explain-missing-links-and-return-to-all',async({page,open})=>{
+   state.medicationEvents=[];state.medicationSideEffects=[];state.assessments=[];
+   await open('?tab=timeline');const filters=page.getByLabel('Φίλτρα πορείας');
+   await filters.getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
+   const status=page.getByRole('status').filter({hasText:'Δεν υπάρχουν επισκέψεις με συνδεδεμένες αλλαγές αγωγής ή παρενέργειες.'});await status.waitFor();
+   assert.equal(await page.locator('[data-visit-row]').count(),0);
+   await status.getByRole('button',{name:'Όλες οι επισκέψεις',exact:true}).click();assert.equal(await page.locator('[data-visit-row]').count(),state.sessions.length);
+   await filters.getByRole('button',{name:'Με μετρήσεις',exact:true}).click();
+   await page.getByText('Δεν υπάρχουν επισκέψεις με συνδεδεμένες ολοκληρωμένες μετρήσεις.',{exact:true}).waitFor();assert.equal(requests.length,0);
+  });
+  await check('visit-filters-no-visits-keeps-unlinked-results-discoverable',async({page,open})=>{
+   const template=state.assessments.find(a=>a.status==='completed');
+   state.sessions=[];state.medicationEvents=[];state.medicationSideEffects=[];
+   state.assessments=[{...template,id:'qa-independent-only',patient_id:patientId,session_id:null,appointment_id:null}];
+   await open('?tab=timeline');
+   await page.getByText('Δεν έχουν καταγραφεί επισκέψεις ακόμη.',{exact:true}).waitFor();
+   await page.getByText('Οι καταγραφές χωρίς σύνδεση με επίσκεψη παραμένουν διαθέσιμες παρακάτω.',{exact:true}).waitFor();
+   const independent=page.locator('[data-unlinked-events]');await independent.locator('summary').click();
+   await independent.getByRole('button',{name:'Σκορ και απαντήσεις',exact:true}).waitFor();
+   await page.getByLabel('Φίλτρα πορείας').getByRole('button',{name:'Με αλλαγές αγωγής',exact:true}).click();
+   assert.equal(await independent.getAttribute('open'),'');await independent.getByRole('button',{name:'Σκορ και απαντήσεις',exact:true}).waitFor();
+   assert.equal(requests.length,0);
+  });
   await check('treatment-confirmed-plan-and-visit-source',async({page,open})=>{
    const s=state.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at))[0];
    state.sections=state.sections.filter(x=>x.session_id!==s.id||!['plan','review'].includes(x.section_key));

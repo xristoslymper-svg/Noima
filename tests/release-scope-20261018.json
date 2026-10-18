@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation; user-authorized pending action dialogue memory and deterministic appointment selection, preview only; user-authorized NOIMA account-linked mail sender setup with existing visual components; authorized safe visit draft recovery, save feedback and readiness, preview only with existing visual components",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation; user-authorized pending action dialogue memory and deterministic appointment selection, preview only; user-authorized NOIMA account-linked mail sender setup with existing visual components; authorized safe visit draft recovery, save feedback and readiness, preview only with existing visual components; user-authorized five pending-task improvements in isolated branch/preview, preserving widget visuals and existing database schema",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -621,7 +621,20 @@
       "tests/calendar-google-entry.test.mjs",
       "components/calendar/CalendarConnectionMenu.tsx",
       "components/calendar/CalendarConnectionMenu.module.css",
-      "components/overview/RecordAssistant.module.css"
+      "components/overview/RecordAssistant.module.css",
+      "app/api/overview/route.ts",
+      "app/overview-search.css",
+      "tests/database.test.mjs",
+      "components/overview/PendingTasks.tsx",
+      "components/overview/PendingTasksPreview.tsx",
+      "lib/overview/pending-tasks.ts",
+      "lib/overview/pending-task-snapshot.ts",
+      "lib/overview/pending-fixture.ts",
+      "app/pending-preview/page.tsx",
+      "browser-tests/pending-tasks-fixture.tsx",
+      "browser-tests/pending-tasks.mjs",
+      "tests/pending-tasks.test.mjs",
+      ".github/workflows/pending-tasks.yml"
     ]
   }
 }

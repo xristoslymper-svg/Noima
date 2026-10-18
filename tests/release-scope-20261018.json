@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation; user-authorized pending action dialogue memory and deterministic appointment selection, preview only",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -584,7 +584,10 @@
       "tests/copilot-stream.test.mjs",
       "tests/copilot-preview-scope.test.mjs",
       "app/api/copilot/route.ts",
-      "tests/copilot-action-context.test.mjs"
+      "tests/copilot-action-context.test.mjs",
+      "lib/copilot/actions.ts",
+      "lib/copilot/appointment-selection.ts",
+      "tests/copilot-action-dialogue.test.mjs"
     ]
   }
 }

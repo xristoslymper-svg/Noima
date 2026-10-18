@@ -36,6 +36,7 @@ async function post(req:Request){
   if(b.patient_id&&!selected)return Response.json({error:'Ο φάκελος δεν είναι διαθέσιμος.'},{status:404});
   // The authenticated roster authorizes scope; model output never selects it.
   if(selected&&memory?.patient_id!==selected.id)memory={patient_id:selected.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
+  if(memory?.pending_action&&memory.pending_action.expires<Date.now())delete memory.pending_action;
   const intent=await understand(b.query,memory,usage);
   if(intent.tool==='clarify')return Response.json({patient:selected,answer:intent.clarification||'Διευκρινίστε την ερώτηση. Ο βοηθός δεν συνταγογραφεί ούτε μεταβάλλει κλινικές καταγραφές.',sources:[]});
   let matches=intent.patient_name?matchPatients(roster,intent.patient_name):selected?[selected]:intent.use_current_patient&&memory?roster.filter(p=>p.id===memory!.patient_id):[];
@@ -54,7 +55,7 @@ async function post(req:Request){
   if(!memory||memory.patient_id!==patient.id)memory={patient_id:patient.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
   let result:Record<string,unknown>;
   if(intent.tool==='calendar'||intent.tool==='questionnaires'){
-   result=await prepareAction(b.tester,bundle,b.query,intent.tool,usage);
+   result=await prepareAction(b.tester,bundle,b.query,intent.tool,usage,memory.pending_action);
   }else if(['medications','last_visit','next_appointment'].includes(intent.tool)){
    result=recordAnswer(bundle,intent.tool as 'medications'|'last_visit'|'next_appointment');
    if(intent.tool==='medications')memory.medication_ids=bundle.medications.filter(m=>m.status==='active').map(m=>m.id);
@@ -76,6 +77,8 @@ async function post(req:Request){
    result=await synthesize(bundle,intent.question,intent.after_focus?memory.after:null,cache,usage);
    if(await summaryContextHash(await patientBundle(b.tester,patient.id))!==result.snapshot)throw new Error('copilot_stale');
   }
+  if(result.pending_action)memory.pending_action=result.pending_action as NonNullable<Memory['pending_action']>;else delete memory.pending_action;
+  delete result.pending_action;
   memory.question=intent.question;memory.expires=Date.now()+30*60000;
   return Response.json({...result,patient,conversation:seal(memory,'copilot:'+b.tester),usage:{...usage,elapsed_ms:Date.now()-started}});
  }catch(e){

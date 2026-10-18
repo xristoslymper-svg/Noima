@@ -7,6 +7,11 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 const out=resolve('test-results/warm-patient-workspace');mkdirSync(out,{recursive:true});
 const bundle=JSON.parse(readFileSync('browser-tests/fixtures/warm-patient.json','utf8'));
+// Reproduce a draft-linked start and an explicitly unlinked stop without live writes.
+bundle.medicationEvents.push(
+ {id:'timeline-draft-start',patient_id:bundle.patient.id,medication_id:bundle.medications[0]?.id||'synthetic-med',session_id:bundle.sessions.at(-1).id,event_type:'started',effective_on:'2026-10-14',created_at:'2026-10-14T12:00:00Z',previous_state:null,new_state:{medication_name:'Synthetic timeline drug',dose:50,unit:'mg'},reason:''},
+ {id:'timeline-unlinked-stop',patient_id:bundle.patient.id,medication_id:bundle.medications[0]?.id||'synthetic-med',session_id:null,event_type:'stopped',effective_on:'2026-10-14',created_at:'2026-10-14T11:59:00Z',previous_state:{medication_name:'Synthetic previous drug',dose:100,unit:'mg'},new_state:null,reason:''}
+);
 await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bundle:true,outfile:resolve(out,'fixture.js'),jsx:'automatic',define:{'process.env':'{}','process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_NOIMA_MOBILE_V2':'"0"'},alias:{'@':process.cwd()},loader:{'.module.css':'local-css'},plugins:[{name:'synthetic-navigation',setup(b){
  b.onResolve({filter:/^next\/(link|navigation)$/},args=>({path:args.path,namespace:'synthetic-navigation'}));
  b.onLoad({filter:/.*/,namespace:'synthetic-navigation'},args=>({loader:'jsx',resolveDir:process.cwd(),contents:args.path==='next/link'?"import React from 'react';export default function Link({children,...props}){return <a {...props}>{children}</a>}":"export const usePathname=()=>location.pathname;export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push:u=>location.assign(u),replace:u=>location.replace(u),refresh:()=>location.reload()});"}));
@@ -51,6 +56,26 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   if(tab==='treatment'&&size!=='desktop'){
    const widths=await page.locator('.medication-table-editor').first().evaluate(e=>({content:e.scrollWidth,available:e.clientWidth}));
    assert.ok(widths.content<=widths.available+1,'treatment medication remains readable without horizontal dragging');
+  }
+  if(tab==='timeline'){
+   const row=page.locator('[data-session-id="'+bundle.sessions.at(-1).id+'"]');
+   await row.getByText('Επανεξέταση · Πρόχειρη',{exact:true}).waitFor();
+   assert.equal(await row.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1);
+   assert.equal(await page.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1,'linked event must not be duplicated');
+   assert.ok(await page.locator('[data-assessment-id]').count()>0,'linked measurements stay with visits');
+   const unlinked=page.locator('[data-unlinked-events="true"]');
+   await unlinked.locator('summary').click();
+   assert.equal(await unlinked.getByText('Διακοπή αγωγής',{exact:true}).count(),1);
+   assert.equal(await unlinked.getByText('Έναρξη αγωγής',{exact:true}).count(),0);
+   await unlinked.locator('summary').click();
+   if(size==='desktop'||size==='tablet'){
+    const layout=await row.evaluate(n=>{const visit=n.children[1].getBoundingClientRect(),context=n.querySelector('[data-visit-context]').getBoundingClientRect();return{right:context.left>=visit.right,aligned:Math.abs(context.top-visit.top)<2}});
+    assert.equal(layout.right,true,'treatment context is right of the visit');
+    assert.equal(layout.aligned,true,'visit and context share a row');
+   }
+   await page.getByRole('button',{name:'Θεραπεία',exact:true}).click();
+   assert.equal(await row.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1);
+   await page.getByRole('button',{name:'Όλα',exact:true}).click();
   }
   if(tab==='record'){
    assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');

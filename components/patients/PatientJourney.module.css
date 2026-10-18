@@ -156,3 +156,15 @@
  .workspace .folderSurface :global(.med-frequency-times){flex-wrap:wrap}
  .workspace .folderSurface :global(.medication-lean-table tbody tr:last-child){border-bottom:0}
 }
+
+/* Keep visit anchors and their explicit source context in the same row. */
+.timeline [data-visit-row="true"]{grid-template-columns:118px minmax(150px,1fr) minmax(220px,1.2fr)}
+.timeline [data-visit-context="true"]{grid-column:auto;align-self:start}
+@media(max-width:1100px) and (min-width:701px){
+ .timeline [data-visit-row="true"]{grid-template-columns:90px minmax(110px,1fr) minmax(160px,1.2fr);gap:12px}
+ .timeline [data-visit-context="true"]{grid-template-columns:minmax(0,1fr);gap:10px}
+}
+@media(max-width:700px){
+ .timeline [data-visit-row="true"]{grid-template-columns:minmax(0,1fr)}
+ .timeline [data-visit-context="true"]{grid-column:1}
+}

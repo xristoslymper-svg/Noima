@@ -109,7 +109,7 @@ export default function PatientSession({
  },[]);
 
  const flushAll=useCallback(async(requireRefresh=false)=>{
-  setFlushing(dirtyKeys.current.size>0);
+  setFlushing(true);
   setFlushError('');
   setRefreshError('');
   try{
@@ -214,7 +214,7 @@ export default function PatientSession({
   {draft.session_type==='follow_up'&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>Σύντομη καταγραφή</button>}
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing,dirty:dirtyCount>0,error:flushError})}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError})}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
   </div>
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title="Σημειώσεις επίσκεψης" rows={4}/>}
@@ -240,7 +240,7 @@ export default function PatientSession({
   {remaining.length>0&&<div className="visit-finalize-guidance" aria-label="Εκκρεμότητες ολοκλήρωσης"><strong>Πριν την ολοκλήρωση</strong><ul>{remaining.map((item,index)=><li key={item.anchor+index}><button type="button" onClick={()=>goToPart(item.anchor)}>{item.message}</button></li>)}</ul></div>}
   <p className="visit-hint">«Συνέχεια αργότερα»: αποθήκευση ως πρόχειρο και προσθήκη στις εκκρεμότητες. Η επίσκεψη δεν οριστικοποιείται.</p>
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing?'Αποθήκευση πρόχειρου…':finalizing?'Οριστικοποίηση…':'Έλεγχος πριν την ολοκλήρωση'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?'Αποθήκευση αλλαγών…':finalizing?'Οριστικοποίηση…':'Έλεγχος πριν την ολοκλήρωση'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση πρόχειρου…':'Συνέχεια αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{blocker.message} <button type="button" onClick={()=>goToPart(blocker.anchor)}>Μετάβαση</button></span>}
   </div>
 

@@ -2,7 +2,7 @@ import type {PatientBundle} from '../patients/demo-runtime';
 import {emptyContinuity} from '../clinical/continuity.ts';
 import type {FixtureRecord} from './preview';
 export const demoPatients=[{id:'10000000-0000-4000-8000-000000000006',name:'Σοφία Δείγμα',first:'Σοφία',last:'Δείγμα'},{id:'tele-demo-patient-nikos',name:'Νίκος Παράδειγμα',first:'Νίκος',last:'Παράδειγμα'}] as const;
-export type DemoTelePatient=typeof demoPatients[number];
+export type DemoTelePatient={id:string;name:string;first:string;last:string};
 export function findDemoPatients(query:string){const q=query.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('el');return q.length<2?[]:demoPatients.filter(p=>p.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('el').includes(q))}
 export function newDemoVisit(patientId:string,now:number,nonce:string):FixtureRecord{
  if(!demoPatients.some(p=>p.id===patientId)||!Number.isFinite(now)||!/^[a-f0-9-]{36}$/.test(nonce))throw new Error('Μη έγκυρη συνθετική συνεδρία.');

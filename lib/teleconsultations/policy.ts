@@ -33,3 +33,6 @@ export async function reserveCall(ledger:BudgetLedger,input:{key:string;month:st
  if(!reservation)throw new Error('Το δωρεάν όριο δεν επαρκεί. Δεν δημιουργήθηκε κλήση.');
  return {reservation,policy};
 }
+
+// Persistent record editing is enabled only on this branch preview; Daily remains disconnected.
+export function persistentVisitEnabled(env:Record<string,string|undefined>){return env.VERCEL_ENV==='preview'&&env.VERCEL_GIT_COMMIT_REF==='codex/teleconsultation-visit-persistence'}

@@ -193,7 +193,11 @@ try{
    await compact.getByRole('alert').waitFor();
    assert.match(await compact.innerText(),/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
    assert.match(await compact.innerText(),/τελευταίες διαθέσιμες απαντήσεις/);
-   fail=false;await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   fail=false;
+   const recovered=page.waitForResponse(response=>response.url().endsWith('/api/intake')&&response.request().postDataJSON()?.action==='list'&&response.ok());
+   await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await recovered;
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor({state:'detached'});
    await compact.getByText('Αναφέρει ιστορικό αυτοτραυματισμού',{exact:true}).waitFor();
    assert.equal(await compact.getByRole('alert').count(),0);
    assert.equal(requests.some(r=>['review','save_history','mark_viewed'].includes(r.action)),false);

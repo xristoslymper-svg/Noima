@@ -7,7 +7,7 @@ const report={id:'r',patient_id:seed.patient.id,status:'submitted',tools:['histo
 test('supplement sources retain authorship, identity and original records without clinical promotion',async()=>{
  const b=structuredClone(seed),before=JSON.stringify(b),calls=[];
  const enriched=await withSummarySources(b,tester,async(name,args)=>{calls.push({name,args});return name==='demo_prior_course_get'?[prior]:[report]});
- const c=buildSummaryContext(enriched);assert.ok(c.sources.some(s=>s.kind==='prior_course'));assert.ok(c.sources.some(s=>s.kind==='patient_self_report'));
+ const c=buildSummaryContext(enriched);assert.equal(c.sources.find(s=>s.kind==='prior_course').target,'timeline');assert.ok(c.sources.some(s=>s.kind==='patient_self_report'));
  assert.equal(JSON.stringify(b),before);assert.ok(calls.every(x=>x.args.p_patient===b.patient.id&&x.args.p_tester===tester));
  assert.equal(enriched.medications.length,b.medications.length);assert.equal(enriched.risks.length,b.risks.length);
  const changed=await withSummarySources(b,tester,async name=>name==='demo_prior_course_get'?[{...prior,version:2,content:prior.content+' Διόρθωση.'}]:[report]);

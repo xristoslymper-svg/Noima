@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import {clinicLocalToIso} from '@/lib/clinic-time';
 import {useEffect,useRef,useState} from 'react';
 import {Check,ChevronRight} from 'lucide-react';
 import {pendingListState,pendingTaskHref,type PendingTask,type TaskPatient} from '@/lib/overview/pending-tasks';
@@ -29,9 +30,10 @@ export default function PendingTasks({tasks,state,refreshing,refreshFailed,busy,
  return <>
   <p className="pending-help">Εργασίες και πρόχειρες επισκέψεις. Οι επισκέψεις κλείνουν εδώ μόνο μετά την καταχώρισή τους στον φάκελο.</p>
   <form onSubmit={e=>{e.preventDefault();if(!title.trim())return;void run(async()=>{
-   const deadline=due?new Date(due):null;
-   if(deadline&&!Number.isFinite(deadline.getTime()))throw new Error('Ελέγξτε την προθεσμία.');
-   await onCreate({title:title.trim(),patient_id:patient?.id||null,due_at:deadline?.toISOString()||null});
+   if(query.trim()&&!patient)throw new Error('Επιλέξτε ασθενή από τα αποτελέσματα ή καθαρίστε την αναζήτηση.');
+   const [date,time]=due.split('T');
+   const deadline=due?clinicLocalToIso(date,time):null;
+   await onCreate({title:title.trim(),patient_id:patient?.id||null,due_at:deadline});
    if(mounted.current){setTitle('');setPatient(null);setQuery('');setDue('')}
   })}}>
    <div className="todo-compose"><input aria-label="Νέα εργασία" value={title} disabled={disabled} onChange={e=>setTitle(e.target.value)} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button type="submit" disabled={disabled||!title.trim()}>Προσθήκη</button></div>
@@ -44,7 +46,7 @@ export default function PendingTasks({tasks,state,refreshing,refreshFailed,busy,
      {!patient&&searchState==='error'&&<small role="alert">Δεν φορτώθηκαν οι ασθενείς. Δοκιμάστε ξανά την αναζήτηση.</small>}
      {!patient&&searchState==='ready'&&(matches.length?<ul className="pending-matches" aria-label="Αποτελέσματα ασθενών">{matches.map(p=><li key={p.id}><button type="button" disabled={disabled} onClick={()=>{setPatient(p);setQuery('');setMatches([])}}>{p.first_name} {p.last_name}</button></li>)}</ul>:<small>Δεν βρέθηκαν ασθενείς.</small>)}
     </div>
-    <div><label htmlFor="pending-due">Προθεσμία (προαιρετικά, τοπική ώρα)</label><input id="pending-due" type="datetime-local" value={due} disabled={disabled} onChange={e=>setDue(e.target.value)}/></div>
+    <div><label htmlFor="pending-due">Προθεσμία (προαιρετικά, ώρα Ελλάδας)</label><input id="pending-due" type="datetime-local" value={due} disabled={disabled} onChange={e=>setDue(e.target.value)}/></div>
    </div>
   </form>
   {error&&<div className="save-state error" role="alert">{error}</div>}

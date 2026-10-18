@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef, useId, type MutableRefObject } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
@@ -8,10 +8,13 @@ import MedicationTable from './MedicationTable';
 import MedicationFrequency from './MedicationFrequency';
 import { demoPost } from '@/lib/patients/demo-client';
 import PatientReportedHistory from './PatientReportedHistory';
+import readingStyles from './PatientReading.module.css';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
 const historyFields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['medical_history','Σωματικό ιστορικό'],['previous_treatments','Προηγούμενες θεραπείες'],['hospitalizations','Νοσηλείες'],['family_history','Οικογενειακό ιστορικό'],['substance_history','Ουσίες'],['social_functioning','Κοινωνική λειτουργικότητα'],['allergies','Αλλεργίες']] as const;
 export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>}){
+ const sectionId=useId();
+ const [editingHistory,setEditingHistory]=useState(false);
  const initial=Object.fromEntries(historyFields.map(([key])=>[key,bundle.history?.[key]||''])) as Record<string,string>;
  const patientInitial=()=>({first_name:bundle.patient.first_name,last_name:bundle.patient.last_name,age:bundle.patient.reported_age==null?'':String(bundle.patient.reported_age),phone:bundle.patient.phone||'',landline:bundle.patient.landline||'',contact_phone:bundle.patient.contact_phone||'',amka:bundle.patient.amka||'',address:bundle.patient.address||'',email:bundle.patient.email||'',chief_complaint:bundle.patient.chief_complaint||''});
  const dirty=useRef(false);
@@ -55,10 +58,14 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
   <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Στοιχεία & ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
-  <PatientReportedHistory patientId={bundle.patient.id}/>
-
-  <section className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>
+  <nav className={readingStyles.sectionLinks} aria-label="Ενότητες στοιχείων και ιστορικού">
+   <a className="patient-reported-link" href={'#'+sectionId+'-details'}>Στοιχεία ασθενή</a>
+   <a className="patient-reported-link" href={'#'+sectionId+'-reported'}>Απαντήσεις ασθενούς</a>
+   <a className="patient-reported-link" href={'#'+sectionId+'-notes'}>Κλινικό ιστορικό</a>
+  </nav>
+  <section id={sectionId+'-details'} className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>
    <div className="patient-details-head"><div><strong>Στοιχεία ασθενή</strong><span>{incomplete?'Υπάρχουν βασικά στοιχεία που δεν έχουν ακόμη συμπληρωθεί.':'Τα βασικά στοιχεία του φακέλου είναι συμπληρωμένα.'}</span></div></div>
+   <div className={readingStyles.contactLine} aria-label="Στοιχεία επικοινωνίας"><span><strong>Κινητό:</strong> {bundle.patient.phone||'Δεν έχει καταγραφεί'}</span><span><strong>Email:</strong> {bundle.patient.email||'Δεν έχει καταγραφεί'}</span></div>
    <dl className="patient-demographics-list">{patientFields.map(([key,label])=>{
     const editing=editingPatientField===key,value=patientInitial()[key];
     const change=(value:string)=>{patientDirty.current=true;setPatientValues(v=>({...v,[key]:key==='age'?value.replace(/\D/g,''):key==='amka'?value.replace(/\D/g,'').slice(0,11):value}))};
@@ -73,7 +80,8 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    })}</dl>
    {patientState&&<div role={patientState==='Αποθηκεύτηκε'?'status':'alert'} className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{patientState}</div>}
   </section>
-  <details className="patient-doctor-notes">
+  <section id={sectionId+'-reported'} className={readingStyles.anchor} aria-label="Αυτοαναφορές ασθενούς"><PatientReportedHistory patientId={bundle.patient.id}/></section>
+  <details id={sectionId+'-notes'} className="patient-doctor-notes">
    <summary>Κλινικές σημειώσεις ιστορικού <span>{historyFields.some(([key])=>values[key]?.trim())?'Υπάρχει καταγραφή':'Προαιρετικά'}</span></summary>
    <p className="patient-reported-muted">Οι ίδιες κλινικές σημειώσεις είναι διαθέσιμες και στην καταγραφή επίσκεψης. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
    {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
@@ -83,8 +91,10 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
     <div className="patient-reported-answers">{historyFields.filter(([key])=>draft.olderRecovery?.[key]?.trim()).map(([key,label])=><div key={key}><strong>{label}</strong><p>{draft.olderRecovery?.[key]}</p></div>)}</div>
     <button type="button" className="patient-reported-link" onClick={draft.dismissOlderRecovery}>Απόκρυψη παλιού προχείρου</button>
    </details>}
+   {!editingHistory?<><div className={readingStyles.notesReading}>{historyFields.map(([key,label])=><article key={key}><strong>{label}</strong><p>{values[key]?.trim()||'Δεν έχει καταγραφεί κλινική σημείωση.'}</p></article>)}</div><button type="button" className="patient-reported-link" onClick={()=>setEditingHistory(true)}>Επεξεργασία κλινικού ιστορικού</button></>:<>
    <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Προσθέστε μια κλινική σημείωση, αν χρειάζεται"/></label>)}</div>
-   <button type="button" className="record compact" onClick={()=>void save().catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση σημειώσεων'}</button>
+   <button type="button" className="record compact" onClick={()=>void save().then(()=>setEditingHistory(false)).catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση σημειώσεων'}</button>
+   </>}
   </details>
  </section>
 }

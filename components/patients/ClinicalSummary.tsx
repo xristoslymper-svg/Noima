@@ -7,10 +7,12 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import {requestClinicalSummary,clinicalSummaryRetryDelayMs,CLINICAL_SUMMARY_RETRY_DELAY_MS} from '@/lib/clinical/summary-request';
 import {buildClinicalCard,type ClinicalCard} from '@/lib/clinical/clinical-card';
 import {buildSummaryContext,summaryContextKey,clinicDay} from '@/lib/clinical/summary-context';
+import BriefClinicalSummary from './BriefClinicalSummary';
+import type {Finding} from '@/lib/clinical/summary-context';
 import ClinicalCardView from './ClinicalCardView';
-type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
-type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null};
-export default function ClinicalSummary({bundle,compact=false,overview=false}:Props){
+type Props={bundle:PatientBundle;compact?:boolean;overview?:boolean;brief?:boolean;readOnly?:boolean;onSessions:(id?:string)=>void;onPsychometrics:()=>void;onMedications:()=>void;onHistory:()=>void};
+type Result={card:ClinicalCard;mode:string;context_hash:string;reason?:string|null;findings?:Finding[]};
+export default function ClinicalSummary({bundle,compact=false,overview=false,brief=false,readOnly=false}:Props){
  const synthetic=useSyntheticChart();
  const [retry,setRetry]=useState(0),[refresh,setRefresh]=useState(0);
  const handledRefresh=useRef(0);
@@ -25,7 +27,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
   // A changed patient record (key) or a manual refresh bypasses the passive cooldown.
   if(!force&&retryAfter.current?.key===key&&Date.now()<retryAfter.current.at)return;
   const controller=new AbortController();let active=true;setState('loading');
-  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,signal:controller.signal}).then(data=>{
+  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,readOnly,signal:controller.signal}).then(data=>{
    if(!active)return;
    const delay=clinicalSummaryRetryDelayMs(data.mode);
    retryAfter.current=delay?{key,at:Date.now()+delay}:null;
@@ -36,11 +38,12 @@ export default function ClinicalSummary({bundle,compact=false,overview=false}:Pr
    setState('unavailable');
   });
   return()=>{active=false;controller.abort()};
- },[key,retry,refresh,bundle.patient.id,synthetic]);
+ },[key,retry,refresh,bundle.patient.id,synthetic,readOnly]);
  const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
+ if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} onRefresh={()=>setRetry(n=>n+1)}/>;
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}

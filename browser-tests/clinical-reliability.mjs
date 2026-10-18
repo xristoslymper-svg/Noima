@@ -89,8 +89,8 @@ try{
    const navigation=page.getByRole('navigation',{name:'Καρτέλες φακέλου'});
    for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό'])assert.equal(await navigation.getByRole('button',{name:label,exact:true}).count(),1);
    assert.equal(await navigation.getByRole('button').count(),4);
-   await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).waitFor();
-   assert.equal(await page.getByText('Αναλυτική κλινική σύνθεση και πηγές',{exact:true}).count(),1);
+   await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
+   assert.equal(await page.getByText('Καταγραφές και πηγές φακέλου',{exact:true}).count(),1);
    await page.locator('.patient-voice-cta').click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
    assert.equal(await page.locator('dialog[open]').count(),0);
    await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).waitFor();
@@ -137,7 +137,7 @@ try{
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);
    completionMode='ok';await finish.click();await page.locator('.patient-visit-surface:not([hidden])').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');await page.screenshot({path:resolve(out,`${size}-journey-completion.png`)});
    await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();await page.getByRole('heading',{name:'Επισκέψεις',exact:true}).waitFor();const count=state.sessions.filter(s=>s.status==='completed').length;await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).nth(count-1).waitFor();assert.equal(await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).count(),count);
-   await nav('Σύνοψη').click();await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
+   await nav('Σύνοψη').click();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
   });
   await check('second-medication-isolation',async({page,open})=>{
    await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
@@ -174,7 +174,7 @@ try{
     return route.continue();
    });
    await open('?tab=summary');
-   await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).waitFor();
+   await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
    await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
    await nav('Στοιχεία & ιστορικό').click();
    await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
@@ -249,6 +249,47 @@ try{
    await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
    await page.getByRole('alert').waitFor({state:'detached'});
    assert.deepEqual(apiRequests,[],'every showcase scenario must remain entirely in memory');
+  });
+
+  await check('history-reading-navigation-and-explicit-edit',async({page,open,nav})=>{
+   state.history={...state.history,psychiatric_history:'QA COMPLETE HISTORY '+('Ολόκληρη κλινική σημείωση. '.repeat(35))+' END OF HISTORY',version:1};
+   await open('?tab=history');
+   const sections=page.getByRole('navigation',{name:'Ενότητες στοιχείων και ιστορικού'});
+   await sections.getByRole('link',{name:'Στοιχεία ασθενή',exact:true}).waitFor();
+   const positions=await page.evaluate(()=>({details:document.querySelector('.patient-demographics').getBoundingClientRect().top,reported:document.querySelector('[aria-label="Αυτοαναφορές ασθενούς"]').getBoundingClientRect().top}));
+   assert.ok(positions.details<positions.reported,'patient details precede unbounded returned histories');
+   await sections.getByRole('link',{name:'Κλινικό ιστορικό',exact:true}).click();
+   await page.locator('.patient-doctor-notes>summary').click();
+   await page.getByText(/QA COMPLETE HISTORY/).waitFor();
+   assert.equal(await page.getByRole('textbox',{name:'Ψυχιατρικό ιστορικό',exact:true}).count(),0,'read mode does not expose editing controls');
+   assert.match(await page.locator('.patient-doctor-notes').innerText(),/END OF HISTORY/);
+   assert.equal(requests.some(r=>r.action==='save_history'),false);
+   await page.getByRole('button',{name:'Επεξεργασία κλινικού ιστορικού',exact:true}).click();
+   await page.getByRole('textbox',{name:'Ψυχιατρικό ιστορικό',exact:true}).fill('QA EDITED HISTORY — preserved across navigation');
+   await page.getByRole('button',{name:'Αποθήκευση σημειώσεων',exact:true}).click();
+   await page.getByRole('button',{name:'Επεξεργασία κλινικού ιστορικού',exact:true}).waitFor();
+   assert.equal(state.history.psychiatric_history,'QA EDITED HISTORY — preserved across navigation');
+   await nav('Σύνοψη').click();await nav('Στοιχεία & ιστορικό').click();
+   await page.locator('.patient-doctor-notes>summary').click();
+   await page.getByText('QA EDITED HISTORY — preserved across navigation',{exact:true}).waitFor();
+  });
+  await check('brief-summary-keeps-provenance-secondary-and-sources-distinct',async({page,open})=>{
+   const approved=state.sessions.filter(s=>s.status==='completed').slice(0,2);
+   for(const s of approved)s.continuity={...s.continuity,approved_at:s.completed_at,approved_by:'synthetic',pinned_context:'QA SAME ACTIVE CONTEXT'};
+   await open('?tab=summary');
+   const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});await brief.waitFor();
+   await brief.getByText('Δες καρτέλα',{exact:true}).waitFor();
+   const records=page.getByText('Καταγραφές και πηγές φακέλου',{exact:true});
+   assert.equal(await page.locator('details').filter({has:records}).getAttribute('open'),null);
+   assert.equal(requests.some(r=>r.action==='save_history'||r.action==='revise_context'),false);
+   await records.click();
+   const group=page.locator('[data-context-group]').filter({hasText:'QA SAME ACTIVE CONTEXT'});
+   assert.equal(await group.count(),1);
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).count(),2,'both source rows remain in the DOM');
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).first().isVisible(),true);
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),false);
+   await group.locator('summary').click();
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),true);
   });
 
  }

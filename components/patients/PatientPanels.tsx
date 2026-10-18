@@ -81,7 +81,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    {patientState&&<div role={patientState==='Αποθηκεύτηκε'?'status':'alert'} className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{patientState}</div>}
   </section>
   <section id={sectionId+'-reported'} className={readingStyles.anchor} aria-label="Αυτοαναφορές ασθενούς"><PatientReportedHistory patientId={bundle.patient.id}/></section>
-  <details id={sectionId+'-notes'} className="patient-doctor-notes">
+  <section id={sectionId+'-notes'} className={readingStyles.anchor}><details className="patient-doctor-notes">
    <summary>Κλινικές σημειώσεις ιστορικού <span>{historyFields.some(([key])=>values[key]?.trim())?'Υπάρχει καταγραφή':'Προαιρετικά'}</span></summary>
    <p className="patient-reported-muted">Οι ίδιες κλινικές σημειώσεις είναι διαθέσιμες και στην καταγραφή επίσκεψης. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
    {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
@@ -92,10 +92,10 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
     <button type="button" className="patient-reported-link" onClick={draft.dismissOlderRecovery}>Απόκρυψη παλιού προχείρου</button>
    </details>}
    {!editingHistory?<><div className={readingStyles.notesReading}>{historyFields.map(([key,label])=><article key={key}><strong>{label}</strong><p>{values[key]?.trim()||'Δεν έχει καταγραφεί κλινική σημείωση.'}</p></article>)}</div><button type="button" className="patient-reported-link" onClick={()=>setEditingHistory(true)}>Επεξεργασία κλινικού ιστορικού</button></>:<>
-   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={()=>void draft.flush().catch(()=>{})} placeholder="Προσθέστε μια κλινική σημείωση, αν χρειάζεται"/></label>)}</div>
-   <button type="button" className="record compact" onClick={()=>void save().then(()=>setEditingHistory(false)).catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση σημειώσεων'}</button>
+   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={event=>{if(!(event.relatedTarget instanceof HTMLElement&&event.relatedTarget.dataset.historySave))void draft.flush().catch(()=>{})}} placeholder="Προσθέστε μια κλινική σημείωση, αν χρειάζεται"/></label>)}</div>
+   <button type="button" className="record compact" data-history-save="true" onClick={()=>void save().then(()=>setEditingHistory(false)).catch(()=>{})} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση σημειώσεων'}</button>
    </>}
-  </details>
+  </details></section>
  </section>
 }
 

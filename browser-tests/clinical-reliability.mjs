@@ -344,7 +344,7 @@ try{
    assert.equal(await select.inputValue(),'');
    await select.selectOption(second.id);
    const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
-   await row.getByRole('button',{name:'Καταγραφή ανεπιθύμητης ενέργειας',exact:true}).click();
+   await row.getByRole('button',{name:'Παρενέργεια',exact:true}).click();
    await row.getByRole('textbox',{name:'Νέα παρενέργεια — '+state.medications[0].medication_name,exact:true}).fill('QA LINKED EFFECT');
    await row.getByRole('combobox',{name:'Βαρύτητα — '+state.medications[0].medication_name,exact:true}).selectOption('mild');
    await row.locator('.med-inline-effect .primary').click();

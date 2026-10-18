@@ -37,6 +37,10 @@ async function post(req:Request){
   // The authenticated roster authorizes scope; model output never selects it.
   if(selected&&memory?.patient_id!==selected.id)memory={patient_id:selected.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
   if(memory?.pending_action&&memory.pending_action.expires<Date.now())delete memory.pending_action;
+  if(memory?.pending_action&&/^(ακυρο|αστο|σταματα|μην το κανεις)[.!;]*$/.test(normalizedName(b.query).trim())){
+   delete memory.pending_action;memory.question='';
+   return Response.json({patient:selected,answer:'Η εκκρεμής ενέργεια απορρίφθηκε. Δεν εκτελέστηκε αλλαγή.',sources:[],conversation:seal(memory,'copilot:'+b.tester)});
+  }
   const intent=await understand(b.query,memory,usage);
   if(memory?.pending_action&&intent.tool==='clarify'){
    const answer=intent.clarification||'Διευκρίνισε το στοιχείο που λείπει.';

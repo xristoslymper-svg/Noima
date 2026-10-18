@@ -83,3 +83,10 @@ test('ναι after a clarification retains pending context and still requires th
  assert.equal(JSON.parse(r.body.conversation).pending_action.turns.at(-1).query,'ναι');
  assert.deepEqual(a.seen.prepared,[]);assert.equal(r.body.proposal,undefined);
 });
+
+test('άκυρο discards the pending action without provider calls or proposal',async()=>{
+ const a=app({});
+ const r=await a.post({patient_id:first.id,query:'άκυρο',conversation:JSON.stringify({patient_id:first.id,medication_ids:[],question:'old',pending_action:{kind:'calendar',turns:[],slots:{time:'17:00'},expires:Date.now()+60000},expires:Date.now()+60000})});
+ assert.equal(JSON.parse(r.body.conversation).pending_action,undefined);
+ assert.deepEqual(a.seen.understood,[]);assert.deepEqual(a.seen.prepared,[]);
+});

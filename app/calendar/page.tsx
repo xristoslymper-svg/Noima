@@ -528,16 +528,14 @@ export default function CalendarPage() {
             <div className="calendar-page-actions"><CalendarConnectionMenu/>{mobileCalendar&&<PilotProfile/>}</div>
           </div>
 
-          <OverviewShortcuts searchOnly/>
-
           {mobileCalendar?<MobileCalendarControls date={focusDate} today={currentDay} days={days} view={view} filter={statusFilter} onDate={mobileFocus} onPrevious={()=>{shiftFocus(view==="week"?-7:-1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onNext={()=>{shiftFocus(view==="week"?7:1);weekScrollerRef.current?.scrollTo({top:0,left:0})}} onView={setView} onFilter={setStatusFilter} onRefresh={()=>void refreshEvents()} onNew={()=>setAppointmentEditor({mode:"create",date:focusDate})}/>:<div className="calendar-summary calendar-control-bar">
             <div className="calendar-date-tools"><div className="calendar-date-nav">
               <button onClick={() => shiftFocus(view === "week" ? -7 : -1)} aria-label="Προηγούμενη ημερομηνία">‹</button>
               <strong>{focusTitle(focusDate)}</strong>
               <button onClick={() => shiftFocus(view === "week" ? 7 : 1)} aria-label="Επόμενη ημερομηνία">›</button>
               {focusDate !== dateKey(new Date()) && <button className="calendar-today-jump" onClick={() => {setFocusDate(dateKey(new Date()))}}>Σήμερα</button>}
-            </div><button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button></div>
-            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
+            </div><button type="button" className="add-appointment calendar-toolbar-add" onClick={() => setAppointmentEditor({ mode: "create", date: focusDate })}>+ Νέο ραντεβού</button><OverviewShortcuts searchOnly/>
+            <label className="calendar-filter"><span className="sr-only">Κατάσταση ραντεβού</span><select aria-label="Κατάσταση ραντεβού" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="current">Πρόγραμμα & ολοκληρωμένα</option><option value="scheduled">Προγραμματισμένα</option><option value="completed">Ολοκληρωμένα</option><option value="cancelled">Ακυρωμένα</option><option value="all">Όλα τα ραντεβού</option></select></label></div><input aria-label="Μετάβαση σε ημερομηνία" className="calendar-date-input" type="date" value={focusDate} onInput={e=>{if(e.currentTarget.value)setFocusDate(e.currentTarget.value)}}/><button aria-label="Ανανέωση ημερολογίου" className="calendar-refresh" onClick={()=>void refreshEvents()}>↻</button><div className="calendar-view-switch">
               <button className={view === "day" ? "active" : ""} onClick={() => setView("day")}>Ημέρα</button>
               <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Εβδομάδα</button>
             </div>
@@ -846,6 +844,8 @@ export default function CalendarPage() {
         .calendar-page-actions{gap:8px}
         .add-appointment{border-radius:10px!important;padding:10px 14px!important;box-shadow:none!important}
         .calendar-control-bar{min-height:48px;padding:7px 8px 7px 4px;border:0;border-top:1px solid #e7ebe8;border-bottom:1px solid #e7ebe8;border-radius:0;background:transparent}
+        .calendar-control-bar .calendar-filter select{width:132px;max-width:132px}
+        @media(max-width:1100px){.calendar-date-tools{flex:1 1 100%}.calendar-date-nav{flex-basis:100%}}
         .calendar-date-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}.calendar-toolbar-add{flex:0 0 auto;white-space:nowrap;font-size:12px!important;font-weight:700!important}.calendar-control-bar .calendar-filter{margin-left:auto}.calendar-date-nav strong{font-size:13px;color:#334b40;white-space:nowrap}.calendar-date-nav>button{border:0!important;background:transparent!important}
         .calendar-view-switch{margin-left:10px;background:#f1f4f1;padding:2px;border-radius:8px}
         .calendar-view-switch button{border:0!important;border-radius:6px!important;padding:6px 10px!important;background:transparent!important;font-size:10px!important}

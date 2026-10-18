@@ -33,3 +33,12 @@ test('calendar reuses existing patient search without duplicating appointment co
  assert.match(shared,/\/api\/records\/search\?q=/);assert.match(shared,/patients\/demo\//);
  assert.match(shared,/250/);assert.match(shared,/AbortController/);
 });
+
+test('patient suggestions remain automatic at two characters and search sits between new appointment and status filter',()=>{
+ const add=source.indexOf('>+ Νέο ραντεβού</button>'),search=source.indexOf('<OverviewShortcuts searchOnly/>'),filter=source.indexOf('<label className="calendar-filter">');
+ assert.ok(add<search&&search<filter);
+ const shared=readFileSync('components/overview/RecordAssistant.tsx','utf8');
+ assert.match(shared,/query.trim\(\).length>=2/);assert.match(shared,/setTimeout\(\(\)=>void search\(\),250\)/);
+ assert.match(shared,/!searchOnly&&<button disabled=\{query.trim\(\).length<2\}/);
+ assert.match(source,/width:132px;max-width:132px/);
+});

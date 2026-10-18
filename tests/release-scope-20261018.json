@@ -620,7 +620,8 @@
       "app/calendar/page.tsx",
       "tests/calendar-google-entry.test.mjs",
       "components/calendar/CalendarConnectionMenu.tsx",
-      "components/calendar/CalendarConnectionMenu.module.css"
+      "components/calendar/CalendarConnectionMenu.module.css",
+      "components/overview/RecordAssistant.module.css"
     ]
   }
 }

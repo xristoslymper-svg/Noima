@@ -1,5 +1,5 @@
-import {medicationEventSession} from '@/lib/clinical/medication-lineage';
 'use client';
+import {medicationEventSession} from '@/lib/clinical/medication-lineage';
 import {useCallback,useEffect,useState} from 'react';
 import type {PatientBundle,DemoMedicationEvent} from '@/lib/patients/demo-runtime';
 import {medicationSessionId} from '@/lib/clinical/treatment-plan';

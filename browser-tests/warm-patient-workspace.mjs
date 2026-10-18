@@ -69,8 +69,8 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    assert.ok(await page.locator('[data-assessment-id]').count()>0,'linked measurements stay with visits');
    const unlinked=page.locator('[data-unlinked-events="true"]');
    await unlinked.locator('summary').click();
-   assert.equal(await unlinked.getByText('Διακοπή αγωγής',{exact:true}).count(),1);
-   assert.equal(await unlinked.getByText('Έναρξη αγωγής',{exact:true}).count(),0);
+   assert.equal(await unlinked.getByText(/^Διακοπή αγωγής(?: · Προγραμματισμένο)?$/).count(),1);
+   assert.equal(await unlinked.getByText(/^Έναρξη αγωγής(?: · Προγραμματισμένο)?$/).count(),0);
    await unlinked.locator('summary').click();
    if(size==='desktop'||size==='tablet'){
     const layout=await row.evaluate(n=>{const visit=n.children[1].getBoundingClientRect(),context=n.querySelector('[data-visit-context]').getBoundingClientRect();return{right:context.left>=visit.right,aligned:Math.abs(context.top-visit.top)<2}});

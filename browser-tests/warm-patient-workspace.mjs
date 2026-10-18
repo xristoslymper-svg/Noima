@@ -39,14 +39,14 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   assert.equal(styles.canvas,'rgb(248, 245, 239)');assert.equal(styles.ink,'rgb(38, 58, 50)');assert.equal(styles.navigation,'rgba(251, 252, 250, 0.72)');assert.equal(styles.surface,'rgba(251, 252, 250, 0.88)');assert.equal(styles.overflow,false);assert.deepEqual(errors,[]);
   {
    const positions=await page.locator('nav[aria-label="Καρτέλες φακέλου"] > button').evaluateAll(buttons=>buttons.map(b=>Math.round(b.getBoundingClientRect().top)));
-   assert.equal(positions.length,4);assert.equal(new Set(positions).size,1,size+' '+tab+': the four patient tabs occupy one balanced row '+positions.join(','));
+   assert.equal(positions.length,4);assert.equal(new Set(positions).size,size==='sidebar'?2:1,size+' '+tab+': balanced navigation rows '+positions.join(','));
    for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό']){
     const button=page.getByRole('navigation',{name:'Καρτέλες φακέλου'}).getByRole('button',{name:label,exact:true});
     assert.equal(await button.locator('svg').isVisible(),true,label+' retains its visible icon');
     assert.equal(await button.locator('span').last().isVisible(),true,label+' retains its visible label');
    }
-   const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,children:[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().height)}));
-   assert.ok(navBox.height<=Math.max(...navBox.children)+16,'no reserved second navigation row');
+   const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,top:Math.min(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().top)),bottom:Math.max(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().bottom))}));
+   assert.ok(navBox.height<=navBox.bottom-navBox.top+16,'no reserved second navigation row');
   }
   if(tab==='record'){
    assert.equal(await page.locator('.patient-hero .patient-voice-cta').count(),0,'no duplicate start action while writing');

@@ -129,8 +129,9 @@
  .visitSurface>header>button{min-height:44px}
 }
 @container patient-journey (max-width:340px){
- .workspace .tabs>button{font-size:11px;min-height:88px}
- .tabLabel{min-height:42px}
+ .workspace .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .workspace .tabs>button{flex-direction:row;font-size:12px;min-height:58px;gap:8px;padding:8px}
+ .tabLabel{width:auto;min-height:0;overflow-wrap:normal;text-align:left}
 }
 @media(prefers-reduced-motion:reduce){.workspace .tabs>button{transition:none}}
 

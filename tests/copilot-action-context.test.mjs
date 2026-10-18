@@ -8,7 +8,7 @@ const first={id:'10000000-0000-4000-8000-000000000001',first_name:'Same',last_na
 const duplicate={...first,id:'10000000-0000-4000-8000-000000000002'};
 const other={id:'10000000-0000-4000-8000-000000000003',first_name:'Other',last_name:'Person'};
 const compiled=ts.transpileModule(readFileSync('app/api/copilot/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
-function app(intent){
+function app(intent,prepare){
  const seen={understood:[],prepared:[],loaded:[]};const module={exports:{}};
  const mocks={
  '@/lib/pilot/route':{withPilot:f=>f},
@@ -17,8 +17,8 @@ function app(intent){
  '@/lib/overview/record-search':{matchPatients,normalizedName},
  '@/lib/mail/crypto':{seal:JSON.stringify,unseal:JSON.parse},
  '@/lib/copilot/provider':{assertCopilotPrivacy(){}},
- '@/lib/copilot/clinical':{understand:async(q,m)=>{seen.understood.push(structuredClone(m));return {tool:'calendar',patient_name:'',use_current_patient:true,question:q,...intent}}},
- '@/lib/copilot/actions':{prepareAction:async(w,b)=>{seen.prepared.push(b.patient.id);return {proposal:{id:'proposal'},answer:'Confirm first'};}},
+ '@/lib/copilot/clinical':{understand:async(q,m)=>{seen.understood.push(structuredClone(m));return {tool:'calendar',patient_name:'',use_current_patient:true,question:q,...(typeof intent==='function'?intent(q,m):intent)}}},
+ '@/lib/copilot/actions':{prepareAction:async(w,b,q,k,u,pending)=>{seen.prepared.push(b.patient.id);return prepare?prepare(q,k,pending):{proposal:{id:'proposal'},answer:'Confirm first'};}},
  '@/lib/clinical/summary-context':{}
  };
  new Function('require','module','exports',compiled)(name=>mocks[name],module,module.exports);
@@ -52,4 +52,41 @@ test('invalid or inaccessible patient IDs fail before model or action',async()=>
 test('global assistant still asks when no chart or patient context exists',async()=>{
  const a=app({use_current_patient:false}),r=await a.post({});
  assert.match(r.body.answer,/Για ποιον ασθενή/);assert.deepEqual(a.seen.prepared,[]);
+});
+
+test('route carries pending state through αύριο / στις 4 / ναι and clears it at proposal',async()=>{
+ let count=0;
+ const a=app({},(q,k,pending)=>{
+  if(count++===0)return {answer:'Ποια ημερομηνία;',pending_action:{kind:k,turns:[{query:q,answer:'Ποια ημερομηνία;'}],slots:{time:'17:00'},expires:Date.now()+60000}};
+  assert.equal(pending.slots.time,'17:00');return {proposal:{id:'proposal'},answer:'Confirm first'};
+ });
+ const first=await a.post({patient_id:firstPatientId(),query:'κλείσε ραντεβού στις 5'});
+ assert.ok(JSON.parse(first.body.conversation).pending_action);
+ const second=await a.post({patient_id:firstPatientId(),query:'αύριο',conversation:first.body.conversation});
+ assert.ok(second.body.proposal);assert.equal(JSON.parse(second.body.conversation).pending_action,undefined);
+});
+function firstPatientId(){return first.id}
+test('chart switch drops pending action and expiry removes it before model call',async()=>{
+ const pending={kind:'calendar',turns:[],slots:{time:'17:00'},expires:Date.now()+10000};
+ const memory={patient_id:first.id,medication_ids:[],question:'old',pending_action:pending,expires:Date.now()+10000};
+ const a=app({});await a.post({patient_id:other.id,conversation:JSON.stringify(memory)});
+ assert.equal(a.seen.understood[0].pending_action,undefined);
+ const b=app({});await b.post({patient_id:first.id,conversation:JSON.stringify({...memory,pending_action:{...pending,expires:0}})});
+ assert.equal(b.seen.understood[0].pending_action,undefined);
+});
+
+test('ναι after a clarification retains pending context and still requires the execution button',async()=>{
+ const pending={kind:'calendar',turns:[{query:'στις 4',answer:'Εννοείς 16:00;'}],slots:{target_time:'16:00'},expires:Date.now()+60000};
+ const a=app({tool:'clarify',clarification:'Ποια ημερομηνία;'});
+ const r=await a.post({patient_id:first.id,query:'ναι',conversation:JSON.stringify({patient_id:first.id,medication_ids:[],question:'ακύρωσε το αυριανό',pending_action:pending,expires:Date.now()+60000})});
+ assert.equal(r.status,200);assert.equal(JSON.parse(r.body.conversation).pending_action.slots.target_time,'16:00');
+ assert.equal(JSON.parse(r.body.conversation).pending_action.turns.at(-1).query,'ναι');
+ assert.deepEqual(a.seen.prepared,[]);assert.equal(r.body.proposal,undefined);
+});
+
+test('άκυρο discards the pending action without provider calls or proposal',async()=>{
+ const a=app({});
+ const r=await a.post({patient_id:first.id,query:'άκυρο',conversation:JSON.stringify({patient_id:first.id,medication_ids:[],question:'old',pending_action:{kind:'calendar',turns:[],slots:{time:'17:00'},expires:Date.now()+60000},expires:Date.now()+60000})});
+ assert.equal(JSON.parse(r.body.conversation).pending_action,undefined);
+ assert.deepEqual(a.seen.understood,[]);assert.deepEqual(a.seen.prepared,[]);
 });

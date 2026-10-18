@@ -1,7 +1,10 @@
 export const PREVIEW_BRANCH='codex/daily-teleconsultations';
 export const FREE_BUDGET=9000; // Participant minutes; 1000-minute margin below provider allowance.
 export type Appointment={id:string;patient_id:string;session_id:string;status:'scheduled'|'cancelled'|'completed';scheduled_start:string;scheduled_end:string};
-export function previewEnabled(env:Record<string,string|undefined>){return env.VERCEL_ENV==='preview'&&env.VERCEL_GIT_COMMIT_REF===PREVIEW_BRANCH}
+// This gate exposes the memory-only simulation, never a live Daily connection.
+export function previewEnabled(env:Record<string,string|undefined>){
+ return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&[PREVIEW_BRANCH,'codex/teleconsultations-production-demo'].includes(env.VERCEL_GIT_COMMIT_REF||''));
+}
 export function appointmentContext(appointment:Appointment,patientId:string,sessionId:string){
  if(!appointment.id||appointment.patient_id!==patientId||appointment.session_id!==sessionId)throw new Error('Η επίσκεψη δεν ανήκει στο ραντεβού.');
  if(appointment.status!=='scheduled')throw new Error('Το ραντεβού δεν είναι διαθέσιμο για κλήση.');

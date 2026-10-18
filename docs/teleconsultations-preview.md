@@ -1,8 +1,8 @@
 # Teleconsultations preview
-Branch: codex/daily-teleconsultations. No production deployment or database changes.
+The memory-only simulation is available in production and the designated teleconsultation preview branches. Real Daily calls remain disabled. No database changes.
 
 ## Available now
-- Sidebar entry after Library; /teleconsultations is server-gated to this exact Vercel preview branch.
+- Sidebar entry after Library; /teleconsultations is available in production and the designated simulation preview branches.
 - Synthetic appointment linked to one synthetic patient and visit, never written to shared storage.
 - Call-area simulation with explicit labels: no real video/audio or email delivery.
 - Existing FollowupDraftProvider, FollowupField, ContinuityDraft and useClinicalDraft save/recovery mechanism reused. A dependency-injected fixture write replaces only the API persistence in this preview. Normal patient-record default is unchanged.
@@ -28,10 +28,10 @@ No claim of live Daily integration or guaranteed zero-cost production usage is m
 Stitch composition: dark video with internal controls; separate visit/transcript/MSE/risk/continuity cards. Existing StructuredVisitEditor and RiskTreeEditor receive optional in-memory persistence adapters; defaults remain unchanged. Current MSE/risk begin unassessed. Existing followupCompletionIssues runs only after flushing all drafts; synthetic review cannot finalize a real visit.
 
 
-Visit lifecycle: end-call opens the existing editable draft without completing it. Review flushes all editors, validates the same follow-up requirements and captures closure/MSE/risk versions. Explicit registration uses finalizeAndVerify with an in-memory adapter, promoting the same visit/continuity/appointment only after confirmation. No database API calls are made. Failed registration preserves the review and draft; duplicate registration is guarded and completed snapshots are immutable. The synthetic chart shows the final reviewed notes and evaluation, not the initial input. Production integration remains disabled; reload discards this fixture.
+Visit lifecycle: end-call opens the existing editable draft without completing it. Review flushes all editors, validates the same follow-up requirements and captures closure/MSE/risk versions. Explicit registration uses finalizeAndVerify with an in-memory adapter, promoting the same visit/continuity/appointment only after confirmation. No database API calls are made. Failed registration preserves the review and draft; duplicate registration is guarded and completed snapshots are immutable. The synthetic chart shows the final reviewed notes and evaluation, not the initial input. Real-call and persistent-record integration remain disabled; reload discards this fixture.
 
 
 Notes-oriented polish: removed the tall visit title/stepper card; primary visit notes occupy the writing area. Optional chart reference is inline and read-only. Today's existing MSE/risk editors and continuity fields remain mounted under two initially closed native disclosures; missing completion requirements reveal them during review. No clinical fields or requirements were removed or inferred. Same tokens, font, controls and finalization contract.
 
 
-General entry: scheduled and immediate synthetic visits, patient search after two characters, separate retained workspace per session. Returning to the list keeps mounted drafts and completion state in the open page. Invitations use a visibly demo-only, expiring URL fragment carrying only synthetic scope. The exact public guest-preview path is gated server-side to this Vercel preview branch; it renders no chart data and never requests media. The demo link is not an authentication credential, cannot connect Daily, cannot notify/admit a real guest and must never be reused as production authorization. Real invitations still require an authenticated durable invitation/meeting-token service and the real Daily integration.
+General entry: scheduled and immediate synthetic visits, patient search after two characters, separate retained workspace per session. Returning to the list keeps mounted drafts and completion state in the open page. Invitations use a visibly demo-only, expiring URL fragment carrying only synthetic scope. The exact public synthetic guest path is available wherever the simulation is enabled; it renders no chart data and never requests media. The demo link is not an authentication credential, cannot connect Daily, cannot notify/admit a real guest and must never be reused as production authorization. Real invitations still require an authenticated durable invitation/meeting-token service and the real Daily integration.

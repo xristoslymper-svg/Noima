@@ -14,6 +14,8 @@ import type { PatientBundle } from "@/lib/patients/demo-runtime";
 import ClinicalSummary from "@/components/patients/ClinicalSummary";
 import IntakeConflictResolver from '@/components/intake/IntakeConflictResolver';
 import {createRevalidator} from '@/lib/overview/revalidation';
+import PendingTasks from '@/components/overview/PendingTasks';
+import {taskStatusChange,type PendingTask as TodoTask,type TaskPatient} from '@/lib/overview/pending-tasks';
 import {overviewSelectionState, restoreOverviewSelection} from '@/lib/overview/selection';
 
 import {
@@ -40,7 +42,6 @@ import {
   Users,
 } from "lucide-react";
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
-type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
 type OverviewPsychometric={id:string;patient_id:string;patient_name:string;instrument:string;status:string;score:number|null;completed_at:string|null;created_at:string;reviewed_at:string|null;item9_review:boolean;item9_reviewed_at:string|null;intake_id:string|null;provenance:string|null};
 type OverviewIntake={id:string;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"submitted"|"conflict";submitted_at:string|null;created_at:string};
 type ReviewSubmission={key:string;intake_id:string|null;patient_id:string|null;patient_name:string;tools:string[];channel:string;status:"ready"|"conflict";when:string;has_history:boolean;psychometrics:string[];assessmentIds:{id:string;instrument:string}[]};
@@ -72,12 +73,12 @@ export default function Page() {
   const [intakesForReview,setIntakesForReview]=useState<OverviewIntake[]>([]);
   const [conflictIntake,setConflictIntake]=useState<string|null>(null);
   const [widgetOpen,setWidgetOpen]=useState<"payments"|"psychometrics"|"todo"|null>(null);
-  const [taskTitle,setTaskTitle]=useState("");
   const [widgetBusy,setWidgetBusy]=useState(false);
   const [widgetError,setWidgetError]=useState("");
   const [nowMs,setNowMs]=useState(()=>Date.now());
   const [overviewState,setOverviewState]=useState<'loading'|'ready'|'error'>('loading');
   const [overviewRetry,setOverviewRetry]=useState(0);
+  const [overviewRefreshing,setOverviewRefreshing]=useState(false);
   const [overviewRefreshError,setOverviewRefreshError]=useState(false);
   const hasSnapshot=useRef(false),backfillStarted=useRef(false);
   const revalidator=useRef<ReturnType<typeof createRevalidator<OverviewPayload>>|null>(null);
@@ -86,6 +87,7 @@ export default function Page() {
     if(!hasSnapshot.current)setOverviewState('loading');
     const sync=createRevalidator<OverviewPayload>({
       load:async signal=>{
+        setOverviewRefreshing(true);
         const response=await fetch('/api/overview?tester='+encodeURIComponent(tester),{cache:'no-store',signal});
         if(!response.ok)throw new Error('overview_unavailable');
         return await response.json() as OverviewPayload;
@@ -95,10 +97,10 @@ export default function Page() {
         const ids=events.filter(e=>overviewDateKey(new Date(e.scheduled_start))===todayKey&&e.status!=='cancelled'&&e.patient_id).map(e=>e.patient_id!);
         setSchedule(events);setTasks(data.tasks||[]);setPsychometricsForReview(data.psychometrics||[]);setIntakesForReview(data.intakes||[]);
         setSelectedPatientId(current=>current&&ids.includes(current)?current:restoreOverviewSelection(entryState,tester,todayKey,ids)||ids[0]||null);
-        hasSnapshot.current=true;setOverviewState('ready');setOverviewRefreshError(false);setNowMs(Date.now());setBundleRetry(n=>n+1);
+        hasSnapshot.current=true;setOverviewRefreshing(false);setOverviewState('ready');setOverviewRefreshError(false);setNowMs(Date.now());setBundleRetry(n=>n+1);
         if(!backfillStarted.current){backfillStarted.current=true;void fetch('/api/clinical/summary/backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester}),keepalive:true}).catch(()=>{});}
       },
-      error:()=>{if(hasSnapshot.current)setOverviewRefreshError(true);else setOverviewState('error');}
+      error:()=>{setOverviewRefreshing(false);if(hasSnapshot.current)setOverviewRefreshError(true);else setOverviewState('error');}
     });
     revalidator.current=sync;
     const refresh=()=>{void sync.refresh();};
@@ -154,24 +156,29 @@ export default function Page() {
     finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
-  async function addTask(){
-    const title=taskTitle.trim();if(!title||widgetBusy)return;setWidgetBusy(true);setWidgetError("");revalidator.current?.beginMutation();
+  async function addTask(input:{title:string;patient_id:string|null;due_at:string|null}){
+    if(widgetBusy)throw new Error("Περιμένετε να ολοκληρωθεί η προηγούμενη ενέργεια.");
+    setWidgetBusy(true);revalidator.current?.beginMutation();
     try{
-      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"create",title})});
-      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
-      setTasks(current=>[data.task as TodoTask,...current]);setTaskTitle("");
-    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν αποθηκεύτηκε.")}
-    finally{setWidgetBusy(false);revalidator.current?.endMutation()}
+      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"create",...input})});
+      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"Η εργασία δεν αποθηκεύτηκε.");
+      const task=data.task as TodoTask;
+      setTasks(current=>[task,...current.filter(item=>item.id!==task.id)]);
+      return task;
+    }finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
-  async function completeTask(task:TodoTask){
-    if(widgetBusy)return;setWidgetBusy(true);setWidgetError("");revalidator.current?.beginMutation();
+  async function changeTaskStatus(task:TodoTask,status:'open'|'completed'){
+    const action=taskStatusChange(task,status);
+    if(widgetBusy)throw new Error("Περιμένετε να ολοκληρωθεί η προηγούμενη ενέργεια.");
+    setWidgetBusy(true);revalidator.current?.beginMutation();
     try{
-      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),action:"set_status",id:task.id,status:"completed"})});
-      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"task");
-      setTasks(current=>current.map(item=>item.id===task.id?data.task as TodoTask:item));
-    }catch(error){setWidgetError(error instanceof Error?error.message:"Η εργασία δεν ενημερώθηκε.")}
-    finally{setWidgetBusy(false);revalidator.current?.endMutation()}
+      const response=await fetch("/api/tasks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tester:getDemoTesterId(),...action})});
+      const data=await response.json();if(!response.ok||!data.task)throw new Error(data.error||"Η εργασία δεν ενημερώθηκε.");
+      const saved={...task,...data.task} as TodoTask;
+      setTasks(current=>[saved,...current.filter(item=>item.id!==saved.id)]);
+      return saved;
+    }finally{setWidgetBusy(false);revalidator.current?.endMutation()}
   }
 
   return (
@@ -209,7 +216,7 @@ export default function Page() {
             <Metric icon={<CalendarDays />} label="Επόμενα ραντεβού σήμερα" value={overviewState==='ready'?String(upcomingToday.length):'—'} tone="sage" />
             <TodoMetric
               value={overviewState==='ready'?String(openTasks.length):'—'}
-              onOpen={()=>{setWidgetError("");setWidgetOpen("todo")}}
+              onOpen={()=>{setWidgetError("");setWidgetOpen("todo");void revalidator.current?.refresh()}}
             />
             <Metric icon={<TestTube2 />} label="Υποβολές ασθενών" value={overviewState==='ready'?String(reviewSubmissions.length):'—'} tone="gold" onClick={()=>{setWidgetError("");setWidgetOpen("psychometrics")}} />
             <Metric icon={<CreditCard />} label="Πληρωμές" value={overviewState==='ready'?String(pendingPayments.length):'—'} tone="blue" onClick={()=>{setWidgetError("");setWidgetOpen("payments")}} />
@@ -300,20 +307,18 @@ export default function Page() {
             </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν υποβολές ασθενών.</div>}
           </div>}
 
-          {widgetOpen==="todo"&&<>
-            <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder="Τι χρειάζεται να κάνεις;" maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>Προσθήκη</button></div>
-            <div className="dashboard-widget-list">
-              {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
-                <div><strong>{task.title}</strong><span>{task.source_session_id?"Πρόχειρη καταγραφή":"Εργασία"}{task.due_at?" · "+new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
-                {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=record&session="+task.source_session_id} aria-label={"Συνέχεια "+task.title}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={"Ολοκλήρωση "+task.title}><Check size={16}/></button>}
-              </div>):<div className="dashboard-widget-empty">Δεν υπάρχουν εκκρεμότητες.</div>}
-            </div>
-          </>}
+          {widgetOpen==="todo"&&<PendingTasks tasks={openTasks} state={overviewState} refreshing={overviewRefreshing} refreshFailed={overviewRefreshError} busy={widgetBusy} onRefresh={()=>{if(overviewState==='error')setOverviewRetry(n=>n+1);else void revalidator.current?.refresh()}} onCreate={addTask} onStatus={changeTaskStatus} searchPatients={searchTaskPatients}/>}
+
         </section>
       </div>}
       {conflictIntake&&<IntakeConflictResolver intakeId={conflictIntake} onClose={()=>setConflictIntake(null)} onDone={()=>{setConflictIntake(null);setOverviewRetry(x=>x+1)}}/>}
     </main>
   );
+}
+
+async function searchTaskPatients(query:string,signal:AbortSignal):Promise<TaskPatient[]>{
+ const response=await fetch('/api/records/search?tester='+encodeURIComponent(getDemoTesterId())+'&q='+encodeURIComponent(query),{signal,cache:'no-store'});
+ const data=await response.json();if(!response.ok||!Array.isArray(data.patients))throw new Error('patients_unavailable');return data.patients;
 }
 
 function TodoMetric({value,onOpen}:{value:string;onOpen:()=>void}){

@@ -38,6 +38,7 @@ import {
   Stethoscope,
   TestTube2,
   Users,
+  Video,
 } from "lucide-react";
 type OverviewEvent = {id:string;patient_id:string|null;patient_name:string;appointment_type:string;detail:string;scheduled_start:string;scheduled_end:string;readiness:string;readiness_label:string;status:string;payment_status:"unknown"|"pending"|"paid"|"not_applicable"};
 type TodoTask = {id:string;tester_id:string;patient_id:string|null;source_session_id:string|null;title:string;due_at:string|null;status:"open"|"completed";completed_at:string|null;created_at:string;updated_at:string};
@@ -57,6 +58,7 @@ const nav = [
   [CalendarDays, "Ημερολόγιο", "/calendar"],
   [Users, "Ασθενείς", "/patients"],
   [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
+  [Video, "Τηλεσυνεδρίες", "/teleconsultations"],
 ] as const;
 
 export default function Page() {

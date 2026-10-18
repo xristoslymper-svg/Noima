@@ -14,8 +14,8 @@ type Context=Tracking&{draft:Draft;sessionId:string;checkConsistency:(bundle:Pat
 const FollowupContext=createContext<Context|null>(null);
 export function useFollowupDraft(){const context=useContext(FollowupContext);if(!context)throw new Error('Missing follow-up draft provider');return context;}
 
-export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onDirtyChange,children}:{bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;children:ReactNode}&Tracking){
- const draft=useClinicalDraft<ContinuityDraft>({storageKey:session.id+':closure',initial:initialFollowupDraft(session,bundle.sections),version:session.closure_version||0,write:async(value,version)=>{const result=await demoPost({action:'save_closure',session_id:session.id,value,expected_version:version});return {value:result.session.closure_draft,version:result.session.closure_version}},onSaved:reload,onDirty:dirty=>onDirtyChange('closure',dirty)});
+export function FollowupDraftProvider({bundle,session,reload,registerFlusher,onDirtyChange,children,saveClosure}:{saveClosure?:(value:ContinuityDraft,version:number|null)=>Promise<{value:ContinuityDraft;version:number}>;bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;children:ReactNode}&Tracking){
+ const draft=useClinicalDraft<ContinuityDraft>({storageKey:session.id+':closure',initial:initialFollowupDraft(session,bundle.sections),version:session.closure_version||0,write:async(value,version)=>{if(saveClosure)return saveClosure(value,version);const result=await demoPost({action:'save_closure',session_id:session.id,value,expected_version:version});return {value:result.session.closure_draft,version:result.session.closure_version}},onSaved:reload,onDirty:dirty=>onDirtyChange('closure',dirty)});
  useEffect(()=>registerFlusher('closure',draft.flush),[registerFlusher,draft.flush]);
  const [conflicts,setConflicts]=useState<Conflict[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const conflictPanel=useRef<HTMLElement>(null);

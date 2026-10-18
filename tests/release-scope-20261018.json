@@ -621,7 +621,19 @@
       "tests/calendar-google-entry.test.mjs",
       "components/calendar/CalendarConnectionMenu.tsx",
       "components/calendar/CalendarConnectionMenu.module.css",
-      "components/overview/RecordAssistant.module.css"
+      "components/overview/RecordAssistant.module.css",
+      "lib/teleconsultations/policy.ts",
+      "lib/teleconsultations/daily.ts",
+      "lib/teleconsultations/preview.ts",
+      "components/patients/FollowupDraft.tsx",
+      "components/dictation/ClinicalTextField.tsx",
+      "app/teleconsultations/page.tsx",
+      "components/teleconsultations/TeleconsultationsPreview.tsx",
+      "components/teleconsultations/Teleconsultations.module.css",
+      "components/teleconsultations/TeleconsultationsLink.tsx",
+      "app/patients/page.tsx",
+      "app/psychometrics/page.tsx",
+      "app/page.tsx"
     ]
   }
 }

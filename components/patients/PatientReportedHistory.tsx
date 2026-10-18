@@ -1,5 +1,5 @@
 'use client';
-import {useSyntheticChart} from './SyntheticChartContext';
+import {useSyntheticChart,useSyntheticHistoryPreview} from './SyntheticChartContext';
 import {useEffect,useState} from 'react';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import {historyDraftFromAnswers} from '@/lib/intake/history';
@@ -9,9 +9,10 @@ const fields=[['psychiatric_history','Ψυχιατρικό ιστορικό'],['
 const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
 export default function PatientReportedHistory({patientId,compact=false,onOpen}:{patientId:string;compact?:boolean;onOpen?:()=>void}){
  const synthetic=useSyntheticChart();
- const [data,setData]=useState<ReceivedHistory[]>([]);
- const [loading,setLoading]=useState(true);
- const [error,setError]=useState(false);
+ const preview=useSyntheticHistoryPreview();
+ const [liveData,setData]=useState<ReceivedHistory[]>([]);
+ const [liveLoading,setLoading]=useState(true);
+ const [liveError,setError]=useState(false);
  const [retry,setRetry]=useState(0);
  useEffect(()=>{
   if(synthetic){setData([]);setLoading(false);setError(false);return;}
@@ -48,8 +49,12 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   const timer=window.setInterval(refresh,60_000);
   return()=>{controller.abort();window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh);window.clearInterval(timer)};
  },[patientId,retry,compact,synthetic]);
+ const data=synthetic&&preview?preview.records:liveData;
+ const error=synthetic&&preview?preview.unavailable:liveError;
+ const loading=synthetic&&preview?false:liveLoading;
+ const retryLoad=()=>{if(synthetic&&preview)preview.onRetry();else setRetry(x=>x+1)};
  if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
- const failure=error?<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. {data.length>0&&'Εμφανίζονται οι τελευταίες διαθέσιμες απαντήσεις. '}<button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>:null;
+ const failure=error?<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. {data.length>0&&'Εμφανίζονται οι τελευταίες διαθέσιμες απαντήσεις. '}<button type="button" className="patient-reported-link" onClick={retryLoad}>Επανάληψη</button></p>:null;
  if(!data.length&&error)return failure;
  if(!data.length)return compact?null:<p className="patient-reported-muted">Δεν έχει επιστραφεί ακόμη ερωτηματολόγιο ιστορικού.</p>;
  const latest=data[0], h=normalizedPatientHistory(latest.history_answers);

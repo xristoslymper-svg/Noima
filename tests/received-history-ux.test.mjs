@@ -66,3 +66,14 @@ test('missing and negative answers are never promoted to positive safety self-re
   assert.doesNotMatch(patientReportedHighlights(normalizedPatientHistory(raw)).join('\n'),/απόπειρας|αυτοτραυματισμού/);
  }
 });
+
+test('received-history showcase is preview-only and uses synthetic context without transport',()=>{
+ const route=readFileSync('app/patients/demo/received-history-preview/page.tsx','utf8');
+ const demo=readFileSync('components/patients/ReceivedHistoryPreview.tsx','utf8');
+ assert.match(route,/VERCEL_ENV!=='preview'/);
+ assert.match(route,/VERCEL_GIT_COMMIT_REF!=='codex\/patient-journey-on-111'/);
+ assert.match(route,/notFound\(\)/);
+ assert.match(demo,/SyntheticChartContext.Provider value=\{true\}/);
+ assert.match(demo,/PatientReportedHistory/);
+ assert.doesNotMatch(demo,/fetch\(|\/api\/|supabase/);
+});

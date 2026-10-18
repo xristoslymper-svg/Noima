@@ -228,6 +228,29 @@ try{
    assert.equal(requests.length,0,'registry refresh uses reads only');
   });
 
+  await check('synthetic-history-showcase-never-contacts-api',async({page})=>{
+   const apiRequests=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/'))apiRequests.push(r.url())});
+   await page.goto(origin+'/received-history-preview');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});
+   await compact.getByText('Αναφέρει ιστορικό απόπειρας αυτοκτονίας',{exact:true}).waitFor();
+   await compact.getByRole('button',{name:'Όλες οι απαντήσεις →'}).click();
+   const full=page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true});
+   await full.waitFor();
+   await full.getByText('Αναφέρει ιστορικό αυτοτραυματισμού',{exact:true}).waitFor();
+   await page.getByRole('navigation',{name:'Ενότητες επίδειξης'}).getByRole('button',{name:'Σύνοψη',exact:true}).click();
+   await page.getByText('Σενάρια επίδειξης φόρτωσης',{exact:true}).click();
+   await page.getByRole('button',{name:'Αποτυχία αρχικής φόρτωσης',exact:true}).click();
+   await page.getByRole('alert').waitFor();
+   await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await compact.waitFor();
+   await page.getByRole('button',{name:'Αποτυχία ανανέωσης',exact:true}).click();
+   await compact.getByRole('alert').waitFor();
+   assert.match(await compact.innerText(),/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await page.getByRole('alert').waitFor({state:'detached'});
+   assert.deepEqual(apiRequests,[],'every showcase scenario must remain entirely in memory');
+  });
+
  }
 }finally{writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes. Server scoring/RPC tested independently in PGlite.',results,uxFindings},null,2));await browser.close();await new Promise(r=>server.close(r))}
 assert.equal(results.filter(r=>r.status==='failed').length,0,JSON.stringify(results.filter(r=>r.status==='failed')));

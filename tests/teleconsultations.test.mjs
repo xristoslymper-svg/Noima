@@ -79,3 +79,11 @@ test('call and notes modes keep one mounted editor and independent scroll',async
  const css=await readFile('components/teleconsultations/Teleconsultations.module.css','utf8');
  assert.match(css,/position:sticky/);assert.match(css,/overscroll-behavior:contain/);
 });
+
+test('polished workspace has one note source and optional scoped read-only references',async()=>{
+ const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ assert.doesNotMatch(ui,/Αποθηκευμένο συνθετικό προσχέδιο/);
+ assert.match(ui,/Αναφορά φακέλου ασθενή/);
+ assert.match(ui,/row.patient_id===patientId/);
+ assert.match(ui,/role="dialog"/);
+});

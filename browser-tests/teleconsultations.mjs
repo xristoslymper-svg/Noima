@@ -29,12 +29,18 @@ try{
   assert.deepEqual(await field.evaluate(el=>[el.selectionStart,el.selectionEnd]),[8,12]);
   assert.equal(await field.inputValue(),'ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');
   await page.getByRole('heading',{name:'Συνθετική κλήση σε εξέλιξη'}).waitFor();
+  await page.locator('summary').filter({hasText:/^Αποστολή$/}).click();
   await page.getByRole('button',{name:'Αποστολή τεστ',exact:true}).click();
   await page.getByRole('button',{name:'Επιβεβαίωση δοκιμής',exact:true}).click();
+  await page.locator('summary').filter({hasText:/^Αποστολή$/}).click();
   await page.getByRole('button',{name:'Αποστολή ιστορικού',exact:true}).click();
   await page.getByRole('button',{name:'Επιβεβαίωση δοκιμής',exact:true}).click();
   await page.getByText('Δοκιμαστικές αναθέσεις στον ίδιο ασθενή:',{exact:false}).waitFor();
   await page.getByRole('heading',{name:'Συνθετική κλήση σε εξέλιξη'}).waitFor();
+  await page.locator('summary').filter({hasText:'Φάκελος ασθενή'}).click();
+  await page.getByRole('region',{name:'Αναφορά φακέλου ασθενή'}).getByText('Καταγεγραμμένη ενεργή αγωγή',{exact:true}).waitFor();
+  assert.equal(await field.inputValue(),'ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');
+  await page.locator('summary').filter({hasText:'Φάκελος ασθενή'}).click();
   await page.getByRole('button',{name:'Τερματισμός κλήσης',exact:true}).click();
   assert.equal(await field.inputValue(),'ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');
   await page.getByText('Σενάρια συνθετικής δοκιμής',{exact:true}).click();

@@ -199,6 +199,7 @@ try{
    assert.equal(requests.some(r=>['review','save_history','mark_viewed'].includes(r.action)),false);
   });
   await check('registry-refresh-preserves-controls-and-recovers',async({page})=>{
+   await page.clock.install();
    await page.goto(origin+'/patients');
    await page.getByRole('link',{name:/Ira Pira/}).waitFor();
    await page.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('Pira');
@@ -217,7 +218,6 @@ try{
    assert.equal(await page.getByRole('link',{name:/Synthetic Pira/}).count(),1);
    fail=false;await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
    await page.getByRole('alert').waitFor({state:'detached'});
-   await page.clock.install();
    state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000098',first_name:'Polling',registry_number:3});
    await page.clock.runFor(60_100);
    await page.getByRole('link',{name:/Polling Pira/}).waitFor();

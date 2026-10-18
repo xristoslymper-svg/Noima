@@ -4,9 +4,10 @@ import type {PatientBundle} from '../patients/demo-runtime';
 import type {SyntheticChartKey} from './chart-scope.ts';
 export const SYNTHETIC_CHART_PATH='/patients/demo/synthetic-copilot';
 export function syntheticPreviewEnabled(){
- const preview=process.env.VERCEL_ENV==='preview'&&['codex/clinical-copilot-agent','codex/copilot-text-masking','codex/copilot-preview-scope'].includes(process.env.VERCEL_GIT_COMMIT_REF||'');
+ const preview=process.env.VERCEL_ENV==='preview'&&['codex/clinical-copilot-agent','codex/copilot-text-masking'].includes(process.env.VERCEL_GIT_COMMIT_REF||'');
+ const chartPreview=process.env.VERCEL_ENV==='preview'&&process.env.VERCEL_GIT_COMMIT_REF==='codex/copilot-preview-scope'&&['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||'');
  const releasedDemo=process.env.VERCEL_ENV==='production'&&process.env.VERCEL_GIT_COMMIT_REF==='main'&&['demo','synthetic'].includes(process.env.CLINICAL_DATA_MODE||'');
- return (preview||releasedDemo)&&process.env.COPILOT_INTERACTIVE_SYNTHETIC==='true'&&process.env.EXTERNAL_AI_ENABLED!=='false';
+ return (chartPreview||((preview||releasedDemo)&&process.env.COPILOT_INTERACTIVE_SYNTHETIC==='true'))&&process.env.EXTERNAL_AI_ENABLED!=='false';
 }
 export function syntheticPatient(chart:SyntheticChartKey='copilot'){
  if(chart==='treatment')return structuredClone(treatmentFixture) as unknown as PatientBundle;

@@ -131,3 +131,15 @@ test('treatment preview sends its own fixed chart and excludes foreign conversat
  await assert.rejects(async()=>{for await(const event of syntheticAnswer('Πορεία;',null,undefined,'arbitrary')){}},/synthetic_chart_invalid/);
  assert.equal(calls.length,1);
 });
+
+test('new chart preview is branch-scoped, synthetic-only and respects AI off switch',async()=>{
+ const calls=setup([delta,complete]);
+ Object.assign(process.env,{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/copilot-preview-scope',COPILOT_INTERACTIVE_SYNTHETIC:'false'});
+ for await(const event of syntheticAnswer('Αγωγή;',null,undefined,'treatment')){}
+ assert.equal(calls.length,1);
+ for(const patch of [{CLINICAL_DATA_MODE:'real'},{EXTERNAL_AI_ENABLED:'false'},{VERCEL_GIT_COMMIT_REF:'other-branch'}]){
+  Object.assign(process.env,{CLINICAL_DATA_MODE:'synthetic',EXTERNAL_AI_ENABLED:'true',VERCEL_GIT_COMMIT_REF:'codex/copilot-preview-scope'},patch);
+  await assert.rejects(async()=>{for await(const event of syntheticAnswer('Αγωγή;',null,undefined,'treatment')){}},/synthetic_preview_disabled/);
+ }
+ assert.equal(calls.length,1);
+});

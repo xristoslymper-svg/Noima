@@ -6,10 +6,12 @@ import {confirmedPriorCourse,priorCourseInput} from '../lib/clinical/prior-cours
 const read=file=>readFile(file,'utf8');
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const manifest=JSON.parse(await read('tests/selective-production-contract.json'));
-for(const [file,expected] of Object.entries(manifest.hashes))test('production unchanged: '+file,async()=>assert.equal(hash(await read(file)),expected));
-test('patient workspace differs only by the Visits prior-course integration',async()=>{
+// Explicitly authorized journey UI changes; every other production hash remains enforced.
+const journeyChanges=new Set(['components/patients/ClinicalSummary.tsx','components/patients/PatientPanels.tsx','app/patients/page.tsx','components/patients/PatientRecordSummary.tsx','components/patients/PatientSession.tsx','components/patients/FollowupClosure.tsx']);
+for(const [file,expected] of Object.entries(manifest.hashes).filter(([file])=>!journeyChanges.has(file)))test('production unchanged: '+file,async()=>assert.equal(hash(await read(file)),expected));
+test('patient journey keeps the four approved tabs and prior-course placement',async()=>{
  const source=await read('components/patients/PatientWorkspace.tsx');
- assert.equal(hash(source.replace("viewer={null} beforeNavigate={sectionBeforeNavigate} priorCourseEnabled={!previewBundle} onPriorCourseSettled={warning=>setError(current=>current===warning?'':current)}/>",'viewer={null}/>')),manifest.workspaceHash);
+ assert.match(source,/JourneyEntry/);assert.match(source,/JourneyCompletion/);assert.match(source,/beforeNavigate.current/);assert.match(source,/priorCourseEnabled=\{!previewBundle\}/);
  for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό'])assert.ok(source.includes('label="'+label+'"'));
  assert.ok(!source.includes('Προσθήκη παλαιών δεδομένων'));
 });

@@ -1,0 +1,15 @@
+/* Reading and anchors only: inherit the existing patient palette and components. */
+.sectionLinks { display:flex;flex-wrap:wrap;gap:8px 20px;margin:0 0 16px; }
+.sectionLinks a { text-decoration:none; }
+.sectionLinks a:focus-visible { outline:2px solid currentColor;outline-offset:4px; }
+.contactLine { display:flex;flex-wrap:wrap;gap:8px 24px;margin:12px 0 4px;overflow-wrap:anywhere;font-size:13px;line-height:1.6; }
+.anchor { scroll-margin-top:24px;min-width:0; }
+.notesReading { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0; }
+.notesReading article { min-width:0;padding:14px;border:1px solid var(--patient-line,var(--line));border-radius:12px;background:var(--patient-card); }
+.notesReading strong { font-size:13px; }
+.notesReading p { white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;margin:8px 0 0; }
+@media(max-width:700px){ .notesReading { grid-template-columns:minmax(0,1fr); } }
+
+.briefText p { font-size:14px;line-height:1.65;max-width:78ch;overflow-wrap:anywhere; }
+.briefFooter { display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-top:14px;font-size:12px; }
+.briefFooter a { display:block;margin-top:8px; }

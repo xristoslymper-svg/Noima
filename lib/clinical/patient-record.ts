@@ -3,7 +3,7 @@ import {effectiveRisk} from './corrections.ts';
 import {assessmentLink,assessmentLinkLabel} from './assessment-link.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 
-export type RecordEvent={id:string;kind:'visits'|'treatment'|'measurements';date:string;title:string;detail:string;sessionId?:string;assessmentId?:string;scheduled?:boolean;recordedAt?:string};
+export type RecordEvent={id:string;kind:'visits'|'treatment'|'measurements';date:string;title:string;detail:string;sessionId?:string;assessmentId?:string;scheduled?:boolean;recordedAt?:string;draft?:boolean};
 const eventLabels:Record<string,string>={started:'Έναρξη αγωγής',changed:'Αλλαγή αγωγής',stopped:'Διακοπή αγωγής'};
 const day=(value:string)=>value.length===10?value:new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
 export function completedMeasurements(bundle:PatientBundle,now=new Date()){
@@ -55,7 +55,7 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
 export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
  const record=patientRecord(bundle,now);
  const context=new Map<string,{treatment:RecordEvent[];measurements:{current:PatientBundle['assessments'][number];previous:PatientBundle['assessments'][number]|null}[]}>();
- for(const visit of record.completed)context.set(visit.id,{treatment:[],measurements:[]});
+ for(const visit of bundle.sessions.filter(s=>s.patient_id===bundle.patient.id&&(s.status==='completed'||s.status==='draft')))context.set(visit.id,{treatment:[],measurements:[]});
  const revised=new Set(bundle.medicationRevisions.map(r=>r.event_id));
  const stateText=(state:Record<string,unknown>|null)=>state?[state.dose!==undefined?String(state.dose):'',state.unit?String(state.unit):'',state.frequency?String(state.frequency):''].filter(Boolean).join(' '):'';
  for(const event of bundle.medicationEvents){
@@ -74,4 +74,31 @@ export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
  }
  for(const entry of context.values())entry.treatment.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
  return context;
+}
+
+/** Presentation model only. Draft anchors never become confirmed clinical history. */
+export function patientTimeline(bundle:PatientBundle,now=new Date()){
+ const record=patientRecord(bundle,now),context=visitTimelineContext(bundle,now);
+ const visits:RecordEvent[]=[
+  ...record.events.filter(e=>e.kind==='visits'&&context.has(e.sessionId!)),
+  ...bundle.sessions.filter(s=>s.patient_id===bundle.patient.id&&s.status==='draft').map(s=>({
+   id:'visit-'+s.id,kind:'visits' as const,date:s.started_at,
+   title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση',
+   detail:'Πρόχειρη καταγραφή · δεν έχει οριστικοποιηθεί',sessionId:s.id,draft:true
+  }))
+ ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
+ // Side-effect source links are explicit too; never infer a visit from dates.
+ for(const effect of bundle.medicationSideEffects){
+  if(effect.patient_id!==bundle.patient.id||!effect.session_id)continue;
+  const target=context.get(effect.session_id),event=record.events.find(e=>e.id==='effect-'+effect.id);
+  if(target&&event)target.treatment.push(event);
+ }
+ const grouped=new Set([...context.values()].flatMap(c=>[...c.treatment.map(e=>e.id),...c.measurements.map(m=>'measurement-'+m.current.id)]));
+ const owned=new Set([
+  ...bundle.medicationEvents.filter(e=>e.patient_id===bundle.patient.id).map(e=>'med-'+e.id),
+  ...bundle.medicationSideEffects.filter(e=>e.patient_id===bundle.patient.id).flatMap(e=>['effect-'+e.id,'effect-resolved-'+e.id]),
+  ...bundle.assessments.filter(a=>a.patient_id===bundle.patient.id).map(a=>'measurement-'+a.id)
+ ]);
+ const unlinked=record.events.filter(e=>e.kind!=='visits'&&owned.has(e.id)&&!grouped.has(e.id));
+ return {visits,context,unlinked};
 }

@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'components/patients/**'
+      - 'app/patients/page.tsx'
+      - 'lib/intake/patient-report.ts'
       - 'components/dictation/**'
       - 'app/*.css'
       - 'app/layout.tsx'

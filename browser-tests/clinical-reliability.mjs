@@ -12,7 +12,7 @@ const patientId=seed.patient.id,visitId='20000000-0000-4000-8000-000000000012',a
 const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 let state,requests,completionMode;
 function reset(){
- state=structuredClone(seed);requests=[];completionMode='ok';state.clinical_day=day();
+ state=structuredClone(seed);state.intakes=[];state.registry=[{...state.patient,registry_number:1,status:'active',note:'',chief_complaint:'',diagnosis:null}];requests=[];completionMode='ok';state.clinical_day=day();
  state.sessions=state.sessions.filter(s=>s.status==='completed');
  const first=state.sessions[0],now=new Date().toISOString();
  const current={...first,id:visitId,status:'draft',version:20,closure_version:0,closure_draft:null,continuity:null,started_at:now,updated_at:now,completed_at:null};
@@ -30,7 +30,8 @@ await build({entryPoints:['browser-tests/warm-patient-workspace-fixture.tsx'],bu
 function handle(body){
  requests.push(structuredClone(body));
  const s=state.sessions.find(s=>s.id===body.session_id);
- if(body.action==='list'||body.action==='mark_viewed')return {intakes:[]};
+ if(body.action==='list')return {intakes:state.intakes};
+ if(body.action==='mark_viewed')return {ok:true};
  if(body.action==='review'){const a=state.assessments.find(a=>a.id===body.id);assert.ok(a);a.reviewed_at=new Date().toISOString();return {assessment:a}}
  if(body.action==='update_patient'){
   assert.equal(body.patient_id,patientId);assert.equal(body.expected_updated_at,state.patient.updated_at);
@@ -62,6 +63,7 @@ const server=createServer(async(req,res)=>{
   try{
    if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
    if(req.method!=='GET'){let raw='';for await(const chunk of req)raw+=chunk;return res.end(JSON.stringify(handle(JSON.parse(raw||'{}'))))}
+   if(url.pathname==='/api/patients/demo/runtime'&&!url.searchParams.has('patient'))return res.end(JSON.stringify({patients:state.registry}));
    if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
    if(url.pathname.includes('medications/search'))return res.end(JSON.stringify({items:[]}));
    const sid=url.searchParams.get('session');return res.end(JSON.stringify({bundle:sid?{...state,sessions:state.sessions.filter(s=>s.id===sid)}:state}));
@@ -71,7 +73,7 @@ const server=createServer(async(req,res)=>{
  res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="el"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/fixture.css"><div id="root"></div><script src="/fixture.js"></script></html>');
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
-const browser=await chromium.launch({headless:true});const results=[];
+const browser=await chromium.launch({headless:true});const results=[],uxFindings=[];
 try{
  for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000},mobile:{width:390,height:844}})){
   async function check(name,fn){
@@ -82,6 +84,34 @@ try{
    catch(e){await page.screenshot({path:resolve(out,`${size}-${name}-failed.png`)}).catch(()=>{});writeFileSync(resolve(out,`${size}-${name}-dom.txt`),await page.locator('body').innerText());results.push({name,size,status:'failed',error:e.message,errors});console.error('FAIL',size,name,e.message)}
    finally{await context.close()}
   }
+  await check('journey-tabs-date-and-previous-context',async({page,open,nav})=>{
+   await open('?tab=summary');
+   const navigation=page.getByRole('navigation',{name:'Καρτέλες φακέλου'});
+   for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό'])assert.equal(await navigation.getByRole('button',{name:label,exact:true}).count(),1);
+   assert.equal(await navigation.getByRole('button').count(),4);
+   await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
+   assert.equal(await page.getByText('Καταγραφές και πηγές φακέλου',{exact:true}).count(),1);
+   await page.locator('.patient-voice-cta').click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
+   assert.equal(await page.locator('dialog[open]').count(),0);
+   await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   await nav('Στοιχεία & ιστορικό').click();await nav('Σύνοψη').click();
+   await page.locator('.patient-voice-cta').click();
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
+  });
+  await check('journey-old-draft-and-today-are-explicit-choices',async({page,open})=>{
+   const old=new Date(Date.now()-3*86400000).toISOString();state.sessions.find(s=>s.id===visitId).started_at=old;
+   state.appointments=[{id:'90000000-0000-4000-8000-000000000015',patient_id:patientId,status:'scheduled',appointment_type:'follow_up',scheduled_start:new Date().toISOString(),scheduled_end:new Date(Date.now()+3000000).toISOString(),session_id:null}];
+   await open('?tab=summary');await page.locator('.patient-voice-cta').click();
+   const choices=page.getByRole('region',{name:'Επιλογή συγκεκριμένης επίσκεψης'});await choices.waitFor();
+   assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
+   await choices.getByRole('button',{name:/Συνέχεια προχείρου/}).click();
+   await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);
+   assert.equal(requests.filter(r=>r.action==='start_session').length,0);
+  });
   await check('exact-assessment-and-explicit-review',async({page,open})=>{
    await open(`?tab=psychometrics&assessment=${assessmentId}`);
    const result=page.locator(`[data-assessment-id="${assessmentId}"]`);await result.waitFor();await result.getByText(/13\s*\/\s*27/).waitFor();
@@ -103,11 +133,11 @@ try{
    await page.reload();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(requests.filter(r=>r.action==='start_session').length,0);
   });
   await check('verified-finalization-and-refresh',async({page,open,nav})=>{
-   completionMode='malformed';await open(`?tab=record&session=${visitId}`);const finish=page.getByRole('button',{name:'Οριστικοποίηση καταγραφής',exact:true});await finish.waitFor();await finish.click();
+   completionMode='malformed';await open(`?tab=record&session=${visitId}`);const beginReview=page.getByRole('button',{name:'Έλεγχος πριν την ολοκλήρωση',exact:true});await beginReview.waitFor();await beginReview.click();const finish=page.getByRole('button',{name:'Οριστικοποίηση επίσκεψης',exact:true});await finish.waitFor();await page.screenshot({path:resolve(out,`${size}-journey-review.png`)});assert.equal(requests.filter(r=>r.action==='finalize_session').length,0,'review does not finalize');await finish.click();
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);
-   completionMode='ok';await finish.click();await page.locator('dialog[open]').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');
+   completionMode='ok';await finish.click();await page.locator('.patient-visit-surface:not([hidden])').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');await page.screenshot({path:resolve(out,`${size}-journey-completion.png`)});
    await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();await page.getByRole('heading',{name:'Επισκέψεις',exact:true}).waitFor();const count=state.sessions.filter(s=>s.status==='completed').length;await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).nth(count-1).waitFor();assert.equal(await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).count(),count);
-   await nav('Σύνοψη').click();await page.getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
+   await nav('Σύνοψη').click();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
   });
   await check('second-medication-isolation',async({page,open})=>{
    await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
@@ -115,7 +145,175 @@ try{
    const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);
    await page.reload();await table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'}).waitFor();assert.equal(await table.locator('.med-new-row').count(),0);
   });
+  await check('ux-new-folder-received-history-source-boundaries',async({page,open,nav})=>{
+   state.sessions=[];state.sections=[];state.risks=[];state.medications=[];state.medicationEvents=[];state.medicationSideEffects=[];state.assessments=[];
+   state.intakes=[{id:'70000000-0000-4000-8000-000000000077',status:'submitted',tools:['history'],channel:'email',submitted_at:new Date().toISOString(),history_answers:{reasons:['Άγχος'],duration:'gt1y',current_meds:'yes',current_medication_name:'SYNTHETIC SELF REPORT ONLY',suicide_attempt:'yes',self_harm:'yes'}}];
+   await open('?tab=summary');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});await compact.waitFor();
+   const summaryText=await compact.innerText();
+   assert.match(summaryText,/χωρίς κλινική επιβεβαίωση/);
+   assert.equal(state.sessions.length,0);assert.equal(state.medications.length,0);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'||r.action==='start_session'),false);
+   assert.match(summaryText,/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   assert.match(summaryText,/Αναφέρει ιστορικό αυτοτραυματισμού/);
+   assert.match(summaryText,/χρειάζεται κλινική συνεκτίμηση/);
+   const viewed=page.waitForResponse(response=>response.url().endsWith('/api/intake')&&response.request().postDataJSON()?.action==='mark_viewed');
+   await compact.getByRole('button',{name:'Όλες οι απαντήσεις →',exact:true}).click();
+   await page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true}).waitFor();
+   const full=page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true});
+   assert.match(await full.innerText(),/Αναφέρει ιστορικό απόπειρας/);assert.match(await full.innerText(),/Αναφέρει ιστορικό αυτοτραυματισμού/);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'),false,'reading history cannot approve or overwrite clinician history');
+   await viewed;
+   assert.equal(requests.some(r=>r.action==='mark_viewed'),true,'full history records a passive read receipt in the synthetic fixture only');
+   await nav('Σύνοψη').click();await compact.waitFor();
+   assert.equal(state.sessions.length,0);assert.equal(state.medications.length,0);
+  });
+  await check('ux-history-list-failure-is-explicit-in-detail',async({page,open,nav})=>{
+   await page.route('**/api/intake',async route=>{
+    const body=route.request().postDataJSON();if(body?.action==='list')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic unavailable intake service'})});
+    return route.continue();
+   });
+   await open('?tab=summary');
+   await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
+   await nav('Στοιχεία & ιστορικό').click();
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
+   assert.equal(await page.getByRole('button',{name:'Επανάληψη',exact:true}).count(),1);
+   assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'),false);
+  });
+
+  await check('received-history-background-failure-and-recovery',async({page,open})=>{
+   state.intakes=[{id:'70000000-0000-4000-8000-000000000078',status:'submitted',tools:['history'],channel:'tablet',submitted_at:new Date().toISOString(),history_answers:{suicide_attempt:'yes',self_harm:'yes'}}];
+   await open('?tab=summary');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});
+   await compact.getByText('Αναφέρει ιστορικό απόπειρας αυτοκτονίας',{exact:true}).waitFor();
+   let fail=true;
+   await page.route('**/api/intake',route=>route.request().postDataJSON()?.action==='list'&&fail?route.fulfill({status:503,json:{error:'synthetic unavailable'}}):route.continue());
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await compact.getByRole('alert').waitFor();
+   assert.match(await compact.innerText(),/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   assert.match(await compact.innerText(),/τελευταίες διαθέσιμες απαντήσεις/);
+   fail=false;
+   const recovered=page.waitForResponse(response=>response.url().endsWith('/api/intake')&&response.request().postDataJSON()?.action==='list'&&response.ok());
+   await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await recovered;
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor({state:'detached'});
+   await compact.getByText('Αναφέρει ιστορικό αυτοτραυματισμού',{exact:true}).waitFor();
+   assert.equal(await compact.getByRole('alert').count(),0);
+   assert.equal(requests.some(r=>['review','save_history','mark_viewed'].includes(r.action)),false);
+  });
+  await check('registry-refresh-preserves-controls-and-recovers',async({page})=>{
+   await page.clock.install();
+   await page.goto(origin+'/patients');
+   await page.locator('.registry-patient-link').filter({hasText:'Ira Pira'}).waitFor();
+   await page.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('Pira');
+   await page.getByRole('button',{name:'Ενεργοί',exact:true}).click();
+   await page.getByRole('combobox',{name:'Ταξινόμηση'}).selectOption('name');
+   state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000099',first_name:'Synthetic',registry_number:2});
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await page.locator('.registry-patient-link').filter({hasText:'Synthetic Pira'}).waitFor();
+   assert.equal(await page.getByRole('searchbox').inputValue(),'Pira');
+   assert.equal(await page.getByRole('button',{name:'Ενεργοί',exact:true}).getAttribute('aria-pressed'),'true');
+   assert.equal(await page.getByRole('combobox',{name:'Ταξινόμηση'}).inputValue(),'name');
+   let fail=true;
+   await page.route('**/api/patients/demo/runtime?*',route=>fail?route.fulfill({status:503,json:{error:'synthetic unavailable'}}):route.continue());
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await page.getByRole('alert').waitFor();
+   assert.equal(await page.locator('.registry-patient-link').filter({hasText:'Synthetic Pira'}).count(),1);
+   fail=false;await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await page.getByRole('alert').waitFor({state:'detached'});
+   state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000098',first_name:'Polling',registry_number:3});
+   await page.clock.runFor(60_100);
+   await page.locator('.registry-patient-link').filter({hasText:'Polling Pira'}).waitFor();
+   assert.equal(requests.length,0,'registry refresh uses reads only');
+  });
+
+  await check('synthetic-history-showcase-never-contacts-api',async({page})=>{
+   const apiRequests=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/'))apiRequests.push(r.url())});
+   await page.goto(origin+'/received-history-preview');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});
+   await compact.getByText('Αναφέρει ιστορικό απόπειρας αυτοκτονίας',{exact:true}).waitFor();
+   await compact.getByRole('button',{name:'Όλες οι απαντήσεις →'}).click();
+   const full=page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true});
+   await full.waitFor();
+   await full.getByText('Αναφέρει ιστορικό αυτοτραυματισμού',{exact:true}).waitFor();
+   await page.getByRole('navigation',{name:'Ενότητες επίδειξης'}).getByRole('button',{name:'Σύνοψη',exact:true}).click();
+   await page.getByText('Σενάρια επίδειξης φόρτωσης',{exact:true}).click();
+   await page.getByRole('button',{name:'Αποτυχία αρχικής φόρτωσης',exact:true}).click();
+   await page.getByRole('alert').waitFor();
+   await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await compact.waitFor();
+   await page.getByRole('button',{name:'Αποτυχία ανανέωσης',exact:true}).click();
+   await compact.getByRole('alert').waitFor();
+   assert.match(await compact.innerText(),/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await page.getByRole('alert').waitFor({state:'detached'});
+   assert.deepEqual(apiRequests,[],'every showcase scenario must remain entirely in memory');
+  });
+
+  await check('history-reading-navigation-and-explicit-edit',async({page,open,nav})=>{
+   state.history={...state.history,psychiatric_history:'QA COMPLETE HISTORY '+('Ολόκληρη κλινική σημείωση. '.repeat(35))+' END OF HISTORY',version:1};
+   await open('?tab=history');
+   const sections=page.getByRole('navigation',{name:'Ενότητες στοιχείων και ιστορικού'});
+   await sections.getByRole('link',{name:'Στοιχεία ασθενή',exact:true}).waitFor();
+   const positions=await page.evaluate(()=>({details:document.querySelector('.patient-demographics').getBoundingClientRect().top,reported:document.querySelector('[aria-label="Αυτοαναφορές ασθενούς"]').getBoundingClientRect().top}));
+   assert.ok(positions.details<positions.reported,'patient details precede unbounded returned histories');
+   await sections.getByRole('link',{name:'Κλινικό ιστορικό',exact:true}).click();
+   await page.locator('.patient-doctor-notes>summary').click();
+   await page.getByText(/QA COMPLETE HISTORY/).waitFor();
+   assert.equal(await page.getByRole('textbox',{name:'Ψυχιατρικό ιστορικό',exact:true}).count(),0,'read mode does not expose editing controls');
+   assert.match(await page.locator('.patient-doctor-notes').innerText(),/END OF HISTORY/);
+   assert.equal(requests.some(r=>r.action==='save_history'),false);
+   await page.getByRole('button',{name:'Επεξεργασία κλινικού ιστορικού',exact:true}).click();
+   await page.getByRole('textbox',{name:'Ψυχιατρικό ιστορικό',exact:true}).fill('QA EDITED HISTORY — preserved across navigation');
+   await page.getByRole('button',{name:'Αποθήκευση σημειώσεων',exact:true}).click();
+   await page.getByRole('button',{name:'Επεξεργασία κλινικού ιστορικού',exact:true}).waitFor();
+   assert.equal(state.history.psychiatric_history,'QA EDITED HISTORY — preserved across navigation');
+   await nav('Σύνοψη').click();await page.getByRole('region',{name:'Κλινική σύνοψη',exact:true}).waitFor();await nav('Στοιχεία & ιστορικό').click();
+   await page.locator('.patient-doctor-notes>summary').click();
+   await page.getByText('QA EDITED HISTORY — preserved across navigation',{exact:true}).waitFor();
+  });
+  await check('brief-summary-keeps-provenance-secondary-and-sources-distinct',async({page,open})=>{
+   const approved=state.sessions.filter(s=>s.status==='completed').slice(0,2);
+   for(const s of approved)s.continuity={...s.continuity,approved_at:s.completed_at,approved_by:'synthetic',pinned_context:'QA SAME ACTIVE CONTEXT'};
+   await open('?tab=summary');
+   const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});await brief.waitFor();
+   await brief.getByText('Δες καρτέλα',{exact:true}).waitFor();
+   const records=page.getByText('Καταγραφές και πηγές φακέλου',{exact:true});
+   assert.equal(await page.locator('details').filter({has:records}).getAttribute('open'),null);
+   assert.equal(requests.some(r=>r.action==='save_history'||r.action==='revise_context'),false);
+   await records.click();
+   const group=page.locator('[data-context-group]').filter({hasText:'QA SAME ACTIVE CONTEXT'});
+   assert.equal(await group.count(),1);
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).count(),2,'both source rows remain in the DOM');
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).first().isVisible(),true);
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),false);
+   await group.locator('summary').click();
+   assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),true);
+  });
+
+  await check('verified-synthesis-is-primary-with-one-provenance-footer',async({page,open})=>{
+   const summaryRequests=[];
+   const source={id:'section:synthetic',kind:'session_section',target:'record',session_id:state.sessions[0].id,record_id:'synthetic',label:'QA SOURCE — available only on request',content:'Synthetic supporting evidence'};
+   const findings=Array.from({length:5},(_,i)=>({key:'synthesis-'+i,origin:'synthesis',text:'QA SYNTHESIS '+i+': Αναφέρει μικρότερη δυσκολία στην καθημερινότητα.',source_ids:[source.id]}));
+   await page.route('**/api/clinical/summary*',route=>{
+    summaryRequests.push(route.request().method());
+    return route.fulfill({json:{card:{date:state.sessions[0].started_at,synthesized:true,notes:[],sources:[source]},findings,mode:'synthesis',context_hash:'fixture'}});
+   });
+   await open('?tab=summary');
+   const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
+   await brief.getByText(findings[0].text,{exact:true}).waitFor();
+   assert.equal(await brief.locator('footer>details>summary').count(),1);
+   assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),false);
+   assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),false);
+   await brief.getByText('Πλήρης σύνθεση',{exact:true}).click();
+   assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),true);
+   await brief.getByText('Δες καρτέλα',{exact:true}).click();
+   assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),true);
+   assert.ok(summaryRequests.length>0);assert.ok(summaryRequests.every(m=>m==='GET'));
+  });
+
  }
-}finally{writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes. Server scoring/RPC tested independently in PGlite.',results},null,2));await browser.close();await new Promise(r=>server.close(r))}
+}finally{writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Actual React/browser + persistent isolated HTTP fixture; no live credentials, patient data, AI, emails or database writes. Server scoring/RPC tested independently in PGlite.',results,uxFindings},null,2));await browser.close();await new Promise(r=>server.close(r))}
 assert.equal(results.filter(r=>r.status==='failed').length,0,JSON.stringify(results.filter(r=>r.status==='failed')));
 console.log(`Passed ${results.length} clinical workflow browser checks.`);

@@ -75,3 +75,16 @@
  .visitSurface :global([data-followup-medication-group] .medication-lean-table td:last-child){grid-column:1/-1}
  .visitSurface :global([data-followup-medication-group] .medication-lean-table tr:last-child){border-bottom:0}
 }
+
+/* Remove legacy layout reservations and nested form surfaces. */
+@media(max-width:760px){.workspace .tabs>details{position:absolute;right:0;top:-54px}}
+.visitSurface :global([data-clinical-followup] .visit-part-surface){background:transparent;border:0;box-shadow:none;border-radius:0;padding:0}
+.visitSurface :global([data-clinical-followup] .visit-part-surface) :global(.visit-part-surface){background:transparent}
+.visitSurface>header{min-height:24px;margin-bottom:4px}
+.editorLayout{max-width:800px}
+.reference{padding-bottom:10px}
+@media(max-width:420px){
+ .reference>details>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px}
+ .reference>details>summary small{grid-column:1;grid-row:2;margin:0}
+ .reference>details>summary:after{grid-column:2;grid-row:1/3}
+}

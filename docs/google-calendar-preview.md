@@ -26,3 +26,6 @@ Enable live routes only after isolation, durable storage and OAuth are verified.
 - https://developers.google.com/workspace/calendar/api/guides/sync
 - https://developers.google.com/workspace/calendar/api/guides/create-events
 - https://developers.google.com/workspace/calendar/api/guides/push
+
+## Explicit connection and conflict choice
+The synthetic UI starts disconnected. A checkbox and explicit connect button enable only the in-memory simulation; connecting does not sync. Conflict review displays both complete time ranges in Europe/Athens, including cancellation. Local/remote choices update both synthetic sides after revision, ETag and slot checks. Postpone preserves both versions. Real OAuth consent and durable conflict application remain disabled/unwired.

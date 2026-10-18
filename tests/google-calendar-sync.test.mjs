@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as crypto from 'node:crypto';
 const modules={};
-for(const name of ['google-sync','google-client','google-runner','google-oauth']){
+for(const name of ['google-sync','google-client','google-runner','google-oauth','google-preview-state']){
  const source=readFileSync('lib/calendar/'+name+'.ts','utf8'),exports={};
  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:path=>path==='node:crypto'?crypto:modules[path.replace('./','')],process,URL,URLSearchParams,fetch,Response,AbortSignal,Date,Map,Set});
  modules[name]=exports;
@@ -112,4 +112,39 @@ test('lost insert response is reconciled on retry; stale local checkpoint is ref
 test('calendar OAuth uses dedicated configuration, PKCE and no email-send scope',()=>{
  const {calendarAuthorization,calendarScopes}=modules['google-oauth'];const result=calendarAuthorization({clientId:'test',clientSecret:'fixture',redirectUri:'https://preview.test/api/calendar/google/callback'}),url=new URL(result.url);
  assert.equal(url.searchParams.get('code_challenge_method'),'S256');assert.equal(url.searchParams.get('access_type'),'offline');assert.equal(url.searchParams.get('state'),result.state);assert.ok(result.verifier.length>=43);assert.ok(!calendarScopes.join(' ').includes('gmail'));
+});
+
+const {createPreviewState,previewReducer:reduce}=modules['google-preview-state'];
+function conflictFixture(){
+ let state=createPreviewState();for(const type of ['connect','sync','local-move','remote-move','sync'])state=reduce(state,{type});return state;
+}
+test('preview connection requires explicit opt-in and does not synchronize on connect',()=>{
+ let state=createPreviewState();state=reduce(state,{type:'sync'});assert.equal(state.connected,false);assert.equal(state.remotes.length,0);
+ state=reduce(state,{type:'connect'});assert.equal(state.connected,true);assert.equal(state.remotes.length,0);
+ state=reduce(state,{type:'sync'});assert.equal(state.remotes.length,1);
+ state=reduce(state,{type:'disconnect'});const previous=JSON.stringify(state.remotes);state=reduce(state,{type:'sync'});assert.equal(JSON.stringify(state.remotes),previous);
+});
+test('both explicit conflict choices reconcile to the chosen slot without duplicates',()=>{
+ for(const choice of ['local','remote']){
+  const state=conflictFixture();assert.ok(state.comparison);
+  const expected=state.comparison[choice];const resolved=reduce(state,{type:'resolve',choice,expected:state.comparison});
+  assert.equal(resolved.local.start,expected.start);assert.equal(remoteSlot(resolved.remotes[0]).start,expected.start);assert.equal(resolved.comparison,null);
+  const again=reduce(resolved,{type:'sync'});assert.equal(again.remotes.length,1);assert.equal(again.comparison,null);
+ }
+});
+test('postponing a conflict preserves both versions and the next sync shows it again',()=>{
+ const state=conflictFixture(),dismissed=reduce(state,{type:'dismiss'});
+ assert.equal(dismissed.local.start,state.local.start);assert.equal(dismissed.remotes[0].start.dateTime,state.remotes[0].start.dateTime);assert.equal(dismissed.comparison,null);
+ assert.ok(reduce(dismissed,{type:'sync'}).comparison);
+});
+test('stale local or remote comparison is refused before applying a choice',()=>{
+ for(const type of ['local-cancel','remote-cancel']){
+  const state=conflictFixture(),changed=reduce(state,{type}),resolved=reduce(changed,{type:'resolve',choice:'local',expected:state.comparison});
+  assert.match(resolved.message,/άλλαξαν/);assert.equal(resolved.local.cancelled,changed.local.cancelled);assert.equal(resolved.remotes[0].status,changed.remotes[0].status);
+ }
+});
+test('cancellation versus moved time is presented and resolves only by explicit choice',()=>{
+ let state=createPreviewState();for(const type of ['connect','sync','local-cancel','remote-move','sync'])state=reduce(state,{type});
+ assert.equal(state.comparison.local.cancelled,true);assert.equal(state.comparison.remote.cancelled,false);
+ for(const choice of ['local','remote']){const resolved=reduce(state,{type:'resolve',choice,expected:state.comparison});assert.equal(resolved.local.cancelled,choice==='local');assert.equal(resolved.remotes[0].status,choice==='local'?'cancelled':'confirmed')}
 });

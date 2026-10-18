@@ -29,3 +29,6 @@ Stitch composition: dark video with internal controls; separate visit/transcript
 
 
 Visit lifecycle: end-call opens the existing editable draft without completing it. Review flushes all editors, validates the same follow-up requirements and captures closure/MSE/risk versions. Explicit registration uses finalizeAndVerify with an in-memory adapter, promoting the same visit/continuity/appointment only after confirmation. No database API calls are made. Failed registration preserves the review and draft; duplicate registration is guarded and completed snapshots are immutable. The synthetic chart shows the final reviewed notes and evaluation, not the initial input. Production integration remains disabled; reload discards this fixture.
+
+
+Notes-oriented polish: removed the tall visit title/stepper card; primary visit notes occupy the writing area. Optional chart reference is inline and read-only. Today's existing MSE/risk editors and continuity fields remain mounted under two initially closed native disclosures; missing completion requirements reveal them during review. No clinical fields or requirements were removed or inferred. Same tokens, font, controls and finalization contract.

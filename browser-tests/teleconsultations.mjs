@@ -17,6 +17,9 @@ try{
   await context.route('**/*',route=>{const url=route.request().url();if(url.includes('/api/')||!url.startsWith(origin)){requests.push(url);return route.abort()}return route.continue()});
   await page.goto(origin);await page.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
   await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
+  const clinicalDetails=page.locator('details').filter({has:page.locator('summary').filter({hasText:'Σημερινή αξιολόγηση'})});
+  const planDetails=page.locator('details').filter({has:page.locator('summary').filter({hasText:'Πλάνο & συνέχεια'})});
+  assert.equal(await clinicalDetails.getAttribute('open'),null);assert.equal(await planDetails.getAttribute('open'),null);
   const field=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});
   await field.fill('ΣΥΝΘΕΤΙΚΗ ΚΑΤΑΓΡΑΦΗ — ίδια επίσκεψη');await field.blur();
   await page.getByText('Αποθηκευμένο στο συνθετικό παράδειγμα',{exact:true}).waitFor();
@@ -57,6 +60,7 @@ try{
   await page.getByRole('button',{name:'Έλεγχος καταγραφής',exact:true}).click();
   await page.getByText('Έλεγχος συνθετικής επίσκεψης',{exact:true}).waitFor();
   assert.ok((await page.getByRole('region',{name:'Σημειώσεις συνδεδεμένης επίσκεψης'}).innerText()).includes('Χρειάζεται'));
+  assert.notEqual(await clinicalDetails.getAttribute('open'),null);assert.notEqual(await planDetails.getAttribute('open'),null);
   const mse=page.locator('.visit-structured.mse');
   assert.equal(await mse.locator('button[aria-pressed="true"]').count(),0);
   const risk=page.locator('.risk-tree-editor');

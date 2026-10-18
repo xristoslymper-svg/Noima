@@ -4,6 +4,7 @@ import {createPortal} from 'react-dom';
 import {Ban,Check,Pencil,Plus,Search,X} from 'lucide-react';
 import type {DemoMedication,PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
+import {useMedicationPost} from './MedicationSaveScope';
 import MedicationFrequency from './MedicationFrequency';
 import {medicationSessionId} from '@/lib/clinical/treatment-plan';
 import {formatClinicDate} from '@/lib/clinic-time';
@@ -36,6 +37,7 @@ function ReadOnlyMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 }
 
 function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,editableEffects,firstAssessment=false,registerFlusher,onDirtyChange,durationLabel}:{medication:DemoMedication;bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>;editableEffects:boolean;durationLabel:(start:string,end?:string|null)=>string}&Tracking){
+ const postMedication=useMedicationPost();
  const [editing,setEditing]=useState(false),[stopping,setStopping]=useState(false),[dose,setDose]=useState(String(m.dose)),[unit,setUnit]=useState(m.unit),[frequency,setFrequency]=useState(m.frequency),[stopDate,setStopDate]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const key='medication-plan:'+m.id;
  const dirty=editing&&(dose!==String(m.dose)||unit!==m.unit||frequency!==m.frequency);
@@ -53,14 +55,14 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
   try{
    const effectiveOn=m.status==='planned'?m.started_at.slice(0,10):today;
    const sameDay=bundle.medicationEvents.find(e=>e.medication_id===m.id&&e.effective_on===effectiveOn&&!bundle.medicationRevisions.some(r=>r.event_id===e.id));
-   await demoPost({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
+   await postMedication({action:'medication_event',replace_id:sameDay?.id||null,event_type:sameDay?.event_type||'changed',expected_version:m.plan_version,medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),dose:numericDose,unit:unit.trim(),frequency:frequency.trim(),effective_on:effectiveOn,reason:sameDay?'Διόρθωση από τον πίνακα αγωγής':''});
    setEditing(false);await reload();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η αλλαγή.')}finally{setSaving(false)}
  }
  async function stopMedication(){
   if(saving||!stopDate)return;
   setSaving(true);setError('');
-  try{await demoPost({action:'medication_stop',medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),effective_on:stopDate,reason:''});setStopping(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν καταγράφηκε η διακοπή.')}finally{setSaving(false)}
+  try{await postMedication({action:'medication_stop',medication_id:m.id,session_id:medicationSessionId(bundle,sessionId),effective_on:stopDate,reason:''});setStopping(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν καταγράφηκε η διακοπή.')}finally{setSaving(false)}
  }
  const start=m.started_at.slice(0,10),end=m.ended_at?.slice(0,10),editable=m.status!=='stopped';
  return <tr className={editing?'med-row-editing':''}>
@@ -75,6 +77,7 @@ function EditableMedicationRow({medication:m,bundle,today,sessionId,reload,edita
 }
 
 function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirtyChange,initialOpen=false,onClose}:{initialOpen?:boolean;onClose?:()=>void;bundle:PatientBundle;today:string;sessionId?:string;reload:()=>Promise<unknown>}&Tracking){
+ const postMedication=useMedicationPost();
  const [open,setOpen]=useState(initialOpen),[name,setName]=useState(''),[dose,setDose]=useState(''),[unit,setUnit]=useState('mg'),[frequency,setFrequency]=useState(''),[start,setStart]=useState(today),[mode,setMode]=useState<'start'|'history'>('start'),[stop,setStop]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [needsAction,setNeedsAction]=useState(false);
  const newRowRef=useRef<HTMLTableRowElement>(null);
@@ -98,8 +101,8 @@ function NewMedicationRow({bundle,today,sessionId,reload,registerFlusher,onDirty
   setSaving(true);setError('');
   try{
    const linkedSession=medicationSessionId(bundle,sessionId);
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),started_on:start,stopped_on:stop,reason:''});
-   else await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),effective_on:start,reason:''});
+   if(mode==='history')await postMedication({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),started_on:start,stopped_on:stop,reason:''});
+   else await postMedication({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name:name.trim(),dose:numericDose,unit:unit.trim()||'mg',frequency:frequency.trim(),effective_on:start,reason:''});
    reset();await reload();
   }catch(cause){setError(cause instanceof Error?cause.message:'Δεν προστέθηκε η αγωγή.')}finally{setSaving(false)}
  }
@@ -189,6 +192,7 @@ function DraftSideEffect({effect,medication,sessionId,reload,registerFlusher,onD
 }
 
 function SideEffectEntry({medication,bundle,sessionId,today,reload,registerFlusher,onDirtyChange}:{medication:DemoMedication;bundle:PatientBundle;sessionId?:string;today:string;reload:()=>Promise<unknown>}&Tracking){
+ const postMedication=useMedicationPost();
  const [open,setOpen]=useState(false),[text,setText]=useState(''),[severity,setSeverity]=useState(''),[date,setDate]=useState(today),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const key='medication-effect:'+medication.id,pending=open&&Boolean(text.trim()||severity||date!==today)||saving;
  const guard=useCallback(async()=>{if(pending)throw new Error('Ολοκλήρωσε ή ακύρωσε την παρενέργεια του '+medication.medication_name+'.')},[pending,medication.medication_name]);
@@ -197,7 +201,7 @@ function SideEffectEntry({medication,bundle,sessionId,today,reload,registerFlush
  async function save(){
   if(saving||text.trim().length<2||!severity||!date)return;
   setSaving(true);setError('');
-  try{await demoPost({action:'medication_side_effect',medication_id:medication.id,session_id:medicationSessionId(bundle,sessionId),effect:text,severity,noted_on:date});setText('');setSeverity('');setDate(today);setOpen(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η παρενέργεια.')}finally{setSaving(false)}
+  try{await postMedication({action:'medication_side_effect',medication_id:medication.id,session_id:medicationSessionId(bundle,sessionId),effect:text,severity,noted_on:date});setText('');setSeverity('');setDate(today);setOpen(false);await reload()}catch(cause){setError(cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η παρενέργεια.')}finally{setSaving(false)}
  }
  const cancel=()=>{setText('');setSeverity('');setDate(today);setError('');setOpen(false)};
  if(!open)return <button type="button" className="med-add-effect" onClick={()=>setOpen(true)}><Plus size={12}/> {sessionId?'Παρενέργεια':'Καταγραφή ανεπιθύμητης ενέργειας'}</button>;

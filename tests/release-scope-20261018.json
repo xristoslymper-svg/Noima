@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -569,7 +569,8 @@
       "tests/smooth-record.test.mjs",
       "lib/clinical/medication-lineage.ts",
       "lib/clinical/patient-record.ts",
-      "tests/performance-reads.test.mjs"
+      "tests/performance-reads.test.mjs",
+      "components/patients/MedicationSaveScope.tsx"
     ]
   }
 }

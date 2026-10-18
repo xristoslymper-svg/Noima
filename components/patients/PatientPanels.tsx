@@ -4,6 +4,7 @@ import { Check, Pencil, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
 import {useClinicalDraft} from './useClinicalDraft';
 import MedicationTimeline from './MedicationTimeline';
+import {useMedicationPost} from './MedicationSaveScope';
 import MedicationTable from './MedicationTable';
 import {medicationSessionId} from '@/lib/clinical/treatment-plan';
 import MedicationFrequency from './MedicationFrequency';
@@ -119,6 +120,7 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
  </section>
 }
 export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,initialMedicationId}:{bundle:PatientBundle;sessionId?:string;initialMode?:'start'|'history'|'change'|'stop'|'side_effect';initialMedicationId?:string;onClose:()=>void;onSaved:()=>Promise<unknown>}){
+ const postMedication=useMedicationPost();
  const active=bundle.medications.filter(x=>x.status==='active');
  const [mode,setMode]=useState<'start'|'history'|'change'|'stop'|'side_effect'>(initialMode||(active.length?'change':'start'));
  const selectable=mode==='side_effect'?bundle.medications:bundle.medications.filter(x=>x.status==='active'||x.status==='planned');
@@ -156,11 +158,11 @@ export function MedicationModal({bundle,onClose,onSaved,sessionId,initialMode,in
   let committed=false;
   try{
    const linkedSession=medicationSessionId(bundle,sessionId);
-   if(mode==='history')await demoPost({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,started_on:effective,stopped_on:stopped,reason});
-   if(mode==='start')await demoPost({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='change')await demoPost({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,dose:Number(dose),unit,frequency,effective_on:effective,reason});
-   if(mode==='stop')await demoPost({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,effective_on:effective,reason});
-   if(mode==='side_effect')await demoPost({action:'medication_side_effect',medication_id:medId,session_id:linkedSession,effect,severity,impact,noted_on:effective,note:reason});
+   if(mode==='history')await postMedication({action:'medication_history',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,started_on:effective,stopped_on:stopped,reason});
+   if(mode==='start')await postMedication({action:'medication_start',patient_id:bundle.patient.id,session_id:linkedSession,name,dose:Number(dose),unit,frequency,effective_on:effective,reason});
+   if(mode==='change')await postMedication({action:'medication_event',replace_id:sameDayEvent?.id||null,event_type:sameDayEvent?.event_type||'changed',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,dose:Number(dose),unit,frequency,effective_on:effective,reason});
+   if(mode==='stop')await postMedication({action:'medication_event',event_type:'stopped',expected_version:selected?.plan_version,medication_id:medId,session_id:linkedSession,effective_on:effective,reason});
+   if(mode==='side_effect')await postMedication({action:'medication_side_effect',medication_id:medId,session_id:linkedSession,effect,severity,impact,noted_on:effective,note:reason});
    committed=true;
    try{await onSaved()}catch{/* mutation is committed; the folder can refresh independently */}
    setTouched(false);onClose();

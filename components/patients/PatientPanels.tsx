@@ -111,7 +111,7 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
    <div><span className="kicker">ΑΓΩΓΗ</span><h2>{currentOnly?'Τρέχουσα αγωγή':'Αγωγή'}</h2></div>
   </div>
   <MedicationTable bundle={currentOnly?{...bundle,medications:bundle.medications.filter(m=>m.status==='active'||m.status==='planned')}:bundle} reload={reload} sessionId={sessionId} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
-  {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}
+  {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} sessionId={sessionId} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}
   <details className="medication-history-details">
    <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
    <MedicationTimeline bundle={bundle} reload={reload} sessionId={sessionId} onVisit={onVisit} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>

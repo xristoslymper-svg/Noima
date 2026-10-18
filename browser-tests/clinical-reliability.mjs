@@ -344,6 +344,12 @@ try{
    assert.equal(await select.inputValue(),'');
    await select.selectOption(second.id);
    const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
+   await row.getByRole('button',{name:'Καταγραφή ανεπιθύμητης ενέργειας',exact:true}).click();
+   await row.getByRole('textbox',{name:'Νέα παρενέργεια — '+state.medications[0].medication_name,exact:true}).fill('QA LINKED EFFECT');
+   await row.getByRole('combobox',{name:'Βαρύτητα — '+state.medications[0].medication_name,exact:true}).selectOption('mild');
+   await row.locator('.med-inline-effect .primary').click();
+   await row.getByText('QA LINKED EFFECT',{exact:true}).waitFor();
+   assert.equal(requests.find(r=>r.action==='medication_side_effect').session_id,second.id);
    await row.getByRole('button',{name:'Τροποποίηση',exact:true}).click();await row.getByRole('textbox',{name:'Δόση '+state.medications[0].medication_name,exact:true}).fill('75');
    await select.selectOption(visitId);await page.getByRole('alert').filter({hasText:'Ολοκλήρωσε ή ακύρωσε'}).waitFor();
    assert.equal(await select.inputValue(),second.id);

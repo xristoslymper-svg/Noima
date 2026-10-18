@@ -601,7 +601,9 @@
       "lib/clinical/visit-workspace-state.ts",
       "lib/clinical/draft-save-status.ts",
       "tests/clinical-draft-recovery.test.mjs",
-      "tests/safe-visit-drafts.test.mjs"
+      "tests/safe-visit-drafts.test.mjs",
+      "components/patients/StructuredVisitEditor.tsx",
+      "components/patients/RiskTreeEditor.tsx"
     ]
   }
 }

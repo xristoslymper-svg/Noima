@@ -1,3 +1,4 @@
+import {draftSaveStatus} from '../lib/clinical/draft-save-status.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -14,7 +15,7 @@ import * as presentation from '../lib/clinical/mse-presentation.ts';
 function load(file,mocks){
  const mod={exports:{}};
  vm.runInNewContext(ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,{
-  exports:mod.exports,module:mod,require:name=>name==='react'?React:name==='react/jsx-runtime'?jsx:mocks[name]||{},React,Date,Intl,
+  exports:mod.exports,module:mod,require:name=>name==='@/lib/clinical/draft-save-status'?{draftSaveStatus}:name==='react'?React:name==='react/jsx-runtime'?jsx:mocks[name]||{},React,Date,Intl,
  });return mod.exports.default;
 }
 const MseDomain=load('components/patients/MseDomain.tsx',{

@@ -605,7 +605,9 @@
       "components/patients/StructuredVisitEditor.tsx",
       "components/patients/RiskTreeEditor.tsx",
       "browser-tests/clinical-cleanup-fixture.tsx",
-      "browser-tests/clinical-cleanup.mjs"
+      "browser-tests/clinical-cleanup.mjs",
+      "tests/clinical-assessment-layout.test.mjs",
+      "tests/mse-compact-ui.test.mjs"
     ]
   }
 }

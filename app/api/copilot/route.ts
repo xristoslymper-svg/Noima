@@ -23,7 +23,7 @@ const messages:Record<string,string>={
 };
 async function post(req:Request){
  const b=await req.json().catch(()=>null),started=Date.now();
- if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||b.conversation&&typeof b.conversation!=='string')return Response.json({error:'Γράψτε ερώτηση έως 1500 χαρακτήρες.'},{status:400});
+ if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||(b.patient_id!==undefined&&!isClinicalId(b.patient_id))||b.conversation&&typeof b.conversation!=='string')return Response.json({error:'Γράψτε ερώτηση έως 1500 χαρακτήρες.'},{status:400});
  const usage:Usage={calls:0,input_tokens:0,output_tokens:0};
  try{
   assertCopilotPrivacy();
@@ -31,14 +31,22 @@ async function post(req:Request){
   seal({probe:true},'copilot:'+b.tester);
   let memory:Memory|null=null;
   if(b.conversation){if(b.conversation.length>20000)throw new Error('invalid_context');memory=unseal<Memory>(b.conversation,'copilot:'+b.tester);if(memory.expires<Date.now())memory=null;}
-  const intent=await understand(b.query,memory,usage);
-  if(intent.tool==='clarify')return Response.json({answer:intent.clarification||'Διευκρινίστε την ερώτηση. Ο βοηθός δεν συνταγογραφεί ούτε μεταβάλλει κλινικές καταγραφές.',sources:[]});
   const roster=await request('demo_patients?select=id,first_name,last_name&tester_id=eq.'+encodeURIComponent(b.tester)) as SearchPatient[];
-  let matches=intent.patient_name?matchPatients(roster,intent.patient_name):intent.use_current_patient&&memory?roster.filter(p=>p.id===memory!.patient_id):[];
+  const selected=b.patient_id?roster.find(p=>p.id===b.patient_id):undefined;
+  if(b.patient_id&&!selected)return Response.json({error:'Ο φάκελος δεν είναι διαθέσιμος.'},{status:404});
+  // The authenticated roster authorizes scope; model output never selects it.
+  if(selected&&memory?.patient_id!==selected.id)memory={patient_id:selected.id,medication_ids:[],focus_medication_id:null,after:null,question:'',expires:0};
+  const intent=await understand(b.query,memory,usage);
+  if(intent.tool==='clarify')return Response.json({patient:selected,answer:intent.clarification||'Διευκρινίστε την ερώτηση. Ο βοηθός δεν συνταγογραφεί ούτε μεταβάλλει κλινικές καταγραφές.',sources:[]});
+  let matches=intent.patient_name?matchPatients(roster,intent.patient_name):selected?[selected]:intent.use_current_patient&&memory?roster.filter(p=>p.id===memory!.patient_id):[];
   if(intent.patient_name){
    const words=normalizedName(b.query).split(/\s+/);
    const present=normalizedName(intent.patient_name).split(/\s+/).every(term=>words.some(word=>matchPatients([{id:'',first_name:term,last_name:''}],word).length));
    if(!present)matches=[];
+   else if(selected){
+    if(!matches.some(p=>p.id===selected.id))return Response.json({patient:selected,answer:'Η ενέργεια αφορά διαφορετικό ασθενή από τον ανοιχτό φάκελο. Άνοιξε πρώτα τη σωστή καρτέλα.',sources:[]});
+    matches=[selected];
+   }
   }
   if(b.choice_id){if(!isClinicalId(b.choice_id)||!matches.some(p=>p.id===b.choice_id))return Response.json({error:'Η επιλογή δεν αντιστοιχεί στην ερώτηση.'},{status:400});matches=matches.filter(p=>p.id===b.choice_id);}
   if(matches.length!==1)return Response.json({answer:matches.length?'Επίλεξε τον σωστό ασθενή.':'Για ποιον ασθενή; Γράψε το πλήρες καταγεγραμμένο όνομα.',choices:matches.slice(0,12),sources:[]});

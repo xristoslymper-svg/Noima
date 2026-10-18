@@ -39,9 +39,10 @@ export default function TeleconsultationsPreview(){
  const session=bundle.sessions[0];
  async function saveClosure(notes:ContinuityDraft,version:number|null){
   if(fail)throw new Error('Συνθετική αποτυχία αποθήκευσης. Το κείμενο παραμένει στο πεδίο.');
-  const next=saveFixtureNotes(current.current,patientId,sessionId,version,notes);current.current=next;setRecord(next);return {value:next.notes,version:next.version};
+  const next=saveFixtureNotes(current.current,patientId,sessionId,version,notes);current.current=next;setRecord(next);setMessage(previous=>previous.startsWith('Αποθηκεύστε')?'':previous);return {value:next.notes,version:next.version};
  }
  async function closeVisit(){
+  if(inCall){setMessage('Τερματίστε πρώτα την κλήση για να επιστρέψετε στα ραντεβού. Η καταγραφή παραμένει ανοιχτή.');return}
   try{await Promise.all([...flushers.current.values()].map(flush=>flush()));setInCall(false);setOpened(false);setMessage('Το συνθετικό προσχέδιο διατηρήθηκε. Δεν οριστικοποιήθηκε επίσκεψη.')}catch{setMessage('Αποθηκεύστε τις εκκρεμείς αλλαγές πριν κλείσετε την επίσκεψη.')}
  }
  return <main className="app-shell secondary-shell">

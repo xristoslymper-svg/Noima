@@ -1,3 +1,4 @@
+import {withSummarySources} from '../lib/clinical/summary-sources.ts';
 import {providerEvidence} from '../lib/clinical/provider-evidence.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,6 +14,8 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
  const cacheRows=async()=>db.cache?[db.cache]:[];
  const apiRequest=async(path)=>path.startsWith('demo_clinical_summary_cache?')?cacheRows():[];
  const apiRpc=async(name,args)=>{
+  if(name==='demo_prior_course_get')return db.prior||[];
+  if(name==='demo_intake_list')return db.reports||[];
   db.calls??=[];
   db.calls.push({name,args});
   if(name==='demo_clinical_summary_request'){db.requestedHash=args.p_context_hash;return null}
@@ -23,7 +26,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
   }
   throw new Error('unexpected_rpc:'+name);
  };
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:id.includes('clinical-card')?{buildClinicalCard}:id.includes('provider-evidence')?{providerEvidence}:context};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>id.includes('summary-sources')?{withSummarySources}:id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:id.includes('clinical-card')?{buildClinicalCard}:id.includes('provider-evidence')?{providerEvidence}:context};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 const withPresentation=data=>data&&Array.isArray(data.findings)?{...data,findings:data.findings.map(f=>({...f,group_label:f.group_label||'Γενική εικόνα',theme:f.theme||'general'}))}:data;
@@ -129,4 +132,19 @@ test('draft-only and placeholder notes never call the provider or claim generati
   assert.equal(d.mode,'canonical');assert.equal(d.reason,reason);assert.equal(calls,0);assert.equal(db.calls,undefined);
   if(status==='draft')assert.ok(!d.sources.some(s=>s.kind==='session_section'));
  }
+});
+
+test('brief GET returns fresh canonical sources without a provider call or mutation',async()=>{
+ const b=fixture(),db={reports:[{id:'report-1',patient_id:b.patient.id,status:'submitted',tools:['history'],submitted_at:'2026-10-18T08:00:00Z',history_answers:{current_meds:'yes',current_medication_name:'PATIENT REPORT ONLY'},channel:'email'}]};
+ let calls=0;const handler=route(b,async()=>{calls++;throw Error('no provider on read')},{},db);
+ const get=()=>handler.GET(new Request('http://localhost/api/clinical/summary?view=brief&tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id='+b.patient.id));
+ const first=await(await get()).json();assert.equal(first.mode,'canonical');assert.equal(calls,0);assert.ok(first.sources.some(s=>s.kind==='patient_self_report'));assert.equal(db.calls,undefined);
+ db.reports[0].history_answers.current_medication_name='UPDATED REPORT';
+ const next=await(await get()).json();assert.notEqual(next.context_hash,first.context_hash);assert.match(JSON.stringify(next.sources),/UPDATED REPORT/);assert.equal(b.medications.length,0);
+});
+test('source service failure never validates an older synthesis',async()=>{
+ const b=fixture(),db={reports:'unavailable',cache:{context_hash:'old',policy_version:context.SUMMARY_POLICY_VERSION}};
+ const handler=route(b,async()=>{throw Error('must not generate')},{},db);
+ const r=await handler.GET(new Request('http://localhost/api/clinical/summary?view=brief&tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id='+b.patient.id));
+ assert.equal(r.status,503);
 });

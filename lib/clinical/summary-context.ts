@@ -1,9 +1,10 @@
 import {riskFindings,riskFindingLabel} from './risk-findings.ts';
 import {continuityContexts} from './continuity-context.ts';
+import type {SummaryBundle} from './summary-sources.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=24;
+export const SUMMARY_POLICY_VERSION=25;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar';record_id:string};
@@ -143,6 +144,9 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
    target:'sessions',record_id:item.sourceSessionId});
  }
  add({id:'patient:'+bundle.patient.id,kind:'patient_context',label:'Στοιχεία / λόγος προσέλευσης',content:{chief_complaint:bundle.patient.chief_complaint,note:bundle.patient.note,reported_age:bundle.patient.reported_age},target:'history',record_id:bundle.patient.id});
+ const supplement=(bundle as SummaryBundle).summarySupplement;
+ if(supplement?.priorCourse){const p=supplement.priorCourse;add({id:'prior_course:'+p.id,kind:'prior_course',label:'Προηγούμενη κλινική πορεία · αναδρομική καταγραφή θεράποντος',date:p.created_at,content:{attribution:'clinician_retrospective',period:p.period_label,text:p.content,version:p.version},target:'sessions',record_id:p.id});}
+ for(const report of supplement?.reports||[])add({id:'patient_report:'+report.id,kind:'patient_self_report',label:'Αυτοαναφορά ασθενούς · χωρίς κλινική επιβεβαίωση',date:report.submitted_at||undefined,content:{attribution:report.attribution,text:report.content,answers:report.answers},target:'history',record_id:report.id});
  const corrections=sources.filter(s=>s.kind==='structured_correction'||(s.kind==='addendum'&&(s.content as {kind:string}).kind==='correction'));
  const durable=sources.filter(s=>s.kind==='history'||s.kind==='structured_risk'||(s.kind==='session_section'&&durableMention.test(String(s.content))));
  const recentIds=new Set(completed.map(s=>s.id));
@@ -263,6 +267,7 @@ export function validateNarrative(output:unknown,context:SummaryContext):Finding
   if(item.source_ids.some(id=>typeof id!=='string')||new Set(item.source_ids).size!==item.source_ids.length)throw new Error('unsupported_source');
   const sources=item.source_ids.map(id=>context.sources.find(s=>s.id===id));
   if(sources.some(s=>!s))throw new Error('unsupported_source');
+  if(sources.some(s=>s?.kind==='patient_self_report')&&!/(ασθεν|ερωτηματολ|αυτοαναφορ)/iu.test(item.text))throw new Error('invalid_finding');
   for(const source of sources){
    if(source?.session_id&&['session_section','structured_risk'].includes(source.kind)){
     // Narrative corrections need interpretation across the encounter. Structured

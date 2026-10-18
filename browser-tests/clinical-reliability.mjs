@@ -385,6 +385,27 @@ try{
    const score=page.locator('[data-assessment-id="'+assessmentId+'"]');await score.getByText('13 / 27',{exact:false}).waitFor();
   });
 
+
+  await check('smooth-summary-refresh-is-explicit-and-freshness-is-visible',async({page,open})=>{
+   const methods=[];let current='QA CURRENT SYNTHESIS';
+   await page.route('**/api/clinical/summary*',route=>{methods.push(route.request().method());return route.fulfill({json:{mode:route.request().method()==='POST'?'synthesis':'canonical',reason:'summary_pending',context_hash:'current',card:{synthesized:route.request().method()==='POST',notes:[{text:'QA CURRENT RECORDED NOTE',source_ids:[]}],sources:[]},findings:[{origin:'synthesis',text:current,source_ids:[]}]}})});
+   await open('?tab=summary');const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
+   await brief.getByText('Ο φάκελος άλλαξε ή δεν υπάρχει σύνθεση· εμφανίζονται τρέχοντα αποσπάσματα.',{exact:true}).waitFor();
+   assert.ok(methods.length>0&&methods.every(m=>m==='GET'));
+   await brief.getByRole('button',{name:'Ενημέρωση σύνοψης',exact:true}).click();
+   await brief.getByText(current,{exact:true}).waitFor();assert.equal(methods.filter(m=>m==='POST').length,1);
+  });
+  await check('smooth-next-review-keeps-complete-corrected-source',async({page,open})=>{
+   const s=state.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at))[0];
+   const text='QA AGREED REVIEW '+('Συνθετικός επανέλεγχος. '.repeat(25))+' QA REVIEW END';
+   state.corrections.push({id:'qa-review-correction',session_id:s.id,created_at:new Date().toISOString(),patch:{review:{after:text}}});
+   await open('?tab=record&session='+visitId);
+   const reference=page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'});
+   await reference.locator('details>summary').first().click();
+   await reference.getByText(text,{exact:true}).first().waitFor();assert.match(await reference.innerText(),/QA REVIEW END/);
+   assert.equal(requests.filter(r=>r.action==='save_section'||r.action==='save_closure').length,0);
+  });
+
   await check('released-calendar-toolbar-keeps-manual-scheduling',async({page})=>{
    await page.goto(origin+'/calendar');
    await page.getByRole('heading',{name:'Ημερολόγιο',exact:true}).waitFor();

@@ -27,23 +27,23 @@ export default function ClinicalSummary({bundle,compact=false,overview=false,bri
   // A changed patient record (key) or a manual refresh bypasses the passive cooldown.
   if(!force&&retryAfter.current?.key===key&&Date.now()<retryAfter.current.at)return;
   const controller=new AbortController();let active=true;setState('loading');
-  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,readOnly,signal:controller.signal}).then(data=>{
+  void requestClinicalSummary<Result>({patientId:bundle.patient.id,tester:getDemoTesterId(),hash:'',force,readOnly:readOnly&&!force,signal:controller.signal}).then(data=>{
    if(!active)return;
-   const delay=clinicalSummaryRetryDelayMs(data.mode);
+   const delay=readOnly?0:clinicalSummaryRetryDelayMs(data.mode);
    retryAfter.current=delay?{key,at:Date.now()+delay}:null;
    setResult({key,data});setState('ready');
   }).catch(()=>{
    if(!active)return;
-   retryAfter.current={key,at:Date.now()+CLINICAL_SUMMARY_RETRY_DELAY_MS};
+   retryAfter.current={key,at:Date.now()+(readOnly?60000:CLINICAL_SUMMARY_RETRY_DELAY_MS)};
    setState('unavailable');
   });
   return()=>{active=false;controller.abort()};
  },[key,retry,refresh,bundle.patient.id,synthetic,readOnly]);
- const card=state!=='unavailable'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
+ const card=state==='ready'&&result?.key===key?result.data.card:buildClinicalCard(bundle,buildSummaryContext(bundle));
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?'Η σύνθεση θα δημιουργηθεί μετά την ολοκλήρωση της πρώτης επίσκεψης.':reason==='insufficient_notes'?'Οι σημειώσεις είναι σύντομες· εμφανίζονται οι διαθέσιμες καταγραφές, χωρίς επέκταση από το μοντέλο.':reason?'Η αυτόματη σύνθεση δεν είναι διαθέσιμη· εμφανίζονται οι τεκμηριωμένες καταγραφές του φακέλου.':null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
- if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} onRefresh={()=>setRefresh(n=>n+1)}/>;
+ if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} statusText={state==='unavailable'?'Δεν επιβεβαιώθηκε η ενημέρωση της σύνθεσης· εμφανίζονται αποσπάσματα φακέλου.':result?.key===key&&result.data.reason==='summary_pending'?'Ο φάκελος άλλαξε ή δεν υπάρχει σύνθεση· εμφανίζονται τρέχοντα αποσπάσματα.':undefined} onRefresh={()=>setRefresh(n=>n+1)}/>;
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?'ΠΡΙΝ ΤΗΝ ΕΠΙΣΚΕΨΗ':'ΜΕ ΜΙΑ ΜΑΤΙΑ'}</span><h2>{compact?'Σύντομη κλινική εικόνα':'Κλινική εικόνα'}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}

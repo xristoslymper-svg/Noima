@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -556,7 +556,19 @@
       "app/patients/demo/treatment-preview/page.tsx",
       "lib/clinical/treatment-preview.json",
       "tests/patient-measurement-navigation.test.mjs",
-      "tests/medication-entry-isolation.test.mjs"
+      "tests/medication-entry-isolation.test.mjs",
+      "lib/clinical/summary-sources.ts",
+      "lib/clinical/summary-context.ts",
+      "app/api/clinical/summary/route.ts",
+      "lib/clinical/clinical-card.ts",
+      "lib/clinical/summary-request.ts",
+      "components/patients/ClinicalSummary.tsx",
+      "components/patients/BriefClinicalSummary.tsx",
+      "components/patients/PatientJourney.tsx",
+      "tests/summary-route.test.mjs",
+      "tests/smooth-record.test.mjs",
+      "lib/clinical/medication-lineage.ts",
+      "lib/clinical/patient-record.ts"
     ]
   }
 }

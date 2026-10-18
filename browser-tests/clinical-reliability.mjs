@@ -12,7 +12,7 @@ const patientId=seed.patient.id,visitId='20000000-0000-4000-8000-000000000012',a
 const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 let state,requests,completionMode;
 function reset(){
- state=structuredClone(seed);state.intakes=[];requests=[];completionMode='ok';state.clinical_day=day();
+ state=structuredClone(seed);state.intakes=[];state.registry=[{...state.patient,registry_number:1,status:'active',note:'',chief_complaint:'',diagnosis:null}];requests=[];completionMode='ok';state.clinical_day=day();
  state.sessions=state.sessions.filter(s=>s.status==='completed');
  const first=state.sessions[0],now=new Date().toISOString();
  const current={...first,id:visitId,status:'draft',version:20,closure_version:0,closure_draft:null,continuity:null,started_at:now,updated_at:now,completed_at:null};
@@ -63,6 +63,7 @@ const server=createServer(async(req,res)=>{
   try{
    if(url.pathname.includes('summary')){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic AI disabled'}))}
    if(req.method!=='GET'){let raw='';for await(const chunk of req)raw+=chunk;return res.end(JSON.stringify(handle(JSON.parse(raw||'{}'))))}
+   if(url.pathname==='/api/patients/demo/runtime')return res.end(JSON.stringify({patients:state.registry}));
    if(url.pathname==='/api/intake')return res.end(JSON.stringify({intakes:[]}));
    if(url.pathname.includes('medications/search'))return res.end(JSON.stringify({items:[]}));
    const sid=url.searchParams.get('session');return res.end(JSON.stringify({bundle:sid?{...state,sessions:state.sessions.filter(s=>s.id===sid)}:state}));
@@ -153,12 +154,9 @@ try{
    assert.match(summaryText,/χωρίς κλινική επιβεβαίωση/);
    assert.equal(state.sessions.length,0);assert.equal(state.medications.length,0);
    assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'||r.action==='start_session'),false);
-   const hiddenAttempt=!summaryText.includes('Αναφέρει ιστορικό απόπειρας');
-   const hiddenSelfHarm=!summaryText.includes('Αναφέρει ιστορικό αυτοτραυματισμού');
-   if(hiddenAttempt||hiddenSelfHarm){
-    const finding={id:'UX-HISTORY-SAFETY-PREVIEW',size,severity:'high',status:'confirmed',boundary:'received patient history -> compact Summary',hiddenAttempt,hiddenSelfHarm,visibleText:summaryText};
-    uxFindings.push(finding);console.log('UX FINDING',JSON.stringify(finding));
-   }
+   assert.match(summaryText,/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   assert.match(summaryText,/Αναφέρει ιστορικό αυτοτραυματισμού/);
+   assert.match(summaryText,/χρειάζεται κλινική συνεκτίμηση/);
    const viewed=page.waitForResponse(response=>response.url().endsWith('/api/intake')&&response.request().postDataJSON()?.action==='mark_viewed');
    await compact.getByRole('button',{name:'Όλες οι απαντήσεις →',exact:true}).click();
    await page.getByRole('region',{name:'Απαντήσεις ιστορικού από ασθενή',exact:true}).waitFor();
@@ -177,10 +175,53 @@ try{
    });
    await open('?tab=summary');
    await page.getByRole('region',{name:'Προσανατολισμός φακέλου'}).waitFor();
+   await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
    await nav('Στοιχεία & ιστορικό').click();
    await page.getByRole('alert').filter({hasText:'Δεν φορτώθηκαν οι απαντήσεις ασθενούς.'}).waitFor();
    assert.equal(await page.getByRole('button',{name:'Επανάληψη',exact:true}).count(),1);
    assert.equal(requests.some(r=>r.action==='review'||r.action==='save_history'),false);
+  });
+
+  await check('received-history-background-failure-and-recovery',async({page,open})=>{
+   state.intakes=[{id:'70000000-0000-4000-8000-000000000078',status:'submitted',tools:['history'],channel:'tablet',submitted_at:new Date().toISOString(),history_answers:{suicide_attempt:'yes',self_harm:'yes'}}];
+   await open('?tab=summary');
+   const compact=page.getByRole('region',{name:'Ιστορικό ασθενούς',exact:true});
+   await compact.getByText('Αναφέρει ιστορικό απόπειρας αυτοκτονίας',{exact:true}).waitFor();
+   let fail=true;
+   await page.route('**/api/intake',route=>route.request().postDataJSON()?.action==='list'&&fail?route.fulfill({status:503,json:{error:'synthetic unavailable'}}):route.continue());
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await compact.getByRole('alert').waitFor();
+   assert.match(await compact.innerText(),/Αναφέρει ιστορικό απόπειρας αυτοκτονίας/);
+   assert.match(await compact.innerText(),/τελευταίες διαθέσιμες απαντήσεις/);
+   fail=false;await compact.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await compact.getByText('Αναφέρει ιστορικό αυτοτραυματισμού',{exact:true}).waitFor();
+   assert.equal(await compact.getByRole('alert').count(),0);
+   assert.equal(requests.some(r=>['review','save_history','mark_viewed'].includes(r.action)),false);
+  });
+  await check('registry-refresh-preserves-controls-and-recovers',async({page})=>{
+   await page.goto(origin+'/patients');
+   await page.getByRole('link',{name:/Ira Pira/}).waitFor();
+   await page.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('Pira');
+   await page.getByRole('button',{name:'Ενεργοί',exact:true}).click();
+   await page.getByRole('combobox',{name:'Ταξινόμηση'}).selectOption('name');
+   state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000099',first_name:'Synthetic',registry_number:2});
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await page.getByRole('link',{name:/Synthetic Pira/}).waitFor();
+   assert.equal(await page.getByRole('searchbox').inputValue(),'Pira');
+   assert.equal(await page.getByRole('button',{name:'Ενεργοί',exact:true}).getAttribute('aria-pressed'),'true');
+   assert.equal(await page.getByRole('combobox',{name:'Ταξινόμηση'}).inputValue(),'name');
+   let fail=true;
+   await page.route('**/api/patients/demo/runtime?*',route=>fail?route.fulfill({status:503,json:{error:'synthetic unavailable'}}):route.continue());
+   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+   await page.getByRole('alert').waitFor();
+   assert.equal(await page.getByRole('link',{name:/Synthetic Pira/}).count(),1);
+   fail=false;await page.getByRole('button',{name:'Επανάληψη',exact:true}).click();
+   await page.getByRole('alert').waitFor({state:'detached'});
+   await page.clock.install();
+   state.registry.push({...state.registry[0],id:'10000000-0000-4000-8000-000000000098',first_name:'Polling',registry_number:3});
+   await page.clock.runFor(60_100);
+   await page.getByRole('link',{name:/Polling Pira/}).waitFor();
+   assert.equal(requests.length,0,'registry refresh uses reads only');
   });
 
  }

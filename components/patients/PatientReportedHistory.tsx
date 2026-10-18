@@ -36,7 +36,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
       if(seen.ok)viewed=true;
      }catch{/* read receipt is optional; the answers remain accessible */}
     }
-   }catch{if(!controller.signal.aborted&&!silent)setError(true)}
+   }catch{if(!controller.signal.aborted)setError(true)}
    finally{inFlight=false;if(!controller.signal.aborted&&!silent)setLoading(false)}
   };
   void load();
@@ -44,22 +44,27 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   // when the doctor returns to an already open patient folder.
   const refresh=()=>{if(document.visibilityState==='visible')void load(true)};
   window.addEventListener('focus',refresh);
+  document.addEventListener('visibilitychange',refresh);
   const timer=window.setInterval(refresh,60_000);
-  return()=>{controller.abort();window.removeEventListener('focus',refresh);window.clearInterval(timer)};
+  return()=>{controller.abort();window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh);window.clearInterval(timer)};
  },[patientId,retry,compact,synthetic]);
  if(loading)return compact?null:<p className="patient-reported-muted">Φόρτωση απαντήσεων…</p>;
- if(error)return compact?null:<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. <button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>;
+ const failure=error?<p role="alert">Δεν φορτώθηκαν οι απαντήσεις ασθενούς. {data.length>0&&'Εμφανίζονται οι τελευταίες διαθέσιμες απαντήσεις. '}<button type="button" className="patient-reported-link" onClick={()=>setRetry(x=>x+1)}>Επανάληψη</button></p>:null;
+ if(!data.length&&error)return failure;
  if(!data.length)return compact?null:<p className="patient-reported-muted">Δεν έχει επιστραφεί ακόμη ερωτηματολόγιο ιστορικού.</p>;
  const latest=data[0], h=normalizedPatientHistory(latest.history_answers);
  const overview=patientReportedHighlights(h);
  if(compact)return <section className="patient-reported-summary" aria-label="Ιστορικό ασθενούς">
+  {failure}
   <span className="kicker">ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ</span>
   <h2>Ο ασθενής συμπλήρωσε το ιστορικό</h2>
   <p className="patient-reported-muted">Απαντήσεις της {dateLabel(latest.submitted_at)} · αυτοαναφορά ασθενούς κατά τη συμπλήρωση, χωρίς κλινική επιβεβαίωση.</p>
+  {(h.suicide_attempt==='yes'||h.self_harm==='yes')&&<p><strong>Σημαντική αυτοαναφορά ιστορικού · χρειάζεται κλινική συνεκτίμηση.</strong></p>}
   {overview.length>0&&<ul>{overview.slice(0,3).map(item=><li key={item}>{item}</li>)}</ul>}
   {onOpen&&<button type="button" className="patient-reported-link" onClick={onOpen}>Όλες οι απαντήσεις →</button>}
  </section>;
  return <section className="patient-reported-section" aria-label="Απαντήσεις ιστορικού από ασθενή">
+  {failure}
   <div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΣΘΕΝΟΥΣ</span><h2>Απαντήσεις από τον ασθενή</h2><p className="patient-reported-muted">Εμφανίζονται αυτόματα μόλις υποβληθούν. Παραμένουν διακριτές από τις κλινικές σημειώσεις σας.</p></div>
   {data.map((item,index)=>{
    const answers=normalizedPatientHistory(item.history_answers),report=historyDraftFromAnswers(answers),highlights=patientReportedHighlights(answers);

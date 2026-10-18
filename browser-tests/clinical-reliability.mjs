@@ -269,7 +269,7 @@ try{
    await page.getByRole('button',{name:'Αποθήκευση σημειώσεων',exact:true}).click();
    await page.getByRole('button',{name:'Επεξεργασία κλινικού ιστορικού',exact:true}).waitFor();
    assert.equal(state.history.psychiatric_history,'QA EDITED HISTORY — preserved across navigation');
-   await nav('Σύνοψη').click();await nav('Στοιχεία & ιστορικό').click();
+   await nav('Σύνοψη').click();await page.getByRole('region',{name:'Κλινική σύνοψη',exact:true}).waitFor();await nav('Στοιχεία & ιστορικό').click();
    await page.locator('.patient-doctor-notes>summary').click();
    await page.getByText('QA EDITED HISTORY — preserved across navigation',{exact:true}).waitFor();
   });
@@ -290,6 +290,27 @@ try{
    assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),false);
    await group.locator('summary').click();
    assert.equal(await group.getByText('QA SAME ACTIVE CONTEXT',{exact:true}).last().isVisible(),true);
+  });
+
+  await check('verified-synthesis-is-primary-with-one-provenance-footer',async({page,open})=>{
+   const summaryRequests=[];
+   const source={id:'section:synthetic',kind:'session_section',target:'record',session_id:state.sessions[0].id,record_id:'synthetic',label:'QA SOURCE — available only on request',content:'Synthetic supporting evidence'};
+   const findings=Array.from({length:5},(_,i)=>({key:'synthesis-'+i,origin:'synthesis',text:'QA SYNTHESIS '+i+': Αναφέρει μικρότερη δυσκολία στην καθημερινότητα.',source_ids:[source.id]}));
+   await page.route('**/api/clinical/summary*',route=>{
+    summaryRequests.push(route.request().method());
+    return route.fulfill({json:{card:{date:state.sessions[0].started_at,synthesized:true,notes:[],sources:[source]},findings,mode:'synthesis',context_hash:'fixture'}});
+   });
+   await open('?tab=summary');
+   const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
+   await brief.getByText(findings[0].text,{exact:true}).waitFor();
+   assert.equal(await brief.locator('footer>details>summary').count(),1);
+   assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),false);
+   assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),false);
+   await brief.getByText('Πλήρης σύνθεση',{exact:true}).click();
+   assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),true);
+   await brief.getByText('Δες καρτέλα',{exact:true}).click();
+   assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),true);
+   assert.ok(summaryRequests.length>0);assert.ok(summaryRequests.every(m=>m==='GET'));
   });
 
  }

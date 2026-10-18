@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {draftSaveStatus} from '../lib/clinical/draft-save-status.ts';
-import {finalizationIssues,finalizationBlocker} from '../lib/clinical/visit-workspace-state.ts';
+import {finalizationIssues,finalizationBlocker,followupCompletionIssues} from '../lib/clinical/visit-workspace-state.ts';
 test('save status distinguishes failure, in-flight, pending and clean navigation',()=>{
  assert.match(draftSaveStatus({saving:false,dirty:false}),/Αποθηκεύτηκαν όλες/);
  assert.match(draftSaveStatus({saving:true,dirty:true}),/Αποθήκευση αλλαγών/);
@@ -24,4 +24,12 @@ test('readiness retains positive-risk and MSE review requirements',()=>{
  const issues=finalizationIssues(current,risk,previous,true);
  assert.match(issues[0].message,/θετικό ιδεασμό/);
  assert.ok(issues.some(i=>i.anchor==='mse'&&i.message.includes('δεν ελέγχθηκαν')));
+});
+
+test('follow-up readiness includes the four fields already required by server completion',()=>{
+ const sections=[{section_key:'mse',content:'today'}],risk={suicidal_ideation:'negative'};
+ const blank={clinical_state_summary:'',treatment_decision:'',next_review_focus:'',adherence:''};
+ const issues=followupCompletionIssues(blank,sections,risk);
+ assert.equal(issues.length,4);assert.ok(issues.some(i=>i.anchor==='medication'));
+ assert.deepEqual(followupCompletionIssues(Object.fromEntries(Object.keys(blank).map(k=>[k,'recorded'])),sections,risk),[]);
 });

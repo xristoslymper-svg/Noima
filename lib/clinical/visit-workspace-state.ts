@@ -137,3 +137,12 @@ export function previousMseReference(bundle:PatientBundle|null,sessionId:string,
  const section=correctedSection(bundle,raw);
  return {session,section,addenda:bundle.addenda.filter(a=>a.session_id===session.id)};
 }
+
+export function followupCompletionIssues(value:{clinical_state_summary:string;treatment_decision:string;next_review_focus:string;adherence:string},sections:Parameters<typeof finalizationIssues>[0],risk?:DemoRisk,previousMse?:VisitDocument|null){
+ const projected=[...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))];
+ const issues=finalizationIssues(projected,risk,previousMse);
+ for(const [field,anchor,label] of [['clinical_state_summary','clinical','Κλινική εικόνα'],['treatment_decision','clinical','Απόφαση / παρεμβάσεις'],['next_review_focus','clinical','Τι θα επανεκτιμηθεί'],['adherence','medication','Λήψη αγωγής']] as const){
+  if(!value[field].trim())issues.push({anchor,message:'Χρειάζεται καταγραφή: '+label+'.'});
+ }
+ return issues;
+}

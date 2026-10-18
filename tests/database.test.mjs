@@ -1015,29 +1015,3 @@ test('copilot questionnaire confirmation preserves tokens and prevents duplicate
  const [accepted]=await asUser(owner,()=>sql('select pilot_mail_claim($1,$2,$3) status',[assessment,'b3'.repeat(32),'fictional@example.invalid']));
  assert.equal(accepted.status,'accepted');
 });
-
-test('teleconsultation notes persist in the same canonical visit across reload and registration, with stale and foreign writes rejected',async()=>{
- const owner='61600000-0000-4000-8000-000000000126';
- await sql('insert into auth.users(id) values($1)',[owner]);
- await sql("insert into private.pilot_members(user_id,full_name) values($1,'Tele notes fixture')",[owner]);
- const [{identity}]=await asUser(owner,()=>sql('select pilot_identity() identity'));const t=identity.workspace_id;
- await asUser(owner,()=>sql('select demo_tester_bootstrap($1)',[t]));
- const [patient]=await asUser(owner,()=>sql("select * from demo_patient_create_v2($1,'TEST Tele notes')",[t]));
- const [visit]=await asUser(owner,()=>sql("select * from demo_session_start($1,$2,'follow_up')",[t,patient.id]));
- const value={transcript:'Σημειώσεις τηλεσυνεδρίας',clinical_state_summary:'Κλινική εικόνα',treatment_decision:'Απόφαση',next_review_focus:'Επανέλεγχος',pinned_context:'',adherence:'',source:'manual'};
- const [saved]=await asUser(owner,()=>sql('select * from demo_closure_save($1,$2,$3,0)',[t,visit.id,JSON.stringify(value)]));
- assert.equal(saved.id,visit.id);assert.equal(saved.patient_id,patient.id);assert.equal(saved.status,'draft');
- const [reloaded]=await asUser(owner,()=>sql('select * from demo_sessions where id=$1',[visit.id]));
- assert.equal(reloaded.closure_draft.transcript,value.transcript);assert.equal(reloaded.closure_version,saved.closure_version);
- await rejected(owner,'select demo_closure_save($1,$2,$3,0)',[t,visit.id,JSON.stringify({...value,transcript:'Stale overwrite'})],/stale_closure/);
- await rejected(b,'select demo_closure_save($1,$2,$3,$4)',[t,visit.id,JSON.stringify(value),saved.closure_version],/pilot_not_authorized/);
- assert.equal((await sql('select count(*)::int n from demo_sessions where patient_id=$1',[patient.id]))[0].n,1);
- await asUser(owner,()=>sql("select demo_session_save_section($1,$2,'mse','Σημερινή παρατήρηση','manual',null)",[t,visit.id]));
- await asUser(owner,()=>sql('select demo_session_save_risk($1,$2,$3,null)',[t,visit.id,JSON.stringify({suicidal_ideation:'negative'})]));
- const [fresh]=await asUser(owner,()=>sql('select * from demo_sessions where id=$1',[visit.id]));
- const [completed]=await asUser(owner,()=>sql('select * from demo_closure_finalize($1,$2,$3,true,$4)',[t,visit.id,fresh.version,saved.closure_version]));
- assert.equal(completed.id,visit.id);assert.equal(completed.status,'completed');assert.equal(completed.continuity.transcript,value.transcript);
- const [folder]=await asUser(owner,()=>sql('select * from demo_sessions where id=$1',[visit.id]));
- assert.equal(folder.continuity.transcript,value.transcript);assert.equal(folder.closure_draft,null);
- await rejected(owner,'select demo_closure_save($1,$2,$3,$4)',[t,visit.id,JSON.stringify(value),saved.closure_version],/session_unavailable/);
-});

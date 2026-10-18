@@ -100,7 +100,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  </section>
 }
 
-export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false,sessionId}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;currentOnly?:boolean;sessionId?:string}){
+export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false,sessionId,onVisit}:{onVisit?:(id:string)=>void;bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;currentOnly?:boolean;sessionId?:string}){
  const flushers=useRef(new Map<string,()=>Promise<void>>()),dirty=useRef(new Set<string>());
  const registerFlusher=useCallback((key:string,flush:()=>Promise<void>)=>{flushers.current.set(key,flush);return()=>{if(flushers.current.get(key)===flush)flushers.current.delete(key)}},[]);
  const onDirtyChange=useCallback((key:string,value:boolean)=>{if(value)dirty.current.add(key);else dirty.current.delete(key)},[]);
@@ -114,7 +114,7 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
   {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}
   <details className="medication-history-details">
    <summary>Ιστορικό αλλαγών <span>{bundle.medicationEvents.length||''}</span></summary>
-   <MedicationTimeline bundle={bundle} reload={reload} sessionId={sessionId} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
+   <MedicationTimeline bundle={bundle} reload={reload} sessionId={sessionId} onVisit={onVisit} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   </details>
  </section>
 }

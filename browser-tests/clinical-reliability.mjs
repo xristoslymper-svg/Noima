@@ -362,7 +362,7 @@ try{
    await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();await page.getByText('QA EXPLICIT UNLINKED',{exact:true}).waitFor();
    assert.equal(requests.find(r=>r.action==='medication_start').session_id,null);
   });
-  await check('treatment-stale-selected-draft-blocks-write',async({page,open,nav})=>{
+  await check('treatment-completed-draft-not-offered-after-refresh',async({page,open,nav})=>{
    await open('?tab=treatment');await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).selectOption(visitId);
    state.sessions.find(s=>s.id===visitId).status='completed';
    await nav('Σύνοψη').click();await nav('Θραπευτικό πλάνο').click();
@@ -376,7 +376,7 @@ try{
    assert.equal(await page.locator('.medication-lean-table').count(),0);
    await page.getByRole('button',{name:'Νέα μέτρηση',exact:true}).click();await page.getByRole('button',{name:'Συμπλήρωση από ασθενή',exact:true}).waitFor();
    assert.equal(requests.length,0);
-   const score=page.locator('[data-assessment-id="'+assessmentId+'"]');await score.getByText(/13\\s*\\/\\s*27/).waitFor();
+   const score=page.locator('[data-assessment-id="'+assessmentId+'"]');await score.getByText('13 / 27',{exact:false}).waitFor();
   });
 
   await check('released-calendar-toolbar-keeps-manual-scheduling',async({page})=>{

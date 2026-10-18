@@ -553,7 +553,10 @@
       "components/patients/MedicationTable.tsx",
       "components/patients/MedicationTimeline.tsx",
       "browser-tests/clinical-reliability.mjs",
-      "app/patients/demo/treatment-preview/page.tsx"
+      "app/patients/demo/treatment-preview/page.tsx",
+      "lib/clinical/treatment-preview.json",
+      "tests/patient-measurement-navigation.test.mjs",
+      "tests/medication-entry-isolation.test.mjs"
     ]
   }
 }

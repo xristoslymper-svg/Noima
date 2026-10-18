@@ -54,6 +54,18 @@ function handle(body){
  if(body.action==='medication_start'){
   const m={id:'40000000-0000-4000-8000-000000000099',patient_id:patientId,medication_name:body.name,dose:body.dose,unit:body.unit,frequency:body.frequency,started_at:body.effective_on,effective_from:body.effective_on,ended_at:null,status:'active',plan_version:1,notes:'',updated_at:new Date().toISOString()};state.medications.push(m);return {medication:m};
  }
+ if(['medication_event','medication_stop','medication_history','medication_side_effect'].includes(body.action)){
+  if(body.session_id)assert.ok(state.sessions.some(s=>s.id===body.session_id&&s.status==='draft'&&s.patient_id===patientId),'only the explicitly selected available draft may receive a write');
+  if(body.action==='medication_side_effect'){const effect={id:crypto.randomUUID(),patient_id:patientId,medication_id:body.medication_id,session_id:body.session_id,effect_text:body.effect,severity:body.severity,noted_on:body.noted_on,resolved_on:null,created_at:new Date().toISOString()};state.medicationSideEffects.push(effect);return {side_effect:effect}}
+  if(body.action==='medication_history')return {medication:{id:crypto.randomUUID()}};
+  const m=state.medications.find(m=>m.id===body.medication_id);assert.ok(m);
+  const before={medication_name:m.medication_name,dose:m.dose,unit:m.unit,frequency:m.frequency};
+  const stopped=body.action==='medication_stop';
+  if(stopped)m.status='stopped';else Object.assign(m,{dose:body.dose,unit:body.unit,frequency:body.frequency});
+  m.plan_version++;
+  state.medicationEvents.push({id:crypto.randomUUID(),patient_id:patientId,medication_id:m.id,session_id:body.session_id,event_type:stopped?'stopped':'changed',previous_state:before,new_state:{...before,dose:m.dose},effective_on:body.effective_on,reason:body.reason,created_at:new Date().toISOString()});
+  return {medication:m};
+ }
  throw new Error('Unexpected synthetic action: '+body.action);
 }
 const server=createServer(async(req,res)=>{
@@ -312,6 +324,86 @@ try{
    await brief.getByText('Δες καρτέλα',{exact:true}).click();
    assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),true);
    assert.ok(summaryRequests.length>0);assert.ok(summaryRequests.every(m=>m==='GET'));
+  });
+
+
+  await check('treatment-confirmed-plan-and-visit-source',async({page,open})=>{
+   const s=state.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at))[0];
+   state.sections=state.sections.filter(x=>x.session_id!==s.id||!['plan','review'].includes(x.section_key));
+   state.sections.push({id:'qa-plan',session_id:s.id,section_key:'plan',content:'QA CONFIRMED PLAN',version:1},{id:'qa-review',session_id:s.id,section_key:'review',content:'QA NEXT REVIEW',version:1});
+   await open('?tab=treatment');const plan=page.getByRole('region',{name:'Τελευταίο επιβεβαιωμένο πλάνο'});
+   await plan.getByText('QA CONFIRMED PLAN',{exact:true}).waitFor();await plan.getByText('QA NEXT REVIEW',{exact:true}).waitFor();
+   assert.equal(requests.length,0);
+   await plan.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
+   await page.locator('.patient-visit-surface:not([hidden])').waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('session'),s.id);
+  });
+  await check('treatment-multiple-drafts-explicit-association-and-unsaved-guard',async({page,open})=>{
+   const original=state.sessions.find(s=>s.id===visitId);const second={...original,id:'20000000-0000-4000-8000-000000000088',started_at:new Date(Date.now()-86400000).toISOString()};state.sessions.push(second);
+   await open('?tab=treatment');const select=page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'});
+   assert.equal(await select.inputValue(),'');
+   await select.selectOption(second.id);
+   const row=page.locator('.medication-lean-table tbody tr').filter({hasText:state.medications[0].medication_name}).first();
+   await row.getByRole('button',{name:'Παρενέργεια',exact:true}).click();
+   await row.getByRole('textbox',{name:'Νέα παρενέργεια — '+state.medications[0].medication_name,exact:true}).fill('QA LINKED EFFECT');
+   await row.getByRole('combobox',{name:'Βαρύτητα — '+state.medications[0].medication_name,exact:true}).selectOption('mild');
+   await row.locator('.med-inline-effect .primary').click();
+   await row.getByText('QA LINKED EFFECT',{exact:true}).waitFor();
+   assert.equal(requests.find(r=>r.action==='medication_side_effect').session_id,second.id);
+   await row.getByRole('button',{name:'Τροποποίηση',exact:true}).click();await row.getByRole('textbox',{name:'Δόση '+state.medications[0].medication_name,exact:true}).fill('75');
+   await select.selectOption(visitId);await page.getByRole('alert').filter({hasText:'Ολοκλήρωσε ή ακύρωσε'}).waitFor();
+   assert.equal(await select.inputValue(),second.id);
+   await row.getByRole('button',{name:'Αποθήκευση',exact:true}).click();
+   await row.getByRole('button',{name:'Τροποποίηση',exact:true}).waitFor();
+   const write=requests.find(r=>r.action==='medication_event');assert.ok(write);assert.equal(write.session_id,second.id);
+   await select.selectOption('');await page.getByRole('alert').waitFor({state:'detached'});
+   await row.getByRole('button',{name:'Διακοπή',exact:true}).click();await row.getByRole('button',{name:'Επιβεβαίωση διακοπής',exact:true}).click();
+   await page.getByText('Παλαιότερη αγωγή',{exact:true}).waitFor();assert.equal(requests.find(r=>r.action==='medication_stop').session_id,null);
+  });
+  await check('treatment-new-medication-never-infers-an-open-draft',async({page,open})=>{
+   await open('?tab=treatment');await page.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
+   await page.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA EXPLICIT UNLINKED');
+   const row=page.locator('.med-new-row');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('25');
+   await row.getByRole('button',{name:'Πρωί',exact:true}).click();
+   await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();await page.getByText('QA EXPLICIT UNLINKED',{exact:true}).waitFor();
+   assert.equal(requests.find(r=>r.action==='medication_start').session_id,null);
+  });
+  await check('treatment-completed-draft-not-offered-after-refresh',async({page,open,nav})=>{
+   await open('?tab=treatment');await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).selectOption(visitId);
+   state.sessions.find(s=>s.id===visitId).status='completed';
+   await page.reload();await page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'}).waitFor();
+   // A remounted treatment panel resets to unlinked; stale sessions are never offered.
+   const select=page.getByRole('combobox',{name:'Σύνδεση αλλαγών αγωγής με επίσκεψη'});assert.equal(await select.inputValue(),'');
+   assert.equal(await select.locator('option[value="'+visitId+'"]').count(),0);assert.equal(requests.length,0);
+  });
+  await check('treatment-empty-state-and-measurement-source',async({page,open})=>{
+   state.medications=[];state.medicationEvents=[];state.medicationSideEffects=[];
+   await open('?tab=treatment');await page.getByText('Δεν έχει καταγραφεί τρέχουσα ή προγραμματισμένη αγωγή.',{exact:true}).waitFor();
+   assert.equal(await page.locator('.medication-lean-table').count(),0);
+   await page.getByRole('button',{name:'Νέα μέτρηση',exact:true}).click();await page.getByRole('button',{name:'Συμπλήρωση από ασθενή',exact:true}).waitFor();
+   assert.equal(requests.length,0);
+   const score=page.locator('[data-assessment-id="'+assessmentId+'"]');await score.getByText('13 / 27',{exact:false}).waitFor();
+  });
+
+
+  await check('smooth-summary-refresh-is-explicit-and-freshness-is-visible',async({page,open})=>{
+   const methods=[];let current='QA CURRENT SYNTHESIS';
+   await page.route('**/api/clinical/summary*',route=>{methods.push(route.request().method());return route.fulfill({json:{mode:route.request().method()==='POST'?'synthesis':'canonical',reason:'summary_pending',context_hash:'current',card:{synthesized:route.request().method()==='POST',notes:[{text:'QA CURRENT RECORDED NOTE',source_ids:[]}],sources:[]},findings:[{origin:'synthesis',text:current,source_ids:[]}]}})});
+   await open('?tab=summary');const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
+   await brief.getByText('Ο φάκελος άλλαξε ή δεν υπάρχει σύνθεση· εμφανίζονται τρέχοντα αποσπάσματα.',{exact:true}).waitFor();
+   assert.ok(methods.length>0&&methods.every(m=>m==='GET'));
+   await brief.getByRole('button',{name:'Ενημέρωση σύνοψης',exact:true}).click();
+   await brief.getByText(current,{exact:true}).waitFor();assert.equal(methods.filter(m=>m==='POST').length,1);
+  });
+  await check('smooth-next-review-keeps-complete-corrected-source',async({page,open})=>{
+   const s=state.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at))[0];
+   const text='QA AGREED REVIEW '+('Συνθετικός επανέλεγχος. '.repeat(25))+' QA REVIEW END';
+   state.corrections.push({id:'qa-review-correction',session_id:s.id,created_at:new Date().toISOString(),patch:{review:{after:text}}});
+   await open('?tab=record&session='+visitId);
+   const reference=page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'});
+   await reference.locator('details>summary').first().click();
+   await reference.getByText(text,{exact:true}).first().waitFor();assert.match(await reference.innerText(),/QA REVIEW END/);
+   assert.equal(requests.filter(r=>r.action==='save_section'||r.action==='save_closure').length,0);
   });
 
   await check('released-calendar-toolbar-keeps-manual-scheduling',async({page})=>{

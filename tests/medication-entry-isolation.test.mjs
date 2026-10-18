@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {medicationSessionId} from '../lib/clinical/treatment-plan.ts';
 import * as jsx from 'react/jsx-runtime';
 
 const source=ts.transpileModule(readFileSync('components/patients/MedicationTable.tsx','utf8')+'\nexport {SideEffectEntry};',{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
@@ -11,8 +12,8 @@ function entry(id){
  const cells=[];let cursor=0;const posts=[];
  const hooks={useState(v){const i=cursor++;if(!(i in cells))cells[i]=v;return [cells[i],v=>cells[i]=v]},useEffect(){},useCallback:f=>f};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{}});
- const render=()=>{cursor=0;return module.exports.SideEffectEntry({medication:{id,medication_name:'Synthetic '+id},sessionId:'visit',today:'2026-10-12',firstAssessment:true,reload:async()=>{}})};
+ vm.runInNewContext(source,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('treatment-plan')?{medicationSessionId}:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{}});
+ const render=()=>{cursor=0;return module.exports.SideEffectEntry({bundle:{patient:{id:'patient'},sessions:[{id:'visit',patient_id:'patient',status:'draft'}]},medication:{id,medication_name:'Synthetic '+id},sessionId:'visit',today:'2026-10-12',firstAssessment:true,reload:async()=>{}})};
  return {render,posts};
 }
 test('adding a second medication does not open tolerance entry or inherit the first row draft',async()=>{

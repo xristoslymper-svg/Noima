@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {patientRecord,completedMeasurements} from '../lib/clinical/patient-record.ts';
+import * as treatment from '../lib/clinical/treatment-plan.ts';
 import * as notes from '../lib/clinical/completed-visit-notes.ts';
 import * as instruments from '../lib/psychometrics/instruments.ts';
 import * as assessmentLink from '../lib/clinical/assessment-link.ts';
@@ -28,7 +29,7 @@ const Psychometrics=presentation('PatientPsychometrics.tsx',{
  '@/lib/clinical/assessment-link':assessmentLink,'@/lib/psychometrics/instruments':instruments,'@/lib/clinic-time':clinicTime,
 });
 const Treatment=presentation('PatientTreatment.tsx',{'@/lib/clinical/completed-visit-notes':notes,
- '@/lib/clinical/patient-record':{patientRecord},'./PatientPanels':{MedicationsPanel:empty},
+ '@/lib/clinical/treatment-plan':treatment,'@/lib/clinical/assessment-link':assessmentLink,'./PatientTreatment.module.css':{},'@/lib/clinical/patient-record':{patientRecord},'./PatientPanels':{MedicationsPanel:empty},
  './PatientPsychometrics':Psychometrics,'./PatientRecordSummary':{recordDate:value=>value},
  './PatientRecord.module.css':{},
 });

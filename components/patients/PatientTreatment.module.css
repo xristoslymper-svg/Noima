@@ -1,0 +1,11 @@
+/* Layout only: surfaces, headings, palette and controls come from PatientRecord. */
+.planGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }
+.planGrid h3 { font-size:13px; line-height:1.5; margin:4px 0 8px; font-weight:600; }
+.narrative { white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.7; margin:0; }
+.actionRow { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+.visitChoice { display:grid; gap:6px; font-size:12px; max-width:100%; }
+.visitChoice select { max-width:100%; min-height:44px; font:inherit; }
+.scoreRow { display:flex; align-items:start; justify-content:space-between; gap:16px; padding:12px 0; }
+.scoreRow p { margin:5px 0 0; }
+.scoreActions { display:flex; flex-wrap:wrap; gap:12px; flex-shrink:0; }
+@media(max-width:760px) { .planGrid { grid-template-columns:minmax(0,1fr); gap:16px; } .visitChoice { width:100%; } .scoreRow { flex-direction:column; gap:5px; } }

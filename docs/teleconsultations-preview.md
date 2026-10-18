@@ -26,3 +26,6 @@ No claim of live Daily integration or guaranteed zero-cost production usage is m
 
 
 Stitch composition: dark video with internal controls; separate visit/transcript/MSE/risk/continuity cards. Existing StructuredVisitEditor and RiskTreeEditor receive optional in-memory persistence adapters; defaults remain unchanged. Current MSE/risk begin unassessed. Existing followupCompletionIssues runs only after flushing all drafts; synthetic review cannot finalize a real visit.
+
+
+Visit lifecycle: end-call opens the existing editable draft without completing it. Review flushes all editors, validates the same follow-up requirements and captures closure/MSE/risk versions. Explicit registration uses finalizeAndVerify with an in-memory adapter, promoting the same visit/continuity/appointment only after confirmation. No database API calls are made. Failed registration preserves the review and draft; duplicate registration is guarded and completed snapshots are immutable. The synthetic chart shows the final reviewed notes and evaluation, not the initial input. Production integration remains disabled; reload discards this fixture.

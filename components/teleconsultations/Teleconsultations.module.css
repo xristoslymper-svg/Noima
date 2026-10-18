@@ -32,3 +32,5 @@
 .editorFooter{position:sticky;bottom:0;padding:14px!important;z-index:2;font-size:12px}
 .notesPanel .save{position:static;padding:0;margin:0 0 10px;border:0}
 @media(max-width:800px){.notesMode .video{height:190px;min-height:190px;padding:12px 95px 65px 16px}.notesMode .self{top:10px;bottom:auto}.notesMode .controls{bottom:10px;margin:0}.notesMode .callPanel{background:var(--noima-canvas)!important}.notesPanel{max-height:62vh}.editorCard{padding:16px!important}}
+
+.reviewCard,.completedVisit{max-width:1000px;margin:0 auto}.reviewCard h2,.completedVisit h2{font-size:22px}.readback{margin:20px 0}.readback section{padding:14px 0;border-bottom:1px solid var(--noima-line)}.readback h3{font-size:13px;margin:0 0 8px}.readback p{white-space:pre-wrap;overflow-wrap:anywhere}.reviewCard .actions{position:sticky;bottom:0;background:var(--noima-paper);padding:16px 0;margin:0}.content [hidden]{display:none!important}

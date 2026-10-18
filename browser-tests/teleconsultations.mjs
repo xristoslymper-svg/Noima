@@ -58,7 +58,36 @@ try{
   const mse=page.locator('.visit-structured.mse');
   assert.equal(await mse.locator('button[aria-pressed="true"]').count(),0);
   const risk=page.locator('.risk-tree-editor');
-  await risk.getByRole('button',{name:/^Ευχ/}).count(); // No prior clinical findings are selected.
+  await field.fill('ΤΕΛΙΚΗ ΔΙΟΡΘΩΣΗ ΜΕΤΑ ΤΗΝ ΚΛΗΣΗ');await field.blur();
+  for(const [name,value] of [['Σημερινή κλινική εικόνα','Συνθετική σημερινή εικόνα'],['Λήψη αγωγής','Συνθετική αναφορά'],['Απόφαση / παρεμβάσεις','Συνθετική απόφαση'],['Τι θα επανεκτιμηθεί','Συνθετικός επανέλεγχος']]){
+   const input=page.getByRole('textbox',{name,exact:true});await input.fill(value);await input.blur();
+  }
+  await mse.locator('summary').first().click();
+  const observation=mse.getByRole('textbox').first();await observation.fill('Συνθετική σημερινή παρατήρηση');await observation.blur();
+  await risk.getByRole('button',{name:'Υπάρχει επιθυμία θανάτου ή πρόθεση να πεθάνει; Όχι',exact:true}).click();
+  await page.getByRole('button',{name:'Έλεγχος καταγραφής',exact:true}).click();
+  const review=page.getByRole('region',{name:'Έλεγχος πριν την καταχώριση',exact:true});
+  await review.waitFor();await review.getByText('ΤΕΛΙΚΗ ΔΙΟΡΘΩΣΗ ΜΕΤΑ ΤΗΝ ΚΛΗΣΗ',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Η επίσκεψη καταχωρίστηκε',exact:true}).count(),0);
+  await review.getByRole('button',{name:'Επιστροφή στην επεξεργασία',exact:true}).click();
+  assert.equal(await field.inputValue(),'ΤΕΛΙΚΗ ΔΙΟΡΘΩΣΗ ΜΕΤΑ ΤΗΝ ΚΛΗΣΗ');
+  await field.fill('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ');await field.blur();
+  await page.getByRole('button',{name:'Έλεγχος καταγραφής',exact:true}).click();
+  await review.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
+  await page.getByRole('checkbox',{name:'Προσομοίωση αποτυχίας αποθήκευσης'}).check();
+  await review.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+  await page.getByText('Η καταχώριση απέτυχε. Το προσχέδιο παραμένει διαθέσιμο.',{exact:true}).waitFor();
+  await review.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
+  await page.getByRole('checkbox',{name:'Προσομοίωση αποτυχίας αποθήκευσης'}).uncheck();
+  await review.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).evaluate(button=>{button.click();button.click()});
+  await page.getByRole('heading',{name:'Η επίσκεψη καταχωρίστηκε',exact:true}).waitFor();
+  await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
+  assert.equal(await field.count(),0);
+  assert.equal(await page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Προβολή στον φάκελο',exact:true}).click();
+  assert.equal(await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).isVisible(),false);
+  await page.getByRole('button',{name:'Προβολή στον φάκελο',exact:true}).click();
+  await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
   await page.screenshot({path:resolve(out,viewport.width+'-workspace.png'),fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);

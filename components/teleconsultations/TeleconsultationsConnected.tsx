@@ -5,6 +5,7 @@ import {TeleconsultationWorkspace} from './TeleconsultationsPreview';
 import TeleconsultationsLobby from './TeleconsultationsLobby';
 import {recordConnection,recordForVisit,type RecordConnection} from '@/lib/teleconsultations/record-connection';
 import {demoPost} from '@/lib/patients/demo-client';
+import {startMeetingVisit,athensDay} from '@/lib/teleconsultations/meeting-start';
 import {isClinicalId} from '@/lib/clinical/identity';
 import {getDemoTesterId} from '@/lib/demo-tester';
 import type {PatientBundle,DemoSession} from '@/lib/patients/demo-runtime';
@@ -46,10 +47,7 @@ export default function TeleconsultationsConnected(){
  async function open(selected:DemoTelePatient,existing?:FixtureRecord){
   if(flight.current)return;flight.current=true;setBusy(true);setError('');
   try{
-   const drafts=listing?.visits.filter(v=>v.patient_id===selected.id&&v.status==='draft')||[];
-   if(!existing&&drafts.length>1)throw new Error('Υπάρχουν περισσότερες πρόχειρες επισκέψεις. Επιλέξτε τη συγκεκριμένη από τη λίστα.');
-   const sessionId=existing?.sessionId||drafts[0]?.id;
-   if(!isClinicalId(sessionId))throw new Error('Δεν υπάρχει ανοιχτή επανεξέταση. Ανοίξτε την επίσκεψη από τον φάκελο ασθενή και επιστρέψτε εδώ.');
+   const sessionId=await startMeetingVisit({patientId:selected.id,visits:listing?.visits||[],...(existing?.sessionId.startsWith('appointment:')?{appointmentId:existing.appointment.id}:existing?{sessionId:existing.sessionId}:{})},demoPost);
    const bundle=await readVisit(selected.id,sessionId!);recordForVisit(bundle,selected.id,sessionId!);
    if(alive.current)window.location.assign('/teleconsultations?patient='+encodeURIComponent(selected.id)+'&session='+encodeURIComponent(sessionId!));
   }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Δεν άνοιξε η επίσκεψη.')}
@@ -57,7 +55,8 @@ export default function TeleconsultationsConnected(){
  }
  if(connection&&record&&patient)return <TeleconsultationWorkspace key={record.sessionId} initialRecord={record} patient={patient} connection={connection} onBack={()=>window.location.assign('/teleconsultations')} onComplete={()=>{}}/>;
  const patients=(listing?.patients||[]).map(p=>({id:p.id,name:[p.first_name,p.last_name].filter(Boolean).join(' '),first:p.first_name,last:p.last_name}));
- const rows=[...(listing?.visits||[])].sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at)).map(visit=>{const linked=listing?.appointments.find(a=>a.session_id===visit.id);return {record:{patientId:visit.patient_id,sessionId:visit.id,version:visit.closure_version||0,notes:{transcript:'',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual' as const},assignments:[],appointment:{id:linked?.id||'visit:'+visit.id,patient_id:visit.patient_id,session_id:visit.id,status:visit.status==='completed'?'completed' as const:'scheduled' as const,scheduled_start:linked?.scheduled_start||visit.started_at,scheduled_end:linked?.scheduled_end||new Date(Date.parse(visit.started_at)+50*60000).toISOString()}},patient:patients.find(p=>p.id===visit.patient_id)!,completed:visit.status==='completed'};}).filter(row=>row.patient);
+ const rows=[...(listing?.visits||[])].sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at)).map(visit=>{const linked=listing?.appointments.find(a=>a.session_id===visit.id);return {record:{patientId:visit.patient_id,sessionId:visit.id,version:visit.closure_version||0,notes:{transcript:'',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual' as const},assignments:[],appointment:{id:linked?.id||'visit:'+visit.id,patient_id:visit.patient_id,session_id:visit.id,status:visit.status==='completed'?'completed' as const:'scheduled' as const,scheduled_start:linked?.scheduled_start||visit.started_at,scheduled_end:linked?.scheduled_end||new Date(Date.parse(visit.started_at)+50*60000).toISOString()}},patient:patients.find(p=>p.id===visit.patient_id)!,active:visit.status==='draft'&&athensDay(visit.updated_at)===athensDay(Date.now()),completed:visit.status==='completed'};}).filter(row=>row.patient);
+ const unstarted=(listing?.appointments||[]).filter(a=>!a.session_id&&a.status==='scheduled').map(a=>({record:{patientId:a.patient_id,sessionId:'appointment:'+a.id,version:0,notes:{transcript:'',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual' as const},assignments:[],appointment:{...a,session_id:'appointment:'+a.id,status:'scheduled' as const}},patient:patients.find(p=>p.id===a.patient_id)!,completed:false})).filter(row=>row.patient);
 
- return <>{loading?<main className="content" role="status">Φόρτωση επισκέψεων…</main>:error&&!listing?<main className="content" role="alert"><p>{error}</p><button className="small-button" onClick={()=>setRetry(n=>n+1)}>Δοκιμή ξανά</button><Link href="/patients">Άνοιγμα φακέλων ασθενών</Link></main>:<><TeleconsultationsLobby connected entries={rows} patients={patients} onOpen={(r,p)=>void open(p,r)} onStart={p=>void open(p)}/>{busy&&<p className="content" role="status">Άνοιγμα επίσκεψης…</p>}{error&&<p className="content" role="alert">{error}</p>}</>}</>;
+ return <>{loading?<main className="content" role="status">Φόρτωση επισκέψεων…</main>:error&&!listing?<main className="content" role="alert"><p>{error}</p><button className="small-button" onClick={()=>setRetry(n=>n+1)}>Δοκιμή ξανά</button><Link href="/patients">Άνοιγμα φακέλων ασθενών</Link></main>:<><TeleconsultationsLobby connected busy={busy} entries={[...rows,...unstarted]} patients={patients} onOpen={(r,p)=>void open(p,r)} onStart={p=>void open(p)}/>{busy&&<p className="content" role="status">Άνοιγμα επίσκεψης…</p>}{error&&<p className="content" role="alert">{error}</p>}</>}</>;
 }

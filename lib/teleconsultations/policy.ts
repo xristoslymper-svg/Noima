@@ -3,7 +3,7 @@ export const FREE_BUDGET=9000; // Participant minutes; 1000-minute margin below 
 export type Appointment={id:string;patient_id:string;session_id:string;status:'scheduled'|'cancelled'|'completed';scheduled_start:string;scheduled_end:string};
 // This gate exposes the memory-only simulation, never a live Daily connection.
 export function previewEnabled(env:Record<string,string|undefined>){
- return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&[PREVIEW_BRANCH,'codex/teleconsultations-production-demo'].includes(env.VERCEL_GIT_COMMIT_REF||''));
+ return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&[PREVIEW_BRANCH,'codex/teleconsultations-production-demo','codex/tele-meeting-first'].includes(env.VERCEL_GIT_COMMIT_REF||''));
 }
 export function appointmentContext(appointment:Appointment,patientId:string,sessionId:string){
  if(!appointment.id||appointment.patient_id!==patientId||appointment.session_id!==sessionId)throw new Error('Η επίσκεψη δεν ανήκει στο ραντεβού.');
@@ -36,5 +36,5 @@ export async function reserveCall(ledger:BudgetLedger,input:{key:string;month:st
 
 // Canonical visit notes are available in production and designated previews; Daily stays disconnected.
 export function persistentVisitEnabled(env:Record<string,string|undefined>){
- return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&['codex/teleconsultation-visit-persistence','codex/teleconsultation-production-notes'].includes(env.VERCEL_GIT_COMMIT_REF||''));
+ return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&['codex/teleconsultation-visit-persistence','codex/teleconsultation-production-notes','codex/tele-meeting-first'].includes(env.VERCEL_GIT_COMMIT_REF||''));
 }

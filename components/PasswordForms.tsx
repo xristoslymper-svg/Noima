@@ -1,5 +1,6 @@
 'use client';
 import {useState,type FormEvent} from 'react';
+import {recoveryTokenFromFragment} from '@/lib/pilot/recovery-link';
 import {notifyAccountChange} from '@/lib/pilot/browser-session';
 
 async function post(body:Record<string,unknown>){
@@ -27,7 +28,8 @@ export function PasswordChangeForm({recovery=false}:{recovery?:boolean}){
   if(password!==confirm){setError('Οι δύο νέοι κωδικοί δεν ταιριάζουν.');return}
   setBusy(true);
   try{
-   await post(recovery?{action:'reset',password}:{action:'change',current_password:current,password});
+   const tokenHash=recovery?recoveryTokenFromFragment(window.location.hash):undefined;
+   await post(recovery?{action:'reset',password,...(tokenHash!==undefined?{token_hash:tokenHash}:{})}:{action:'change',current_password:current,password});
    if(recovery){notifyAccountChange();window.location.replace('/login?password=updated');return}
    setCurrent('');setPassword('');setConfirm('');setMessage('Ο κωδικός άλλαξε.');
   }catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε.')}finally{setBusy(false)}

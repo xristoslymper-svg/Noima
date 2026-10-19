@@ -4,6 +4,14 @@ import { supabaseUrl, supabaseKey } from './lib/pilot/config';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
+  // Public form only: GET never verifies or consumes an email recovery token.
+  if(request.nextUrl.pathname==='/reset-password'){
+    const recovery=NextResponse.next({request});
+    recovery.headers.set('Cache-Control','private, no-store');
+    recovery.headers.set('Referrer-Policy','no-referrer');
+    recovery.headers.set('X-Robots-Tag','noindex, nofollow');
+    return recovery;
+  }
   if(request.nextUrl.pathname==='/copilot-evaluation.html'&&process.env.VERCEL_ENV==='preview'){
     const report=NextResponse.next();
     report.headers.set('X-Robots-Tag','noindex, nofollow');

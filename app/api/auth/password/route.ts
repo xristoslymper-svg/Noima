@@ -1,5 +1,6 @@
 import {cookies} from 'next/headers';
 import {pilotClient} from '@/lib/pilot/server';
+import {resetPasswordWithToken} from '@/lib/pilot/token-recovery';
 import {authEmailEnabled} from '@/lib/pilot/auth-email';
 
 export const dynamic='force-dynamic';
@@ -23,6 +24,15 @@ export async function POST(request:Request){
  if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Μη έγκυρο αίτημα.'},400);
  const b=body as Record<string,unknown>;
  const action=String(b.action||'');
+ // Token recovery must not inherit or update an unrelated account's cookie session.
+ if(action==='reset'&&Object.prototype.hasOwnProperty.call(b,'token_hash')){
+  const result=await resetPasswordWithToken(b.token_hash,b.password);
+  if(!result.ok)return reply({error:result.status===429?'Έχουν γίνει πολλές προσπάθειες. Περιμένετε λίγο και δοκιμάστε ξανά.':'Ο σύνδεσμος επαναφοράς δεν είναι πλέον έγκυρος ή ο κωδικός δεν άλλαξε. Ζητήστε νέο σύνδεσμο.'},result.status);
+  const current=await pilotClient();
+  await current.auth.signOut({scope:'local'});
+  const jar=await cookies();jar.delete('noima-workspace-id');
+  return reply({ok:true});
+ }
  const client=await pilotClient();
 
  if(action==='request_reset'){

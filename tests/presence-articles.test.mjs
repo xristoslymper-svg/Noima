@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {syntheticArticles,newArticle,publishArticle,visibleArticles,validArticles} from '../lib/presence/articles.ts';
+import {seed,publish,decode} from '../lib/presence/model.ts';
+const date='2026-10-19T12:00:00.000Z';
+test('synthetic articles begin as drafts and page publication cannot expose them',()=>{const w=publish(seed());assert.equal(w.articles.length,2);assert.deepEqual(visibleArticles(w.articles),[])});
+test('article publication snapshots content and draft edits stay private across recovery',()=>{let a=publishArticle(syntheticArticles()[0],date);const original=a.published.title;a={...a,draft:{...a.draft,title:'Private draft'}};assert.equal(a.published.title,original);const w=seed();w.articles=[a];const restored=decode(JSON.stringify(w));assert.equal(visibleArticles(restored.articles)[0].published.title,original);assert.equal(restored.articles[0].draft.title,'Private draft');assert.equal(publishArticle(a,date).published.title,'Private draft')});
+test('empty and oversized articles cannot be published; invalid storage is rejected',()=>{assert.throws(()=>publishArticle(newArticle('new'),date),/Συμπληρώστε/);const a=syntheticArticles()[0];assert.throws(()=>publishArticle({...a,draft:{...a.draft,title:'x'.repeat(121)}},date),/όρια/);assert.throws(()=>publishArticle(a,'bad'));assert.equal(validArticles([a,a]),false);assert.equal(validArticles([{...a,published:{...a.draft,updatedAt:'bad'}}]),false)});
+test('public article ordering is stable and exposes only explicit publication',()=>{const a=publishArticle(syntheticArticles()[0],date),b=publishArticle(syntheticArticles()[1],'2026-10-20T12:00:00Z');assert.deepEqual(visibleArticles([a,newArticle('hidden'),b]).map(x=>x.id),[b.id,a.id]);assert.equal(visibleArticles([a])[0].published.updatedAt,date)});

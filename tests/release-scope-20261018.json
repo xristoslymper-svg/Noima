@@ -647,7 +647,8 @@
       "middleware.ts",
       "supabase/templates/recovery.html",
       "docs/password-recovery.md",
-      "tests/cross-browser-password-recovery.test.mjs"
+      "tests/cross-browser-password-recovery.test.mjs",
+      "tests/selective-production-contract.json"
     ]
   }
 }

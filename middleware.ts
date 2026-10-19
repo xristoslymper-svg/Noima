@@ -1,11 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseUrl, supabaseKey } from './lib/pilot/config';
-import {hostedEnabled,isPracticePath} from './lib/presence/public-policy';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
-  if(hostedEnabled(process.env)&&isPracticePath(request.nextUrl.pathname)){const result=NextResponse.next();result.headers.set('Cache-Control','no-store');result.headers.set('X-Robots-Tag','noindex, nofollow');result.headers.set('Referrer-Policy','no-referrer');return result;}
+  if(/^\/iatreio\/[a-z0-9][a-z0-9-]{2,59}\/?$/.test(request.nextUrl.pathname)&&process.env.VERCEL_ENV==='preview'&&process.env.VERCEL_GIT_COMMIT_REF==='codex/public-practice'){const result=NextResponse.next();result.headers.set('Cache-Control','no-store');result.headers.set('X-Robots-Tag','noindex, nofollow');result.headers.set('Referrer-Policy','no-referrer');return result;}
   // Public form only: GET never verifies or consumes an email recovery token.
   if(request.nextUrl.pathname==='/reset-password'){
     const recovery=NextResponse.next({request});

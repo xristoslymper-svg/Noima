@@ -24,7 +24,7 @@
     "lib/intake/history.ts": "e492da7b51f438f47a1d4d2f0842cb0bf05a35f176e26f7b720babd59b378b44",
     "app/layout.tsx": "69391993ad4ac4ce34c2b4abbf93f31b8e5cb24f4c8706780ce474a513adaf17",
     "app/globals.css": "cc4833dbe1a5bc98dfa7057f968c4549fe33aebb68aa5375238cac5ccb284b93",
-    "middleware.ts": "8a401d411d0915bfda8cb3580532ba4a7e998f48a2ce6e9bfc901391d981d09c",
+    "middleware.ts": "7d0f39bda082c4a35ce2df722ff6c7ed1f25b41f2b9c1220ad71dc21f9471677",
     "package.json": "dd79cf14b0986e781199cd1d96e3ecc61ec9c83a570c3e979e041907942c0f5e",
     "package-lock.json": "9e2c6487bd133817e091db1aaebef94f7a684002a1f21b9373dc1cf0f23e7acc"
   },

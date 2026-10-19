@@ -1,0 +1,2 @@
+import React from 'react';import {createRoot} from 'react-dom/client';import PublicPractice from '../components/presence/PublicPractice';import {seed} from '../lib/presence/model';import '../app/globals.css';import '../app/noima-ui.css';
+const w=seed();createRoot(document.getElementById('root')!).render(<PublicPractice slug="iatreio-test" content={{practice:w.draft,articles:[]}}/>);

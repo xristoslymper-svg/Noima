@@ -18,5 +18,5 @@ export function notifyAccountChange() {
 }
 
 export function isPublicAccountPage(path: string) {
-  return ['/login', '/forgot-password', '/reset-password', '/assessment', '/assessment/teleconsultation-preview'].includes(path);
+  return /^\/iatreio\/[a-z0-9][a-z0-9-]{2,59}\/?$/.test(path) || ['/login', '/forgot-password', '/reset-password', '/assessment', '/assessment/teleconsultation-preview'].includes(path);
 }

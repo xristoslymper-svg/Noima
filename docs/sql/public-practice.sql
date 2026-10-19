@@ -13,10 +13,11 @@ alter table public.practice_sites enable row level security;
 alter table public.practice_requests enable row level security;
 revoke all on public.practice_sites,public.practice_requests from anon,authenticated;
 grant all on public.practice_sites,public.practice_requests to service_role;
-create function public.practice_publish(p_owner uuid,p_content jsonb,p_revision integer)
+create or replace function public.practice_publish(p_owner uuid,p_content jsonb,p_revision integer)
 returns jsonb language plpgsql security invoker set search_path='' as $$
 declare s public.practice_sites;
 begin
+ perform pg_advisory_xact_lock(9834700);
  perform pg_advisory_xact_lock(hashtext(p_owner::text));
  select * into s from public.practice_sites where owner_id=p_owner for update;
  if found then
@@ -25,14 +26,15 @@ begin
  else
   if p_revision<>0 then raise exception 'publication_conflict'; end if;
   if (select count(*) from public.practice_sites)>=50 then raise exception 'preview_limit'; end if;
-  insert into public.practice_sites(owner_id,slug,content) values(p_owner,'iatreio-'||replace(p_owner::text,'-',''),p_content) returning * into s;
+  insert into public.practice_sites(owner_id,slug,content) values(p_owner,'iatreio-'||replace(gen_random_uuid()::text,'-',''),p_content) returning * into s;
  end if;
  return jsonb_build_object('slug',s.slug,'revision',s.revision,'content',s.content);
 end $$;
-create function public.practice_request(p_slug text,p_id uuid,p_payload jsonb)
+create or replace function public.practice_request(p_slug text,p_id uuid,p_payload jsonb)
 returns jsonb language plpgsql security invoker set search_path='' as $$
 declare s public.practice_sites; f text; rid uuid;
 begin
+ perform pg_advisory_xact_lock(9834701);
  select * into s from public.practice_sites where slug=p_slug for update;
  if not found then raise exception 'not_found'; end if;
  f=md5(lower(trim(p_payload->>'email'))||':'||lower(trim(p_payload->>'preference')));

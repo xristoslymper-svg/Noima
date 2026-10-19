@@ -33,3 +33,5 @@
 /* Keep action rows from covering the sources field while scrolling. */
 .articleFields .actions{position:static}.preview,.articlePreviewPanel{top:84px}
 @media(max-width:800px){.preview,.articlePreviewPanel{position:static}}
+
+.contentItem{border:1px solid #dce5df;background:#fafcfb;border-radius:10px;padding:14px;margin-bottom:12px}.contentItem .field textarea{min-height:90px}.contentItem+button{margin-bottom:16px}.serviceItems{display:grid;gap:12px}.serviceItems h4{font-size:13px;margin:0}.serviceItems>div{padding:12px 0;border-bottom:1px solid #dce5df}.serviceItems>div:last-child{border:0}.serviceItems p{margin-top:6px;font-size:12px}.faqItem{border-bottom:1px solid #dce5df;padding:14px 0}.faqItem summary{font-size:13px;font-weight:600;cursor:pointer;line-height:1.6}.faqItem p{font-size:12px}

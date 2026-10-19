@@ -543,7 +543,7 @@
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {
-    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation; user-authorized pending action dialogue memory and deterministic appointment selection, preview only; user-authorized NOIMA account-linked mail sender setup with existing visual components; authorized safe visit draft recovery, save feedback and readiness, preview only with existing visual components",
+    "reason": "User-authorized treatment plan/explicit medication visit linkage, preview-only follow-up to release #113; authorized continuity/source freshness follow-up, no visual redesign; contextual medication attribution at save time, preserving existing visual components; clarify visit filter labels/empty states and preserve independent records, no visual redesign; authorized copilot synthetic chart scope and appointment uncertainty correction; authorized production copilot action patient scope and existing confirmed-actions migration activation; user-authorized pending action dialogue memory and deterministic appointment selection, preview only; user-authorized NOIMA account-linked mail sender setup with existing visual components; authorized safe visit draft recovery, save feedback and readiness, preview only with existing visual components; user-approved authentication screen polish from Stitch, presentation only, preserving existing auth behavior",
     "paths": [
       "lib/clinical/treatment-plan.ts",
       "components/patients/PatientTreatment.tsx",
@@ -634,7 +634,12 @@
       "app/patients/page.tsx",
       "app/psychometrics/page.tsx",
       "app/page.tsx",
-      "lib/pilot/browser-session.ts"
+      "lib/pilot/browser-session.ts",
+      "components/AuthShell.tsx",
+      "components/PilotAccess.tsx",
+      "app/forgot-password/page.tsx",
+      "app/reset-password/page.tsx",
+      "app/auth-screens.css"
     ]
   }
 }

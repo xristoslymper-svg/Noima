@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState,type FormEvent} from 'react';
 import Link from 'next/link';
+import AuthShell from '@/components/AuthShell';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 import {notifyAccountChange} from '@/lib/pilot/browser-session';
 export default function PilotAccess({activate=false}:{activate?:boolean}){
@@ -18,13 +19,13 @@ export default function PilotAccess({activate=false}:{activate?:boolean}){
   const r=await fetch('/api/pilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(activate?{action:'join',name}:{action:signup?'signup':'login',email,password})});const d=await r.json();if(!r.ok)throw new Error(d.error);
   if(d.confirmation_required){setMessage('Ελέγξτε τα εισερχόμενα και τα ανεπιθύμητα για το email επιβεβαίωσης. Αν έχετε ήδη λογαριασμό, συνδεθείτε ή χρησιμοποιήστε την επαναφορά κωδικού.');setSignup(false);setPassword('');}else {notifyAccountChange();window.location.replace(activate?'/':'/pilot');}
  }catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε.')}finally{setBusy(false)}}
- return <main className="pilot-page"><section className="pilot-card"><div className="brand-mark">Ψ</div><span className="kicker">NOIMA · ΠΙΛΟΤΙΚΗ ΔΟΚΙΜΗ</span><h1>{activate?'Ο προσωπικός σας χώρος':signup?'Δημιουργία λογαριασμού':'Καλώς ήρθατε'}</h1>{activate&&<p className="account-email">{account?.email}</p>}<p>{activate?'Συμπληρώστε το όνομά σας μία φορά. Ο προσωπικός σας χώρος ξεκινά άδειος και είναι ορατός μόνο σε εσάς.':'Δοκιμάστε το NOIMA με υποθετικούς ασθενείς και περιστατικά. Κάθε λογαριασμός έχει τον δικό του προσωπικό χώρο.'}</p>{!activate&&google&&<button disabled={busy} onClick={()=>void googleLogin()}>Συνέχεια με Google</button>}{!activate&&google&&<small className="login-method-hint">ή με email και κωδικό</small>}<form onSubmit={submit}><fieldset disabled={busy}>
- {activate?<><label>Ονοματεπώνυμο<input required minLength={2} maxLength={100} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label></>:<><label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Κωδικός πρόσβασης<input type="password" required minLength={signup?12:1} maxLength={128} autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>{signup&&<small>Τουλάχιστον 12 χαρακτήρες. Το email επιβεβαιώνεται πριν από την πρώτη χρήση.</small>}</>}
+ return <AuthShell><h1>{activate?'Ο προσωπικός σας χώρος':signup?'Δημιουργία λογαριασμού' :'Σύνδεση στο NOIMA'}</h1>{activate&&<p className="account-email">{account?.email}</p>}<p>{activate?'Συμπληρώστε το όνομά σας μία φορά. Ο προσωπικός σας χώρος ξεκινά άδειος και είναι ορατός μόνο σε εσάς.':signup?'Δημιουργήστε τον προσωπικό σας χώρο.':'Συνεχίστε στον προσωπικό σας χώρο.'}</p>{!activate&&google&&<button className="auth-google" disabled={busy} onClick={()=>void googleLogin()}>Συνέχεια με Google</button>}{!activate&&google&&<small className="login-method-hint">ή με email και κωδικό NOIMA</small>}<form onSubmit={submit}><fieldset disabled={busy}>
+ {activate?<><label>Ονοματεπώνυμο<input required minLength={2} maxLength={100} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label></>:<><label>Email<input type="email" required placeholder="doctor@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Κωδικός πρόσβασης<input type="password" placeholder={signup?'Τουλάχιστον 12 χαρακτήρες':'Εισάγετε τον κωδικό σας'} required minLength={signup?12:1} maxLength={128} autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>{signup&&<small>Τουλάχιστον 12 χαρακτήρες. Το email επιβεβαιώνεται πριν από την πρώτη χρήση.</small>}</>}
  <button className="pilot-primary" type="submit">{busy?'Παρακαλώ περιμένετε…':activate?'Έναρξη':signup?'Δημιουργία λογαριασμού':'Σύνδεση'}</button></fieldset></form>
  {!activate&&!signup&&<>{emailRecovery&&<Link href="/forgot-password">Ξέχασα τον κωδικό;</Link>}<small>Αν συνδέεστε με Google, επιλέξτε «Συνέχεια με Google» με το ίδιο email.</small></>}
  {error&&<p role="alert" className="pilot-error">{error}</p>}{message&&<p role="status">{message}</p>}
- {!activate&&emailSignup&&<button disabled={busy} className="pilot-text-button" onClick={()=>{setSignup(!signup);setPassword('');setError('');setMessage('')}}>{signup?'Έχω ήδη λογαριασμό':'Δημιουργία λογαριασμού'}</button>}
+ {!activate&&emailSignup&&<button disabled={busy} className="pilot-text-button auth-switch" onClick={()=>{setSignup(!signup);setPassword('');setError('');setMessage('')}}>{signup?'Έχω ήδη λογαριασμό':'Δημιουργία λογαριασμού'}</button>}
  {!activate&&!optionsLoading&&!emailSignup&&<small>Οι νέοι λογαριασμοί δημιουργούνται προς το παρόν με Google. Αν έχετε ήδη κωδικό NOIMA, μπορείτε να συνδεθείτε με αυτόν.</small>}
  {activate&&<Link href="/account">Λογαριασμός / αποσύνδεση</Link>}
- </section></main>;
+ </AuthShell>;
 }

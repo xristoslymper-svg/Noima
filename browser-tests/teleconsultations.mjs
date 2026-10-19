@@ -96,7 +96,7 @@ try{
   await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Πίσω στις τηλεσυνεδρίες',exact:true}).click();
   await page.getByRole('button',{name:'Νέα τηλεσυνεδρία',exact:true}).click();
-  const search=page.getByRole('textbox',{name:'Αναζήτηση ασθενή',exact:true});
+  const search=page.getByRole('searchbox',{name:'Αναζήτηση ασθενή',exact:true});
   await search.fill('Ν');assert.equal(await page.getByRole('group',{name:'Αποτελέσματα ασθενών'}).count(),0);
   await search.fill('Νι');await search.press('Enter');assert.equal(await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).getAttribute('aria-pressed'),'true');await search.press('Escape');assert.equal(await search.count(),0);await page.getByRole('button',{name:'Νέα τηλεσυνεδρία',exact:true}).click();await search.fill('Νι');await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).click();
   await page.getByRole('button',{name:'Συνέχεια στη συνεδρία',exact:true}).click();

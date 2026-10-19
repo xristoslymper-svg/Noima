@@ -15,7 +15,7 @@ try{
   const context=await browser.newContext({viewport});const page=await context.newPage();page.setDefaultTimeout(15000);
   const requests=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.route('**/*',route=>{const url=route.request().url();if(url.includes('/api/')||!url.startsWith(origin)){requests.push(url);return route.abort()}return route.continue()});
-  await page.goto(origin);await page.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
+  await page.goto(origin);await page.getByRole('button',{name:'Άνοιγμα συνεδρίας',exact:true}).click();
   await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
   const clinicalDetails=page.locator('details').filter({has:page.locator('summary').filter({hasText:'Σημερινή αξιολόγηση'})});
   const planDetails=page.locator('details').filter({has:page.locator('summary').filter({hasText:'Πλάνο & συνέχεια'})});
@@ -98,7 +98,7 @@ try{
   await page.getByRole('button',{name:'Νέα τηλεσυνεδρία',exact:true}).click();
   const search=page.getByRole('textbox',{name:'Αναζήτηση ασθενή',exact:true});
   await search.fill('Ν');assert.equal(await page.getByRole('group',{name:'Αποτελέσματα ασθενών'}).count(),0);
-  await search.fill('Νι');await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).click();
+  await search.fill('Νι');await search.press('Enter');assert.equal(await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).getAttribute('aria-pressed'),'true');await search.press('Escape');assert.equal(await search.count(),0);await page.getByRole('button',{name:'Νέα τηλεσυνεδρία',exact:true}).click();await search.fill('Νι');await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).click();
   await page.getByRole('button',{name:'Συνέχεια στη συνεδρία',exact:true}).click();
   await page.getByRole('heading',{name:'Νίκος Παράδειγμα',exact:true}).waitFor();
   await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
@@ -121,7 +121,7 @@ try{
   await guest.getByRole('alert').filter({hasText:'έληξε'}).waitFor();await guest.close();
   await page.locator('summary').filter({hasText:'Πρόσκληση με link'}).filter({visible:true}).click();
   await page.getByRole('button',{name:'Πίσω στις τηλεσυνεδρίες',exact:true}).click();
-  await page.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
+  await page.getByRole('button',{name:'Άνοιγμα συνεδρίας',exact:true}).click();
   assert.equal(await page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true}).inputValue(),'ΔΙΑΦΟΡΕΤΙΚΟΣ ΑΣΘΕΝΗΣ — ΙΔΙΑ ΝΕΑ ΕΠΙΣΚΕΨΗ');
   await page.screenshot({path:resolve(out,viewport.width+'-workspace.png'),fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));

@@ -29,6 +29,7 @@ import {
   CreditCard,
   FolderOpen,
   Home,
+  Globe,
   Menu,
   ListTodo,
   Search,
@@ -59,6 +60,7 @@ const nav = [
   [Users, "Ασθενείς", "/patients"],
   [BookOpen, "Βιβλιοθήκη", "/psychometrics"],
   [Video, "Τηλεσυνεδρίες", "/teleconsultations"],
+  [Globe, "Ψηφιακή παρουσία", "/digital-presence"],
 ] as const;
 
 export default function Page() {

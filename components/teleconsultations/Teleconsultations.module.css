@@ -85,3 +85,34 @@
 .meetingRow button{font-size:12px}.emptyMeetings{font-size:13px;line-height:1.7;color:var(--noima-muted);border:1px dashed var(--noima-line);border-radius:12px;padding:22px}
 .historyHint{font-size:12px;color:var(--noima-muted);margin-top:26px}.visitChoices{display:grid;gap:8px;margin:16px 0}.visitChoices button{justify-content:space-between!important}
 @media(max-width:800px){.startCard{grid-template-columns:42px minmax(0,1fr);padding:22px 18px!important;gap:14px}.startIcon{width:42px;height:42px}.startCard h2{font-size:19px}.startCard>button{grid-column:1/-1;justify-content:center}.startForm input{flex-basis:100%;max-width:none;font-size:16px}.meetingRow{gap:10px;padding:14px 12px;flex-wrap:wrap}.meetingRow strong{min-width:140px}.meetingRow button{margin-left:auto}.todayHeading{align-items:flex-start}.simulationNote{margin-bottom:24px}}
+
+/* Teleconsultation polish: same palette and components, calmer hierarchy. */
+.lobby{max-width:1120px}
+.lobby .pageHeader{margin-bottom:22px;align-items:center}
+.lobby .pageHeader h1{font-size:28px;letter-spacing:-.025em}
+.lobby .pageHeader p{margin-top:6px;line-height:1.6}
+.startCard{margin-top:20px;padding:24px!important;gap:16px;border-radius:16px!important}
+.startCard h2{font-size:20px;letter-spacing:-.015em;margin-bottom:6px}
+.startCard p{font-size:13px!important;line-height:1.65!important}
+.startCard>button{min-height:44px;white-space:nowrap}
+.startForm{padding-top:20px;margin-top:2px}
+.startForm label{font-size:12px;font-weight:600}
+.startForm input{min-height:46px;transition:border-color .15s,box-shadow .15s}
+.startForm input:focus{outline:2px solid var(--noima-accent);outline-offset:2px}
+.startForm .searchHint{font-size:11px!important;color:var(--noima-muted);margin-top:10px;line-height:1.5!important}
+.startForm .patientResults{gap:8px;margin:14px 0}
+.patientResults button{border-radius:10px!important;padding:10px 14px!important;transition:background .15s,border-color .15s}
+.patientResults button[aria-pressed="true"]{border-color:var(--noima-accent);box-shadow:inset 0 0 0 1px var(--noima-accent);font-weight:650}
+.startForm .actions{padding-top:14px;border-top:1px solid var(--noima-line);gap:10px}
+.startCard button:focus-visible,.meetingRow button:focus-visible{outline:2px solid var(--noima-accent);outline-offset:3px}
+.simulationNote{margin:0 3px 28px;font-size:11px;max-width:780px}
+.todayHeading{margin-bottom:13px}.todayHeading h2{font-size:15px}
+.meetingRow{padding:15px 18px;gap:18px;transition:background .15s}
+.meetingRow:hover{background:var(--noima-canvas)}.meetingRow strong{line-height:1.45;overflow-wrap:anywhere}
+.meetingRow button{min-height:38px;white-space:nowrap;border-radius:9px}
+.historyHint{font-size:11px;line-height:1.6;margin-top:20px}
+.modebar{gap:12px}.modes button{font-size:13px}.visitHead h2{letter-spacing:-.02em}
+.noteContext{line-height:1.5}.editorFooter{box-shadow:0 -3px 12px #20374905!important}
+.privacy{font-size:12px;padding:15px 16px}.privacy strong{font-size:12px}.privacy p{font-size:11px!important;line-height:1.65!important}
+@media(max-width:800px){.lobby .pageHeader{display:flex;flex-direction:row;align-items:flex-start;gap:12px}.lobby .pageHeader h1{font-size:25px}.lobby .pageHeader>div{min-width:0}.lobby .pageHeader>a{flex:none;font-size:11px;padding:8px;gap:5px}.startCard{padding:20px 18px!important;margin-top:10px}.startCard h2{font-size:18px}.startIcon{width:40px;height:40px}.startForm label{font-size:12px}.startForm .actions{justify-content:space-between}.startForm .actions>button:last-child{flex:1;justify-content:center}.meetingRow{gap:10px}.meetingRow time{font-size:12px}.meetingRow strong{font-size:13px}.meetingRow button{font-size:11px}.notesMode .video{height:160px;min-height:160px}.notesMode .video h3{font-size:12px}.notesMode .self{font-size:9px;padding:9px}.privacy{margin-top:9px}.notesPanel{gap:10px}.noteCard :global(textarea){min-height:240px}}
+@media(prefers-reduced-motion:reduce){.startForm input,.patientResults button,.meetingRow{transition:none}}

@@ -66,3 +66,22 @@
 @media(max-width:800px){.invitation summary{font-size:12px}.visitList{grid-template-columns:1fr}}
 
 @media(max-width:800px){.modebar{position:relative}.invitation{position:static}.invitationPanel{right:0;left:auto;max-width:100%}}
+
+/* Meeting-first entry: one start action and a small current-day agenda. */
+.startCard{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:18px;align-items:center;padding:28px!important;margin:28px 0 12px;box-shadow:none!important}
+.startCard h2{font-size:22px;margin:0 0 8px}.startCard p{margin:0;max-width:590px}
+.startIcon{height:50px;width:50px;border:1px solid var(--noima-line);border-radius:15px;background:var(--noima-canvas);color:var(--noima-accent);display:grid;place-items:center}
+.startForm{grid-column:1/-1;border-top:1px solid var(--noima-line);padding-top:22px;margin-top:4px}
+.startForm label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--noima-ink)}
+.startForm input{flex:1 1 250px;min-width:0;max-width:540px;border:1px solid var(--noima-line);border-radius:10px;background:var(--noima-paper);padding:12px 14px;font:inherit;color:var(--noima-ink)}
+.startForm .actions{margin:16px 0 0;justify-content:flex-end}
+.startForm .patientResults{margin:16px 0}.startForm .patientResults button{text-align:left;min-height:44px}
+.simulationNote{font-size:11px;color:var(--noima-muted);line-height:1.6;margin:0 2px 30px}
+.todaySection{max-width:1000px}.todayHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.todayHeading h2{font-size:16px;margin:0;color:var(--noima-ink)}.todayHeading a{font-size:12px;color:var(--noima-accent)}
+.meetingRows{border:1px solid var(--noima-line);border-radius:14px;overflow:hidden;background:var(--noima-paper)}
+.meetingRow{display:flex;align-items:center;gap:20px;padding:15px 18px;border-bottom:1px solid var(--noima-line)}
+.meetingRow:last-child{border-bottom:0}.meetingRow time{font-size:13px;color:var(--noima-muted);min-width:44px}.meetingRow strong{font-size:14px;flex:1}
+.meetingRow button{font-size:12px}.emptyMeetings{font-size:13px;line-height:1.7;color:var(--noima-muted);border:1px dashed var(--noima-line);border-radius:12px;padding:22px}
+.historyHint{font-size:12px;color:var(--noima-muted);margin-top:26px}.visitChoices{display:grid;gap:8px;margin:16px 0}.visitChoices button{justify-content:space-between!important}
+@media(max-width:800px){.startCard{grid-template-columns:42px minmax(0,1fr);padding:22px 18px!important;gap:14px}.startIcon{width:42px;height:42px}.startCard h2{font-size:19px}.startCard>button{grid-column:1/-1;justify-content:center}.startForm input{flex-basis:100%;max-width:none;font-size:16px}.meetingRow{gap:10px;padding:14px 12px;flex-wrap:wrap}.meetingRow strong{min-width:140px}.meetingRow button{margin-left:auto}.todayHeading{align-items:flex-start}.simulationNote{margin-bottom:24px}}

@@ -52,7 +52,7 @@ try{
   await page.getByRole('checkbox',{name:'Προσομοίωση αποτυχίας αποθήκευσης'}).check();
   await field.fill('ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΧΑΘΕΙ');await field.blur();
   await page.getByText('Συνθετική αποτυχία αποθήκευσης. Το κείμενο παραμένει στο πεδίο.',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Πίσω στα ραντεβού',exact:true}).click();
+  await page.getByRole('button',{name:'Πίσω στις τηλεσυνεδρίες',exact:true}).click();
   assert.equal(await field.inputValue(),'ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΧΑΘΕΙ');
   await page.getByRole('checkbox',{name:'Προσομοίωση αποτυχίας αποθήκευσης'}).uncheck();
   await page.getByRole('button',{name:'Αποθήκευση προσχεδίου',exact:true}).click();
@@ -94,12 +94,12 @@ try{
   assert.equal(await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).isVisible(),false);
   await page.getByRole('button',{name:'Προβολή στον φάκελο',exact:true}).click();
   await page.getByText('ΟΡΙΣΤΙΚΗ ΕΠΕΞΕΡΓΑΣΙΑ',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Πίσω στα ραντεβού',exact:true}).click();
+  await page.getByRole('button',{name:'Πίσω στις τηλεσυνεδρίες',exact:true}).click();
   await page.getByRole('button',{name:'Νέα τηλεσυνεδρία',exact:true}).click();
   const search=page.getByRole('textbox',{name:'Αναζήτηση ασθενή',exact:true});
   await search.fill('Ν');assert.equal(await page.getByRole('group',{name:'Αποτελέσματα ασθενών'}).count(),0);
-  await search.fill('Νι');await page.getByRole('button',{name:'Νίκος Παράδειγμα · Συνθετικό περιστατικό',exact:true}).click();
-  await page.getByRole('button',{name:'Έναρξη επίσκεψης',exact:true}).click();
+  await search.fill('Νι');await page.getByRole('button',{name:'Νίκος Παράδειγμα',exact:true}).click();
+  await page.getByRole('button',{name:'Συνέχεια στη συνεδρία',exact:true}).click();
   await page.getByRole('heading',{name:'Νίκος Παράδειγμα',exact:true}).waitFor();
   await page.getByRole('button',{name:'Σημειώσεις',exact:true}).click();
   const newField=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});assert.equal(await newField.inputValue(),'');
@@ -120,8 +120,8 @@ try{
   await guest.goto(origin+'/assessment/teleconsultation-preview#invalid');
   await guest.getByRole('alert').filter({hasText:'έληξε'}).waitFor();await guest.close();
   await page.locator('summary').filter({hasText:'Πρόσκληση με link'}).filter({visible:true}).click();
-  await page.getByRole('button',{name:'Πίσω στα ραντεβού',exact:true}).click();
-  await page.getByRole('button',{name:'Συνέχεια επίσκεψης',exact:true}).click();
+  await page.getByRole('button',{name:'Πίσω στις τηλεσυνεδρίες',exact:true}).click();
+  await page.getByRole('button',{name:'Άνοιγμα επίσκεψης',exact:true}).click();
   assert.equal(await page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true}).inputValue(),'ΔΙΑΦΟΡΕΤΙΚΟΣ ΑΣΘΕΝΗΣ — ΙΔΙΑ ΝΕΑ ΕΠΙΣΚΕΨΗ');
   await page.screenshot({path:resolve(out,viewport.width+'-workspace.png'),fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));

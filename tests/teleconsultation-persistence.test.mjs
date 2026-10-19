@@ -60,9 +60,9 @@ test('registration requires explicit closure confirmation and a fresh reviewed v
  const record=recordForVisit(bundle,pid,sid);bundle.sessions[0].closure_version=1;
  assert.throws(()=>assertReviewedRecord(bundle,record),/άλλαξε μετά/);
 });
-test('connected entry only opens existing canonical visits, never starts sessions or calls Daily',()=>{
+test('connected entry delegates canonical starts to the scoped helper and never calls Daily',()=>{
  const ui=readFileSync('components/teleconsultations/TeleconsultationsConnected.tsx','utf8');
- assert.doesNotMatch(ui,/action:\s*['"]start_session|newDemoVisit|createDailyRoom|getUserMedia/);
- assert.match(ui,/session=/);assert.match(ui,/patient=/);
+ assert.doesNotMatch(ui,/newDemoVisit|createDailyRoom|getUserMedia/);
+ assert.match(ui,/startMeetingVisit/);assert.match(ui,/session=/);assert.match(ui,/patient=/);
  const route=readFileSync('app/api/teleconsultations/route.ts','utf8');assert.match(route,/withPilot/);assert.match(route,/tester_id=eq/);assert.doesNotMatch(route,/bootstrap|INSERT|UPDATE|DELETE|method:'POST'/);
 });

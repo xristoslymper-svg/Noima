@@ -54,6 +54,16 @@ try{
  const visit='20000000-0000-4000-8000-000000000009';
  await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);
  const dialog=page.locator('dialog[aria-labelledby="record-dialog-title"]');await dialog.waitFor({state:'visible'});
+ const checkRecorderChrome=async(mobile)=>{
+  const controls=await dialog.locator('[data-record-controls]>button').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height}}));
+  assert.equal(controls.length,2);assert.ok(controls.every(r=>r.height>=44));assert.ok(controls[1].x>=controls[0].right+5);assert.ok(Math.abs(controls[0].y-controls[1].y)<2);
+  const buttons=await dialog.locator('[data-visit-actions]>button').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return {height:r.height,radius:parseFloat(s.borderRadius),border:s.borderStyle}}));
+  assert.ok(buttons.length>0);assert.ok(buttons.every(b=>b.height>=44&&b.radius>=10&&b.border==='solid'));
+  assert.ok(await dialog.evaluate(d=>d.scrollWidth<=d.clientWidth+1));
+  await page.screenshot({path:resolve(out,mobile?'recorder-chrome-mobile.png':'recorder-chrome-desktop.png'),fullPage:true});
+ };
+ await checkRecorderChrome(false);
+
  const notes=dialog.locator('textarea').first();await notes.fill('SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
  const locationBefore=page.url();await notes.evaluate(el=>el.dataset.localeTestIdentity='same-editor');
  await dialog.getByRole('button',{name:'Profile and settings',exact:true}).click();
@@ -86,6 +96,10 @@ try{
  }
  report.push('paired Greek/English mobile layouts fit the viewport with identical heading colors and typography');
 
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});
+ await checkRecorderChrome(true);assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
+ await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();
+ report.push('recorder header controls align without overlap and customization buttons retain consistent styling on desktop/mobile; saved notes unchanged');
  // Real auth components: the selector exists only on login and preference survives navigation/refresh.
  await page.goto(origin+'/login?surface=login');
  await page.getByRole('button',{name:'English',exact:true}).waitFor();
@@ -115,6 +129,46 @@ try{
  assert.equal(await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').count(),0);
  assert.equal(await page.locator('dialog.profile-settings-dialog[open] .language-setting').count(),0);
  report.push('language selection is login-only; login choice survives refresh, registration, recovery and authenticated settings without changing clinical data');
+
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session=20000000-0000-4000-8000-000000000002');
+ await page.locator('[data-completed-record][data-reading="true"]').waitFor();
+ const recorded=await page.locator('.completed-record-form textarea').evaluateAll(nodes=>nodes.map(n=>n.value));
+ assert.ok(recorded.some(Boolean));
+ assert.equal(await page.locator('.completed-record-form').getAttribute('disabled'),'');
+ assert.ok(await page.locator('.completed-record-form textarea').first().isDisabled());
+ const memory=await page.locator('[data-confirmed-memory]').innerText();
+ assert.ok(memory.includes('100 mg'));
+ assert.equal(await page.locator('[data-confirmed-memory]').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),3);
+ await page.screenshot({path:resolve(out,'completed-polish-desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.locator('[data-confirmed-memory]').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1);
+ assert.ok(await page.locator('dialog[open]').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+ await page.screenshot({path:resolve(out,'completed-polish-mobile.png'),fullPage:true});
+ await page.reload();await page.locator('[data-completed-record]').waitFor();
+ assert.deepEqual(await page.locator('.completed-record-form textarea').evaluateAll(nodes=>nodes.map(n=>n.value)),recorded);
+ assert.equal(await page.locator('[data-confirmed-memory]').innerText(),memory);
+ await page.getByRole('button',{name:'Correct record',exact:true}).click();
+ assert.equal(await page.locator('[data-completed-record]').getAttribute('data-reading'),'false');
+ assert.equal(await page.locator('.completed-record-form').getAttribute('disabled'),null);
+ assert.equal(await page.locator('.completed-record-form textarea').first().isDisabled(),false);
+ assert.deepEqual(await page.locator('.completed-record-form textarea').evaluateAll(nodes=>nodes.map(n=>n.value)),recorded);
+ report.push('completed reading boxes adapt to mobile; canonical clinical text survives refresh unchanged and existing correction editor stays editable');
+
+ // Audited visual surfaces: real components, Greek/English, no uploads or clinical writes.
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto(origin+'/?surface=scan');await page.locator('.scan-card h1').waitFor();
+ const scanFont=await page.locator('.scan-card h1').evaluate(el=>getComputedStyle(el).fontFamily);
+ assert.match(scanFont,/Inter/);
+ assert.equal(await page.locator('input[type="file"]').count(),1);
+ assert.equal(await page.locator('.scan-submit').isDisabled(),true);
+ await page.screenshot({path:resolve(out,'scan-polish-desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await switchTo('el');
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'scan Greek fits mobile');
+ await page.screenshot({path:resolve(out,'scan-polish-mobile.png'),fullPage:true});
+ await switchTo('en');
+ report.push('paper import uses matching typography and fits both languages/mobile; original upload and recognition controls preserved');
 
  assert.deepEqual(errors,[]);assert.equal(deniedWrites,0);assert.ok(localeWrites>=4);
  writeFileSync(resolve(out,'report.json'),JSON.stringify({report,localeWrites,deniedWrites,externalConnections:false},null,2));

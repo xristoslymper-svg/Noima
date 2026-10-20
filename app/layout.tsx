@@ -8,6 +8,8 @@ import "./clinical-editor.css";
 import "./noima-ui.css";
 import "./language-controls.css";
 import "./patient-tool-polish.css";
+import "./visit-dialog-polish.css";
+import "./screen-polish.css";
 import {getLocale, getMessages} from 'next-intl/server';
 import LocaleProvider from '@/i18n/LocaleProvider';
 import PilotNotice from '@/i18n/PilotNotice';

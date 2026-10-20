@@ -1,4 +1,5 @@
 import React from 'react';
+import Scan from '../app/scan/page';
 import Account from '../app/account/page';
 import PilotAccess from '../components/PilotAccess';
 import AuthShell from '../components/AuthShell';
@@ -15,6 +16,8 @@ import PresenceEditor from '../components/presence/PresenceEditor';
 import TeleconsultationsPreview from '../components/teleconsultations/TeleconsultationsPreview';
 import Library from '../app/psychometrics/page';
 import '../app/globals.css';import '../app/noima-ui.css';import '../app/clinical-refinement.css';import '../app/visit-workspace.css';import '../app/clinical-editor.css';import '../app/mobile.css';import '../app/language-controls.css';
+import '../app/visit-dialog-polish.css';
+import '../app/screen-polish.css';
 const locale=document.documentElement.dataset.testLocale==='en'?'en':'el';
 const surface=new URLSearchParams(location.search).get('surface');
-createRoot(document.getElementById('root')!).render(<LocaleProvider initialLocale={locale} initialMessages={locale==='en'?english:greek}>{!['login','recovery','reset','activate','account'].includes(surface||'')&&<aside aria-label="Test language control"><LanguageSelector compact/></aside>}{surface==='account'?<Account/>:surface==='login'?<PilotAccess/>:surface==='activate'?<PilotAccess activate/>:surface==='recovery'?<AuthShell><h1>Password recovery</h1><PasswordResetRequest/></AuthShell>:surface==='reset'?<AuthShell><h1>New password</h1><PasswordChangeForm recovery/></AuthShell>:surface==='new'?<NewPatient/>:surface==='visit'?<CustomVisitPreview/>:surface==='presence'?<PresenceEditor storageKey="synthetic-current-i18n-presence" googleMaps/>:surface==='tele'?<TeleconsultationsPreview/>:surface==='library'?<Library/>:<Patients/>}</LocaleProvider>);
+createRoot(document.getElementById('root')!).render(<LocaleProvider initialLocale={locale} initialMessages={locale==='en'?english:greek}>{!['login','recovery','reset','activate','account'].includes(surface||'')&&<aside aria-label="Test language control"><LanguageSelector compact/></aside>}{surface==='scan'?<Scan/>:surface==='account'?<Account/>:surface==='login'?<PilotAccess/>:surface==='activate'?<PilotAccess activate/>:surface==='recovery'?<AuthShell><h1>Password recovery</h1><PasswordResetRequest/></AuthShell>:surface==='reset'?<AuthShell><h1>New password</h1><PasswordChangeForm recovery/></AuthShell>:surface==='new'?<NewPatient/>:surface==='visit'?<CustomVisitPreview/>:surface==='presence'?<PresenceEditor storageKey="synthetic-current-i18n-presence" googleMaps/>:surface==='tele'?<TeleconsultationsPreview/>:surface==='library'?<Library/>:<Patients/>}</LocaleProvider>);

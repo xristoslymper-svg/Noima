@@ -153,6 +153,28 @@ try{
    await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Σύνοψη').click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await page.reload();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(requests.filter(r=>r.action==='start_session').length,0);
   });
+  await check('popup-escape-preserves-unsaved-work-and-resumes-same-visit',async({page,open})=>{
+   await open('?tab=record&session='+visitId);
+   const dialog=page.locator('dialog[open][aria-labelledby="record-dialog-title"]');
+   const field=page.getByRole('textbox',{name:/Λόγος προσέλευσης & παρούσα εικόνα/});await field.waitFor();
+   let fail=true;
+   await page.route('**/api/patients/demo/runtime',route=>{
+    const body=route.request().postDataJSON();
+    if(fail&&body?.action?.startsWith('save_'))return route.fulfill({status:503,json:{error:'Synthetic save unavailable'}});
+    return route.continue();
+   });
+   await field.fill('QA MODAL RECOVERY — synthetic only');
+   await page.keyboard.press('Escape');
+   await dialog.getByRole('alert').filter({hasText:/Synthetic save unavailable/}).first().waitFor();
+   assert.equal(await dialog.count(),1);assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   fail=false;await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
+   await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();
+   await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
+   await field.waitFor();assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   await page.reload();await field.waitFor();assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
+  });
   await check('verified-finalization-and-refresh',async({page,open,nav})=>{
    completionMode='malformed';await open(`?tab=record&session=${visitId}`);const beginReview=page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true});await beginReview.waitFor();await beginReview.click();const finish=page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true});await finish.waitFor();await page.screenshot({path:resolve(out,`${size}-journey-review.png`)});assert.equal(requests.filter(r=>r.action==='finalize_session').length,0,'review does not finalize');await finish.click();
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);

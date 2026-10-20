@@ -908,7 +908,10 @@
       "i18n/PilotNotice.tsx",
       "tests/fixtures/pre-localization-ui.json",
       "tests/fixtures/pre-localization-styles.json",
-      "tests/i18n-current-contract.test.mjs"
+      "tests/i18n-current-contract.test.mjs",
+      "browser-tests/current-i18n-fixture.tsx",
+      "browser-tests/current-i18n.mjs",
+      "tests/teleconsultations.test.mjs"
     ]
   }
 }

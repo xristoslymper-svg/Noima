@@ -63,7 +63,7 @@ const fields=[['psychiatric_history',t('history.psychiatric')],['medical_history
  const loading=synthetic&&preview?false:liveLoading;
  const retryLoad=()=>{if(synthetic&&preview)preview.onRetry();else setRetry(x=>x+1)};
  if(loading)return compact?null:<p className="patient-reported-muted">{t('history.loadingAnswers')}</p>;
- const failure=error?<p role="alert">{t('errors.patientAnswersLoad')} {data.length>0&&'Εμφανίζονται οι τελευταίες διαθέσιμες απαντήσεις. '}<button type="button" className="patient-reported-link" onClick={retryLoad}>{t('common.repeat')}</button></p>:null;
+ const failure=error?<p role="alert">{t('errors.patientAnswersLoad')} {data.length>0&&t('polish.m041')}<button type="button" className="patient-reported-link" onClick={retryLoad}>{t('common.repeat')}</button></p>:null;
  if(!data.length&&error)return failure;
  if(!data.length)return compact?null:<p className="patient-reported-muted">{t('history.noReturnedForm')}</p>;
  const latest=data[0], h=normalizedPatientHistory(latest.history_answers);

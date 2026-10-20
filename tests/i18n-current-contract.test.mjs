@@ -11,11 +11,12 @@ const printer=ts.createPrinter({removeComments:true});
 function canonical(expression,source){
  const result=ts.transform(expression,[context=>{
   const visit=node=>{
+   if(ts.isStringLiteral(node))return ts.factory.createStringLiteral(/[\u0370-\u03ff]/.test(node.text)?node.text.trim():node.text);
    if(ts.isCallExpression(node)){
     const name=node.expression.getText(source);
     if(['ui','displayLabel','systemMessage'].includes(name)&&node.arguments.length===1)return ts.visitNode(node.arguments[0],visit);
     if(name==='t'&&node.arguments.length===1&&ts.isStringLiteral(node.arguments[0])){
-     const label=value(node.arguments[0].text);if(typeof label==='string')return ts.factory.createStringLiteral(label);
+     const label=value(node.arguments[0].text);if(typeof label==='string')return ts.factory.createStringLiteral(label.trim());
     }
     if(['setError','setNotice','setStatus','setMessage','setRecordNotice','window.confirm','confirm'].includes(name)&&node.arguments.length===1)return ts.factory.updateCallExpression(node,node.expression,node.typeArguments,[ts.factory.createStringLiteral('__PRESENTATION__')]);
     if(['formatClinicDateTime','formatClinicAppointment','recordDate'].includes(name)&&node.arguments.length>1)return ts.factory.updateCallExpression(node,node.expression,node.typeArguments,[ts.visitNode(node.arguments[0],visit)]);

@@ -10,8 +10,8 @@ export function readLocalizedSource(path,encoding){
  if(typeof source!=='string'||!String(path).endsWith('.tsx'))return source;
  const ast=ts.createSourceFile(String(path),source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),edits=[];
  function visit(node){
-  if(ts.isCallExpression(node)&&node.expression.getText(ast)==='t'&&node.arguments.length===1&&ts.isStringLiteral(node.arguments[0])){
-   const key=node.arguments[0].text,value=key.split('.').reduce((v,k)=>v?.[k],messages);
+  if(ts.isCallExpression(node)&&['t','ui','displayLabel','systemMessage'].includes(node.expression.getText(ast))&&node.arguments.length===1&&ts.isStringLiteral(node.arguments[0])){
+   const key=node.arguments[0].text,value=node.expression.getText(ast)==='t'?key.split('.').reduce((v,k)=>v?.[k],messages):key;
    if(typeof value!=='string')throw new Error('Missing Greek translation: '+key);
    let target=node,text="'"+value.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n')+"'";
    if(ts.isJsxExpression(node.parent)&&node.parent.expression===node){

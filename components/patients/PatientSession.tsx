@@ -228,7 +228,7 @@ const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'
   {draft.session_type==='follow_up'&&!embedded&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>{t('visits.compactRecord')}</button>}
   {!embedded&&<div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError})}</span><small>Έναρξη {fmt(draft.started_at)}</small></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError})}</span><small>{t('common.getStarted')} {fmt(draft.started_at)}</small></div>
   </div>}
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title={t('visits.visitNotes')} rows={4}/>}
@@ -255,7 +255,7 @@ const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'
   {remaining.length>0&&<div className="visit-finalize-guidance" aria-label={t('current.m048')}><strong>{t('current.m046')}</strong><ul>{remaining.map((item,index)=><li key={item.anchor+index}><button type="button" onClick={()=>goToPart(item.anchor)}>{item.message}</button></li>)}</ul></div>}
   <p className="visit-hint">{t('current.m047')}</p>
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?'Αποθήκευση αλλαγών…':finalizing?ui('Καταχώριση…'):ui('Καταχώριση επίσκεψης')}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση σημειώσεων…':'Συνέχεια αργότερα'}</button>}
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?t('polish.m042'):finalizing?ui('Καταχώριση…'):ui('Καταχώριση επίσκεψης')}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?t('polish.m043'):t('visits.finishLater')}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{systemMessage(blocker.message)} <button type="button" onClick={()=>goToPart(blocker.anchor)}>{t('common.goTo')}</button></span>}
   </div>
 

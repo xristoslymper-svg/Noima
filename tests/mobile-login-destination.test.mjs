@@ -11,7 +11,7 @@ async function route(path,{mobile=false,user=true,identity=true}={}){
  const jar=new Map();
  const response=()=>({headers:new Headers(),cookies:{set(name,value){jar.set(name,value)},getAll(){return [...jar].map(([name,value])=>({name,value}))}}});
  const mod={exports:{}};
- vm.runInNewContext(source,{module:mod,exports:mod.exports,URL,Headers,require:(id)=>(intlTestModule(id)??(id=>{
+ vm.runInNewContext(source,{module:mod,exports:mod.exports,URL,Headers,process:{env:{}},require:(id)=>(intlTestModule(id)??(id=>{
   if(id.includes('i18n/config'))return localeConfig;
   if(id==='@supabase/ssr')return {createServerClient:()=>({auth:{getUser:async()=>({data:{user:user?{id:'synthetic'}:null}})},rpc:async()=>({data:identity?{workspace_id:'synthetic-workspace'}:null})})};
   if(id==='next/server')return {NextResponse:{next:response,redirect:url=>({...response(),destination:String(url)})}};

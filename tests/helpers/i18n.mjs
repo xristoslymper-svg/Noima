@@ -24,7 +24,7 @@ export function intlTestModule(name,locale='el'){
  if(name==='@/i18n/messages')return {loadMessages:async locale=>dictionaries[locale]};
  if(name==='@/i18n/output-language')return outputLanguage;
  if(name==='@/i18n/output-translator'||name.endsWith('/i18n/output-translator.ts'))return outputTranslator;
- if(name==='@/i18n/option-labels'||name==='@/i18n/system-message'||name==='./option-keys'||name==='./option-labels'||name==='./system-notices'||name==='@/i18n/evidence-label'||name==='@/i18n/finding-text'){
+ if(name==='@/i18n/use-ui-text'||name==='./static-text'||name==='@/i18n/static-text'||name==='@/i18n/option-labels'||name==='@/i18n/system-message'||name==='./option-keys'||name==='./option-labels'||name==='./system-notices'||name==='@/i18n/evidence-label'||name==='@/i18n/finding-text'){
   const module={exports:{}};
   const source=ts.transpileModule(readFileSync(new URL('../../i18n/'+name.split('/').at(-1)+'.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
   vm.runInNewContext(source,{module,exports:module.exports,require:id=>id==='@/lib/clinic-time'?clinicTime:intlTestModule(id,locale)});

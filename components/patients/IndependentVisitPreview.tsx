@@ -18,7 +18,7 @@ export default function IndependentVisitPreview(){
    const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.origin);
    if(url.origin!==location.origin&&url.pathname.startsWith('/auth/v1/'))return original(input,init);
    if(url.origin!==location.origin)return Response.json({error:'Η συνθετική δοκιμή δεν συνδέεται με εξωτερικές υπηρεσίες.'},{status:403});
-   if(!url.pathname.startsWith('/api/'))return original(input,init);
+   if(!url.pathname.startsWith('/api/')||url.pathname==='/api/locale')return original(input,init);
    if(url.pathname.startsWith('/api/pilot')&&(!init?.method||init.method==='GET'))return original(input,init);
    if(url.pathname.includes('summary'))return Response.json({error:'Η AI σύνοψη δεν εκτελείται στη συνθετική δοκιμή.'},{status:503});
    if(url.pathname==='/api/patients/demo/runtime'||url.pathname==='/api/patients/demo/visit'){

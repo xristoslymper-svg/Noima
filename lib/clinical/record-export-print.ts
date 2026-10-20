@@ -140,7 +140,7 @@ function medicalName(b:PatientBundle,id:string,oldState:Record<string,unknown>|n
  '@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toolbar{display:none}.paper{margin:0;padding:0;border:0;box-shadow:none;max-width:none;border-radius:0}.visit{break-inside:auto}.section h2,.visit>header{break-after:avoid}}',
  '@media(max-width:650px){.paper{padding:22px;margin:0;border:0;border-radius:0}.row{grid-template-columns:1fr;gap:1px}.toolbar{flex-wrap:wrap}}'
  ].join('');
- const html=['<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+ const html=['<!doctype html><html lang="'+locale+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
  '<title>',escapeHtml(title),'</title><style nonce="',escapeHtml(nonce),'">',stylesheet,'</style></head><body>',
  ui('<div class="toolbar"><span>Εκτυπώσιμη έκδοση · Αποθήκευση ως PDF από τις επιλογές εκτύπωσης</span><button type="button" id="print-document">Εκτύπωση / PDF</button></div>'),
  ui('<main class="paper"><div class="brand">Ψ · NOIMA</div><h1>Κλινικός φάκελος</h1><p class="sub">ΔΟΚΙΜΑΣΤΙΚΑ ΔΕΔΟΜΕΝΑ · '),escapeHtml(name),ui(' · Εξαγωγή '),printDate(exportedAt),'</p>',

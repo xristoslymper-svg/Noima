@@ -1,0 +1,16 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import LocaleProvider from '../i18n/LocaleProvider';
+import LanguageSelector from '../components/LanguageSelector';
+import greek from '../i18n/messages/el.json';
+import english from '../i18n/messages/en.json';
+import Patients from '../app/patients/page';
+import NewPatient from '../app/patients/new/page';
+import CustomVisitPreview from '../components/patients/CustomVisitPreview';
+import PresenceEditor from '../components/presence/PresenceEditor';
+import TeleconsultationsPreview from '../components/teleconsultations/TeleconsultationsPreview';
+import Library from '../app/psychometrics/page';
+import '../app/globals.css';import '../app/noima-ui.css';import '../app/clinical-refinement.css';import '../app/visit-workspace.css';import '../app/clinical-editor.css';import '../app/mobile.css';import '../app/language-controls.css';
+const locale=document.documentElement.dataset.testLocale==='en'?'en':'el';
+const surface=new URLSearchParams(location.search).get('surface');
+createRoot(document.getElementById('root')!).render(<LocaleProvider initialLocale={locale} initialMessages={locale==='en'?english:greek}><aside aria-label="Test language control"><LanguageSelector compact/></aside>{surface==='new'?<NewPatient/>:surface==='visit'?<CustomVisitPreview/>:surface==='presence'?<PresenceEditor storageKey="synthetic-current-i18n-presence" googleMaps/>:surface==='tele'?<TeleconsultationsPreview/>:surface==='library'?<Library/>:<Patients/>}</LocaleProvider>);

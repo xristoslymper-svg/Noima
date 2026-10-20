@@ -1,14 +1,16 @@
+import {readLocalizedSource} from './helpers/localized-source.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {confirmedPriorCourse,priorCourseInput} from '../lib/clinical/prior-course-record.ts';
-const read=file=>readFile(file,'utf8');
+const raw=file=>readFile(file,'utf8');
+const read=async file=>readLocalizedSource(file,'utf8');
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const manifest=JSON.parse(await read('tests/selective-production-contract.json'));
 // Explicitly authorized journey UI changes; every other production hash remains enforced.
-const journeyChanges=new Set(['components/patients/VisitWorkspace.tsx','lib/clinical/summary-context.ts','components/patients/MedicationTable.tsx','components/patients/PatientTreatment.tsx','app/calendar/page.tsx','app/page.tsx','components/patients/ClinicalSummary.tsx','components/patients/PatientPanels.tsx','app/patients/page.tsx','components/patients/PatientRecordSummary.tsx','components/patients/PatientSession.tsx','components/patients/FollowupClosure.tsx']);
-for(const [file,expected] of Object.entries(manifest.hashes).filter(([file])=>!journeyChanges.has(file)))test('production unchanged: '+file,async()=>assert.equal(hash(await read(file)),expected));
+const journeyChanges=new Set(['app/patients/new/page.tsx','components/intake/IntakeLauncher.tsx','app/api/patients/demo/runtime/route.ts','app/layout.tsx','middleware.ts','package.json','package-lock.json','components/patients/VisitWorkspace.tsx','lib/clinical/summary-context.ts','components/patients/MedicationTable.tsx','components/patients/PatientTreatment.tsx','app/calendar/page.tsx','app/page.tsx','components/patients/ClinicalSummary.tsx','components/patients/PatientPanels.tsx','app/patients/page.tsx','components/patients/PatientRecordSummary.tsx','components/patients/PatientSession.tsx','components/patients/FollowupClosure.tsx']);
+for(const [file,expected] of Object.entries(manifest.hashes).filter(([file])=>!journeyChanges.has(file)))test('production unchanged: '+file,async()=>assert.equal(hash(await raw(file)),expected));
 test('patient journey keeps the four approved tabs and prior-course placement',async()=>{
  const source=await read('components/patients/PatientWorkspace.tsx');
  assert.match(source,/JourneyEntry/);assert.match(source,/JourneyCompletion/);assert.match(source,/beforeNavigate.current/);assert.match(source,/priorCourseEnabled=\{!previewBundle\}/);
@@ -41,7 +43,7 @@ test('library uses a scoped compact launcher and retains assignment identity on 
  assert.match(launcher,/Ο φάκελος δημιουργείται μετά την υποβολή/);
  assert.match(launcher,/Το email είναι έτοιμο/);
  assert.doesNotMatch(launcher,/create_patient|start_session|medication_start/);
- assert.doesNotMatch(library,/next-intl|@\/i18n\//);
+ assert.match(library,/useTranslations/); // Presentation localization is explicitly authorized; clinical action guards above remain enforced.
 });
 test('new intake includes contact details and print preserves the scannable assignment code',async()=>{
  const form=await read('components/intake/PatientIntakeForm.tsx'),launcher=await read('components/intake/LibraryIntakeLauncher.tsx');

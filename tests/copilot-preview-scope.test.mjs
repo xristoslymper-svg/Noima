@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -22,7 +23,7 @@ test('synthetic endpoint rejects caller charts and clears conversation from anot
  '@/lib/copilot/preview':{syntheticPreviewEnabled:()=>true,syntheticPatient},
  '@/lib/copilot/fast':{syntheticAnswer:(q,m,s,chart)=>{calls.push({q,m,chart});return [];},answerStream:(_events,meta)=>Response.json(meta)}
  };
- new Function('require','module','exports',compiled)(name=>mocks[name],module,module.exports);
+ new Function('require','module','exports',compiled)(name=>intlTestModule(name)??mocks[name],module,module.exports);
  const post=body=>module.exports.POST(new Request('https://fixture.invalid/api/copilot/synthetic',{method:'POST',body:JSON.stringify(body)}));
  for(const patch of [{chart:'unknown'},{patient_id:'foreign'},{bundle:{patient:{id:'foreign'}}}])assert.equal((await post({query:'Πορεία;',...patch})).status,400);
  assert.equal(calls.length,0);

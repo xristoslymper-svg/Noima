@@ -741,7 +741,9 @@
       "lib/clinical/record-export-print.ts",
       "components/patients/VisitNextAppointment.tsx",
       "components/patients/PatientAppointmentDialog.tsx",
-      "tests/doctor-experience.test.mjs"
+      "tests/doctor-experience.test.mjs",
+      "tests/patient-journey.test.mjs",
+      "tests/followup-ux-design.test.mjs"
     ]
   }
 }

@@ -28,7 +28,7 @@ export async function prepareAction(workspace:string,bundle:PatientBundle,query:
    objectSchema({action:{type:'string',enum:['create','move','cancel','clarify']},event_id:{type:'string',enum:['',...eligible.map(e=>e.id)]},date:stringSchema,time:stringSchema,duration:{type:'integer',minimum:0,maximum:1440},target_date:stringSchema,target_time:stringSchema,clarification:stringSchema}),usage);
   if(p.action==='clarify')return clarify(p.clarification||t('clinical.clarifyAppointment'),p);
   if(!['create','move','cancel'].includes(p.action))throw new Error('copilot_invalid_action');
-  const selection=p.action==='create'?null:selectAppointment(eligible,p,p.action==='cancel'?query:'',{label:value=>translateUiLabel(value,key=>t(key)),date});
+  const selection=p.action==='create'?null:selectAppointment(eligible,p,p.action==='cancel'?query:'',{label:value=>translateUiLabel(value,key=>t(key as never)),date});
   if(selection&&!selection.event)return clarify(selection.answer,p);
   const event=selection?.event;
   const start=p.action==='cancel'?event!.scheduled_start:clinicLocalToIso(p.date,p.time);

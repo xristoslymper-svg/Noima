@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useOptionLabel} from '@/i18n/option-labels';
 
 import {useTranslations} from 'next-intl';
@@ -14,6 +15,7 @@ import {riskTreeChoices,riskTreePath,riskTreeHidden,riskTreeQuestions,riskTreeLa
 function shape(r?:DemoRisk){return {suicidal_ideation:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',self_harm:r?.self_harm||'not_assessed',attempt_history:r?.attempt_history||'not_assessed',harm_to_others:r?.harm_to_others||'not_assessed',protective_factors:r?.protective_factors||'',clinical_note:r?.clinical_note||'',tree:r?.tree||{version:1 as const,answers:{wish:r?.suicidal_ideation||'not_assessed',intent:r?.intent||'not_assessed',plan:r?.plan||'not_assessed',others:r?.harm_to_others||'not_assessed'},notes:{}}};}
 type Props={saveRisk?:(risk:ReturnType<typeof shape>,version:number|null)=>Promise<{value:ReturnType<typeof shape>;version:number}>;sessionId:string;existing?:DemoRisk;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,d:boolean)=>void};
 export default function RiskTreeEditor({sessionId,existing,onSaved,registerFlusher,onDirtyChange,saveRisk}:Props){
+ const ui=useUiText();
  const t=useTranslations();
  const displayLabel=useOptionLabel();
 

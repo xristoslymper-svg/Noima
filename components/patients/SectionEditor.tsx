@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useLocale} from 'next-intl';
 import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
@@ -14,6 +15,7 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 const required=new Set(['interview','mse','assessment','plan','review']);
 
 export default function SectionEditor({sessionId,definition,existing,proposals,onSaved,registerFlusher,onDirtyChange,sectionHeading=false,rows=4,placeholder}:{placeholder?:string;rows?:number;sectionHeading?:boolean;sessionId:string;definition:{key:string;title:string};existing?:DemoSection;proposals:ClinicalProposal[];onSaved:()=>Promise<unknown>;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
+const ui=useUiText();
 const t=useTranslations();
 
  const locale=useLocale();

@@ -67,6 +67,13 @@ try{
   await page.goto(origin+'/?surface='+surface);await page.getByRole('heading',{name:heading,exact:true}).waitFor();await page.screenshot({path:resolve(out,surface+'-en.png'),fullPage:true});
   report.push(surface+' current screen renders English controls with unchanged synthetic content');
  }
+ await page.setViewportSize({width:390,height:844});
+ for(const [surface,heading]of [['registry','Patients'],['tele','Teleconsultations'],['presence','My practice page'],['library','Library']]){
+  await page.goto(origin+'/?surface='+surface);await page.getByRole('heading',{name:heading,exact:true}).waitFor();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),surface+' English mobile page must fit the viewport');
+  await page.screenshot({path:resolve(out,surface+'-en-mobile.png'),fullPage:true});
+ }
+ report.push('English mobile layouts fit the viewport without changing existing styles');
  assert.deepEqual(errors,[]);assert.equal(deniedWrites,0);assert.ok(localeWrites>=4);
  writeFileSync(resolve(out,'report.json'),JSON.stringify({report,localeWrites,deniedWrites,externalConnections:false},null,2));
  console.log(JSON.stringify(report,null,2));

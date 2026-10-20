@@ -168,7 +168,8 @@ try{
    await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();
    assert.equal(state.sessions.find(s=>s.id===newId).status,'completed');
    await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).first().click();
-   await page.getByText('ONLY NEW VISIT NOTES - SYNTHETIC',{exact:true}).first().waitFor();
+   const registeredNotes=page.locator('.completed-record-form textarea').first();await registeredNotes.waitFor();
+   assert.equal(await registeredNotes.inputValue(),'ONLY NEW VISIT NOTES - SYNTHETIC');
    assert.equal(JSON.stringify(state.sessions.find(s=>s.id===visitId)),before);
    assert.equal(JSON.stringify(state.sections.filter(s=>s.session_id===visitId)),oldSections);
    assert.equal(state.risks.some(r=>r.session_id===newId),false);

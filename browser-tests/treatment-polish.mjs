@@ -42,21 +42,24 @@ try{
   await page.getByRole('button',{name:'Open assignment',exact:true}).click();
   const dialog=page.getByRole('dialog');await dialog.waitFor();
   const geometry=await dialog.evaluate(d=>{
-   const language=d.querySelector('.assignment-language').getBoundingClientRect(),intro=d.querySelector('.assignment-intro').getBoundingClientRect(),title=d.querySelector('h2'),s=getComputedStyle(title);
-   return {languageBottom:language.bottom,introTop:intro.top,font:s.fontFamily,titleSize:parseFloat(s.fontSize),fits:d.scrollWidth<=d.clientWidth+1};
+   const intro=d.querySelector('.assignment-intro').getBoundingClientRect(),title=d.querySelector('h2'),s=getComputedStyle(title);
+   return {titleBottom:title.getBoundingClientRect().bottom,introTop:intro.top,font:s.fontFamily,titleSize:parseFloat(s.fontSize),fits:d.scrollWidth<=d.clientWidth+1};
   });
-  assert.ok(geometry.introTop>=geometry.languageBottom);assert.ok(geometry.fits);assert.match(geometry.font,/Inter/);assert.ok(geometry.titleSize<=24);
-  const recipient=dialog.locator('.assignment-language select');assert.equal(await recipient.inputValue(),'el');
-  await recipient.selectOption('en');
+  assert.ok(geometry.introTop>=geometry.titleBottom);assert.ok(geometry.fits);assert.match(geometry.font,/Inter/);assert.ok(geometry.titleSize<=24);
+  assert.equal(await dialog.locator('.assignment-language,.language-setting').count(),0);
+  assert.equal(await dialog.getByText(t('documents.recipientLanguage'),{exact:true}).count(),0);
+  assert.equal(await dialog.getByRole('combobox').count(),0);
   await dialog.getByRole('checkbox',{name:'PHQ-9',exact:true}).check();
-  await dialog.getByRole('button',{name:/Tablet/}).click();assert.equal(await recipient.isDisabled(),true);
-  await dialog.getByRole('button',{name:'Email',exact:true}).click();assert.equal(await recipient.inputValue(),'en');assert.equal(await recipient.isEnabled(),true);
+  await dialog.getByRole('button',{name:/Tablet/}).click();assert.equal(await dialog.locator('.assignment-language,.language-setting').count(),0);
+  await dialog.getByRole('button',{name:t('documents.print'),exact:true}).click();assert.equal(await dialog.getByRole('combobox').count(),0);
+  await dialog.getByRole('button',{name:'Email',exact:true}).click();assert.equal(await dialog.getByRole('combobox').count(),0);
+  assert.equal(await dialog.getByText(t('psychometrics.originalInstrumentLanguage'),{exact:true}).count(),1);
   await dialog.screenshot({path:resolve(out,'assignment-'+lang+'-'+width+'.png')});
   await dialog.getByRole('button',{name:t('notifications.sendEmail'),exact:true}).click();
   await dialog.locator('.intake-launcher-success').waitFor();
   const assignment=calls.filter(c=>c.body?.action==='assign').at(-1),mail=calls.filter(c=>c.path==='/api/intake/email').at(-1);
-  assert.equal(assignment.body.patient_id,'10000000-0000-4000-8000-000000000006');assert.equal(assignment.body.channel,'email');assert.equal(assignment.body.recipient_locale,'en');assert.deepEqual(assignment.body.tools,['history','PHQ-9']);assert.equal(mail.body.to,'synthetic@example.invalid');
-  assert.deepEqual(errors,[]);report.push({lang,width,longTextVisible:true,sourceVisitUnchanged:true,languageIntroDoNotOverlap:true,syntheticDeliveryPayloadUnchanged:true});
+  assert.equal(assignment.body.patient_id,'10000000-0000-4000-8000-000000000006');assert.equal(assignment.body.channel,'email');assert.equal(assignment.body.recipient_locale,'el');assert.deepEqual(assignment.body.tools,['history','PHQ-9']);assert.equal(mail.body.to,'synthetic@example.invalid');assert.equal(mail.body.recipient_locale,'el');
+  assert.deepEqual(errors,[]);report.push({lang,width,longTextVisible:true,sourceVisitUnchanged:true,loginOnlyLanguageSelection:true,deliveryDefaultPreserved:true,syntheticDeliveryPayloadUnchanged:true});
   await context.close();
  }
  writeFileSync(resolve(out,'report.json'),JSON.stringify({report,network:'isolated fixture only; no database/email/provider access'},null,2));console.log(JSON.stringify(report));

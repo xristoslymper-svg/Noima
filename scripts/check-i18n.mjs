@@ -33,6 +33,18 @@ export function auditDictionaries(root=process.cwd()){
    if(ts.isJsxAttribute(n)&&['title','placeholder','aria-label','alt'].includes(n.name.getText(ast))&&n.initializer&&ts.isStringLiteral(n.initializer)&&/[Α-Ωα-ω]/u.test(n.initializer.text)){
     errors.push(relative(root,file)+': untranslated Greek '+n.name.getText(ast));
    }
+   if((ts.isStringLiteral(n)||ts.isNoSubstitutionTemplateLiteral(n)||ts.isTemplateHead(n)||ts.isTemplateMiddle(n)||ts.isTemplateTail(n))&&/[Α-Ωα-ω]/u.test(n.text)){
+    let parent=n.parent,display=false,exempt=false;
+    while(parent){
+     if(ts.isCallExpression(parent)&&['ui','displayLabel','systemMessage','translateUiLabel','translateStaticMarkup'].includes(parent.expression.getText(ast))){exempt=true;break}
+     if(ts.isBinaryExpression(parent)&&['===','!==','==','!='].includes(parent.operatorToken.getText(ast))){exempt=true;break}
+     if(ts.isJsxAttribute(parent)){display=['title','label','help','description','placeholder','aria-label','alt'].includes(parent.name.getText(ast));break}
+     if(ts.isJsxExpression(parent)&&!ts.isJsxAttribute(parent.parent)){display=true}
+     if(ts.isJsxElement(parent)||ts.isJsxSelfClosingElement(parent))break;
+     parent=parent.parent;
+    }
+    if(display&&!exempt)errors.push(relative(root,file)+': untranslated rendered literal '+n.text);
+   }
    if(ts.isStringLiteral(n)||ts.isNoSubstitutionTemplateLiteral(n)){
     if(allKeys.has(n.text))used.add(n.text);
     if(ts.isCallExpression(n.parent)&&n.parent.arguments[0]===n&&n.parent.expression.getText(ast)==='t'){

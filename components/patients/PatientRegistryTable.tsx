@@ -7,12 +7,12 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import {defaultRegistryLayout,moveRegistryColumn,normalizeRegistryLayout,registryColumns,registryLayoutKey,showRegistryColumn,type PatientRegistryRow,type RegistryColumnId,type RegistryLayout} from '@/lib/patients/registry-layout';
 import {intlLocale} from '@/i18n/config';
 import styles from './PatientRegistryTable.module.css';
-type RegistryTranslator=(key:string,values?:Record<string,string|number>)=>string;
-const dated=(value:string|null|undefined,withTime:boolean,locale:string,t:RegistryTranslator):ReactNode=>{const day=new Intl.DateTimeFormat(intlLocale(locale),{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Athens'});const clock=new Intl.DateTimeFormat(intlLocale(locale),{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Athens'});if(!value||!Number.isFinite(Date.parse(value)))return '—';const date=new Date(value);return <time dateTime={value} title={day.format(date)+' · '+clock.format(date)}>{day.format(date)}{withTime&&<small>{clock.format(date)} · {t('registry.athens')}</small>}</time>};
-function cell(row:PatientRegistryRow,id:RegistryColumnId,locale:string,t:RegistryTranslator){
+type CellLabels={age:(age:number)=>string;athens:string;active:string;inactive:string;archived:string;unfinished:string};
+const dated=(value:string|null|undefined,withTime:boolean,locale:string,labels:CellLabels):ReactNode=>{const day=new Intl.DateTimeFormat(intlLocale(locale),{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Athens'});const clock=new Intl.DateTimeFormat(intlLocale(locale),{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Athens'});if(!value||!Number.isFinite(Date.parse(value)))return '—';const date=new Date(value);return <time dateTime={value} title={day.format(date)+' · '+clock.format(date)}>{day.format(date)}{withTime&&<small>{clock.format(date)} · {labels.athens}</small>}</time>};
+function cell(row:PatientRegistryRow,id:RegistryColumnId,locale:string,labels:CellLabels){
  switch(id){
   case 'registry':return String(row.registry_number).padStart(3,'0');
-  case 'age':return row.reported_age==null?'—':t('registry.age',{age:row.reported_age});
+  case 'age':return row.reported_age==null?'—':labels.age(row.reported_age);
   case 'phone':return row.phone||'—';
   case 'email':return row.email||'—';
   case 'landline':return row.landline||'—';
@@ -20,12 +20,12 @@ function cell(row:PatientRegistryRow,id:RegistryColumnId,locale:string,t:Registr
   case 'address':return row.address||'—';
   case 'diagnosis':return row.diagnosis?<strong title={row.diagnosis.label}>{row.diagnosis.code}</strong>:'—';
   case 'diagnosisLabel':return row.diagnosis?.label||'—';
-  case 'last':return dated(row.last_session?.completed_at,false,locale,t);
-  case 'next':return dated(row.next_appointment?.scheduled_start,true,locale,t);
-  case 'created':return dated(row.created_at,false,locale,t);
-  case 'updated':return dated(row.updated_at,false,locale,t);
-  case 'status':return row.status==='active'?t('registry.active'):row.status==='inactive'?t('registry.inactive'):row.status==='archived'?t('registry.archived'):row.status||'—';
-  case 'draft':return row.draft?<span className={styles.badge}>{t('current.m188')}</span>:'—';
+  case 'last':return dated(row.last_session?.completed_at,false,locale,labels);
+  case 'next':return dated(row.next_appointment?.scheduled_start,true,locale,labels);
+  case 'created':return dated(row.created_at,false,locale,labels);
+  case 'updated':return dated(row.updated_at,false,locale,labels);
+  case 'status':return row.status==='active'?labels.active:row.status==='inactive'?labels.inactive:row.status==='archived'?labels.archived:row.status||'—';
+  case 'draft':return row.draft?<span className={styles.badge}>{labels.unfinished}</span>:'—';
   case 'complaint':return row.chief_complaint||'—';
   case 'note':return row.note||'—';
   default:return null;
@@ -33,6 +33,7 @@ function cell(row:PatientRegistryRow,id:RegistryColumnId,locale:string,t:Registr
 }
 export default function PatientRegistryTable({rows,total,assign,onReset}:{rows:PatientRegistryRow[];total:number;assign:string|null;onReset:()=>void}){
  const t=useTranslations(),locale=useLocale();
+ const labels:CellLabels={age:age=>t('registry.age',{age}),athens:t('registry.athens'),active:t('registry.active'),inactive:t('registry.inactive'),archived:t('registry.archived'),unfinished:t('current.m188')};
 
  const [layout,setLayout]=useState<RegistryLayout>(defaultRegistryLayout),[ready,setReady]=useState(false),[customizing,setCustomizing]=useState(false),[storageError,setStorageError]=useState(''),[announcement,setAnnouncement]=useState(''),[over,setOver]=useState<RegistryColumnId|null>(null);
  const dragging=useRef<RegistryColumnId|null>(null),key=useRef<string|null>(null),panelId=useId();
@@ -63,7 +64,7 @@ export default function PatientRegistryTable({rows,total,assign,onReset}:{rows:P
     <caption className={styles.srOnly}>{t('registry.caption',{shown:rows.length,total})}</caption>
     <colgroup>{visible.map(column=><col key={column.id} style={{width:column.width}}/>)}<col style={{width:128}}/></colgroup>
     <thead><tr>{visible.map(column=><th key={column.id} scope="col" aria-label={t(('registry.columns.'+column.id) as `registry.columns.${RegistryColumnId}`)} data-column-id={column.id} className={over===column.id?styles.dropTarget:undefined} onDragOver={event=>dragOver(event,column.id)} onDrop={event=>drop(event,column.id)}><span className={styles.headerLabel}><button type="button" draggable className={styles.headerGrip} aria-label={t('registry.configure',{column:t(('registry.columns.'+column.id) as `registry.columns.${RegistryColumnId}`)})} title={t('current.m199')} onClick={()=>setCustomizing(true)} onDragStart={event=>begin(event,column.id)} onDragEnd={()=>{dragging.current=null;setOver(null)}}><GripVertical size={14} aria-hidden="true"/></button><span>{t(('registry.columns.'+column.id) as `registry.columns.${RegistryColumnId}`)}</span></span></th>)}<th scope="col" className={styles.actions}>{t('common.actions')}</th></tr></thead>
-    <tbody>{rows.map(row=><tr key={row.id} data-patient-id={row.id}>{visible.map(column=><td key={column.id} data-column-id={column.id} className={column.id==='name'?styles.name:column.id==='registry'?styles.number:undefined}>{column.id==='name'?<Link href={`/patients/demo/${row.id}${assign?'?tab=psychometrics&instrument='+encodeURIComponent(assign):''}`} className="registry-patient-link"><strong>{row.first_name} {row.last_name}</strong></Link>:cell(row,column.id,locale,(key,values)=>t(key as never,values))}</td>)}<td className={styles.actions}><div className={styles.rowActions}><Link className={styles.appointment} aria-label={t('registry.appointment',{name:row.first_name+' '+row.last_name})} href={`/calendar?patient=${encodeURIComponent(row.id)}`} title={t('calendar.newAppointment')}><CalendarPlus size={16} aria-hidden="true"/><span>{t('current.m195')}</span></Link><Link className={styles.edit} aria-label={t('registry.edit',{name:row.first_name+' '+row.last_name})} title={t('patients.editDetails')} href={`/patients/demo/${row.id}?tab=history`}><Pencil size={16} aria-hidden="true"/></Link></div></td></tr>)}</tbody>
+    <tbody>{rows.map(row=><tr key={row.id} data-patient-id={row.id}>{visible.map(column=><td key={column.id} data-column-id={column.id} className={column.id==='name'?styles.name:column.id==='registry'?styles.number:undefined}>{column.id==='name'?<Link href={`/patients/demo/${row.id}${assign?'?tab=psychometrics&instrument='+encodeURIComponent(assign):''}`} className="registry-patient-link"><strong>{row.first_name} {row.last_name}</strong></Link>:cell(row,column.id,locale,labels)}</td>)}<td className={styles.actions}><div className={styles.rowActions}><Link className={styles.appointment} aria-label={t('registry.appointment',{name:row.first_name+' '+row.last_name})} href={`/calendar?patient=${encodeURIComponent(row.id)}`} title={t('calendar.newAppointment')}><CalendarPlus size={16} aria-hidden="true"/><span>{t('current.m195')}</span></Link><Link className={styles.edit} aria-label={t('registry.edit',{name:row.first_name+' '+row.last_name})} title={t('patients.editDetails')} href={`/patients/demo/${row.id}?tab=history`}><Pencil size={16} aria-hidden="true"/></Link></div></td></tr>)}</tbody>
    </table>
    {!rows.length&&<div className="registry-state" role="status">{total?<><p>{t('patients.noFilterMatches')}</p><button type="button" className="registry-reset" onClick={onReset}>{t('patients.clearFilters')}</button></>:<><p>{t('patients.emptyWorkspace')}</p><p>{t('patients.createFirstHelp')}</p></>}</div>}
   </div>

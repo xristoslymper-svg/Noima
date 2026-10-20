@@ -898,7 +898,17 @@
       "components/patients/ReceivedHistoryPreview.tsx",
       "components/patients/PriorCourseSection.tsx",
       "components/teleconsultations/TeleGuestPreview.tsx",
-      "components/teleconsultations/TeleInvitation.tsx"
+      "components/teleconsultations/TeleInvitation.tsx",
+      "i18n/static-text.ts",
+      "i18n/use-ui-text.ts",
+      "browser-tests/teleconsultations-fixture.tsx",
+      "browser-tests/selective-port-fixture.tsx",
+      "browser-tests/teleconsultation-persistence-fixture.tsx",
+      "browser-tests/patient-entry-fixture.tsx",
+      "i18n/PilotNotice.tsx",
+      "tests/fixtures/pre-localization-ui.json",
+      "tests/fixtures/pre-localization-styles.json",
+      "tests/i18n-current-contract.test.mjs"
     ]
   }
 }

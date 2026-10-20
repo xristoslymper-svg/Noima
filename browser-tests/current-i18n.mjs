@@ -135,7 +135,8 @@ try{
  await page.locator('[data-completed-record][data-reading="true"]').waitFor();
  const recorded=await page.locator('.completed-record-form textarea').evaluateAll(nodes=>nodes.map(n=>n.value));
  assert.ok(recorded.some(Boolean));
- assert.ok(await page.locator('.completed-record-form').isDisabled());
+ assert.equal(await page.locator('.completed-record-form').getAttribute('disabled'),'');
+ assert.ok(await page.locator('.completed-record-form textarea').first().isDisabled());
  const memory=await page.locator('[data-confirmed-memory]').innerText();
  assert.ok(memory.includes('100 mg'));
  assert.equal(await page.locator('[data-confirmed-memory]').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),3);
@@ -149,7 +150,8 @@ try{
  assert.equal(await page.locator('[data-confirmed-memory]').innerText(),memory);
  await page.getByRole('button',{name:'Correct record',exact:true}).click();
  assert.equal(await page.locator('[data-completed-record]').getAttribute('data-reading'),'false');
- assert.equal(await page.locator('.completed-record-form').isDisabled(),false);
+ assert.equal(await page.locator('.completed-record-form').getAttribute('disabled'),null);
+ assert.equal(await page.locator('.completed-record-form textarea').first().isDisabled(),false);
  assert.deepEqual(await page.locator('.completed-record-form textarea').evaluateAll(nodes=>nodes.map(n=>n.value)),recorded);
  report.push('completed reading boxes adapt to mobile; canonical clinical text survives refresh unchanged and existing correction editor stays editable');
 

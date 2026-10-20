@@ -33,3 +33,11 @@
 .profile-compact{flex:0 0 auto}
 .document-language{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 20px;font-size:13px;color:inherit}
 .document-language select{max-width:160px}
+
+/* Authentication polish only: align the login language choices with the brand,
+   without changing the shared authentication palette or clinical layouts. */
+.auth-card .auth-brand .language-setting-compact{margin-inline-start:auto;align-self:center}
+.auth-card .auth-brand{min-width:0}
+.auth-card .login-language-buttons{flex-shrink:0}
+.auth-card form small{display:block}
+.auth-card p[role=status],.auth-card .pilot-error{overflow-wrap:anywhere}

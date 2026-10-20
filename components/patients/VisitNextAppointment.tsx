@@ -6,14 +6,15 @@ import {clinicLocalToIso,formatClinicAppointment} from '@/lib/clinic-time';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {upcomingAppointments} from '@/lib/clinical/patient-record';
 import styles from './VisitNextAppointment.module.css';
-export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean}){
+export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true,initialExpanded=false,onSaved,onCancel,onBusyChange,appointmentType='follow_up'}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean;initialExpanded?:boolean;onSaved?:()=>void;onCancel?:()=>void;onBusyChange?:(busy:boolean)=>void;appointmentType?:'follow_up'|'initial_assessment'}){
  const [date,setDate]=useState(''),[time,setTime]=useState('09:00'),[duration,setDuration]=useState('50'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [smsReminder,setSmsReminder]=useState(true);
- const [expanded,setExpanded]=useState(false),[notice,setNotice]=useState('');
+ const [expanded,setExpanded]=useState(initialExpanded),[notice,setNotice]=useState('');
  const formId=useId(),dateRef=useRef<HTMLInputElement>(null),triggerRef=useRef<HTMLButtonElement>(null);
  const appointments=upcomingAppointments(bundle),next=appointments[0];
  const formOpen=expanded||Boolean(date)||busy;
- const saveRef=useRef(false);
+ const saveRef=useRef(false),createRequest=useRef<{signature:string;id:string}|null>(null);
+ useEffect(()=>{onBusyChange?.(busy)},[busy,onBusyChange]);
  const mobile=bundle.patient.phone?.replace(/[^+0-9]/g,'')||'';
  const hasMobile=/^(\+30|0030)?69\d{8}$/.test(mobile);
  const quickDates=useMemo(()=>[2,3,4].map(weeks=>{const d=new Date();d.setDate(d.getDate()+weeks*7);return{weeks,value:new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)}}),[]);
@@ -25,8 +26,8 @@ export default function VisitNextAppointment({bundle,reload,registerFlusher,onDi
   throw new Error('Αποθηκεύστε ή ακυρώστε το επόμενο ραντεβού πριν ολοκληρώσετε.');
  }}),[registerFlusher,date,busy]);
  useEffect(()=>{if(expanded)dateRef.current?.focus();else if(notice)triggerRef.current?.focus()},[expanded,notice]);
- async function save(){if(saveRef.current)return;saveRef.current=true;setBusy(true);setError('');setNotice('');let committed=false;try{const start=clinicLocalToIso(date,time);const r=await fetch('/api/calendar/command/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),action:'create',patient_id:bundle.patient.id,start_iso:start,end_iso:new Date(Date.parse(start)+Number(duration)*60000).toISOString(),appointment_type:'follow_up',sms_reminder_enabled:smsReminder&&hasMobile})});const d=await r.json();if(!r.ok)throw new Error(d.error);committed=true;setDate('');try{const refreshed=await reload();if(!refreshed)setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.');else{setExpanded(false);setNotice('Το ραντεβού αποθηκεύτηκε.')}}catch{setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.')}}catch(e){setError(committed?'Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.':e instanceof Error?e.message:'Δεν αποθηκεύτηκε το ραντεβού')}finally{saveRef.current=false;setBusy(false)}}
- function cancel(){setDate('');setExpanded(false);setError('');setNotice('');requestAnimationFrame(()=>triggerRef.current?.focus())}
+ async function save(){if(saveRef.current)return;saveRef.current=true;setBusy(true);setError('');setNotice('');let committed=false;try{const start=clinicLocalToIso(date,time);const signature=JSON.stringify({patient:bundle.patient.id,start,duration,smsReminder,appointmentType});if(!createRequest.current||createRequest.current.signature!==signature)createRequest.current={signature,id:crypto.randomUUID()};const r=await fetch('/api/calendar/command/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),action:'create',patient_id:bundle.patient.id,start_iso:start,end_iso:new Date(Date.parse(start)+Number(duration)*60000).toISOString(),appointment_type:appointmentType,request_id:createRequest.current.id,sms_reminder_enabled:smsReminder&&hasMobile})});const d=await r.json();if(!r.ok)throw new Error(d.error);committed=true;setDate('');try{const refreshed=await reload();if(!refreshed)setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.');else{setExpanded(false);setNotice('Το ραντεβού αποθηκεύτηκε.');onSaved?.()}}catch{setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.')}}catch(e){setError(committed?'Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.':e instanceof Error?e.message:'Δεν αποθηκεύτηκε το ραντεβού')}finally{saveRef.current=false;setBusy(false)}}
+ function cancel(){if(onCancel){onCancel();return}setDate('');setExpanded(false);setError('');setNotice('');requestAnimationFrame(()=>triggerRef.current?.focus())}
  return <div className={'visit-next '+styles.root}>
   {showHeading&&<div className="visit-next-heading"><strong>Επόμενο ραντεβού</strong></div>}
   <div className={styles.summary}>

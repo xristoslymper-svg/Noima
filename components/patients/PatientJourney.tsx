@@ -25,7 +25,7 @@ export function JourneyCompletion({session,onSummary,onRead}:{session:DemoSessio
  return <section className={styles.completion} aria-label="Ολοκλήρωση επίσκεψης"><span className="kicker">ΕΠΙΒΕΒΑΙΩΜΕΝΗ ΟΛΟΚΛΗΡΩΣΗ</span><h2 className={styles.stateHeading}><CheckCircle2 size={26} aria-hidden="true"/>Η επίσκεψη ολοκληρώθηκε</h2><p>{date(session)} · {session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</p><ul><li>Η καταγραφή επιβεβαιώθηκε ως ολοκληρωμένη και είναι διαθέσιμη στις Επισκέψεις.</li><li>Ο φάκελος ανανεώθηκε με τα επιβεβαιωμένα δεδομένα.</li><li>Η αγωγή και τα αποθηκευμένα ραντεβού παραμένουν στον φάκελο.</li></ul><div className={styles.actions}><button type="button" className={styles.primary} onClick={onSummary}>Επιστροφή στον ενημερωμένο φάκελο</button><button type="button" onClick={onRead}>Ανάγνωση καταγραφής</button></div></section>;
 }
 
-export function JourneyEntry({bundle,intended,disabled,onResume,onStart,onQuestionnaire,onTeleconsultation}:{bundle:PatientBundle;intended?:PatientBundle['appointments'][number];disabled:boolean;onResume:(id:string)=>void;onStart:(id?:string)=>void;onQuestionnaire?:()=>void;onTeleconsultation?:()=>void}){
+export function JourneyEntry({bundle,intended,disabled,onResume,onStart,onQuestionnaire,onTeleconsultation,onAppointment}:{bundle:PatientBundle;intended?:PatientBundle['appointments'][number];disabled:boolean;onResume:(id:string)=>void;onStart:(id?:string)=>void;onQuestionnaire?:()=>void;onTeleconsultation?:()=>void;onAppointment?:()=>void}){
  const [open,setOpen]=useState(false);
  const root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement>(null);
  const drafts=bundle.sessions.filter(s=>s.status==='draft');
@@ -47,7 +47,7 @@ export function JourneyEntry({bundle,intended,disabled,onResume,onStart,onQuesti
  }}><button ref={trigger} type="button" className={'patient-voice-cta '+styles.actionsTrigger} aria-haspopup="menu" aria-expanded={open} aria-controls={'patient-actions-'+bundle.patient.id} disabled={disabled} onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen(true)}}}>Ενέργειες <ChevronDown size={16} aria-hidden="true"/></button>
  {open&&<div className={styles.actionsMenu} role="menu" aria-label="Ενέργειες ασθενή" id={'patient-actions-'+bundle.patient.id}>
   <button type="button" role="menuitem" onClick={()=>choose(()=>onStart(intended?.id))}><Plus size={16} aria-hidden="true"/><span>Νέα επίσκεψη</span></button>
-  <a role="menuitem" href={'/calendar?patient='+encodeURIComponent(bundle.patient.id)}><CalendarDays size={16} aria-hidden="true"/><span>Νέο ραντεβού</span></a>
+  {onAppointment&&<button type="button" role="menuitem" onClick={()=>choose(onAppointment)}><CalendarDays size={16} aria-hidden="true"/><span>Νέο ραντεβού</span></button>}
   {onQuestionnaire&&<button type="button" role="menuitem" onClick={()=>choose(onQuestionnaire)}><Send size={16} aria-hidden="true"/><span>Αποστολή ερωτηματολογίου</span></button>}
   {onTeleconsultation&&<button type="button" role="menuitem" onClick={()=>choose(onTeleconsultation)}><Video size={16} aria-hidden="true"/><span>Έναρξη τηλεσυνεδρίας</span></button>}
   {drafts.length>0&&<><div role="separator" className={styles.actionsDivider}/><p className={styles.actionsCaption}>Μη ολοκληρωμένες σημειώσεις</p>{drafts.map(d=><button key={d.id} type="button" role="menuitem" onClick={()=>choose(()=>onResume(d.id))}><FileClock size={16} aria-hidden="true"/><span>Ολοκλήρωση σημειώσεων<small>{date(d)}</small></span></button>)}</>}

@@ -107,19 +107,10 @@ export const visitSteps={
 export function activeVisitPart(parts:{key:string;top:number}[],readingLine:number){
  return parts.filter(p=>p.top<=readingLine+1).at(-1)?.key||parts[0]?.key||'interview';
 }
-const requiredSections=[['interview','Ψυχιατρική συνέντευξη'],['mse','MSE'],['assessment','Κλινική αξιολόγηση'],['plan','Θεραπευτικό πλάνο'],['review','Επανεκτίμηση']] as const;
+// Clinical content is optional. Never fill an unanswered field from a prior visit.
 export function finalizationIssues(sections:{section_key:string;content:string;document?:VisitDocument|null}[],risk?:DemoRisk,previousMse?:VisitDocument|null,firstAssessment=false){
- const issues:{anchor:string;message:string}[]=[];
- if(!risk||risk.suicidal_ideation==='not_assessed')issues.push({anchor:'risk',message:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.'});
- if(risk?.suicidal_ideation==='positive'&&[risk.intent,risk.plan,risk.self_harm,risk.attempt_history].some(v=>v==='not_assessed'))issues.push({anchor:'risk',message:'Με θετικό ιδεασμό, συμπληρώστε Πρόθεση, Σχέδιο, Αυτοτραυματισμό και Ιστορικό απόπειρας.'});
- const currentMse=sections.find(s=>s.section_key==='mse');
- if(previousMse&&currentMse?.document){
-  const pending=previousMse.fields.filter(old=>old.key!=='legacy'&&old.text.trim()&&!currentMse.document?.fields.some(f=>f.key===old.key&&(f.review||f.text.trim())));
-  if(pending.length)issues.push({anchor:'mse',message:`Υπάρχουν ${pending.length} ενότητες MSE με προηγούμενες επιλογές που δεν ελέγχθηκαν σήμερα. Διατηρήστε, αλλάξτε ή σημειώστε «Δεν αξιολογήθηκε σήμερα».`});
- }
- const missing=requiredSections.filter(([key])=>(!firstAssessment||key!=='review')&&!sections.some(s=>s.section_key===key&&s.content.trim()));
- for(const item of missing)issues.push({anchor:item[0]==='review'?'plan':item[0],message:'Χρειάζεται καταγραφή: '+item[1]+'.'});
- return issues;
+ void sections;void risk;void previousMse;void firstAssessment;
+ return [] as {anchor:string;message:string}[];
 }
 export function finalizationBlocker(...args:Parameters<typeof finalizationIssues>){return finalizationIssues(...args)[0]||null}
 
@@ -139,10 +130,5 @@ export function previousMseReference(bundle:PatientBundle|null,sessionId:string,
 }
 
 export function followupCompletionIssues(value:{clinical_state_summary:string;treatment_decision:string;next_review_focus:string;adherence:string},sections:Parameters<typeof finalizationIssues>[0],risk?:DemoRisk,previousMse?:VisitDocument|null){
- const projected=[...sections,...['interview','assessment','plan','review'].filter(k=>!sections.some(s=>s.section_key===k&&s.content.trim())).map(k=>({section_key:k,content:'Επιβεβαιωμένη κλινική μνήμη'}))];
- const issues=finalizationIssues(projected,risk,previousMse);
- for(const [field,anchor,label] of [['clinical_state_summary','clinical','Κλινική εικόνα'],['treatment_decision','clinical','Απόφαση / παρεμβάσεις'],['next_review_focus','clinical','Τι θα επανεκτιμηθεί'],['adherence','medication','Λήψη αγωγής']] as const){
-  if(!value[field].trim())issues.push({anchor,message:'Χρειάζεται καταγραφή: '+label+'.'});
- }
- return issues;
+ void value;return finalizationIssues(sections,risk,previousMse);
 }

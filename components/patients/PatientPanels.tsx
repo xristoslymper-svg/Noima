@@ -88,10 +88,10 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
    <p className="patient-reported-muted">Οι ίδιες κλινικές σημειώσεις είναι διαθέσιμες και στην καταγραφή επίσκεψης. Οι απαντήσεις του ασθενούς παραμένουν αποθηκευμένες χωριστά.</p>
    {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
    {draft.olderRecovery&&<details className="patient-older-notes">
-    <summary>Υπάρχει παλαιότερο μη αποθηκευμένο πρόχειρο</summary>
+    <summary>Υπάρχει παλαιότερο μη αποθηκευμένο κείμενο</summary>
     <p className="patient-reported-muted">Διατηρείται μόνο σε αυτόν τον browser. Δεν αντικαθιστά το αποθηκευμένο ιστορικό.</p>
     <div className="patient-reported-answers">{historyFields.filter(([key])=>draft.olderRecovery?.[key]?.trim()).map(([key,label])=><div key={key}><strong>{label}</strong><p>{draft.olderRecovery?.[key]}</p></div>)}</div>
-    <button type="button" className="patient-reported-link" onClick={draft.dismissOlderRecovery}>Απόκρυψη παλιού προχείρου</button>
+    <button type="button" className="patient-reported-link" onClick={draft.dismissOlderRecovery}>Απόκρυψη παλιού αντιγράφου</button>
    </details>}
    {!editingHistory?<><div className={readingStyles.notesReading}>{historyFields.map(([key,label])=><article key={key}><strong>{label}</strong><p>{values[key]?.trim()||'Δεν έχει καταγραφεί κλινική σημείωση.'}</p></article>)}</div><button type="button" className="patient-reported-link" onClick={()=>setEditingHistory(true)}>Επεξεργασία κλινικού ιστορικού</button></>:<>
    <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={event=>{if(!(event.relatedTarget instanceof HTMLElement&&event.relatedTarget.dataset.historySave))void draft.flush().catch(()=>{})}} placeholder="Προσθέστε μια κλινική σημείωση, αν χρειάζεται"/></label>)}</div>

@@ -1,6 +1,7 @@
 'use client';
-import {Plus,ClipboardCheck,CheckCircle2} from 'lucide-react';
-import {useState} from 'react';
+import {Plus,ClipboardCheck,CheckCircle2,ChevronDown,CalendarDays,Send,Video,FileClock} from 'lucide-react';
+import {hasOlderDraft,clinicDay} from '@/lib/patients/patient-entry';
+import {useEffect,useRef,useState} from 'react';
 import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
 import {journeyExcerpt,journeyReview,latestJourneyNotes} from '@/lib/clinical/patient-journey';
 import {formatClinicDateTime} from '@/lib/clinic-time';
@@ -17,19 +18,39 @@ export function JourneyReference({bundle,session}:{bundle:PatientBundle;session:
 }
 export function JourneyReview({bundle,session,busy,error,onBack,onConfirm}:{bundle:PatientBundle;session:DemoSession;busy:boolean;error?:string;onBack:()=>void;onConfirm:()=>void}){
  const review=journeyReview(bundle,session);
- return <section className={styles.review} aria-label="Έλεγχος πριν την ολοκλήρωση"><span className="kicker">ΕΛΕΓΧΟΣ ΚΑΤΑΓΡΑΦΗΣ</span><h2 className={styles.stateHeading}><ClipboardCheck size={24} aria-hidden="true"/>Πριν ολοκληρώσετε την επίσκεψη</h2><p className={styles.meta}>{date(session)} · {session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'} · αποθηκευμένο πρόχειρο</p><dl className={styles.rows}><dt>Κλινική εικόνα</dt><dd>{review.clinical||'Δεν υπάρχει ξεχωριστό κείμενο.'}</dd><dt>Απόφαση</dt><dd>{review.plan||'Δεν υπάρχει ξεχωριστό κείμενο.'}</dd><dt>Επανεκτίμηση</dt><dd>{review.review||'Περιλαμβάνεται στο επιβεβαιωμένο πλάνο.'}</dd></dl><p>Οι απαιτούμενες ενότητες και η εκτίμηση κινδύνου ελέγχθηκαν πριν ανοίξει αυτή η οθόνη και θα ελεγχθούν ξανά στην οριστικοποίηση.</p><div className={styles.saveBoundary}><strong>Ήδη καταχωρισμένα στον φάκελο</strong><p>{review.medicationWrites} αλλαγές αγωγής · {review.sideEffects} καταγραφές ανεπιθύμητων ενεργειών. Το αποθηκευμένο κλινικό ιστορικό ενημερώνει ήδη τον φάκελο. Τα αποθηκευμένα ραντεβού υπάρχουν ήδη στο ημερολόγιο. Παραμένουν ακόμη και αν συνεχίσετε την επίσκεψη αργότερα.</p></div>{error&&<p role="alert">{error}</p>}<div className={styles.actions}><button type="button" disabled={busy} onClick={onBack}>Επιστροφή στην καταγραφή</button><button type="button" disabled={busy} className={styles.primary} onClick={onConfirm}>{busy?'Οριστικοποίηση…':'Οριστικοποίηση επίσκεψης'}</button></div><p className={styles.hint}>Μετά την επιβεβαίωση από τον server η καταγραφή εμφανίζεται ολοκληρωμένη. Η αυτόματη κλινική σύνθεση μπορεί να χρειαστεί ανανέωση.</p></section>;
+ return <section className={styles.review} aria-label="Έλεγχος καταχώρισης"><span className="kicker">ΕΛΕΓΧΟΣ ΚΑΤΑΓΡΑΦΗΣ</span><h2 className={styles.stateHeading}><ClipboardCheck size={24} aria-hidden="true"/>Έλεγχος πριν την καταχώριση</h2><p className={styles.meta}>{date(session)} · {session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'} · αποθηκευμένες σημειώσεις · μη ολοκληρωμένη καταγραφή</p><dl className={styles.rows}><dt>Κλινική εικόνα</dt><dd>{review.clinical||'Δεν υπάρχει ξεχωριστό κείμενο.'}</dd><dt>Απόφαση</dt><dd>{review.plan||'Δεν υπάρχει ξεχωριστό κείμενο.'}</dd><dt>Επανεκτίμηση</dt><dd>{review.review||'Δεν έχει καταγραφεί.'}</dd></dl><p>Ελέγξτε όσα καταγράψατε. Όλα τα κλινικά πεδία είναι προαιρετικά· όσα αφήσατε κενά παραμένουν χωρίς καταγραφή.</p><div className={styles.saveBoundary}><strong>Ήδη καταχωρισμένα στον φάκελο</strong><p>{review.medicationWrites} αλλαγές αγωγής · {review.sideEffects} καταγραφές ανεπιθύμητων ενεργειών. Το αποθηκευμένο κλινικό ιστορικό ενημερώνει ήδη τον φάκελο. Τα αποθηκευμένα ραντεβού υπάρχουν ήδη στο ημερολόγιο. Παραμένουν ακόμη και αν συνεχίσετε την επίσκεψη αργότερα.</p></div>{error&&<p role="alert">{error}</p>}<div className={styles.actions}><button type="button" disabled={busy} onClick={onBack}>Επιστροφή στην καταγραφή</button><button type="button" disabled={busy} className={styles.primary} onClick={onConfirm}>{busy?'Καταχώριση…':'Καταχώριση επίσκεψης'}</button></div><p className={styles.hint}>Μετά την επιβεβαίωση από τον server η καταγραφή εμφανίζεται ολοκληρωμένη. Η αυτόματη κλινική σύνθεση μπορεί να χρειαστεί ανανέωση.</p></section>;
 }
 export function JourneyCompletion({session,onSummary,onRead}:{session:DemoSession;onSummary:()=>void;onRead:()=>void}){
  return <section className={styles.completion} aria-label="Ολοκλήρωση επίσκεψης"><span className="kicker">ΕΠΙΒΕΒΑΙΩΜΕΝΗ ΟΛΟΚΛΗΡΩΣΗ</span><h2 className={styles.stateHeading}><CheckCircle2 size={26} aria-hidden="true"/>Η επίσκεψη ολοκληρώθηκε</h2><p>{date(session)} · {session.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</p><ul><li>Η καταγραφή επιβεβαιώθηκε ως ολοκληρωμένη και είναι διαθέσιμη στις Επισκέψεις.</li><li>Ο φάκελος ανανεώθηκε με τα επιβεβαιωμένα δεδομένα.</li><li>Η αγωγή και τα αποθηκευμένα ραντεβού παραμένουν στον φάκελο.</li></ul><div className={styles.actions}><button type="button" className={styles.primary} onClick={onSummary}>Επιστροφή στον ενημερωμένο φάκελο</button><button type="button" onClick={onRead}>Ανάγνωση καταγραφής</button></div></section>;
 }
 
-export function JourneyEntry({bundle,intended,disabled,onResume,onStart}:{bundle:PatientBundle;intended?:PatientBundle['appointments'][number];disabled:boolean;onResume:(id:string)=>void;onStart:(id?:string)=>void}){
- const [choosing,setChoosing]=useState(false);
+export function JourneyEntry({bundle,intended,disabled,onResume,onStart,onQuestionnaire,onTeleconsultation}:{bundle:PatientBundle;intended?:PatientBundle['appointments'][number];disabled:boolean;onResume:(id:string)=>void;onStart:(id?:string)=>void;onQuestionnaire?:()=>void;onTeleconsultation?:()=>void}){
+ const [open,setOpen]=useState(false);
+ const root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement>(null);
  const drafts=bundle.sessions.filter(s=>s.status==='draft');
- const day=(value:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
- const today=day(new Date().toISOString());
- const appointments=bundle.appointments.filter(a=>a.status==='scheduled'&&day(a.scheduled_start)===today);
- const hasHistory=bundle.sessions.some(s=>s.status==='completed');
- const open=()=>{if(intended){onStart(intended.id);return}if(drafts.length===1&&appointments.every(a=>a.session_id===drafts[0].id)){onResume(drafts[0].id);return}if(drafts.length||appointments.length>1){setChoosing(v=>!v);return}onStart(appointments[0]?.id)};
- return <div><button type="button" className="patient-voice-cta" disabled={disabled} onClick={open}><span className="patient-voice-icon"><Plus size={19}/></span><span><strong>{intended?.session_id?'Άνοιγμα καταγραφής':drafts.length===1&&appointments.every(a=>a.session_id===drafts[0].id)?'Συνέχεια πρόχειρης επίσκεψης':drafts.length?'Επιλογή επίσκεψης':hasHistory?'Νέα επανεξέταση':'Έναρξη αρχικής αξιολόγησης'}</strong><small>{intended?formatClinicDateTime(intended.scheduled_start):drafts.length===1?date(drafts[0]):drafts.length?drafts.length+' αποθηκευμένα πρόχειρα':appointments.length===1?formatClinicDateTime(appointments[0].scheduled_start):'Συγκεκριμένη καταγραφή μέσα στις Επισκέψεις'}</small></span></button>{choosing&&<div className={styles.draftBanner} role="region" aria-label="Επιλογή συγκεκριμένης επίσκεψης"><strong>Ποια επίσκεψη θα καταγράψετε;</strong>{drafts.map(d=><div key={d.id}><button type="button" className={styles.action} disabled={disabled} onClick={()=>{setChoosing(false);onResume(d.id)}}>Συνέχεια προχείρου · {date(d)}</button></div>)}{appointments.filter(a=>!a.session_id||!drafts.some(d=>d.id===a.session_id)).map(a=><div key={a.id}><button type="button" className={styles.action} disabled={disabled} onClick={()=>{setChoosing(false);onStart(a.id)}}>Σημερινό ραντεβού · {formatClinicDateTime(a.scheduled_start)}</button></div>)}<button type="button" className={styles.action} onClick={()=>setChoosing(false)}>Ακύρωση επιλογής</button></div>}</div>;
+ const older=hasOlderDraft(drafts);
+ const appointments=bundle.appointments.filter(a=>a.status==='scheduled'&&clinicDay(a.scheduled_start)===clinicDay(new Date().toISOString()));
+ useEffect(()=>{
+  if(!open)return;
+  const close=(event:PointerEvent)=>{if(!root.current?.contains(event.target as Node))setOpen(false)};
+  root.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus();
+  document.addEventListener('pointerdown',close);return()=>document.removeEventListener('pointerdown',close);
+ },[open]);
+ const choose=(action:()=>void)=>{setOpen(false);action()};
+ return <div ref={root} className={styles.patientActions} onKeyDown={event=>{
+  if(event.key==='Escape'){event.preventDefault();setOpen(false);trigger.current?.focus()}
+  if(open&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+   event.preventDefault();const items=Array.from(root.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')||[]);
+   const index=items.indexOf(document.activeElement as HTMLElement);const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next]?.focus();
+  }
+ }}><button ref={trigger} type="button" className={'patient-voice-cta '+styles.actionsTrigger} aria-haspopup="menu" aria-expanded={open} aria-controls={'patient-actions-'+bundle.patient.id} disabled={disabled} onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen(true)}}}>Ενέργειες <ChevronDown size={16} aria-hidden="true"/></button>
+ {open&&<div className={styles.actionsMenu} role="menu" aria-label="Ενέργειες ασθενή" id={'patient-actions-'+bundle.patient.id}>
+  <button type="button" role="menuitem" onClick={()=>choose(()=>onStart(intended?.id))}><Plus size={16} aria-hidden="true"/><span>Νέα επίσκεψη</span></button>
+  <a role="menuitem" href={'/calendar?patient='+encodeURIComponent(bundle.patient.id)}><CalendarDays size={16} aria-hidden="true"/><span>Νέο ραντεβού</span></a>
+  {onQuestionnaire&&<button type="button" role="menuitem" onClick={()=>choose(onQuestionnaire)}><Send size={16} aria-hidden="true"/><span>Αποστολή ερωτηματολογίου</span></button>}
+  {onTeleconsultation&&<button type="button" role="menuitem" onClick={()=>choose(onTeleconsultation)}><Video size={16} aria-hidden="true"/><span>Έναρξη τηλεσυνεδρίας</span></button>}
+  {drafts.length>0&&<><div role="separator" className={styles.actionsDivider}/><p className={styles.actionsCaption}>Μη ολοκληρωμένες σημειώσεις</p>{drafts.map(d=><button key={d.id} type="button" role="menuitem" onClick={()=>choose(()=>onResume(d.id))}><FileClock size={16} aria-hidden="true"/><span>Ολοκλήρωση σημειώσεων<small>{date(d)}</small></span></button>)}</>}
+  {older&&<p className={styles.actionsHint}>Οι παλιές σημειώσεις διατηρούν την ημερομηνία τους. Η νέα επίσκεψη ανοίγει ξεχωριστή καταγραφή χωρίς να αλλάζει τις παλιές σημειώσεις.</p>}
+  {!drafts.length&&appointments.length>1&&<p className={styles.actionsHint}>Στη νέα επίσκεψη θα επιλέξετε το σχετικό σημερινό ραντεβού.</p>}
+ </div>}</div>;
 }

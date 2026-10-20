@@ -45,10 +45,26 @@ function handle(body){
   if(body.document){section.document=body.document;section.content=body.document.fields.map(f=>f.text||'').join('\n')}else section.content=body.content;
   section.version++;section.updated_at=new Date().toISOString();return {section};
  }
+ if(body.action==='start_session'){
+  assert.equal(body.patient_id,patientId);assert.match(body.request_id,/^[0-9a-f-]{36}$/i);
+  const appointment=body.appointment_id?state.appointments.find(a=>a.id===body.appointment_id):null;
+  const existing=state.sessions.find(s=>s.id===(appointment?.session_id||body.request_id));if(existing)return {session:existing};
+  const now=new Date().toISOString();const created={id:body.request_id,patient_id:patientId,tester_id:state.patient.tester_id,session_type:body.session_type,status:'draft',version:0,closure_version:0,closure_draft:null,continuity:null,started_at:now,updated_at:now,completed_at:null};
+  state.sessions.push(created);if(appointment)appointment.session_id=created.id;return {session:created};
+ }
+ if(body.action==='save_closure'){
+  assert.ok(s&&s.status==='draft');assert.equal(body.expected_version,s.closure_version);
+  Object.assign(s,{closure_draft:body.value,closure_version:s.closure_version+1,version:s.version+1});return {session:s};
+ }
  if(body.action==='save_risk'){assert.ok(s);const r=state.risks.find(x=>x.session_id===s.id);Object.assign(r,body.risk,{version:r.version+1});return {risk:r}}
- if(body.action==='finalize_session'){
+ if(body.action==='finalize_session'||body.action==='finalize_closure'){
   assert.ok(s);assert.equal(body.expected_version,s.version);
   if(completionMode==='malformed')return {session:{...s}};
+  if(body.action==='finalize_closure'&&s.closure_draft){
+   const notes=s.closure_draft;assert.equal(body.confirmed,true);assert.equal(body.expected_closure_version,s.closure_version);
+   if(notes.transcript?.trim())state.sections.push({id:s.id+'-interview',session_id:s.id,patient_id:patientId,section_key:'interview',content:notes.transcript,source:'manual',version:1,updated_at:new Date().toISOString()});
+   s.continuity={...notes,session_id:s.id,approved_at:new Date().toISOString()};s.closure_draft=null;
+  }
   Object.assign(s,{status:'completed',version:s.version+1,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()});return {session:s};
  }
  if(body.action==='medication_start'){
@@ -92,7 +108,13 @@ try{
   async function check(name,fn){
    reset();const context=await browser.newContext({viewport});await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());const page=await context.newPage();page.setDefaultTimeout(12000);const errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
    const open=async query=>{await page.goto(`${origin}/patients/demo/${patientId}${query}`);await page.locator('.patient-hero h1').waitFor();assert.equal(await page.locator('.patient-hero h1').innerText(),'Ira Pira');await page.locator('nav[aria-label="Καρτέλες φακέλου"]').waitFor()};
-   const nav=name=>page.getByRole('navigation',{name:'Καρτέλες φακέλου'}).getByRole('button',{name,exact:true});
+   const nav=name=>({click:async()=>{
+    if(await page.locator('dialog[open][aria-labelledby="record-dialog-title"]').count()){
+     await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();
+     await page.locator('dialog[open][aria-labelledby="record-dialog-title"]').waitFor({state:'detached'});
+    }
+    await page.getByRole('navigation',{name:'Καρτέλες φακέλου'}).getByRole('button',{name,exact:true}).click();
+   }});
    try{await fn({page,open,nav});assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'no page-level horizontal overflow');await page.screenshot({path:resolve(out,`${size}-${name}.png`)});results.push({name,size,status:'passed'});console.log('PASS',size,name)}
    catch(e){await page.screenshot({path:resolve(out,`${size}-${name}-failed.png`)}).catch(()=>{});writeFileSync(resolve(out,`${size}-${name}-dom.txt`),await page.locator('body').innerText());results.push({name,size,status:'failed',error:e.message,errors});console.error('FAIL',size,name,e.message)}
    finally{await context.close()}
@@ -104,12 +126,13 @@ try{
    assert.equal(await navigation.getByRole('button').count(),4);
    await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
    assert.equal(await page.getByText('Καταγραφές και πηγές φακέλου',{exact:true}).count(),1);
-   await page.locator('.patient-voice-cta').click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
-   assert.equal(await page.locator('dialog[open]').count(),0);
+   await page.locator('.patient-voice-cta').click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
+   assert.equal(await page.locator('dialog[open][aria-labelledby="record-dialog-title"]').count(),1);
    await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await nav('Στοιχεία & ιστορικό').click();await nav('Σύνοψη').click();
-   await page.locator('.patient-voice-cta').click();
+   await page.locator('.patient-voice-cta').click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
+   await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
   });
@@ -117,13 +140,40 @@ try{
    const old=new Date(Date.now()-3*86400000).toISOString();state.sessions.find(s=>s.id===visitId).started_at=old;
    state.appointments=[{id:'90000000-0000-4000-8000-000000000015',patient_id:patientId,status:'scheduled',appointment_type:'follow_up',scheduled_start:new Date().toISOString(),scheduled_end:new Date(Date.now()+3000000).toISOString(),session_id:null}];
    await open('?tab=summary');await page.locator('.patient-voice-cta').click();
-   const choices=page.getByRole('region',{name:'Επιλογή συγκεκριμένης επίσκεψης'});await choices.waitFor();
+   const choices=page.getByRole('menu',{name:'Ενέργειες ασθενή'});await choices.waitFor();
    assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
-   await choices.getByRole('button',{name:/Συνέχεια προχείρου/}).click();
+   assert.match(await choices.innerText(),/χωρίς να αλλάζει τις παλιές σημειώσεις/);
+   await choices.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
    await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);
    assert.equal(requests.filter(r=>r.action==='start_session').length,0);
+  });
+  await check('new-visit-keeps-old-record-and-registers-notes-only',async({page,open})=>{
+   const old=state.sessions.find(s=>s.id===visitId);old.started_at=new Date(Date.now()-4*86400000).toISOString();
+   const before=JSON.stringify(old),oldSections=JSON.stringify(state.sections.filter(s=>s.session_id===visitId));
+   await open('?tab=timeline');await page.locator('.patient-voice-cta').click();
+   await page.getByRole('menuitem',{name:'Νέα επίσκεψη',exact:true}).click();
+   await page.locator('.patient-visit-surface .visit-workspace').waitFor();
+   const newId=new URL(page.url()).searchParams.get('session');assert.notEqual(newId,visitId);assert.ok(newId);
+   const notes=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.waitFor();await notes.fill('ONLY NEW VISIT NOTES - SYNTHETIC');
+   await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'detached'});
+   await page.locator('.patient-voice-cta').click();const choices=page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/});assert.equal(await choices.count(),2);
+   const todayLabel=new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'2-digit',month:'short'}).format(new Date(state.sessions.find(s=>s.id===newId).started_at));
+   await choices.filter({hasText:todayLabel}).click();
+   await page.waitForURL(url=>url.searchParams.get('session')===newId);
+   await notes.waitFor();await page.reload();await notes.waitFor();assert.equal(await notes.inputValue(),'ONLY NEW VISIT NOTES - SYNTHETIC');
+   await page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+   await page.getByRole('region',{name:'Έλεγχος καταχώρισης'}).getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+   await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();
+   assert.equal(state.sessions.find(s=>s.id===newId).status,'completed');
+   await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).first().click();
+   const registeredNotes=page.locator('.completed-record-form textarea').first();await registeredNotes.waitFor();
+   assert.equal(await registeredNotes.inputValue(),'ONLY NEW VISIT NOTES - SYNTHETIC');
+   assert.equal(JSON.stringify(state.sessions.find(s=>s.id===visitId)),before);
+   assert.equal(JSON.stringify(state.sections.filter(s=>s.session_id===visitId)),oldSections);
+   assert.equal(state.risks.some(r=>r.session_id===newId),false);
+   assert.equal(requests.filter(r=>r.action==='start_session').length,1);
   });
   await check('exact-assessment-and-explicit-review',async({page,open})=>{
    await open(`?tab=psychometrics&assessment=${assessmentId}`);
@@ -142,20 +192,42 @@ try{
   });
   await check('record-resume-identity',async({page,open,nav})=>{
    await open(`?tab=record&session=${visitId}`);const text=page.getByRole('textbox',{name:/Λόγος προσέλευσης & παρούσα εικόνα/});await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Σύνοψη').click();await page.getByRole('button',{name:/Συνέχεια πρόχειρης επίσκεψης/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await page.locator('dialog[open][aria-labelledby="record-dialog-title"]').waitFor({state:'detached'});await nav('Σύνοψη').click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await page.reload();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(requests.filter(r=>r.action==='start_session').length,0);
   });
+  await check('popup-escape-preserves-unsaved-work-and-resumes-same-visit',async({page,open})=>{
+   await open('?tab=record&session='+visitId);
+   const dialog=page.locator('dialog[open][aria-labelledby="record-dialog-title"]');
+   const field=page.getByRole('textbox',{name:/Λόγος προσέλευσης & παρούσα εικόνα/});await field.waitFor();
+   let fail=true;
+   await page.route('**/api/patients/demo/runtime',route=>{
+    const body=route.request().postDataJSON();
+    if(fail&&body?.action?.startsWith('save_'))return route.fulfill({status:503,json:{error:'Synthetic save unavailable'}});
+    return route.continue();
+   });
+   await field.fill('QA MODAL RECOVERY — synthetic only');
+   await page.keyboard.press('Escape');
+   await dialog.getByRole('alert').filter({hasText:/Synthetic save unavailable/}).first().waitFor();
+   assert.equal(await dialog.count(),1);assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   fail=false;await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
+   await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();
+   await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
+   await field.waitFor();assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   await page.reload();await field.waitFor();assert.equal(await field.inputValue(),'QA MODAL RECOVERY — synthetic only');
+   assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
+  });
   await check('verified-finalization-and-refresh',async({page,open,nav})=>{
-   completionMode='malformed';await open(`?tab=record&session=${visitId}`);const beginReview=page.getByRole('button',{name:'Έλεγχος πριν την ολοκλήρωση',exact:true});await beginReview.waitFor();await beginReview.click();const finish=page.getByRole('button',{name:'Οριστικοποίηση επίσκεψης',exact:true});await finish.waitFor();await page.screenshot({path:resolve(out,`${size}-journey-review.png`)});assert.equal(requests.filter(r=>r.action==='finalize_session').length,0,'review does not finalize');await finish.click();
+   completionMode='malformed';await open('?tab=timeline');await page.getByLabel('Φίλτρα πορείας').getByRole('button',{name:'Με μετρήσεις',exact:true}).click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();const beginReview=page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true});await beginReview.waitFor();await beginReview.click();const finish=page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true});await finish.waitFor();await page.screenshot({path:resolve(out,`${size}-journey-review.png`)});assert.equal(requests.filter(r=>r.action==='finalize_session').length,0,'review does not finalize');await finish.click();
    await page.getByRole('alert').filter({hasText:'Δεν επιβεβαιώθηκε'}).first().waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'draft');assert.equal(await page.getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).count(),0);
-   completionMode='ok';await finish.click();await page.locator('.patient-visit-surface:not([hidden])').getByText('Η καταγραφή οριστικοποιήθηκε.',{exact:true}).waitFor();assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');await page.screenshot({path:resolve(out,`${size}-journey-completion.png`)});
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Επισκέψεις').click();await page.getByRole('heading',{name:'Επισκέψεις',exact:true}).waitFor();const count=state.sessions.filter(s=>s.status==='completed').length;await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).nth(count-1).waitFor();assert.equal(await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).count(),count);
+   completionMode='ok';await finish.click();await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();await page.locator('dialog[open]').waitFor({state:'detached'});assert.equal(state.sessions.find(s=>s.id===visitId).status,'completed');await page.screenshot({path:resolve(out,`${size}-journey-completion.png`)});
+   await nav('Επισκέψεις').click();await page.getByRole('heading',{name:'Επισκέψεις',exact:true}).waitFor();assert.equal(await page.getByLabel('Φίλτρα πορείας').getByRole('button',{name:'Όλες οι επισκέψεις',exact:true}).getAttribute('aria-pressed'),'true','registration reveals the saved visit even after a restrictive filter');const count=state.sessions.filter(s=>s.status==='completed').length;await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).nth(count-1).waitFor();assert.equal(await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).count(),count);
    await nav('Σύνοψη').click();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();await page.reload();await page.getByRole('region',{name:'Κλινική σύνοψη'}).getByText(/QA CURRENT VISIT/).first().waitFor();assert.equal(requests.filter(r=>r.action==='finalize_session').length,2,'one malformed response and one confirmed commit; reload never resubmits');
   });
   await check('second-medication-isolation',async({page,open})=>{
    await open(`?tab=record&session=${visitId}`);const table=page.locator('[data-visit-part="medication"]');await table.getByRole('button',{name:'Προσθήκη φαρμάκου',exact:true}).click();
    const row=table.locator('.med-new-row');await row.getByRole('combobox',{name:'Φάρμακο',exact:true}).fill('QA SECOND MEDICATION');await row.getByRole('textbox',{name:'Δόση',exact:true}).fill('10');await row.getByRole('button',{name:'Πρωί',exact:true}).click();await row.getByRole('button',{name:'Προσθήκη',exact:true}).click();
-   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);assert.equal(requests.find(r=>r.action==='medication_start').session_id,visitId);assert.equal(await page.getByRole('dialog').count(),0);
+   const saved=table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'});await saved.waitFor();assert.equal(await saved.locator('input').count(),0,'new medication does not open an effect/history editor');assert.equal(state.medicationSideEffects.some(e=>e.medication_id==='40000000-0000-4000-8000-000000000099'),false);assert.equal(requests.filter(r=>r.action==='medication_start').length,1);assert.equal(requests.find(r=>r.action==='medication_start').session_id,visitId);assert.equal(await page.locator('[role="dialog"]').count(),0);
    await page.reload();await table.locator('tbody tr').filter({hasText:'QA SECOND MEDICATION'}).waitFor();assert.equal(await table.locator('.med-new-row').count(),0);
   });
   await check('ux-new-folder-received-history-source-boundaries',async({page,open,nav})=>{

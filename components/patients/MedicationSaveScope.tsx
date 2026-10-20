@@ -40,9 +40,9 @@ export default function MedicationSaveScope({bundle,children}:{bundle:PatientBun
  }}>
   <span className="kicker">ΑΠΟΘΗΚΕΥΣΗ ΑΓΩΓΗΣ</span><h2 id={title}>Πού να καταγραφεί η αλλαγή;</h2>
   {medication&&<p>{String(medication)}</p>}
-  <p>Υπάρχει πρόχειρη επίσκεψη. Μπορείτε να κρατήσετε την αλλαγή στον φάκελο ή να τη συνδέσετε με συγκεκριμένη επίσκεψη.</p>
-  <label>Καταχώριση<select ref={selectRef} aria-label="Καταχώριση αλλαγής αγωγής" disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">Στον φάκελο ασθενούς</option>{drafts.map(s=><option key={s.id} value={s.id}>Πρόχειρη · {formatClinicDateTime(s.started_at)} · {s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</option>)}</select></label>
-  <p className="visit-hint">Η αλλαγή ισχύει μόλις αποθηκευτεί, ακόμη κι αν η επίσκεψη παραμείνει πρόχειρη.</p>
+  <p>Υπάρχει μη ολοκληρωμένη καταγραφή επίσκεψης. Μπορείτε να κρατήσετε την αλλαγή στον φάκελο ή να τη συνδέσετε με συγκεκριμένη επίσκεψη.</p>
+  <label>Καταχώριση<select ref={selectRef} aria-label="Καταχώριση αλλαγής αγωγής" disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">Στον φάκελο ασθενούς</option>{drafts.map(s=><option key={s.id} value={s.id}>Μη ολοκληρωμένη · {formatClinicDateTime(s.started_at)} · {s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</option>)}</select></label>
+  <p className="visit-hint">Η αλλαγή ισχύει μόλις αποθηκευτεί, ακόμη κι αν η επίσκεψη δεν έχει καταχωριστεί οριστικά.</p>
   <div className="entry-footer"><button type="button" disabled={busy} onClick={cancel}>Επιστροφή στην αλλαγή</button><button type="button" className="entry-primary" disabled={busy} onClick={()=>void confirm()}>{busy?'Αποθήκευση…':'Αποθήκευση αλλαγής'}</button></div>
  </section></div>}</SaveContext.Provider>;
 }

@@ -31,13 +31,13 @@ test('drafts and future encounters are excluded and encounter time orders the hi
  const b=fixture();b.sessions[1].status='draft';b.sessions[2].started_at='2026-10-05T09:00:00Z';b.appointments=[{session_id:'s3',scheduled_start:'2026-10-05T09:00:00Z'}];
  assert.deepEqual(mseTimeline(b,'s4',b.sessions[3].started_at).visits.map(v=>v.sessionId),['s1']);
 });
-test('confirming an older reference preserves provenance and requires a fresh domain decision',()=>{
+test('confirming an older reference preserves provenance while omitted domains remain optional',()=>{
  const t=mseTimeline(fixture(),'s4','2026-10-04T09:00:00Z');const source=t.references.speech;
  const previous={...source.field,reference:{session_id:source.sessionId,date:source.date}},empty={key:'speech',label:'Speech',text:''};
  assert.equal(visibleMseField(empty,previous).text,'Συνήθης');assert.equal(empty.text,'');
  const confirmed=recordMseField(empty,previous.text,previous);assert.deepEqual(confirmed.reference,previous.reference);assert.equal(confirmed.review,'unchanged');
  const sections=['interview','mse','assessment','plan','review'].map(section_key=>({section_key,content:'Recorded',...(section_key==='mse'?{document:{kind:'mse',fields:[{key:'mood',label:'Mood',text:'Ευθυμικό'}]}}:{})}));
  const references={kind:'mse',fields:Object.values(t.references).map(r=>r.field)};
- assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'},references).anchor,'mse');
+ assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'},references),null);
  sections[1].document.fields.push(confirmed);assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'},references),null);
 });

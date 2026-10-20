@@ -3,7 +3,7 @@ import {followupCompletionIssues} from '../clinical/visit-workspace-state.ts';
 import {appointmentContext} from './policy.ts';
 import type {FixtureRecord} from './preview';
 export function visitRevision(record:FixtureRecord,mse?:DemoSection,risk?:DemoRisk){
- return JSON.stringify([record.patientId,record.sessionId,record.version,mse?.version??null,risk?.version??null]);
+ return JSON.stringify([record.patientId,record.sessionId,record.version,record.notes,mse?.version??null,risk?.version??null]);
 }
 export function reviewFixtureVisit(record:FixtureRecord,mse?:DemoSection,risk?:DemoRisk){
  appointmentContext(record.appointment,record.patientId,record.sessionId);
@@ -23,5 +23,5 @@ export function completeFixtureVisit(bundle:PatientBundle,record:FixtureRecord,m
  const issues=reviewFixtureVisit(record,mse,risk);if(issues.length)throw new Error(issues.join('\n'));
  const continuity={...structuredClone(record.notes),session_id:record.sessionId,approved_at:options.now,approved_by:session.tester_id};
  const completed={...session,status:'completed' as const,completed_at:options.now,updated_at:options.now,version:session.version+1,closure_draft:structuredClone(record.notes),closure_version:record.version,continuity};
- return {...bundle,sessions:bundle.sessions.map(row=>row.id===session.id?completed:row),sections:[...bundle.sections.filter(row=>row.session_id!==record.sessionId||row.section_key!=='mse'),structuredClone(mse!)],risks:[...bundle.risks.filter(row=>row.session_id!==record.sessionId),structuredClone(risk!)],appointments:bundle.appointments.map(row=>row.id===record.appointment.id?{...row,status:'completed'}:row)};
+ return {...bundle,sessions:bundle.sessions.map(row=>row.id===session.id?completed:row),sections:[...bundle.sections.filter(row=>row.session_id!==record.sessionId||row.section_key!=='mse'),...(mse?[structuredClone(mse)]:[])],risks:[...bundle.risks.filter(row=>row.session_id!==record.sessionId),...(risk?[structuredClone(risk)]:[])],appointments:bundle.appointments.map(row=>row.id===record.appointment.id?{...row,status:'completed'}:row)};
 }

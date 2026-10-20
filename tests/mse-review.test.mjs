@@ -22,12 +22,12 @@ test('changed selections, restoration and draft resume keep explicit per-domain 
  assert.equal(mseReviewCounts(restored,prior).changed,0);assert.deepEqual(mseDeltas(prior,restored),[]);
  assert.equal(mseReviewCounts(initialDocument('mse'),prior).reviewed,0);
 });
-test('unreviewed previous domains need a decision; omitted domains do not imply resolution',()=>{
+test('unreviewed previous domains remain optional; omission never implies resolution',()=>{
  const previous=initialDocument('mse');previous.fields[0].text='Συνεργάσιμος';previous.fields[2].text='Αγχώδες';
  const current=initialDocument('mse');current.fields[2]=recordMseField(current.fields[2],'Ευθυμικό',previous.fields[2]);
  const sections=['interview','mse','assessment','plan','review'].map(section_key=>({section_key,content:'Recorded',...(section_key==='mse'?{document:current}:{})}));
  const risk={suicidal_ideation:'negative'};
- assert.equal(finalizationBlocker(sections,risk,previous).anchor,'mse');
+ assert.equal(finalizationBlocker(sections,risk,previous),null);
  current.fields[0]=recordMseField(current.fields[0],'',previous.fields[0]);
  assert.equal(finalizationBlocker(sections,risk,previous),null);
  assert.deepEqual(mseDeltas(previous,current).map(f=>f.key),['mood']);

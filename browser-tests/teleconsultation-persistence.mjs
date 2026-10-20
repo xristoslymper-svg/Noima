@@ -87,8 +87,8 @@ try{
   await notes(second).fill('ΑΠΟΘΗΚΕΥΜΕΝΟ ΑΠΟ ΑΛΛΟ TAB');await notes(second).blur();await saved(second);
   await notes(p).fill('ΔΙΚΟ ΜΟΥ ΠΡΟΣΧΕΔΙΟ');await notes(p).blur();await p.getByRole('alert').filter({hasText:'άλλαξε'}).waitFor();
   assert.equal(await notes(p).inputValue(),'ΔΙΚΟ ΜΟΥ ΠΡΟΣΧΕΔΙΟ');assert.equal((await state()).bundle.sessions[0].closure_draft.transcript,'ΑΠΟΘΗΚΕΥΜΕΝΟ ΑΠΟ ΑΛΛΟ TAB');
-  await p.getByRole('button',{name:'Σύγκριση με αποθηκευμένο πρόχειρο',exact:true}).click();
-  await p.getByLabel('Σύγκριση προχείρου',{exact:true}).waitFor();assert.equal(await notes(p).inputValue(),'ΔΙΚΟ ΜΟΥ ΠΡΟΣΧΕΔΙΟ');
+  await p.getByRole('button',{name:'Σύγκριση με αποθηκευμένη έκδοση',exact:true}).click();
+  await p.getByLabel('Σύγκριση καταγραφών',{exact:true}).waitFor();assert.equal(await notes(p).inputValue(),'ΔΙΚΟ ΜΟΥ ΠΡΟΣΧΕΔΙΟ');
   await p.getByRole('button',{name:'Διατήρηση του δικού μου και επανάληψη αποθήκευσης',exact:true}).click();await saved(p);
   assert.equal((await state()).bundle.sessions[0].closure_draft.transcript,'ΔΙΚΟ ΜΟΥ ΠΡΟΣΧΕΔΙΟ');await second.close();
  });

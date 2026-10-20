@@ -45,7 +45,7 @@ export default function VisitNextAppointment({bundle,reload,registerFlusher,onDi
     <label className={styles.field}>Ώρα Αθήνας<input type="time" value={time} onInput={e=>setTime(e.currentTarget.value)} disabled={busy}/></label>
     <label className={styles.field}>Διάρκεια<select value={duration} onChange={e=>setDuration(e.target.value)} disabled={busy}><option value="30">30′</option><option value="50">50′</option><option value="60">60′</option></select></label>
    </div>
-   <p className={styles.feedback}>Με τον προγραμματισμό το ραντεβού προστίθεται άμεσα στο ημερολόγιο, ακόμη και αν η επίσκεψη παραμείνει πρόχειρη.</p>
+   <p className={styles.feedback}>Με τον προγραμματισμό το ραντεβού προστίθεται άμεσα στο ημερολόγιο, ακόμη και αν η επίσκεψη δεν έχει καταχωριστεί οριστικά.</p>
    <div className={styles.actions}>
     <button type="button" className={styles.save} disabled={!date||busy} onClick={()=>void save()}><CalendarPlus size={16} aria-hidden="true"/>{busy?'Αποθήκευση…':'Προγραμματισμός'}</button>
     <button type="button" className={styles.cancel} disabled={busy} onClick={cancel}>Ακύρωση</button>

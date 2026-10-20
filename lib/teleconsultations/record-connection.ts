@@ -23,7 +23,7 @@ export function recordConnection(bundle:PatientBundle,patientId:string,sessionId
   saveClosure:async(value,version)=>{
    const result=await post({action:'save_closure',session_id:sessionId,value,expected_version:version});
    const saved=scoped(result.session as DemoSession,true);
-   if(!saved.closure_draft||!Number.isSafeInteger(saved.closure_version)||(saved.closure_version as number)<=(version??0))throw new Error('Δεν επιβεβαιώθηκε η έκδοση του προχείρου.');
+   if(!saved.closure_draft||!Number.isSafeInteger(saved.closure_version)||(saved.closure_version as number)<=(version??0))throw new Error('Δεν επιβεβαιώθηκε η έκδοση της καταγραφής.');
    return {value:saved.closure_draft,version:saved.closure_version!};
   },
   saveMse:async(document,version)=>{const result=await post({action:'save_document',session_id:sessionId,section_key:'mse',document,expected_version:version});const saved=scoped(result.section as DemoSection);if(saved.section_key!=='mse'||saved.version<=(version??0))throw new Error('Δεν επιβεβαιώθηκε η ψυχική κατάσταση.');return saved},

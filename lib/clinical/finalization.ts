@@ -32,7 +32,7 @@ export async function finalizeAndVerify(options:CompletionOptions):Promise<DemoS
   let completed:DemoSession;
   if(current.status==='completed')completed=confirmedCompletion(current,options.sessionId,options.patientId);
   else{
-   if(!Number.isSafeInteger(current.version)||current.version<0)throw new Error('Δεν επιβεβαιώθηκε η έκδοση του προχείρου. Ανανεώστε τον φάκελο.');
+   if(!Number.isSafeInteger(current.version)||current.version<0)throw new Error('Δεν επιβεβαιώθηκε η έκδοση της καταγραφής. Ανανεώστε τον φάκελο.');
    if(options.closure&&(!Number.isSafeInteger(options.closureVersion)||(options.closureVersion as number)<0))throw new Error('Δεν επιβεβαιώθηκε η έκδοση της καταγραφής. Ανανεώστε τον φάκελο.');
    const result=await options.write({action:options.closure?'finalize_closure':'finalize_session',confirmed:Boolean(options.closure),expected_closure_version:options.closureVersion,session_id:options.sessionId,expected_version:current.version});
    completed=confirmedCompletion(result.session,options.sessionId,options.patientId);

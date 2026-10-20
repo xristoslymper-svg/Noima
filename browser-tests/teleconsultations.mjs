@@ -58,9 +58,11 @@ try{
   await page.getByRole('button',{name:'Αποθήκευση προσχεδίου',exact:true}).click();
   await page.getByText('Αποθηκευμένο στο συνθετικό παράδειγμα',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Έλεγχος καταγραφής',exact:true}).click();
-  await page.getByText('Έλεγχος συνθετικής επίσκεψης',{exact:true}).waitFor();
-  assert.ok((await page.getByRole('region',{name:'Σημειώσεις συνδεδεμένης επίσκεψης'}).innerText()).includes('Χρειάζεται'));
-  assert.notEqual(await clinicalDetails.getAttribute('open'),null);assert.notEqual(await planDetails.getAttribute('open'),null);
+  const optionalReview=page.getByRole('region',{name:'Έλεγχος πριν την καταχώριση',exact:true});
+  await optionalReview.waitFor();await optionalReview.getByText('ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΧΑΘΕΙ',{exact:true}).waitFor();
+  await optionalReview.getByRole('button',{name:'Επιστροφή στην επεξεργασία',exact:true}).click();
+  if(await clinicalDetails.getAttribute('open')===null)await clinicalDetails.locator('summary').first().click();
+  if(await planDetails.getAttribute('open')===null)await planDetails.locator('summary').first().click();
   const mse=page.locator('.visit-structured.mse');
   assert.equal(await mse.locator('button[aria-pressed="true"]').count(),0);
   const risk=page.locator('.risk-tree-editor');

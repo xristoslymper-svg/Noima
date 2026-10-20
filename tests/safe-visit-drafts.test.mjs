@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {draftSaveStatus} from '../lib/clinical/draft-save-status.ts';
 import {finalizationIssues,finalizationBlocker,followupCompletionIssues} from '../lib/clinical/visit-workspace-state.ts';
 test('save status distinguishes failure, in-flight, pending and clean navigation',()=>{
- assert.match(draftSaveStatus({saving:false,dirty:false}),/Αποθηκεύτηκαν όλες/);
+ assert.match(draftSaveStatus({saving:false,dirty:false}),/Οι σημειώσεις αποθηκεύτηκαν/);
  assert.match(draftSaveStatus({saving:true,dirty:true}),/Αποθήκευση αλλαγών/);
  assert.match(draftSaveStatus({saving:false,dirty:true}),/αναμονή/);
  assert.match(draftSaveStatus({saving:false,dirty:true,error:'offline'}),/κείμενό σας διατηρείται/);

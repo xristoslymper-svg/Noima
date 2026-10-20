@@ -86,7 +86,7 @@ export function patientTimeline(bundle:PatientBundle,now=new Date()){
   ...bundle.sessions.filter(s=>s.patient_id===bundle.patient.id&&s.status==='draft').map(s=>({
    id:'visit-'+s.id,kind:'visits' as const,date:s.started_at,
    title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση',
-   detail:'Μη ολοκληρωμένη καταγραφή · δεν έχει οριστικοποιηθεί',sessionId:s.id,draft:true
+   detail:'Οι σημειώσεις έχουν αποθηκευτεί. Η επίσκεψη δεν έχει καταχωριστεί οριστικά.',sessionId:s.id,draft:true
   }))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
  // Side-effect source links are explicit too; never infer a visit from dates.

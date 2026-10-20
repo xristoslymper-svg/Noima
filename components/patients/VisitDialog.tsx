@@ -11,5 +11,5 @@ export default function VisitDialog({open,onClose,children}:{open:boolean;onClos
   const previous=document.body.style.overflow;document.body.style.overflow='hidden';
   return()=>{document.body.style.overflow=previous;if(dialog.open)dialog.close();document.querySelector<HTMLButtonElement>('.patient-voice-cta')?.focus()};
  },[open]);
- return <dialog ref={ref} className={styles.recordDialog} aria-labelledby="record-dialog-title" onCancel={event=>{event.preventDefault();void close.current()}}>{children}</dialog>;
+ return <dialog ref={ref} className={styles.recordDialog} aria-labelledby="record-dialog-title" aria-modal="true" onCancel={event=>{event.preventDefault();void close.current()}}>{children}</dialog>;
 }

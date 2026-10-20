@@ -12,7 +12,7 @@
 .scope :global(nav[aria-label="Καρτέλες φακέλου"]>button[aria-current="page"]) { font-weight:650; }
 .scope :global(nav[aria-label="Καρτέλες φακέλου"] svg) { stroke-width:1.7; }
 .scope :global(.patient-workspace-content) { padding:24px;border-radius:16px; }
-.scope :global(.patient-workspace-content h2) { font-size:var(--patient-type-title)!important;line-height:1.35;letter-spacing:-.02em;font-weight:650;margin:6px 0 12px; }
+.scope.scope :global(.patient-workspace-content h2) { font-size:var(--patient-type-title)!important;line-height:1.35;letter-spacing:-.02em;font-weight:650;margin:6px 0 12px; }
 .scope :global(.patient-workspace-content h3) { font-size:14px;line-height:1.5;letter-spacing:-.01em;font-weight:650; }
 .scope :global(.patient-workspace-content p) { line-height:1.65; }
 .scope :global(.patient-workspace-content .kicker) { font-size:10px;line-height:1.5;font-weight:650;letter-spacing:.08em; }
@@ -97,3 +97,10 @@
  .scope :global(.patient-visit-surface .completed-record-form .visit-part) { padding:14px; }
  .scope :global(.entry-modal) { padding:20px; }
 }
+
+/* Read-only visit and its existing continuity block use the same column and rhythm. */
+.scope :global(.patient-visit-surface .completed-session-view) { max-width:800px;margin:0 auto; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part) { max-width:800px;margin:0 auto 16px;padding:16px 18px;border:1px solid var(--patient-line);border-radius:var(--patient-radius); }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>p) { font-size:13px;line-height:1.65;margin:8px 0; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>p>strong) { font-weight:600; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>details) { margin-top:12px;font-size:12px; }

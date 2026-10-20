@@ -31,7 +31,7 @@ const Psychometrics=presentation('PatientPsychometrics.tsx',{
 const Treatment=presentation('PatientTreatment.tsx',{'@/lib/clinical/completed-visit-notes':notes,
  '@/lib/clinical/treatment-plan':treatment,'@/lib/clinical/assessment-link':assessmentLink,'./PatientTreatment.module.css':{},'@/lib/clinical/patient-record':{patientRecord},'./PatientPanels':{MedicationsPanel:empty},
  './MedicationSaveScope':({children})=>children,'./PatientPsychometrics':Psychometrics,'./PatientRecordSummary':{recordDate:value=>value},
- './PatientRecord.module.css':{},
+ './PatientRecord.module.css':{},'./PatientVisualIcon':empty,
 });
 const assessment=id=>({id,instrument:'PHQ-9',instrument_version:'1',status:'completed',score:9,answers:[1,1,1,1,1,1,1,1,1],completed_at:'2026-10-01T12:00:00Z',created_at:'2026-10-01T12:00:00Z',item9_review:false});
 function bundle(overrides={}){return {clinical_day:'2026-10-08',patient:{id:'fictional',email:'',first_name:'Test',last_name:'Only'},sessions:[],appointments:[],medications:[],medicationEvents:[],medicationRevisions:[],medicationSideEffects:[],assessments:[assessment('older'),assessment('selected')],risks:[],...overrides}}

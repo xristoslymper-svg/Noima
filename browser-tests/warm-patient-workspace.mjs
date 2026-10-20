@@ -101,7 +101,7 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   const completed=bundle.sessions.find(s=>s.status==='completed');
   await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=record&session=${completed.id}`);
   await page.locator('.completed-record-form').waitFor();
-  assert.equal(await page.locator('.completed-record-form').isDisabled(),true,'read-only record remains read-only');
+  assert.equal(await page.locator('.completed-record-form textarea').first().isDisabled(),true,'read-only record remains read-only');
   assert.equal(await page.getByRole('button',{name:'Διόρθωση καταγραφής',exact:true}).isEnabled(),true);
   assert.equal(await page.locator('.completed-record-form .visit-part').first().locator('h3 [aria-hidden="true"] svg').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

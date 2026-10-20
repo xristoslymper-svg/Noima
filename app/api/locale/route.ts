@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const {data: {user}, error} = await client.auth.getUser();
   // A temporary auth failure must not downgrade an authenticated preference to an anonymous cookie.
   if (error && error.name !== 'AuthSessionMissingError') return reply({code: 'locale_unavailable'}, 503);
-  if (user) {
+  if (user && process.env.VERCEL_ENV!=='preview') {
     // updateUser can update only the authenticated user; no caller-supplied identity or service key.
     const {error: updateError} = await client.auth.updateUser({data: {noima_locale: body.locale}});
     if (updateError) return reply({code: 'locale_save_failed'}, 503);

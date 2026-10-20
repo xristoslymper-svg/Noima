@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {JourneyEntry} from '../components/patients/PatientJourney';
@@ -16,4 +17,4 @@ function App(){
  <section data-mobile-section="notes"><label>Σημειώσεις<input/></label></section><section data-mobile-section="mse"><label>MSE<input/></label></section><section data-mobile-section="risk"><label>Κίνδυνος<input/></label></section>
  </VisitCanvas><button onClick={()=>void Promise.all([...flushers.current.values()].map(f=>f()))}>Έλεγχος αποθήκευσης</button></main>;
 }
-createRoot(document.getElementById('root')!).render(<App/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{<App/>}</LocaleFixture>);

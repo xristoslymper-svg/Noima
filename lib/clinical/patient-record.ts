@@ -29,13 +29,13 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
   return results[0]?[{current:results[0],previous:results[1]||null}]:[];
  });
  const activeEffects=bundle.medicationSideEffects.filter(e=>(!e.resolved_on||e.resolved_on>today)&&e.noted_on<=today);
- const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||display('Αγωγή');
+ const medicationName=(id:string)=>bundle.medications.find(m=>m.id===id)?.medication_name||'Αγωγή';
  const events:RecordEvent[]=[
-  ...completed.map(s=>({id:'visit-'+s.id,kind:'visits' as const,date:clinicalDate(bundle,s),title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'),detail:display('Ολοκληρωμένη καταγραφή',sessionId:s.id})),
+  ...completed.map(s=>({id:'visit-'+s.id,kind:'visits' as const,date:clinicalDate(bundle,s),title:s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση',detail:'Ολοκληρωμένη καταγραφή',sessionId:s.id})),
   ...medicationEvents.map(e=>({id:'med-'+e.id,kind:'treatment' as const,date:e.effective_on,recordedAt:e.created_at,title:eventLabels[e.event_type],detail:[String(e.new_state?.medication_name||e.previous_state?.medication_name||medicationName(e.medication_id)),e.new_state?.dose!==undefined?`${e.new_state.dose} ${e.new_state.unit||''}`:'',e.reason].filter(Boolean).join(' · '),sessionId:medicationEventSession(bundle,e),scheduled:e.effective_on>today})),
   ...bundle.medicationSideEffects.flatMap(e=>[
-   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:display('Παρενέργεια'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
-   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:display('Λήξη παρενέργειας'),detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
+   {id:'effect-'+e.id,kind:'treatment' as const,date:e.noted_on,recordedAt:e.created_at,title:'Παρενέργεια',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,sessionId:e.session_id||undefined,scheduled:e.noted_on>today},
+   ...(e.resolved_on?[{id:'effect-resolved-'+e.id,kind:'treatment' as const,date:e.resolved_on,recordedAt:e.updated_at,title:'Λήξη παρενέργειας',detail:`${medicationName(e.medication_id)} · ${e.effect_text}`,scheduled:e.resolved_on>today}]:[])
   ]),
   ...measured.map(a=>({id:'measurement-'+a.id,kind:'measurements' as const,date:a.completed_at!,title:`${a.instrument} · ${a.score}`,detail:(a.item9_review&&!a.item9_reviewed_at?'Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση':'Ολοκληρωμένη μέτρηση')+' · '+assessmentLinkLabel(bundle,a),sessionId:assessmentLink(bundle,a).session?.id,assessmentId:a.id,scheduled:day(a.completed_at!)>today}))
  ].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||a.id.localeCompare(b.id));
@@ -53,7 +53,7 @@ export function patientRecord(bundle:PatientBundle,now=new Date()){
 }
 
 /** Explicit source links only: dates alone never attribute an event to a visit. */
-export function visitTimelineContext(bundle:PatientBundle,now=new Date(),display:(label:string)=>string=label=>label){
+export function visitTimelineContext(bundle:PatientBundle,now=new Date()){
  const record=patientRecord(bundle,now);
  const context=new Map<string,{treatment:RecordEvent[];measurements:{current:PatientBundle['assessments'][number];previous:PatientBundle['assessments'][number]|null}[]}>();
  for(const visit of bundle.sessions.filter(s=>s.patient_id===bundle.patient.id&&(s.status==='completed'||s.status==='draft')))context.set(visit.id,{treatment:[],measurements:[]});
@@ -64,7 +64,7 @@ export function visitTimelineContext(bundle:PatientBundle,now=new Date(),display
   if(!sourceSession||event.patient_id!==bundle.patient.id||revised.has(event.id)||!eventLabels[event.event_type])continue;
   const target=context.get(sourceSession);if(!target)continue;
   const before=stateText(event.previous_state),after=stateText(event.new_state);
-  const name=String(event.new_state?.medication_name||event.previous_state?.medication_name||bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||display('Αγωγή'));
+  const name=String(event.new_state?.medication_name||event.previous_state?.medication_name||bundle.medications.find(m=>m.id===event.medication_id)?.medication_name||'Αγωγή');
   const detail=[name,event.event_type==='changed'&&before&&after?before+' → '+after:event.event_type==='stopped'?before:after].filter(Boolean).join(' · ');
   target.treatment.push({id:'med-'+event.id,kind:'treatment',date:event.effective_on,title:eventLabels[event.event_type],detail,scheduled:event.effective_on>record.today,sessionId:sourceSession});
  }

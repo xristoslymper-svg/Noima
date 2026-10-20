@@ -20,4 +20,4 @@ import PatientWorkspace from '../components/patients/PatientWorkspace';
 createRoot(document.getElementById('root')!).render(<LocaleFixture>{<>
   <div className="fictional-pilot-notice">LOCAL QA · μόνο υποθετικοί ασθενείς · προσομοιωμένο API</div>
   {(location.pathname==='/timeline-preview'||location.pathname==='/patients/demo/treatment-preview')?<><SyntheticPatientWorkspace bundle={fixture as unknown as PatientBundle}/>{location.pathname==='/patients/demo/treatment-preview'&&<RecordAssistant/>}</>:location.pathname==='/calendar'?<CalendarPage/>:location.pathname==='/received-history-preview'?<ReceivedHistoryPreview/>:location.pathname==='/patients'?<Patients/>:<PatientWorkspace patientRef={fixture.patient.id}/>}
-</>);
+</>}</LocaleFixture>);

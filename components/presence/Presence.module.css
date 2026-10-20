@@ -41,3 +41,6 @@
 @media(max-width:800px){.googleRow{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px}.googleRow>label{grid-column:1/-1}.googleHeading h2{font-size:16px}.googleArea .actions button{white-space:normal;min-height:42px}.googleArea{gap:14px}}
 
 .bookingFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}.requests>details{margin:18px 0}.requests>details>summary{cursor:pointer;font-size:13px;font-weight:600}.requests article .field{max-width:520px;margin-top:14px}.requests article>.actions{margin-top:14px}@media(max-width:600px){.bookingFields{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* Keep the existing action components available outside the authenticated shell too. */
+.publicView :global(.small-button),.requests :global(.small-button){display:inline-flex!important;align-items:center;justify-content:center;gap:6px}

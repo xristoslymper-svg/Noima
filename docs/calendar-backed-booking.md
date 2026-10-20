@@ -9,3 +9,5 @@
 - Calendar deep link opens the linked event/date; moved/cancelled/completed events are reflected live in request status.
 - CI PostgreSQL fixture tests perform real concurrent transactions in an ephemeral GitHub service. Browser fixtures cover desktop/mobile and deny all external writes. Do not run fixture SQL against hosted databases.
 - Additive primary schema deployment source: docs/sql/practice-booking.sql. Edge update only booking_target action on existing isolated practice-preview.
+
+Security advisor review: the private tables intentionally have no client policies/grants. Public availability/submission are deliberately narrow SECURITY DEFINER entry points for anonymous booking, with empty search_path, opt-in and input/cap checks; the owner entry point verifies auth.uid(), active pilot_identity and workspace ownership before any access. The general advisor warnings about definer RPC execution were reviewed as intentional, not ignored. See https://supabase.com/docs/guides/database/database-linter for the checks. No broad grants or existing RLS policies changed.

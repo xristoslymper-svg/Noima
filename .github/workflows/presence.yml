@@ -35,6 +35,11 @@ jobs:
           node browser-tests/google-maps.mjs
           node browser-tests/presence.mjs
           node browser-tests/public-practice.mjs
+      - name: Read-only hosted booking availability and auth gates
+        if: github.head_ref == 'codex/public-booking-calendar'
+        env:
+          BOOKING_LIVE_URL: https://noima-git-codex-public-booking-calendar-xristoslymper-3481.vercel.app/iatreio/iatreio-8407b134fef44c3dab885b181b747cf7
+        run: node browser-tests/booking-live.mjs
       - name: Read-only hosted public URL without login
         if: github.head_ref == 'codex/public-practice'
         env:

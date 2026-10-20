@@ -706,7 +706,8 @@
       ".github/workflows/booking.yml",
       "browser-tests/booking-fixture.tsx",
       "browser-tests/booking.mjs",
-      "docs/calendar-backed-booking.md"
+      "docs/calendar-backed-booking.md",
+      "browser-tests/booking-live.mjs"
     ]
   }
 }

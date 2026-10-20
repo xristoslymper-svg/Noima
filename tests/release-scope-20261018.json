@@ -718,7 +718,12 @@
       "lib/clinical/patient-journey.ts",
       "lib/patients/visit-simulation.ts",
       "components/patients/IndependentVisitPreview.tsx",
-      "app/patients/demo/independent-visits-preview/page.tsx"
+      "app/patients/demo/independent-visits-preview/page.tsx",
+      "tests/visit-simulation.test.mjs",
+      "browser-tests/patient-entry.mjs",
+      "tests/mse-timeline.test.mjs",
+      "tests/teleconsultation-lifecycle.test.mjs",
+      "lib/teleconsultations/visit-lifecycle.ts"
     ]
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import PatientWorkspace from './PatientWorkspace';
-import fixture from '@/browser-tests/fixtures/warm-patient.json';
+import fixture from '@/lib/clinical/treatment-preview.json';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {simulateVisitWrite} from '@/lib/patients/visit-simulation';
 const storageKey='noima-independent-visits-synthetic-v1';

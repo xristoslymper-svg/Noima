@@ -28,16 +28,18 @@ test('only explicit post-call confirmation promotes reviewed draft into the same
  assert.equal(completed.risks[0].patient_id,record.patientId);
  assert.equal(completeFixtureVisit(completed,record,mse,risk,options),completed);
 });
-test('incomplete, foreign or changed records cannot pass an old review',()=>{
+test('optional clinical fields retain foreign-record and stale-review protection',()=>{
  const {record,mse,risk,bundle,options}=setup();
- assert.ok(reviewFixtureVisit({...record,notes:emptyContinuity},undefined,undefined).length>0);
+ assert.deepEqual(reviewFixtureVisit({...record,notes:emptyContinuity},undefined,undefined),[]);
  assert.throws(()=>completeFixtureVisit(bundle,{...record,version:2},mse,risk,options),/άλλαξε/);
  assert.throws(()=>completeFixtureVisit(bundle,record,{...mse,version:2},risk,options),/άλλαξε/);
  assert.throws(()=>completeFixtureVisit(bundle,record,mse,{...risk,version:2},options),/άλλαξε/);
  assert.throws(()=>reviewFixtureVisit(record,{...mse,session_id:'other'},risk),/διαφορετική/);
  assert.throws(()=>completeFixtureVisit({...bundle,patient:{...bundle.patient,id:'other'}},record,mse,risk,options),/Διαφορετικός/);
  const incomplete={...record,notes:{...record.notes,treatment_decision:''}};
- assert.throws(()=>completeFixtureVisit(bundle,incomplete,mse,risk,options),/Απόφαση/);
+ assert.throws(()=>completeFixtureVisit(bundle,incomplete,mse,risk,options),/άλλαξε/);
+ const optional=completeFixtureVisit(bundle,incomplete,undefined,undefined,{...options,reviewedRevision:visitRevision(incomplete)});
+ assert.equal(optional.sessions[0].status,'completed');assert.deepEqual(optional.risks,[]);assert.deepEqual(optional.sections,[]);
 });
 test('post-call edits, failure, retry and refresh use the existing verified completion contract',async()=>{
  const {record,mse,risk,bundle,options}=setup();let canonical=bundle,writes=0,fail=true;

@@ -45,12 +45,14 @@ try{
   assert.equal(session.closure_draft.clinical_state_summary,'LOCAL UNSAVED TEXT');
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  });
- await check('completion readiness uses current blockers and existing section navigation',{width:1280,height:1000},'/',async p=>{
-  const pending=p.locator('[aria-label="Εκκρεμότητες ολοκλήρωσης"]');
-  await pending.getByText('Πριν την ολοκλήρωση',{exact:true}).waitFor();
-  await pending.getByRole('button',{name:'Χρειάζεται εκτίμηση κινδύνου πριν ολοκληρωθεί η καταγραφή.',exact:true}).click();
+ await check('optional clinical fields retain section navigation and explicit registration review',{width:1280,height:1000},'/',async p=>{
+  assert.equal(await p.locator('[aria-label="Εκκρεμότητες ολοκλήρωσης"]').count(),0);
+  assert.equal(await p.locator('sup[aria-label="Υποχρεωτικό"]').count(),0);
+  await p.getByRole('navigation',{name:'Πλοήγηση επίσκεψης'}).getByRole('button',{name:'Κίνδυνος',exact:true}).click();
   assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0);
-  await p.getByText('«Συνέχεια αργότερα»: αποθήκευση χωρίς τελική καταχώριση και προσθήκη στις εκκρεμότητες. Η επίσκεψη δεν οριστικοποιείται.',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+  await p.getByRole('region',{name:'Έλεγχος καταχώρισης'}).waitFor();
+  await p.getByText('Ελέγξτε όσα καταγράψατε. Όλα τα κλινικά πεδία είναι προαιρετικά· όσα αφήσατε κενά παραμένουν χωρίς καταγραφή.',{exact:true}).waitFor();
  });
  await check('MSE selection then clearing stays empty, not normal; values and save contract retained',{width:1280,height:1000},'/',async p=>{
   const mood=p.locator('[data-mse-domain="mood"]');await mood.locator(':scope>summary').click();const choice=mood.locator('.mse-options button').first();await choice.click();assert.equal(await choice.getAttribute('aria-pressed'),'true');await mood.getByRole('button',{name:/Εκκαθάριση επιλογών:/}).click();

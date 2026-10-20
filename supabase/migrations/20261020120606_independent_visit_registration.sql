@@ -1,3 +1,8 @@
+-- Several unfinished visits may coexist. Explicit operation IDs and appointment
+-- row locks, rather than a patient-wide unique index, prevent duplicate starts.
+drop index if exists public.demo_one_draft_session;
+create index if not exists demo_open_sessions_by_patient on public.demo_sessions(tester_id,patient_id,started_at desc) where status='draft';
+
 -- Explicit new visits and optional clinical content. New entry points keep the
 -- deployed legacy clients unchanged. Apply only to an isolated preview first.
 create function public.demo_visit_create(p_tester uuid,p_patient uuid,p_type text,p_request uuid,p_appointment uuid default null)

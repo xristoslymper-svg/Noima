@@ -22,6 +22,11 @@ const server=createServer(async(req,res)=>{
   res.setHeader('content-type','application/json');
   if(req.method!=='GET'){let raw='';for await(const c of req)raw+=c;const body=JSON.parse(raw||'{}');writes.push(body);
    if(body.action==='create_patient'){if(failCreate){res.statusCode=503;return res.end(JSON.stringify({error:'Synthetic save failure'}))}return res.end(JSON.stringify({patient:first}))}
+   if(body.action==='start_session'){
+    assert.equal(body.patient_id,first.id);const appointment=bundle.appointments.find(a=>a.id===body.appointment_id);assert.ok(appointment);
+    const created={id:body.request_id,patient_id:first.id,tester_id:first.tester_id,session_type:'follow_up',status:'draft',version:0,closure_version:0,closure_draft:null,continuity:null,started_at:new Date().toISOString(),completed_at:null,updated_at:new Date().toISOString()};
+    bundle.sessions.push(created);appointment.session_id=created.id;return res.end(JSON.stringify({session:created}));
+   }
    if(body.action==='list')return res.end(JSON.stringify({intakes:[]}));
    res.statusCode=409;return res.end(JSON.stringify({error:'Unexpected synthetic write'}));
   }
@@ -79,9 +84,12 @@ try{
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
  await p.getByRole('menu',{name:'Ενέργειες ασθενή'}).waitFor();
  await p.getByRole('menuitem',{name:'Νέα επίσκεψη',exact:true}).click();
- await p.getByRole('alert').filter({hasText:'Η ανεξάρτητη νέα επίσκεψη με ανοιχτές σημειώσεις'}).waitFor();
- assert.equal(writes.filter(w=>w.action==='start_session').length,0);
- report.push('unlinked appointment cannot relink an older draft');
+ await p.locator('dialog[open] .visit-workspace').waitFor();
+ const newId=new URL(p.url()).searchParams.get('session');assert.notEqual(newId,draft.id);
+ assert.equal(bundle.appointments[0].session_id,newId);assert.equal(draft.started_at,'2020-01-01T10:00:00Z');assert.equal(draft.status,'draft');
+ assert.equal(writes.filter(w=>w.action==='start_session').length,1);
+ await p.keyboard.press('Escape');await p.locator('dialog[open]').waitFor({state:'detached'});
+ report.push('new appointment creates its own visit and never relinks or closes the older record');
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
  const appointmentLink=p.getByRole('menuitem',{name:'Νέο ραντεβού',exact:true});assert.ok((await appointmentLink.getAttribute('href')).includes(first.id));
  await p.getByRole('menuitem',{name:'Αποστολή ερωτηματολογίου',exact:true}).click();

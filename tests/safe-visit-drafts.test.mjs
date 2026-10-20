@@ -9,27 +9,20 @@ test('save status distinguishes failure, in-flight, pending and clean navigation
  assert.match(draftSaveStatus({saving:false,dirty:true,error:'offline'}),/κείμενό σας διατηρείται/);
  assert.equal(draftSaveStatus({saving:false,dirty:false,recorded:false}),'Δεν έχει καταγραφεί');
 });
-test('readiness shows every requirement without changing the first finalization blocker',()=>{
- const issues=finalizationIssues([],undefined,null,true);
- assert.equal(issues[0].anchor,'risk');assert.equal(issues.length,5);
- assert.deepEqual(finalizationBlocker([],undefined,null,true),issues[0]);
- assert.ok(!issues.some(i=>i.message.includes('Επανεκτίμηση')));
- const sections=['interview','mse','assessment','plan'].map(section_key=>({section_key,content:'recorded'}));
- assert.deepEqual(finalizationIssues(sections,{suicidal_ideation:'negative'},null,true),[]);
+test('empty clinical content has no mandatory completion requirements',()=>{
+ assert.deepEqual(finalizationIssues([],undefined,null,true),[]);
+ assert.equal(finalizationBlocker([],undefined,null,true),null);
 });
-test('readiness retains positive-risk and MSE review requirements',()=>{
+test('optional risk and MSE fields preserve the unanswered values without filling them',()=>{
  const risk={suicidal_ideation:'positive',intent:'not_assessed',plan:'negative',self_harm:'negative',attempt_history:'negative'};
  const previous={kind:'mse',fields:[{key:'speech',text:'baseline',label:'Speech'}]};
  const current=[{section_key:'mse',content:'other',document:{kind:'mse',fields:[]}}];
- const issues=finalizationIssues(current,risk,previous,true);
- assert.match(issues[0].message,/θετικό ιδεασμό/);
- assert.ok(issues.some(i=>i.anchor==='mse'&&i.message.includes('δεν ελέγχθηκαν')));
+ const before=JSON.stringify({risk,previous,current});
+ assert.deepEqual(finalizationIssues(current,risk,previous,true),[]);
+ assert.equal(JSON.stringify({risk,previous,current}),before);
 });
-
-test('follow-up readiness includes the four fields already required by server completion',()=>{
- const sections=[{section_key:'mse',content:'today'}],risk={suicidal_ideation:'negative'};
+test('follow-up clinical memory fields are all optional',()=>{
  const blank={clinical_state_summary:'',treatment_decision:'',next_review_focus:'',adherence:''};
- const issues=followupCompletionIssues(blank,sections,risk);
- assert.equal(issues.length,4);assert.ok(issues.some(i=>i.anchor==='medication'));
- assert.deepEqual(followupCompletionIssues(Object.fromEntries(Object.keys(blank).map(k=>[k,'recorded'])),sections,risk),[]);
+ assert.deepEqual(followupCompletionIssues(blank,[]),[]);
+ assert.deepEqual(followupCompletionIssues({...blank,clinical_state_summary:'Only the chosen field'},[]),[]);
 });

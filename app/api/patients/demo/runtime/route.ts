@@ -9,7 +9,7 @@ const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
- if(message.includes('demo_visit_create')||message.includes('demo_visit_register'))return Response.json({error:'Η νέα ροή χρειάζεται ενεργοποίηση στην απομονωμένη βάση preview. Η παλιά καταγραφή δεν άλλαξε.',code:'visit_policy_unavailable'},{status:503});
+ if(message.includes('Could not find the function public.demo_visit_'))return Response.json({error:'Η νέα ροή χρειάζεται ενεργοποίηση στην απομονωμένη βάση preview. Η παλιά καταγραφή δεν άλλαξε.',code:'visit_policy_unavailable'},{status:503});
  if(message.includes('request_conflict'))return Response.json({error:'Η συγκεκριμένη ενέργεια αντιστοιχεί σε άλλη επίσκεψη. Ανανεώστε τον φάκελο πριν συνεχίσετε.',code:'request_conflict'},{status:409});
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return Response.json({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return Response.json({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});

@@ -16,7 +16,7 @@
     "components/patients/VisitWorkspace.tsx": "067bcc9dbdcb49c29baca692d75d908574fe1dd289ced3939a799624cb17995e",
     "components/patients/PatientSession.tsx": "e462b870d638acd22678bc526e40c96deb6a4e35e248789672342d4bdd5cefc5",
     "components/patients/FollowupClosure.tsx": "f9f83a6dbdb4b036e0dd399669e66bd35e26a2907b2c8e9cfe32e5f808dfb732",
-    "app/api/patients/demo/runtime/route.ts": "bef5927fb2692792c5938d3be6e5fab06971346b9e21de49c9d59dbde006d5d7",
+    "app/api/patients/demo/runtime/route.ts": "7686c9b272a3227df640364b9c6b93f2adc274d398502b31b340754d62fca2b1",
     "lib/patients/demo-runtime.ts": "4b0e1cb402065c19c1ee0c6ec16d57fdb2656896de7300165158bd7f94856375",
     "lib/clinical/summary-context.ts": "374fcf10892d89514e89e749b3ad9106ba520eb3d51f5f5e4a249843d10c6285",
     "lib/clinical/provider-evidence.ts": "1755e370a8c35c81624ced0f6e3a428e0a0ad148a36e18e5bb6a712f8295708a",

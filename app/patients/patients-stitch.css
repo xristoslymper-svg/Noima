@@ -267,3 +267,9 @@
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(6) {grid-column:2;grid-row:1}
   .patients-screen .registry-row:not(.registry-labels)>:nth-child(7) {grid-column:3;grid-row:1}
 }
+
+/* Registry columns need room, while keeping the existing NOIMA surfaces and controls. */
+.patients-screen .registry-wrap{width:min(100%,1480px);padding-top:28px}
+.patients-screen .registry-heading h1{font-family:inherit;font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:650}
+.patients-screen .registry-stats{margin-bottom:22px}
+@media(max-width:800px){.patients-screen .registry-wrap{padding-top:22px}.patients-screen .registry-heading h1{font-size:28px}}

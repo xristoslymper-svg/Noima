@@ -60,6 +60,11 @@ function handle(body){
  if(body.action==='finalize_session'||body.action==='finalize_closure'){
   assert.ok(s);assert.equal(body.expected_version,s.version);
   if(completionMode==='malformed')return {session:{...s}};
+  if(body.action==='finalize_closure'&&s.closure_draft){
+   const notes=s.closure_draft;assert.equal(body.confirmed,true);assert.equal(body.expected_closure_version,s.closure_version);
+   if(notes.transcript?.trim())state.sections.push({id:s.id+'-interview',session_id:s.id,patient_id:patientId,section_key:'interview',content:notes.transcript,source:'manual',version:1,updated_at:new Date().toISOString()});
+   s.continuity={...notes,session_id:s.id,approved_at:new Date().toISOString()};s.closure_draft=null;
+  }
   Object.assign(s,{status:'completed',version:s.version+1,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()});return {session:s};
  }
  if(body.action==='medication_start'){
@@ -154,13 +159,16 @@ try{
    const notes=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.waitFor();await notes.fill('ONLY NEW VISIT NOTES - SYNTHETIC');
    await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'detached'});
    await page.locator('.patient-voice-cta').click();const choices=page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/});assert.equal(await choices.count(),2);
-   await choices.last().click();
-   assert.equal(new URL(page.url()).searchParams.get('session'),newId);
+   const todayLabel=new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'2-digit',month:'short'}).format(new Date(state.sessions.find(s=>s.id===newId).started_at));
+   await choices.filter({hasText:todayLabel}).click();
+   await page.waitForURL(url=>url.searchParams.get('session')===newId);
    await notes.waitFor();await page.reload();await notes.waitFor();assert.equal(await notes.inputValue(),'ONLY NEW VISIT NOTES - SYNTHETIC');
    await page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
    await page.getByRole('region',{name:'Έλεγχος καταχώρισης'}).getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
    await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();
    assert.equal(state.sessions.find(s=>s.id===newId).status,'completed');
+   await page.getByRole('button',{name:'Άνοιγμα καταγραφής',exact:true}).first().click();
+   await page.getByText('ONLY NEW VISIT NOTES - SYNTHETIC',{exact:true}).first().waitFor();
    assert.equal(JSON.stringify(state.sessions.find(s=>s.id===visitId)),before);
    assert.equal(JSON.stringify(state.sections.filter(s=>s.session_id===visitId)),oldSections);
    assert.equal(state.risks.some(r=>r.session_id===newId),false);

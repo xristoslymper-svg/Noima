@@ -1076,3 +1076,17 @@ test('new visit RPCs retain authenticated ownership and deny direct foreign writ
  const [done]=await asUser(owner,()=>sql('select * from demo_visit_register($1,$2,$3,true,null)',[t,s.id,s.version]));
  assert.equal(done.status,'completed');
 });
+
+test('optional registration preserves partially assessed positive risk and does not copy previous MSE',async()=>{
+ const t='63150000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Optional Risk')).id id",[t]);
+ const [prior]=await sql("select * from demo_visit_create($1,$2,'initial_assessment',$3,null)",[t,p,'63150000-0000-4000-8000-000000000002']);
+ await sql("select demo_session_save_section($1,$2,'mse','PRIOR OBSERVATION ONLY','manual',null)",[t,prior.id]);
+ await sql('select demo_visit_register($1,$2,(select version from demo_sessions where id=$2),true,null)',[t,prior.id]);
+ const [s]=await sql("select * from demo_visit_create($1,$2,'follow_up',$3,null)",[t,p,'63150000-0000-4000-8000-000000000003']);
+ await sql('select demo_session_save_risk($1,$2,$3,null)',[t,s.id,JSON.stringify({suicidal_ideation:'positive',intent:'not_assessed',plan:'not_assessed'})]);
+ const [before]=await sql('select * from demo_risk_assessments where session_id=$1',[s.id]);
+ const [done]=await sql('select * from demo_visit_register($1,$2,(select version from demo_sessions where id=$2),true,null)',[t,s.id]);
+ assert.equal(done.status,'completed');assert.deepEqual((await sql('select * from demo_risk_assessments where session_id=$1',[s.id]))[0],before);
+ assert.equal((await sql("select count(*)::int n from demo_session_sections where session_id=$1 and section_key='mse'",[s.id]))[0].n,0);
+});

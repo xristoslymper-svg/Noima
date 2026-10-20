@@ -22,7 +22,7 @@ begin
    return s;
   end if;
   if e.status<>'scheduled' then raise exception 'appointment_unavailable'; end if;
-  if e.appointment_type<>p_type then raise exception 'invalid_session_type'; end if;
+  if (case when e.appointment_type='initial_assessment' then 'initial_assessment' else 'follow_up' end)<>p_type then raise exception 'invalid_session_type'; end if;
  end if;
  select * into s from public.demo_sessions where id=p_request;
  if found then

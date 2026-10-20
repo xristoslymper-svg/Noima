@@ -104,9 +104,10 @@ export default function PatientWorkspace({patientRef,previewBundle}:{patientRef:
    const appointment=requested||(sameDay.length===1?sameDay[0]:undefined);
    if(appointment&&!appointment.session_id&&new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(appointment.scheduled_start))!==today&&!confirmed){setPendingStart({appointment,type,teleconsultation});return}
    setError('');
-   const operationKey=visitStartKey(getDemoTesterId(),activeBundle.patient.id,appointment?.appointment_type||type,appointment?.id);
+   const sessionType=appointment?(appointment.appointment_type==='initial_assessment'?'initial_assessment':'follow_up'):type;
+   const operationKey=visitStartKey(getDemoTesterId(),activeBundle.patient.id,sessionType,appointment?.id);
    const requestId=visitStartRequest(sessionStorage,operationKey,()=>crypto.randomUUID());
-   const result=await demoPost({action:'start_session',patient_id:activeBundle.patient.id,session_type:appointment?.appointment_type||type,appointment_id:appointment?.id||null,request_id:requestId}) as {session?:{id?:string}};
+   const result=await demoPost({action:'start_session',patient_id:activeBundle.patient.id,session_type:sessionType,appointment_id:appointment?.id||null,request_id:requestId}) as {session?:{id?:string}};
    fullLoadSequence.current++;
    setAppointmentChoices([]);const id=result.session?.id;if(!id)throw new Error('Δεν επιστράφηκε συνεδρία.');
    if(teleconsultation){sessionStorage.removeItem(operationKey);window.location.assign('/teleconsultations?patient='+encodeURIComponent(activeBundle.patient.id)+'&session='+encodeURIComponent(id));return}

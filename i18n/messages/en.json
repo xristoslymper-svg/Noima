@@ -3089,5 +3089,13 @@
     "m0": "Which time do you mean? Morning or afternoon?",
     "m1": "Which appointment do you mean?",
     "m2": "No appointment was found at that date and time. Choose:"
+  },
+  "presenceSections": {
+    "intro": "Introduction",
+    "bio": "About the doctor",
+    "services": "Services",
+    "office": "The practice",
+    "faq": "Frequently asked questions",
+    "contact": "Contact & appointment request"
   }
 }

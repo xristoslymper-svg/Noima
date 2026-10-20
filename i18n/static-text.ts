@@ -1,5 +1,5 @@
 // Only code-owned UI labels belong here. Never apply this adapter to clinical prose or user content.
-export const staticTextKeys:Readonly<Record<string,string>>={"Οι σημειώσεις έχουν αποθηκευτεί. Η επίσκεψη δεν έχει καταχωριστεί οριστικά.":"visits.savedUnfinished","Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;":"actionSelection.m0",
+export const staticTextKeys:Readonly<Record<string,string>>={"Παρουσίαση":"presenceSections.intro","Βιογραφικό":"presenceSections.bio","Υπηρεσίες":"presenceSections.services","Το ιατρείο":"presenceSections.office","Συχνές ερωτήσεις":"presenceSections.faq","Επικοινωνία & αίτημα ραντεβού":"presenceSections.contact","Οι σημειώσεις έχουν αποθηκευτεί. Η επίσκεψη δεν έχει καταχωριστεί οριστικά.":"visits.savedUnfinished","Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;":"actionSelection.m0",
 "Ποιο ραντεβού εννοείς;":"actionSelection.m1",
 "Δεν βρέθηκε ραντεβού σε αυτή την ημερομηνία και ώρα. Επίλεξε:":"actionSelection.m2","Δεν αποθηκεύτηκαν όλες οι αλλαγές — το κείμενό σας διατηρείται. ":"saveStatus.m0",
 "Αλλαγές σε αναμονή αποθήκευσης…":"saveStatus.m1",

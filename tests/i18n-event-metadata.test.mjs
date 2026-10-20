@@ -21,3 +21,8 @@ test('measurement identifiers and scores stay unchanged while linkage metadata i
  const result=recordEventText(event,display);
  assert.equal(result.title,event.title);assert.match(result.detail,/Completed measurement/);assert.doesNotMatch(result.detail,/[Α-Ωα-ω]/);
 });
+
+test('practice section headings and editor hints have English UI translations',()=>{
+ const labels=["Παρουσίαση","Βιογραφικό","Υπηρεσίες","Το ιατρείο","Συχνές ερωτήσεις","Επικοινωνία & αίτημα ραντεβού","Όνομα, φωτογραφία & καλωσόρισμα","Σπουδές & εμπειρία","Δια ζώσης και online","Διεύθυνση & πρόσβαση","Χρήσιμες απαντήσεις","Στοιχεία επικοινωνίας"];
+ for(const label of labels){assert.notEqual(display(label),label);assert.doesNotMatch(display(label),/[Α-Ωα-ω]/);}
+});

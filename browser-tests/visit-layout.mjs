@@ -60,7 +60,7 @@ try{const page=await browser.newPage({viewport:{width:1280,height:1000}});await 
  await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();
  await page.getByRole('menuitem',{name:'Νέο ραντεβού',exact:true}).click();
  dialog=page.getByRole('dialog',{name:'Νέο ραντεβού',exact:true});await dialog.waitFor();
- assert.match(await dialog.textContent(),/2027/);
+ assert.match(await dialog.textContent(),/15 Ιαν, 17:00/);
  await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});assert.equal(appointmentAttempts.length,2);
  await page.screenshot({path:resolve(out,'patient-appointment.png'),fullPage:true});
  console.log('Patient appointment scenarios passed: same-page popup, scoped patient, failed save retains values, retry idempotency, refresh, cancel without writes, visits unchanged');

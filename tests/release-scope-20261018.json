@@ -740,7 +740,8 @@
       "lib/clinical/completed-visit-notes.ts",
       "lib/clinical/record-export-print.ts",
       "components/patients/VisitNextAppointment.tsx",
-      "components/patients/PatientAppointmentDialog.tsx"
+      "components/patients/PatientAppointmentDialog.tsx",
+      "tests/doctor-experience.test.mjs"
     ]
   }
 }

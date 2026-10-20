@@ -136,6 +136,27 @@ try{
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
   });
+  await check('quiet-visit-layout-clears-stale-notice-and-keeps-tools-together',async({page,open})=>{
+   await open('?tab=record&session='+visitId);
+   await page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+   await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();
+   await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();
+   await page.getByRole('menuitem',{name:'Νέα επίσκεψη',exact:true}).click();
+   const dialog=page.getByRole('dialog',{name:'Καταγραφή επίσκεψης',exact:true});
+   const notes=dialog.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.waitFor();
+   assert.equal(await dialog.getByRole('heading',{name:'Καταγραφή επίσκεψης',exact:true}).count(),1);
+   assert.equal(await dialog.getByRole('heading',{name:'Επανεξέταση',exact:true}).count(),0);
+   assert.equal(await dialog.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).count(),0);
+   const detailed=dialog.getByRole('button',{name:'Αναλυτική καταγραφή',exact:true}),customize=dialog.getByRole('button',{name:'Προσαρμογή καταγραφής',exact:true});
+   await detailed.waitFor();await customize.waitFor();
+   const notesRect=await notes.boundingBox();assert.ok(notesRect.y<(size==='desktop'?390:600),'writing is reachable near the top');
+   if(size==='desktop'){const a=await detailed.boundingBox(),c=await customize.boundingBox();assert.ok(Math.abs(a.y-c.y)<8,'existing tools share a row')}
+   await dialog.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).waitFor();
+   await notes.fill('LAYOUT PRESERVES CURRENT NOTES');await detailed.click();
+   await dialog.getByRole('button',{name:'Σύντομη καταγραφή',exact:true}).waitFor();
+   assert.equal(await dialog.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true}).inputValue(),'LAYOUT PRESERVES CURRENT NOTES');
+   assert.equal(await dialog.getByRole('heading',{name:'Καταγραφή επίσκεψης',exact:true}).count(),1);
+  });
   await check('journey-old-draft-and-today-are-explicit-choices',async({page,open})=>{
    const old=new Date(Date.now()-3*86400000).toISOString();state.sessions.find(s=>s.id===visitId).started_at=old;
    state.appointments=[{id:'90000000-0000-4000-8000-000000000015',patient_id:patientId,status:'scheduled',appointment_type:'follow_up',scheduled_start:new Date().toISOString(),scheduled_end:new Date(Date.now()+3000000).toISOString(),session_id:null}];

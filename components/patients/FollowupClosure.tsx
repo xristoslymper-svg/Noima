@@ -20,8 +20,9 @@ import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import styles from './FollowupClosure.module.css';
 import VisitCanvas from './VisitCanvas';
+import {JourneyReference} from './PatientJourney';
 
-type Props={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;reloadContext:()=>Promise<unknown>;contextReady:boolean;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;flushAll:(requireRefresh?:boolean)=>Promise<unknown>;onDetailed:()=>void;onFinalize:(version:number)=>Promise<void>;onFinishLater?:()=>Promise<void>;finalizing:boolean;finalizeError:string};
+type Props={embedded?:boolean;bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;reloadContext:()=>Promise<unknown>;contextReady:boolean;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void;flushAll:(requireRefresh?:boolean)=>Promise<unknown>;onDetailed:()=>void;onFinalize:(version:number)=>Promise<void>;onFinishLater?:()=>Promise<void>;finalizing:boolean;finalizeError:string};
 export default function FollowupClosure(p:Props){
  const {bundle,session,registerFlusher,onDirtyChange}=p;
  const {draft,checkConsistency}=useFollowupDraft();
@@ -53,9 +54,9 @@ export default function FollowupClosure(p:Props){
  const medicationChanges=bundle.medicationEvents.filter(e=>e.session_id===session.id&&e.event_type==='changed'&&!(bundle.medicationRevisions||[]).some(r=>r.event_id===e.id));
  const timeline=p.contextReady?mseTimeline(bundle,session.id,session.started_at):undefined;
  return <section ref={closureRoot} className={styles.closure+(mobileV2Enabled?` ${mobileStyles.followup}`:``)} data-clinical-followup="true">
-  <fieldset disabled={busy||p.finalizing} style={{border:0,padding:0,margin:0,minWidth:0}}>
-  <header className={styles.heading}><div><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΕΠΙΣΚΕΨΗΣ</span><h2>Επανεξέταση</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Μη ολοκληρωμένη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
-  <MobileFollowupTools/><VisitCanvas bundle={bundle} session={session} reload={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}><section className={styles.card} data-mobile-section="notes" tabIndex={mobileV2Enabled?-1:undefined} aria-label="Σημειώσεις επίσκεψης">
+  <fieldset data-followup-body="true" className={styles.body} disabled={busy||p.finalizing} style={{border:0,padding:0,margin:0,minWidth:0}}>
+  {!p.embedded&&<header className={styles.heading}><div><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΕΠΙΣΚΕΨΗΣ</span><h2>Επανεξέταση</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Μη ολοκληρωμένη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>}
+  <MobileFollowupTools/><VisitCanvas toolbarContext={p.embedded&&p.contextReady?<JourneyReference bundle={bundle} session={session}/>:undefined} toolbarActions={p.embedded?<button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button>:undefined} bundle={bundle} session={session} reload={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}><section className={styles.card} data-mobile-section="notes" tabIndex={mobileV2Enabled?-1:undefined} aria-label="Σημειώσεις επίσκεψης">
    {writingField('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…',4)}
   </section>
   <section className={styles.card} data-followup-clinical-group="true" data-mobile-section="clinical" tabIndex={mobileV2Enabled?-1:undefined}>

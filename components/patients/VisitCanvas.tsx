@@ -10,7 +10,7 @@ import styles from './VisitCanvas.module.css';
 type Shared={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown>;registerFlusher:(key:string,flush:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void};
 const titles:Record<string,string>={notes:'Σημειώσεις επίσκεψης',interview:'Αναφορά ασθενούς',clinical:'Κλινική εικόνα & απόφαση',medication:'Αγωγή',mse:'Ψυχική κατάσταση (MSE)',risk:'Εκτίμηση κινδύνου',measures:'Ψυχομετρικές μετρήσεις',scores:'Ψυχομετρικές μετρήσεις',assessment:'Κλινική εκτίμηση',plan:'Πλάνο & επανέλεγχος',appointment:'Επόμενο ραντεβού',history:'Ιστορικό'};
 const empty=()=>normalizeVisitLayout(null);
-export default function VisitCanvas(p:Shared&{children:ReactNode}){
+export default function VisitCanvas(p:Shared&{children:ReactNode;toolbarActions?:ReactNode;toolbarContext?:ReactNode}){
  const [layout,setLayout]=useState<VisitLayout>(empty),[ready,setReady]=useState(false),[editing,setEditing]=useState(false),[title,setTitle]=useState(''),[error,setError]=useState('');
  const dragging=useRef('');
  const storageKey=visitLayoutStorageKey(p.bundle.patient.tester_id,p.session.session_type);
@@ -29,7 +29,7 @@ export default function VisitCanvas(p:Shared&{children:ReactNode}){
  function move(id:string,target:string){update({...layout,order:moveVisitBlock(order,id,target)})}
  function add(){const name=title.trim();if(!name||name.length>100||layout.templates.length>=20)return;const id=customSectionKey(crypto.randomUUID());update({...layout,order:[...order,id],templates:[...layout.templates,{id,title:name}]});setTitle('')}
  return <div>
-  <div className={styles.toolbar}><button type="button" aria-pressed={editing} disabled={!ready} onClick={()=>setEditing(v=>!v)}><SlidersHorizontal size={15} aria-hidden="true"/> {editing?'Τέλος προσαρμογής':'Προσαρμογή καταγραφής'}</button></div>
+  <div className={styles.toolbar}>{p.toolbarContext&&<div className={styles.context}>{p.toolbarContext}</div>}<div className={styles.toolbarActions}>{p.toolbarActions}<button type="button" aria-pressed={editing} disabled={!ready} onClick={()=>setEditing(v=>!v)}><SlidersHorizontal size={15} aria-hidden="true"/> {editing?'Τέλος προσαρμογής':'Προσαρμογή καταγραφής'}</button></div></div>
   {editing&&<p className={styles.hint}>Σύρε τις ενότητες ή χρησιμοποίησε τα βέλη. Η διάταξη θυμάται τον χώρο σου και τον τύπο επίσκεψης σε αυτόν τον browser. Δεν αλλάζει τις κλινικές συνδέσεις.</p>}
   {error&&<p role="alert">{error}</p>}
   <div className={editing?styles.customizing:undefined}><div className={styles.blocks}>{order.map((id,index)=>{const block=all.find(b=>b.id===id)!;if(block.fixed)return <div key={id}>{block.node}</div>;const collapsed=layout.collapsed.includes(id);return <section className={styles.block} key={id} aria-label={'Ενότητα: '+block.title} onDragOver={e=>{if(editing)e.preventDefault()}} onDrop={e=>{e.preventDefault();if(editing&&dragging.current&&dragging.current!==id)move(dragging.current,id);dragging.current=''}}>

@@ -8,8 +8,8 @@ import {demoPost} from '@/lib/patients/demo-client';
 import {confirmedCompletion,finalizeAndVerify} from '@/lib/clinical/finalization';
 import PatientSession from './PatientSession';
 
-type Props={beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onFinalized:(session:DemoSession)=>void|Promise<void>;onDeferred:(sessionId:string,reason?:string)=>void|Promise<void>;onSelect:(id?:string|null)=>void};
-export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onFinalized,onDeferred,onSelect,beforeNavigate}:Props){
+type Props={embedded?:boolean;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;sessionId:string;patientId:string;context:PatientBundle|null;reloadContext:()=>Promise<PatientBundle|null>;onFinalized:(session:DemoSession)=>void|Promise<void>;onDeferred:(sessionId:string,reason?:string)=>void|Promise<void>;onSelect:(id?:string|null)=>void};
+export default function VisitWorkspace({sessionId,patientId,context,reloadContext,onFinalized,onDeferred,onSelect,beforeNavigate,embedded=false}:Props){
  const [record,setRecord]=useState<PatientBundle|null>(null),[error,setError]=useState(''),[finalizing,setFinalizing]=useState(false),[finalizeError,setFinalizeError]=useState('');
  const recordRef=useRef<PatientBundle|null>(null),loadSequence=useRef(0),finalizeFlight=useRef<Promise<void>|null>(null);
  const pendingReads=useRef(new Set<AbortController>()),mounted=useRef(false),selected=useRef('');
@@ -63,6 +63,6 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
   {finalizeError&&<p role="alert">{finalizeError} <button type="button" disabled={finalizing} onClick={()=>void checkCompletion()}>Έλεγχος ολοκλήρωσης</button></p>}
   {error&&<p role="alert">{error} <button type="button" onClick={()=>void load().catch(cause=>setError(cause.message))}>Επανάληψη</button></p>}
   {!record&&!error&&<p role="status">Άνοιγμα επίσκεψης…</p>}
-  {record&&currentSession&&<>{!safeContext&&<p className="visit-context-status">Το ιστορικό, η αγωγή και τα ψυχομετρικά φορτώνονται ανεξάρτητα. <button type="button" onClick={()=>void refreshContext().catch(cause=>setError(cause.message))}>Επανάληψη φόρτωσης</button></p>}<PatientSession beforeNavigate={editorBeforeNavigate} previousMse={previousMseReference(safeContext,sessionId,currentSession.started_at)} key={sessionId} bundle={merged(record)} reload={reload} reloadContext={refreshContext} contextReady={Boolean(safeContext)} onFinalize={finalize} onFinishLater={defer} finalizing={finalizing} finalizeError="" selectedSessionId={sessionId} onSelectSession={onSelect}/></>}
+  {record&&currentSession&&<>{!safeContext&&<p className="visit-context-status">Το ιστορικό, η αγωγή και τα ψυχομετρικά φορτώνονται ανεξάρτητα. <button type="button" onClick={()=>void refreshContext().catch(cause=>setError(cause.message))}>Επανάληψη φόρτωσης</button></p>}<PatientSession embedded={embedded} beforeNavigate={editorBeforeNavigate} previousMse={previousMseReference(safeContext,sessionId,currentSession.started_at)} key={sessionId} bundle={merged(record)} reload={reload} reloadContext={refreshContext} contextReady={Boolean(safeContext)} onFinalize={finalize} onFinishLater={defer} finalizing={finalizing} finalizeError="" selectedSessionId={sessionId} onSelectSession={onSelect}/></>}
  </section>;
 }

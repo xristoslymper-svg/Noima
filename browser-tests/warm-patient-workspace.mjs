@@ -58,10 +58,14 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    const navBox=await page.locator('nav[aria-label="Καρτέλες φακέλου"]').evaluate(n=>({height:n.getBoundingClientRect().height,top:Math.min(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().top)),bottom:Math.max(...[...n.querySelectorAll(':scope>button')].map(b=>b.getBoundingClientRect().bottom))}));
    assert.ok(navBox.height<=navBox.bottom-navBox.top+16,'no reserved second navigation row');
   }
-  if(tab==='summary'||tab==='timeline'){
-   const heading=await page.getByRole('heading',{name:tab==='summary'?'Κλινική σύνοψη':'Επισκέψεις',exact:true}).evaluate(e=>{const s=getComputedStyle(e);return{font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,spacing:s.letterSpacing,color:s.color}});
+  if(['summary','timeline','treatment','history'].includes(tab)){
+   const heading=await page.getByRole('heading',{name:({summary:'Κλινική σύνοψη',timeline:'Επισκέψεις',treatment:'Τελευταίο επιβεβαιωμένο πλάνο',history:'Στοιχεία & ιστορικό'})[tab],exact:true}).evaluate(e=>{const s=getComputedStyle(e);return{font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,spacing:s.letterSpacing,color:s.color}});
    if(tab==='summary')summaryTypography=heading;
-   else assert.deepEqual(summaryTypography,heading,'Summary heading matches existing patient panel typography');
+   else assert.deepEqual(summaryTypography,heading,'All four tabs use the same patient title typography');
+   assert.equal(heading.size,'20px');assert.equal(heading.weight,'650');
+   const title=page.getByRole('heading',{name:({summary:'Κλινική σύνοψη',timeline:'Επισκέψεις',treatment:'Τελευταίο επιβεβαιωμένο πλάνο',history:'Στοιχεία & ιστορικό'})[tab],exact:true});
+   assert.equal(await title.locator('[aria-hidden="true"] svg').count(),1,'decorative icon does not alter the accessible title');
+   assert.equal(await title.locator('svg').getAttribute('stroke-width'),'1.7');
   }
   if(tab==='treatment'&&size!=='desktop'){
    const widths=await page.locator('.medication-table-editor').first().evaluate(e=>({content:e.scrollWidth,available:e.clientWidth}));
@@ -92,6 +96,17 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    assert.equal(await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).locator('details').first().getAttribute('open'),null,'previous context begins collapsed');
   }
   await page.screenshot({path:resolve(out,`${size}-${tab}.png`)});results.push({size,tab,status:'passed',...styles});
+ }
+ if(size==='desktop'||size==='mobile'){
+  const completed=bundle.sessions.find(s=>s.status==='completed');
+  await page.goto(`${origin}/patients/demo/${bundle.patient.id}?tab=record&session=${completed.id}`);
+  await page.locator('.completed-record-form').waitFor();
+  assert.equal(await page.locator('.completed-record-form textarea').first().isDisabled(),true,'read-only record remains read-only');
+  assert.equal(await page.getByRole('button',{name:'Διόρθωση καταγραφής',exact:true}).isEnabled(),true);
+  assert.equal(await page.locator('.completed-record-form .visit-part').first().locator('h3 [aria-hidden="true"] svg').count(),1);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:resolve(out,`${size}-completed-record.png`)});
+  assert.deepEqual(errors,[]);
  }
  await context.close();
 }writeFileSync(resolve(out,'report.json'),JSON.stringify({scope:'Synthetic fixture, actual current components and full layout CSS; no live API verification.',fixtureAutosaveRequests:writes,liveWrites:0,results},null,2));console.log(`Passed ${results.length} patient workspace visual checks; zero live writes.`);

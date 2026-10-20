@@ -140,3 +140,6 @@
  .responseOptions,.tolerabilityOptions{gap:8px}
  .card[data-followup-medication-group] > :global(.visit-part-surface){gap:16px}
 }
+
+/* The save lock must not remove spacing between the existing editor blocks. */
+.body{display:grid;gap:16px;min-width:0}

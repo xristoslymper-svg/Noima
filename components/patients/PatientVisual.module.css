@@ -1,0 +1,106 @@
+/* Visual-only patient-chart layer. No visibility, ordering, content or interaction rules.
+   Existing palette and component semantics are inherited, including all state colors. */
+.scope { --patient-type-title:20px; --patient-type-body:14px; --patient-type-meta:12px; --patient-radius:12px; }
+.icon { display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-right:8px;flex:0 0 auto; }
+.icon svg { display:block;width:18px;height:18px;stroke-width:1.7; }
+.scope :global(.patient-hero) { padding:16px 0!important;margin-bottom:16px; }
+.scope :global(.patient-hero h1) { font-size:28px!important;line-height:1.2;letter-spacing:-.025em;margin:4px 0 8px; }
+.scope :global(.patient-hero p) { font-size:12px;line-height:1.6;margin:3px 0; }
+.scope :global(.patient-hero .kicker) { font-size:10px;line-height:1.5;letter-spacing:.08em; }
+.scope :global(nav[aria-label="Καρτέλες φακέλου"]) { margin-bottom:16px;border-radius:12px; }
+.scope :global(nav[aria-label="Καρτέλες φακέλου"]>button) { gap:8px;font-size:13px;font-weight:550; }
+.scope :global(nav[aria-label="Καρτέλες φακέλου"]>button[aria-current="page"]) { font-weight:650; }
+.scope :global(nav[aria-label="Καρτέλες φακέλου"] svg) { stroke-width:1.7; }
+.scope :global(.patient-workspace-content) { padding:24px;border-radius:16px; }
+.scope.scope :global(.patient-workspace-content h2) { font-size:var(--patient-type-title)!important;line-height:1.35;letter-spacing:-.02em;font-weight:650;margin:6px 0 12px; }
+.scope :global(.patient-workspace-content h3) { font-size:14px;line-height:1.5;letter-spacing:-.01em;font-weight:650; }
+.scope :global(.patient-workspace-content p) { line-height:1.65; }
+.scope :global(.patient-workspace-content .kicker) { font-size:10px;line-height:1.5;font-weight:650;letter-spacing:.08em; }
+.scope :global(.patient-workspace-content .panel-heading) { padding:0 0 16px;margin-bottom:16px;gap:16px; }
+.scope :global(.patient-workspace-content .panel-heading p) { font-size:13px;margin:6px 0 0; }
+.scope :global(.patient-workspace-content .patient-reported-summary),
+.scope :global(.patient-workspace-content .patient-reported-section) { padding:20px 0; }
+.scope :global(.patient-workspace-content .patient-reported-summary:first-child) { padding-top:0; }
+.scope :global(.patient-workspace-content .patient-reported-card) { padding:16px;border-radius:var(--patient-radius);box-shadow:none; }
+.scope :global(.patient-workspace-content .patient-reported-card-head) { gap:8px 16px;line-height:1.5; }
+.scope :global(.patient-workspace-content .patient-reported-answers) { gap:16px; }
+.scope :global(.patient-workspace-content .patient-reported-answers p) { font-size:14px;line-height:1.65; }
+.scope :global(.patient-workspace-content .patient-details-head strong) { font-size:14px;font-weight:650; }
+.scope :global(.patient-workspace-content .patient-details-head span) { font-size:12px;line-height:1.6; }
+.scope :global(.patient-workspace-content .patient-demographics-row) { padding:12px 0;gap:12px 20px; }
+.scope :global(.patient-workspace-content .patient-demographics-row dt) { font-size:12px;font-weight:550;line-height:1.6; }
+.scope :global(.patient-workspace-content .patient-demographics-row dd) { font-size:14px;line-height:1.6;gap:12px; }
+.scope :global(.patient-workspace-content .patient-demographics-pencil) { border-radius:8px; }
+.scope :global(.patient-workspace-content .patient-doctor-notes) { padding:16px 0; }
+.scope :global(.patient-workspace-content .patient-doctor-notes>summary) { font-size:14px;font-weight:600;line-height:1.5; }
+.scope :global(.patient-workspace-content .history-editor-grid) { gap:16px; }
+.scope :global(.patient-workspace-content .history-editor-grid label) { padding:14px;border-radius:var(--patient-radius);font-size:13px;line-height:1.5;gap:8px; }
+.scope :global(.patient-workspace-content .patient-reported-link) { font-size:12px;font-weight:600;line-height:1.5; }
+.scope :global(.patient-workspace-content .medication-history-details>summary) { padding:14px 0;font-size:12px;font-weight:600; }
+.scope :global(.patient-workspace-content .medication-lean-table) { line-height:1.6; }
+.scope :global(.patient-workspace-content .medication-lean-table th),
+.scope :global(.patient-workspace-content .medication-lean-table td) { padding:12px;font-size:13px; }
+.scope :global(.patient-workspace-content .medication-lean-table thead th) { font-size:11px;font-weight:600; }
+.scope :global(.patient-workspace-content [data-visit-row]) { padding-top:16px;padding-bottom:16px; }
+.scope :global(.patient-workspace-content [data-visit-row] time) { font-size:12px;line-height:1.6; }
+.scope :global(.patient-workspace-content [data-visit-row]>div>strong) { font-size:14px;line-height:1.5;font-weight:650; }
+.scope :global(.patient-workspace-content [data-visit-row] p) { font-size:13px;line-height:1.6;margin:4px 0 8px; }
+.scope :global(.patient-workspace-content [data-visit-context] button) { line-height:1.5; }
+.scope :global(.patient-workspace-content [data-visit-context] small) { font-size:11px;line-height:1.6; }
+/* Existing controls retain their variants and state colors. */
+.scope :global(.patient-workspace-content button:not([role="combobox"])) { font-family:inherit; }
+.scope :global(.patient-workspace-content button svg),
+.scope :global(.patient-visit-surface button svg),
+.scope :global(.entry-modal button svg) { stroke-width:1.7;flex-shrink:0; }
+.scope :global(.patient-workspace-content textarea),
+.scope :global(.patient-workspace-content input:not([type="checkbox"]):not([type="radio"])),
+.scope :global(.entry-modal textarea),
+.scope :global(.entry-modal input:not([type="checkbox"]):not([type="radio"])) { font-family:inherit;border-radius:9px;line-height:1.6; }
+.scope :global(dialog[aria-labelledby="record-dialog-title"]) { max-width:1120px;border-radius:18px; }
+.scope :global(.patient-visit-surface) { font-size:14px;line-height:1.6; }
+.scope :global(.patient-visit-surface h2) { font-size:20px!important;font-weight:650;line-height:1.35;letter-spacing:-.02em; }
+.scope :global(.patient-visit-surface h3),
+.scope :global(.patient-visit-surface h4) { font-size:14px;font-weight:650;line-height:1.5;letter-spacing:-.01em; }
+.scope :global(.patient-visit-surface .record-section-title),
+.scope :global(.patient-visit-surface .section-title) { font-size:14px;font-weight:650;line-height:1.5; }
+.scope :global(.patient-visit-surface textarea) { font-family:inherit;font-size:14px;line-height:1.65;border-radius:9px; }
+.scope :global(.patient-visit-surface .visit-hint),
+.scope :global(.patient-visit-surface .draft-updated) { font-size:12px;line-height:1.6; }
+.scope :global(.patient-visit-surface .visit-part>header) { margin-bottom:12px; }
+.scope :global(.patient-visit-surface .visit-part>header h3) { margin:0; }
+.scope :global(.patient-visit-surface .session-work-head) { padding:0 0 16px;margin-bottom:20px;gap:16px; }
+.scope :global(.patient-visit-surface .session-work-head p) { margin:8px 0 0;font-size:12px;line-height:1.6; }
+.scope :global(.patient-visit-surface .completed-record-actions) { gap:12px; }
+.scope :global(.patient-visit-surface .completed-record-form) { border:0;padding:0;margin:0;min-width:0; }
+.scope :global(.patient-visit-surface .completed-record-form .visit-part) { padding:18px;margin:0 0 16px;border:1px solid var(--patient-line);border-radius:var(--patient-radius); }
+.scope :global(.patient-visit-surface .completed-correction-grid) { gap:16px; }
+.scope :global(.patient-visit-surface .completed-record-form label) { font-size:13px;line-height:1.5; }
+.scope :global(.patient-visit-surface .completed-record-form textarea) { font-size:14px;line-height:1.65; }
+.scope :global(.patient-visit-surface .correction-save-bar) { gap:16px;padding:16px;border-radius:var(--patient-radius); }
+.scope :global(.entry-modal) { font-family:inherit;border-radius:16px;padding:24px; }
+.scope :global(.entry-modal h2) { font-size:20px;line-height:1.35;font-weight:650;letter-spacing:-.02em;margin:0 32px 8px 0; }
+.scope :global(.entry-modal p) { font-size:13px;line-height:1.65; }
+.scope :global(.entry-modal label) { font-size:13px;line-height:1.5; }
+.scope :global(.entry-modal button) { font-family:inherit;border-radius:9px; }
+@media(max-width:760px){
+ .scope :global(.patient-hero) { padding:12px 0!important; }
+ .scope :global(.patient-hero h1) { font-size:26px!important; }
+ .scope :global(.patient-workspace-content) { padding:18px 14px;border-radius:14px; }
+ .scope :global(.patient-workspace-content h2) { font-size:20px!important; }
+ .scope :global(.patient-workspace-content .patient-demographics-row) { gap:8px 12px; }
+ .scope :global(.patient-workspace-content textarea),
+ .scope :global(.patient-workspace-content input:not([type="checkbox"]):not([type="radio"])),
+ .scope :global(.entry-modal input:not([type="checkbox"]):not([type="radio"])),
+ .scope :global(.entry-modal textarea),
+ .scope :global(.patient-visit-surface textarea) { font-size:16px; }
+ .scope :global(dialog[aria-labelledby="record-dialog-title"]) { max-width:100vw;border-radius:0; }
+ .scope :global(.patient-visit-surface .completed-record-form .visit-part) { padding:14px; }
+ .scope :global(.entry-modal) { padding:20px; }
+}
+
+/* Read-only visit and its existing continuity block use the same column and rhythm. */
+.scope :global(.patient-visit-surface .completed-session-view) { max-width:800px;margin:0 auto; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part) { max-width:800px;margin:0 auto 16px;padding:16px 18px;border:1px solid var(--patient-line);border-radius:var(--patient-radius); }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>p) { font-size:13px;line-height:1.65;margin:8px 0; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>p>strong) { font-weight:600; }
+.scope :global(.patient-visit-surface .visit-workspace>.visit-part>details) { margin-top:12px;font-size:12px; }

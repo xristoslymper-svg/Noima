@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
 import ts from 'typescript';
 import React from 'react';
 import * as jsx from 'react/jsx-runtime';
@@ -26,7 +27,7 @@ function mount({bundle=fixture(),response={ok:true,json:async()=>({})},reload=as
  const cells=[],effects=[],cleanups=new Map(),flushers=new Map(),requests=[],dirty=[];let cursor=0;
  const hooks={useId:()=> 'appointment-form',useMemo:f=>f(),useRef(initial){const i=cursor++;return cells[i]??=( {current:initial})},useState(initial){const i=cursor++;if(!(i in cells))cells[i]=initial;return[cells[i],value=>{cells[i]=typeof value==='function'?value(cells[i]):value}]},useEffect(fn){const i=cursor++;effects.push(()=>{cleanups.get(i)?.();cleanups.set(i,fn())})}};
  const module={exports:{}};
- vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name)});
+ vm.runInNewContext(compiled('VisitNextAppointment.tsx'),{module,exports:module.exports,Date,JSON,Error,crypto:webcrypto,requestAnimationFrame:fn=>fn(),fetch:async(url,options)=>{requests.push({url,...JSON.parse(options.body)});return response},require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name==='@/lib/demo-tester'?{getDemoTesterId:()=> 'fixture'}:name==='@/lib/clinic-time'?clinicTime:name==='@/lib/clinical/patient-record'?record:name.endsWith('.css')?{}:require(name)});
  const props={bundle,reload,registerFlusher:(key,fn)=>{flushers.set(key,fn);return()=>flushers.delete(key)},onDirtyChange:(_,value)=>dirty.push(value)};
  return {requests,dirty,flush:()=>flushers.get('appointment')(),render(){cursor=0;const tree=module.exports.default(props);effects.splice(0).forEach(fn=>fn());return tree}};
 }

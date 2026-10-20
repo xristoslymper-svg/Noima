@@ -1,4 +1,5 @@
 'use client';
+import PatientVisualIcon from './PatientVisualIcon';
 import {useSyntheticChart,useSyntheticHistoryPreview} from './SyntheticChartContext';
 import {useEffect,useState} from 'react';
 import {getDemoTesterId} from '@/lib/demo-tester';
@@ -62,7 +63,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
  if(compact)return <section className="patient-reported-summary" aria-label="Ιστορικό ασθενούς">
   {failure}
   <span className="kicker">ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ</span>
-  <h2>Ο ασθενής συμπλήρωσε το ιστορικό</h2>
+  <h2><PatientVisualIcon name="history"/>Ο ασθενής συμπλήρωσε το ιστορικό</h2>
   <p className="patient-reported-muted">Απαντήσεις της {dateLabel(latest.submitted_at)} · αυτοαναφορά ασθενούς κατά τη συμπλήρωση, χωρίς κλινική επιβεβαίωση.</p>
   {(h.suicide_attempt==='yes'||h.self_harm==='yes')&&<p><strong>Σημαντική αυτοαναφορά ιστορικού · χρειάζεται κλινική συνεκτίμηση.</strong></p>}
   {overview.length>0&&<ul>{overview.slice(0,3).map(item=><li key={item}>{item}</li>)}</ul>}
@@ -70,7 +71,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
  </section>;
  return <section className="patient-reported-section" aria-label="Απαντήσεις ιστορικού από ασθενή">
   {failure}
-  <div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΣΘΕΝΟΥΣ</span><h2>Απαντήσεις από τον ασθενή</h2><p className="patient-reported-muted">Εμφανίζονται αυτόματα μόλις υποβληθούν. Παραμένουν διακριτές από τις κλινικές σημειώσεις σας.</p></div>
+  <div><span className="kicker">ΙΣΤΟΡΙΚΟ ΑΣΘΕΝΟΥΣ</span><h2><PatientVisualIcon name="history"/>Απαντήσεις από τον ασθενή</h2><p className="patient-reported-muted">Εμφανίζονται αυτόματα μόλις υποβληθούν. Παραμένουν διακριτές από τις κλινικές σημειώσεις σας.</p></div>
   {data.map((item,index)=>{
    const answers=normalizedPatientHistory(item.history_answers),report=historyDraftFromAnswers(answers),highlights=patientReportedHighlights(answers);
    return <article key={item.id} className="patient-reported-card">

@@ -203,7 +203,7 @@
     "components/patients/PatientContext.tsx": "14a639986ae5865471cc2cb9d89cb5b4cfc2db60",
     "components/patients/PatientPanels.tsx": "c5b8325ec68ad48dab6e1a4d0be72b07575ed304",
     "components/patients/PatientPsychometrics.tsx": "822e8c57ebbcaed45d02f71ec74fcd06ffc21f39",
-    "components/patients/PatientRecord.module.css": "ca9597c18ba1d59f5b97826b3657b99b98a22799",
+    "components/patients/PatientRecord.module.css": "4cc43c32cae1d78d7011f77671bed2dfb7ec0af7",
     "components/patients/PatientRecordSummary.tsx": "adf8ae5db9769215596fd633f7f03fba1f323510",
     "components/patients/PatientReportedHistory.tsx": "0be0165a875f58517e96d4f61d62e91ca03616f8",
     "components/patients/PatientSession.tsx": "8b4fc225c03871a180e515f36e99d96b7a78404b",
@@ -539,7 +539,7 @@
     "tests/reading-refinement.test.mjs": "731a46b5b49691e4d7d9e20744e274f5f0ebdbfe",
     "tests/received-history-ux.test.mjs": "5fdf8900623163fdeca8ecd7f11a54ed1390c44a",
     "tests/selective-library-database.test.mjs": "90ff185758886854483bf0d16d73de5be40d5490",
-    "tests/selective-production-contract.json": "f5df33539265f64b39512fbeefe080013b4fbf5a",
+    "tests/selective-production-contract.json": "d9edf790f94a97abc9ce277def17f7a70e6bb6f1",
     "tests/selective-public-input.test.mjs": "1d8741c916522fc4a61902ca5ff1f9ffb976241d"
   },
   "followupApproved": {

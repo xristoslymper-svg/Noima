@@ -442,3 +442,5 @@
 .recordDialog :global(.patient-visit-surface){border:0;padding:0;background:transparent;margin:0}
 .recordDialog :global(.visit-finalize){position:sticky;bottom:-24px;z-index:7;background:#f8f5ef}
 @media(max-width:700px){.recordDialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0;padding:14px}.recordDialogHeader{top:-14px;gap:10px}.recordDialogHeader button{font-size:12px;padding:8px}.recordDialog :global(.visit-finalize){bottom:-14px}}
+
+.recordDialog :global(.visit-finalize-guidance){order:0}

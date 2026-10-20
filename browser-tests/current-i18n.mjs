@@ -22,6 +22,7 @@ const server=createServer(async(req,res)=>{
  if(url.pathname.startsWith('/api/')){
   res.setHeader('content-type','application/json');res.setHeader('cache-control','no-store');
   if(req.method!=='GET'){deniedWrites++;res.statusCode=403;return res.end(JSON.stringify({error:'No database writes in this fixture'}))}
+  if(url.pathname==='/api/auth/options')return res.end(JSON.stringify({google:true,email_signup:true,email_recovery:true}));
   if(url.pathname==='/api/patients/demo/runtime')return res.end(JSON.stringify({patients:registrySimulation}));
   return res.end(JSON.stringify({}));
  }
@@ -56,13 +57,11 @@ try{
  const notes=dialog.locator('textarea').first();await notes.fill('SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
  const locationBefore=page.url();await notes.evaluate(el=>el.dataset.localeTestIdentity='same-editor');
  await dialog.getByRole('button',{name:'Profile and settings',exact:true}).click();
- const settings=page.locator('dialog.profile-settings-dialog[open]');await settings.getByRole('combobox').selectOption('el');await page.waitForFunction(()=>document.documentElement.lang==='el');
- await settings.getByRole('button',{name:'Κλείσιμο',exact:true}).click();
+ const settings=page.locator('dialog.profile-settings-dialog[open]');assert.equal(await settings.getByRole('combobox').count(),0);assert.equal(await settings.getByRole('group',{name:'Language',exact:true}).count(),0);
+ await settings.getByRole('button',{name:'Close',exact:true}).click();
  assert.equal(await dialog.locator('[data-locale-test-identity="same-editor"]').inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');assert.equal(page.url(),locationBefore);
- await dialog.getByRole('button',{name:'Προφίλ και ρυθμίσεις',exact:true}).click();await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
- await page.locator('dialog.profile-settings-dialog[open]').getByRole('button',{name:'Close',exact:true}).click();
  await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();await page.reload();
- await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('same visit and same editor retained across two language changes; working note saved through the existing visit path');
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('removing in-app language settings preserves the same editor, visit and working note through refresh');
  await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();
  await page.getByRole('button',{name:'Summary',exact:true}).click();
  await page.getByText("We couldn't confirm an updated summary. Showing record excerpts.",{exact:true}).waitFor();
@@ -86,6 +85,37 @@ try{
   await switchTo('en');
  }
  report.push('paired Greek/English mobile layouts fit the viewport with identical heading colors and typography');
+
+ // Real auth components: the selector exists only on login and preference survives navigation/refresh.
+ await page.goto(origin+'/login?surface=login');
+ await page.getByRole('button',{name:'English',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Ελληνικά',exact:true}).click();
+ await page.waitForFunction(()=>document.documentElement.lang==='el');
+ await page.reload();await page.getByRole('button',{name:'Ελληνικά',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Ελληνικά',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.getByRole('button',{name:'English',exact:true}).click();
+ await page.waitForFunction(()=>document.documentElement.lang==='en');
+ await page.getByRole('button',{name:'Create account',exact:true}).click();
+ assert.equal(await page.locator('.login-language-buttons').count(),0);
+ await page.getByRole('button',{name:/already.*account|existing.*account/i}).click();
+ await page.getByRole('button',{name:'English',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'English',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.screenshot({path:resolve(out,'auth-login-en-mobile.png'),fullPage:true});
+ for(const surface of ['recovery','reset','activate']){
+  await page.goto(origin+'/?surface='+surface);await page.locator('.auth-card h1').waitFor();
+  assert.equal(await page.locator('.login-language-buttons').count(),0);
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),surface+' fits mobile');
+  await page.screenshot({path:resolve(out,'auth-'+surface+'-en-mobile.png'),fullPage:true});
+ }
+ await page.goto(origin+'/?surface=account');await page.locator('.pilot-account h1').waitFor();
+ assert.equal(await page.locator('.language-setting').count(),0);
+ await page.goto(origin+'/patients');await page.locator('[data-patient-id]').first().waitFor();
+ await page.getByRole('button',{name:'Profile and settings',exact:true}).click();
+ assert.equal(await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').count(),0);
+ assert.equal(await page.locator('dialog.profile-settings-dialog[open] .language-setting').count(),0);
+ report.push('language selection is login-only; login choice survives refresh, registration, recovery and authenticated settings without changing clinical data');
+
  assert.deepEqual(errors,[]);assert.equal(deniedWrites,0);assert.ok(localeWrites>=4);
  writeFileSync(resolve(out,'report.json'),JSON.stringify({report,localeWrites,deniedWrites,externalConnections:false},null,2));
  console.log(JSON.stringify(report,null,2));

@@ -33,7 +33,7 @@ export async function middleware(request:NextRequest) {
   const {data:{user}}=await client.auth.getUser();
   const path=request.nextUrl.pathname;
   const patientPage=['/assessment','/intake','/tablet'].includes(path);
-  const locale = patientPage?recipientLocale(request.nextUrl.searchParams.get('lang')):(process.env.VERCEL_ENV==='preview'?resolveLocale(request.cookies.get(localeCookie)?.value,user?.user_metadata?.noima_locale):resolveLocale(user?.user_metadata?.noima_locale, request.cookies.get(localeCookie)?.value));
+  const locale = patientPage?recipientLocale(request.nextUrl.searchParams.get('lang')):resolveLocale(request.cookies.get(localeCookie)?.value,user?.user_metadata?.noima_locale);
   requestHeaders.set('x-noima-locale', locale);
   requestHeaders.set('cookie', request.cookies.toString());
   const refreshed = NextResponse.next({request: {headers: requestHeaders}});

@@ -3,7 +3,6 @@ import Link from 'next/link';
 import {useRef} from 'react';
 import {Settings} from 'lucide-react';
 import {useTranslations} from 'next-intl';
-import LanguageSelector from '@/components/LanguageSelector';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 
 export default function PilotProfile({compact=false}:{compact?:boolean}){
@@ -17,6 +16,6 @@ export default function PilotProfile({compact=false}:{compact?:boolean}){
   </>}
  </button><dialog ref={dialog} className="profile-settings-dialog" aria-label={t('settings.title')}>
    <div className="profile-settings-heading"><h2>{t('settings.title')}</h2><button type="button" onClick={()=>dialog.current?.close()} aria-label={t('common.close')}>×</button></div>
-   <LanguageSelector/><Link href="/account">{t('settings.account')}</Link>
+   <Link href="/account">{t('settings.account')}</Link>
  </dialog></>;
 }

@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import '../app/globals.css';
+import '../app/noima-ui.css';
+import '../app/clinical-refinement.css';
+import '../app/visit-workspace.css';
+import '../app/mobile.css';
+import NewPatient from '../app/patients/new/page';
+import Patients from '../app/patients/page';
+import PatientWorkspace from '../components/patients/PatientWorkspace';
+createRoot(document.getElementById('root')!).render(location.pathname==='/patients/new'?<NewPatient/>:location.pathname==='/patients'?<Patients/>:<PatientWorkspace patientRef={location.pathname.split('/').at(-1)!}/>);

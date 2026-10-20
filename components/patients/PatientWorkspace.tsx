@@ -7,6 +7,7 @@ import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import PilotProfile from '@/components/PilotProfile';
 import AppointmentStartConfirmation from '@/components/calendar/AppointmentStartConfirmation';
 import PatientRecordSummary from './PatientRecordSummary';
+import {hasOlderDraft} from '@/lib/patients/patient-entry';
 import {JourneyEntry,JourneyReference,JourneyCompletion} from './PatientJourney';
 import journeyStyles from './PatientJourney.module.css';
 import PatientTimeline from './PatientTimeline';
@@ -93,6 +94,9 @@ export default function PatientWorkspace({patientRef,previewBundle}:{patientRef:
    if(requestedId&&!requested){const clean=workspaceTransitionSearch(window.location.search,tab,visitId,{clearAppointment:true});window.history.replaceState({...window.history.state},'',window.location.pathname+clean+window.location.hash);throw new Error('Το συγκεκριμένο ραντεβού δεν ανήκει πλέον στον φάκελο.');}
    if(requested&&requested.status!=='scheduled'&&!requested.session_id){const clean=workspaceTransitionSearch(window.location.search,tab,visitId,{clearAppointment:true});window.history.replaceState({...window.history.state},'',window.location.pathname+clean+window.location.hash);throw new Error('Το συγκεκριμένο ραντεβού δεν είναι πλέον ενεργό.');}
    if(requested?.session_id){navigationSequence.current++;applyTab('record',requested.session_id,{clearAppointment:true});return}
+   if(hasOlderDraft(drafts)){
+    setError('Υπάρχει πρόχειρη επίσκεψη προηγούμενης ημέρας. Ανοίξτε και ολοκληρώστε εκείνη πριν ξεκινήσετε νέα καταγραφή. Δεν συνδέθηκε με το σημερινό ραντεβού.');return;
+   }
    if(drafts.length>1&&!requested){navigationSequence.current++;applyTab('record',null);return}
    if(draft&&!requested){navigationSequence.current++;applyTab('record',draft.id,{clearAppointment:true});return}
    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());

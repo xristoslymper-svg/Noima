@@ -4,6 +4,9 @@ on:
     paths:
       - 'components/patients/**'
       - 'app/patients/page.tsx'
+      - 'app/patients/new/**'
+      - 'lib/patients/patient-entry.ts'
+      - 'browser-tests/patient-entry*'
       - 'lib/intake/patient-report.ts'
       - 'components/dictation/**'
       - 'app/*.css'
@@ -32,7 +35,9 @@ jobs:
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
+      - run: node browser-tests/patient-entry.mjs
       - run: node browser-tests/clinical-cleanup.mjs
+        if: ${{ !cancelled() }}
       - run: node browser-tests/warm-patient-workspace.mjs
         if: ${{ !cancelled() }}
       - run: node browser-tests/clinical-reliability.mjs
@@ -42,6 +47,7 @@ jobs:
         with:
           name: clinical-editor-evidence
           path: |
+            test-results/patient-entry
             test-results/clinical-cleanup
             test-results/warm-patient-workspace
             test-results/clinical-reliability

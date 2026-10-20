@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -5,7 +6,7 @@ import ts from 'typescript';
 import {readFile} from 'node:fs/promises';
 
 async function compile(path,jsx=false){return ts.transpileModule(await readFile(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,...(jsx?{jsx:ts.JsxEmit.ReactJSX}:{})}}).outputText}
-function run(source,require,extra={}){const module={exports:{}};vm.runInNewContext(source,{module,exports:module.exports,require,URL,URLSearchParams,Response,...extra});return module.exports}
+function run(source,require,extra={}){const module={exports:{}};vm.runInNewContext(source,{module,exports:module.exports,require:name=>intlTestModule(name)??require(name),URL,URLSearchParams,Response,Headers,process:{env:{}},...extra});return module.exports}
 const link=run(await compile('lib/pilot/recovery-link.ts'),()=>{throw Error('unexpected import')});
 const tokenSource=await compile('lib/pilot/token-recovery.ts'),routeSource=await compile('app/api/auth/password/route.ts'),formSource=await compile('components/PasswordForms.tsx',true),middlewareSource=await compile('middleware.ts');
 const token='pkce_'+'a'.repeat(56),password='synthetic-password-123';

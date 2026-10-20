@@ -49,7 +49,7 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
     const current={...patientInitial(),...(editingPatientField?{[editingPatientField]:patientValues[editingPatientField]}:{})};
     const age=current.age.trim()===''?null:Number(current.age);
     await demoPost({action:'update_patient',patient_id:bundle.patient.id,first_name:current.first_name,last_name:current.last_name,age,phone:current.phone,landline:current.landline,contact_phone:current.contact_phone,amka:current.amka,address:current.address,email:current.email,chief_complaint:current.chief_complaint,expected_updated_at:bundle.patient.updated_at});
-    committed=true;patientDirty.current=false;setPatientState('saved');
+    committed=true;patientDirty.current=false;setPatientState('Αποθηκεύτηκε');
     const refreshed=await reload();
     if(!refreshed){setPatientState(t('patients.detailsSavedRefreshFailed'));return}
     setEditingPatientField(null);
@@ -88,7 +88,7 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
      </form>:<><span className={value?'patient-demographics-value':'patient-demographics-empty'}>{value?(key==='age'?value+t('patients.yearsOldSuffix'):value):t('clinical.notRecorded')}</span><button type="button" className="patient-demographics-pencil" disabled={editingPatientField!==null||patientSaving} aria-label={t('accessibility.editFieldPrefix')+label} title={t('accessibility.editFieldPrefix')+label} onClick={()=>{setPatientValues(patientInitial());setEditingPatientField(key);setPatientState('')}}><Pencil size={15}/></button></>}</dd>
     </div>
    })}</dl>
-   {patientState&&<div role={patientState==='saved'?'status':'alert'} className={patientState==='saved'?'save-state ok':'save-state error'}>{patientState}</div>}
+   {patientState&&<div role={patientState==='Αποθηκεύτηκε'?'status':'alert'} className={patientState==='Αποθηκεύτηκε'?'save-state ok':'save-state error'}>{ui(patientState)}</div>}
   </section>
   <section id={sectionId+'-reported'} className={readingStyles.anchor} aria-label={t('current.m035')}><PatientReportedHistory patientId={bundle.patient.id}/></section>
   <section id={sectionId+'-notes'} className={readingStyles.anchor}><details className="patient-doctor-notes">

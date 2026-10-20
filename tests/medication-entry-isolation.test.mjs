@@ -13,7 +13,7 @@ function entry(id){
  const cells=[];let cursor=0;const posts=[];
  const hooks={useState(v){const i=cursor++;if(!(i in cells))cells[i]=v;return [cells[i],v=>cells[i]=v]},useEffect(){},useCallback:f=>f};
  const module={exports:{}};
- vm.runInNewContext(source,{module,exports:module.exports,require:name=>name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('treatment-plan')?{medicationSessionId}:name.includes('MedicationSaveScope')?{useMedicationPost:()=>async body=>posts.push(body)}:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{}});
+ vm.runInNewContext(source,{module,exports:module.exports,require:name=>intlTestModule(name)??(name==='react'?hooks:name==='react/jsx-runtime'?jsx:name.includes('treatment-plan')?{medicationSessionId}:name.includes('MedicationSaveScope')?{useMedicationPost:()=>async body=>posts.push(body)}:name.includes('demo-client')?{demoPost:async body=>posts.push(body)}:{})});
  const render=()=>{cursor=0;return module.exports.SideEffectEntry({bundle:{patient:{id:'patient'},sessions:[{id:'visit',patient_id:'patient',status:'draft'}]},medication:{id,medication_name:'Synthetic '+id},sessionId:'visit',today:'2026-10-12',firstAssessment:true,reload:async()=>{}})};
  return {render,posts};
 }

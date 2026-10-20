@@ -5,10 +5,10 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as config from '../i18n/config.ts';
 
-function harness({user={id:'owner',user_metadata:{}},authError=null,saveError=null}={}){
+function harness({user={id:'owner',user_metadata:{}},authError=null,saveError=null,environment='production'}={}){
  const calls=[],cookies=[],module={exports:{}};
  const code=ts.transpileModule(readFileSync('app/api/locale/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
- vm.runInNewContext(code,{module,exports:module.exports,Response,URL,require:name=>{
+ vm.runInNewContext(code,{module,exports:module.exports,Response,URL,process:{env:{VERCEL_ENV:environment}},require:name=>{
   if(name==='@/i18n/config')return config;
   if(name==='next/headers')return {cookies:async()=>({set:(...args)=>cookies.push(args)})};
   if(name==='@/lib/pilot/server')return {pilotClient:async()=>({auth:{getUser:async()=>({data:{user},error:authError}),updateUser:async data=>{calls.push(data);return {error:saveError}}}})};
@@ -30,4 +30,8 @@ test('a forged user identity, invalid locale and cross-origin requests never wri
 });
 test('transient authentication and preference-write failures do not silently save an anonymous cookie',async()=>{
  for(const options of [{authError:{name:'AuthRetryableFetchError'}},{saveError:{message:'unavailable'}}]){const h=harness(options);assert.equal((await h.post({locale:'en'})).status,503);assert.equal(h.cookies.length,0)}
+});
+
+test('preview language changes are cookie-only even for an authenticated production account',async()=>{
+ const h=harness({environment:'preview'});assert.equal((await h.post({locale:'en'})).status,200);assert.equal(h.calls.length,0);assert.equal(h.cookies[0][1],'en');
 });

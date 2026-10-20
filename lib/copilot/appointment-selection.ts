@@ -5,7 +5,8 @@ export function appointmentWallTime(iso:string){
  return {local_date:s.slice(0,10),local_time:s.slice(11,16)};
 }
 // Selection is based on wall-time constraints, not a model-issued ID alone.
-export function selectAppointment<T extends Event>(events:T[],p:{event_id:string;target_date:string;target_time:string},query:string):{event?:T;answer:string}{
+export function selectAppointment<T extends Event>(events:T[],p:{event_id:string;target_date:string;target_time:string},query:string,presentation?:{label:(value:string)=>string;date:(iso:string)=>string}):{event?:T;answer:string}{
+ const label=presentation?.label||((value:string)=>value),date=presentation?.date||formatClinicDateTime;
  let time=p.target_time||'';
  const q=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  if(/^ακυρωσε(?: μου)? το επομενο(?: ραντεβου)?[.!;]?$/.test(q)&&!p.target_date&&!p.target_time){
@@ -19,7 +20,7 @@ export function selectAppointment<T extends Event>(events:T[],p:{event_id:string
   if(explicit[3]||h>=13||explicit[2])time=String(h).padStart(2,'0')+':'+minute;
   else {
    const possible=events.filter(e=>{const t=appointmentWallTime(e.scheduled_start);return (!p.target_date||t.local_date===p.target_date)&&Number(t.local_time.slice(0,2))%12===h%12&&t.local_time.slice(3)===minute});
-   if(possible.length!==1)return {answer:'Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;'};
+   if(possible.length!==1)return {answer:label('Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;')};
    time=appointmentWallTime(possible[0].scheduled_start).local_time;
   }
  }
@@ -27,5 +28,5 @@ export function selectAppointment<T extends Event>(events:T[],p:{event_id:string
  const matches=events.filter(e=>{const local=appointmentWallTime(e.scheduled_start);return (!p.target_date||local.local_date===p.target_date)&&(!time||local.local_time===time)});
  if(matches.length===1&&(constrained||events.length===1))return {event:matches[0],answer:''};
  const options=matches.length?matches:events;
- return {answer:(matches.length?'Ποιο ραντεβού εννοείς;':'Δεν βρέθηκε ραντεβού σε αυτή την ημερομηνία και ώρα. Επίλεξε:')+' '+options.slice(0,8).map(e=>formatClinicDateTime(e.scheduled_start)).join(' · ')};
+ return {answer:label(matches.length?'Ποιο ραντεβού εννοείς;':'Δεν βρέθηκε ραντεβού σε αυτή την ημερομηνία και ώρα. Επίλεξε:')+' '+options.slice(0,8).map(e=>date(e.scheduled_start)).join(' · ')};
 }

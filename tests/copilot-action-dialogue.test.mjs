@@ -1,3 +1,5 @@
+import {pilotScope} from '../lib/pilot/request-scope.ts';
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -16,7 +18,7 @@ function app(replies){
  '../pilot/server':{pilotClient:async()=>({rpc:async()=>{seen.mailbox++;return {data:{id:'mailbox'}}}})}
  };
  const compiled=ts.transpileModule(readFileSync('lib/copilot/actions.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
- new Function('require','module','exports',compiled)(n=>mocks[n],module,module.exports);
+ new Function('require','module','exports',compiled)(n=>intlTestModule(n)??mocks[n],module,module.exports);
  const bundle={patient:{id:'patient',first_name:'QA',last_name:'Synthetic',email:'qa@example.invalid'},assessments:[],appointments:events};
  return {seen,bundle,prepare:(q,k='calendar',pending)=>module.exports.prepareAction('workspace',bundle,q,k,{},pending)};
 }
@@ -63,4 +65,22 @@ test('expired or different-kind pending state is excluded and no action executes
  const a=app([{instruments:[],before_next:false,clarification:'Ποιο;'}]);
  await a.prepare('στείλε ψυχομετρικό','questionnaires',{kind:'calendar',turns:[{query:'OLD',answer:'OLD'}],slots:{event_id:'OLD'},expires:0});
  assert.deepEqual(a.seen.inputs[0].input.dialogue,[]);assert.equal(a.seen.writes.length,0);
+});
+
+test('English proposals change presentation only, preserving the appointment mutation payload',async()=>{
+ const greek=app([calendar()]),english=app([calendar()]);
+ const original=await greek.prepare('κλείσε αύριο στις 5');
+ const localized=await pilotScope.run({outputLocale:'en'},()=>english.prepare('book tomorrow at 5'));
+ assert.match(localized.proposal.summary,/New appointment/);assert.match(localized.proposal.summary,/QA Synthetic/);
+ assert.match(original.proposal.summary,/Νέο ραντεβού/);
+ assert.deepEqual(english.seen.writes[0].args.p_payload,greek.seen.writes[0].args.p_payload);
+ assert.match(localized.answer,/Review the proposal/);
+});
+test('appointment choice translation never changes which existing appointment is selected',()=>{
+ const input={event_id:'five',target_date:'2030-10-19',target_time:'16:00'};
+ const original=selectAppointment(events,input,'');
+ const localized=selectAppointment(events,input,'',{label:s=>'Translated '+s,date:s=>s});
+ assert.equal(localized.event.id,original.event.id);
+ const ambiguous=selectAppointment(events,{...input,target_time:''},'',{label:()=> 'Choose an appointment:',date:s=>s});
+ assert.match(ambiguous.answer,/Choose an appointment:/);assert.equal(ambiguous.event,undefined);
 });

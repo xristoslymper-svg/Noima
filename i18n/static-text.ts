@@ -1,5 +1,9 @@
 // Only code-owned UI labels belong here. Never apply this adapter to clinical prose or user content.
-export const staticTextKeys:Readonly<Record<string,string>>={
+export const staticTextKeys:Readonly<Record<string,string>>={"Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;":"actionSelection.m0",
+"Ποιο ραντεβού εννοείς;":"actionSelection.m1",
+"Δεν βρέθηκε ραντεβού σε αυτή την ημερομηνία και ώρα. Επίλεξε:":"actionSelection.m2","Δεν αποθηκεύτηκαν όλες οι αλλαγές — το κείμενό σας διατηρείται. ":"saveStatus.m0",
+"Αλλαγές σε αναμονή αποθήκευσης…":"saveStatus.m1",
+"Οι σημειώσεις αποθηκεύτηκαν — η καταγραφή παραμένει ανοιχτή":"saveStatus.m2",
   "Το κείμενο δεν είναι διαθέσιμο.": "common.translationUnavailable",
   "Πιλοτική δοκιμή · μόνο υποθετικοί ασθενείς και περιστατικά": "common.pilotNotice",
   "Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.": "errors.realPatientAccessDisabled",

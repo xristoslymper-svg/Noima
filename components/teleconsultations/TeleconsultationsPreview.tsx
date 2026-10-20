@@ -1,6 +1,6 @@
 'use client';
 import {useUiText} from '@/i18n/use-ui-text';
-import {useTranslations} from 'next-intl';
+import {useLocale,useTranslations} from 'next-intl';
 import Link from 'next/link';
 import type {ComponentProps} from 'react';
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from 'react';
@@ -32,6 +32,7 @@ const initial:FixtureRecord={appointment:{id:'tele-preview-appointment',patient_
 function SaveNotes({saveAll,connection}:{saveAll:()=>Promise<void>;connection?:RecordConnection}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 
  const {draft,sessionId:activeSessionId}=useFollowupDraft();
@@ -41,6 +42,7 @@ function SaveNotes({saveAll,connection}:{saveAll:()=>Promise<void>;connection?:R
 function VisitReadback({notes,mse,risk}:{notes:ContinuityDraft;mse?:DemoSection;risk?:DemoRisk}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 
  return <div className={styles.readback}>{([['transcript',t('visits.visitNotes')],['clinical_state_summary',t('current.m347')],['adherence',t('medications.adherence')],['treatment_decision',t('clinical.decisionInterventions')],['next_review_focus',t('clinical.reviewFocus')]] as const).map(([key,label])=><section key={key}><h3>{ui(label)}</h3><p>{notes[key]||ui('Δεν καταγράφηκε')}</p></section>)}<section><h3>{t('current.m308')}</h3>{mse?.document?.fields.filter(field=>field.text.trim()).map(field=><p key={field.key}><strong>{mseDomainLabel(field)}</strong><br/>{field.text}</p>)}</section><section><h3>{t('clinical.sourceLabels.structured_risk')}</h3>{risk?.tree&&<RiskTreeRead tree={risk.tree} includeHidden={false}/>}<p>{t('polish.m121')} {riskTreeChoices.find(([value])=>value===risk?.self_harm)?.[1]||t('documents.printNotRecorded')} {t('polish.m122')} {riskTreeChoices.find(([value])=>value===risk?.attempt_history)?.[1]||t('documents.printNotRecorded')}</p><p>{risk?.protective_factors}</p><p>{risk?.clinical_note}</p></section></div>;
@@ -56,10 +58,11 @@ export default function TeleconsultationsPreview(){
 export function TeleconsultationWorkspace({initialRecord,patient,onBack,onComplete,connection}:{initialRecord:FixtureRecord;patient:DemoTelePatient;onBack:()=>void;onComplete:()=>void;connection?:RecordConnection}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 
  const patientId=initialRecord.patientId,sessionId=initialRecord.sessionId,opened=true;
- const visitTime=new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(new Date(initialRecord.appointment.scheduled_start))+' · Ώρα Ελλάδας';
+ const visitTime=new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(new Date(initialRecord.appointment.scheduled_start))+' · Ώρα Ελλάδας';
  const [record,setRecord]=useState(initialRecord),[inCall,setInCall]=useState(false),[mic,setMic]=useState(true),[camera,setCamera]=useState(true),[view,setView]=useState<'call'|'notes'>('notes'),[tool,setTool]=useState<'PHQ-9'|'GAD-7'|'history'|null>(null),[message,setMessage]=useState(''),[fail,setFail]=useState(false),[dirty,setDirty]=useState(false);
  const [mse,setMse]=useState<DemoSection|undefined>(()=>connection?.bundle.sections.find(r=>r.session_id===sessionId&&r.section_key==='mse')),[risk,setRisk]=useState<DemoRisk|undefined>(()=>connection?.bundle.risks.find(r=>r.session_id===sessionId)),[review,setReview]=useState<string[]|null>(null);
  const [completionPending,setCompletionPending]=useState(false);
@@ -177,7 +180,7 @@ export function TeleconsultationWorkspace({initialRecord,patient,onBack,onComple
       <div className={styles.controls}><button className="small-button" disabled={!inCall} aria-label={mic?ui('Κλείσιμο μικροφώνου'):ui('Άνοιγμα μικροφώνου')} aria-pressed={!mic} onClick={()=>setMic(v=>!v)}>{mic?<Mic size={19}/>:<MicOff size={19}/>}</button><button className="small-button" disabled={!inCall} aria-label={camera?ui('Κλείσιμο κάμερας'):ui('Άνοιγμα κάμερας')} aria-pressed={!camera} onClick={()=>setCamera(v=>!v)}>{camera?<Video size={19}/>:<VideoOff size={19}/>}</button><button className="small-button" disabled={!inCall} onClick={endCall}><PhoneOff size={18}/>{t('current.m323')}</button></div></div><div className={styles.privacy}><strong>{t('current.m324')}</strong><p>{connection?ui('Οι σημειώσεις είναι ιδιωτικές. Η πρόσκληση θα ενεργοποιηθεί όταν συνδεθεί το Daily· τεστ και ιστορικό αποστέλλονται από τον φάκελο.'):ui('Ο ασθενής δεν βλέπει τις κλινικές σημειώσεις. Οι αναθέσεις γίνονται από την «Αποστολή».')}</p></div>
      </section>
      <section ref={notesPanel} hidden={view!=='notes'} className={styles.notesPanel} aria-label={t('current.m345')}>
- <details className={styles.reference}><summary><FolderOpen size={16}/>{t('clinical.patientRecordSource')}<small>{t('current.m325')}</small><ChevronDown size={14}/></summary><div className={styles.referencePanel} role="region" aria-label={t('current.m346')}><p className={styles.referenceNotice}>{t('current.m326')}</p><h3>{t('current.m327')}</h3><small>{lastVisit?new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(lastVisit.completed_at||lastVisit.started_at)):t('clinical.notRecorded')}</small><p>{lastVisit?.continuity?.clinical_state_summary||ui('Δεν υπάρχει διαθέσιμη κλινική καταγραφή.')}</p><h3>{t('current.m328')}</h3>{activeMedications.length?<ul>{activeMedications.map(row=><li key={row.id}>{row.medication_name} · {row.dose} {row.unit} · {row.frequency}</li>)}</ul>:<p>{t('current.m329')}</p>}<h3>{t('current.m330')}</h3>{latestScores.length?<ul>{latestScores.map(row=><li key={row.id}>{row.instrument}: <strong>{row.score}</strong> · {new Intl.DateTimeFormat('el-GR',{timeZone:'Europe/Athens',day:'numeric',month:'short'}).format(new Date(row.completed_at||row.created_at))}</li>)}</ul>:<p>{t('documents.printNoMeasures')}</p>}</div></details>
+ <details className={styles.reference}><summary><FolderOpen size={16}/>{t('clinical.patientRecordSource')}<small>{t('current.m325')}</small><ChevronDown size={14}/></summary><div className={styles.referencePanel} role="region" aria-label={t('current.m346')}><p className={styles.referenceNotice}>{t('current.m326')}</p><h3>{t('current.m327')}</h3><small>{lastVisit?new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(lastVisit.completed_at||lastVisit.started_at)):t('clinical.notRecorded')}</small><p>{lastVisit?.continuity?.clinical_state_summary||ui('Δεν υπάρχει διαθέσιμη κλινική καταγραφή.')}</p><h3>{t('current.m328')}</h3>{activeMedications.length?<ul>{activeMedications.map(row=><li key={row.id}>{row.medication_name} · {row.dose} {row.unit} · {row.frequency}</li>)}</ul>:<p>{t('current.m329')}</p>}<h3>{t('current.m330')}</h3>{latestScores.length?<ul>{latestScores.map(row=><li key={row.id}>{row.instrument}: <strong>{row.score}</strong> · {new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short'}).format(new Date(row.completed_at||row.created_at))}</li>)}</ul>:<p>{t('documents.printNoMeasures')}</p>}</div></details>
       <div className={'card '+styles.editorCard+' '+styles.noteCard}><div className={styles.noteContext}><span className={styles.draftBadge}>{t('current.m331')}</span>{ended&&<span>{t('current.m332')}</span>}</div><FollowupField field="transcript" title={t('visits.visitNotes')} rows={10}/></div>
       <details className={'card '+styles.disclosure} open={assessmentOpen} onToggle={event=>setAssessmentOpen(event.currentTarget.open)}><summary><span>{t('current.m333')}</span><small>{mse?.content.trim()&&risk&&risk.suicidal_ideation!=='not_assessed'?ui('Υπάρχει καταγραφή'):ui('Εκκρεμεί')}</small><ChevronDown size={15}/></summary><div className={styles.disclosureBody}>
       <div className={'card '+styles.editorCard}><h3>{t('current.m308')}</h3><p>{t('current.m334')}</p><StructuredVisitEditor sessionId={sessionId} kind="mse" followup existing={mse} baseline={connection?previousMseReference(reference,sessionId,session.started_at)?.section:undefined} timeline={connection?mseTimeline(reference,sessionId,session.started_at):undefined} saveDocument={saveMse} onSaved={connection?reloadRecord:async()=>({...bundle,sections:clinical.current.mse?[clinical.current.mse]:[]})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></div>

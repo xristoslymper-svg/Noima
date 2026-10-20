@@ -1,6 +1,6 @@
 'use client';
 import {useUiText} from '@/i18n/use-ui-text';
-import {useTranslations} from 'next-intl';
+import {useLocale,useTranslations} from 'next-intl';
 import {useRef,useState} from 'react';
 import {ArrowLeft,BookOpen,Plus,Eye,Check} from 'lucide-react';
 import {newArticle,publishArticle,visibleArticles,type Article,type ArticleContent} from '@/lib/presence/articles';
@@ -8,16 +8,19 @@ import styles from './Presence.module.css';
 export function ArticleReader({content,date,onBack}:{content:ArticleContent;date?:string;onBack:()=>void}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
-return <article className={styles.articleReader}><button type="button" className="small-button" onClick={onBack}><ArrowLeft size={14}/>{t('current.m200')}</button><p className={styles.eyebrow}>{t('current.m201')}</p><h2>{content.title||ui('Τίτλος άρθρου')}</h2><p className={styles.articleExcerpt}>{content.excerpt}</p>{date&&<small>{t('polish.m062')} {new Intl.DateTimeFormat('el-GR',{dateStyle:'medium',timeZone:'Europe/Athens'}).format(new Date(date))}</small>}<p className={styles.preserve}>{content.body||ui('Το κείμενο του άρθρου σας.')}</p>{content.sources&&<><h3>{t('current.m202')}</h3><p className={styles.preserve}>{content.sources}</p></>}</article>}
+return <article className={styles.articleReader}><button type="button" className="small-button" onClick={onBack}><ArrowLeft size={14}/>{t('current.m200')}</button><p className={styles.eyebrow}>{t('current.m201')}</p><h2>{content.title||ui('Τίτλος άρθρου')}</h2><p className={styles.articleExcerpt}>{content.excerpt}</p>{date&&<small>{t('polish.m062')} {new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'Europe/Athens'}).format(new Date(date))}</small>}<p className={styles.preserve}>{content.body||ui('Το κείμενο του άρθρου σας.')}</p>{content.sources&&<><h3>{t('current.m202')}</h3><p className={styles.preserve}>{content.sources}</p></>}</article>}
 export function PublicArticles({articles}:{articles:Article[]}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 const [all,setAll]=useState(false),[selected,setSelected]=useState<string|null>(null);const visible=visibleArticles(articles),article=visible.find(a=>a.id===selected);if(!visible.length)return null;return <section className={styles.publicArticles} aria-label={t('current.m203')}>{article?<ArticleReader content={article.published} date={article.published.updatedAt} onBack={()=>setSelected(null)}/>:<><div className={styles.articleHeading}><h3>{t('current.m203')}</h3>{visible.length>3&&<button className="small-button" onClick={()=>setAll(v=>!v)}>{all?t('currentExtra.m079'):t('currentExtra.m080')}</button>}</div><div className={styles.articleCards}>{(all?visible:visible.slice(0,3)).map(a=><article key={a.id}><BookOpen size={16}/><h4>{a.published.title}</h4><p>{a.published.excerpt}</p><button className="small-button" aria-label={ui('Διαβάστε το άρθρο: ')+a.published.title} onClick={()=>setSelected(a.id)}>{t('current.m204')}<span className={styles.srOnly}>: {a.published.title}</span></button></article>)}</div></>}</section>}
 export function ArticleEditor({articles,onChange,onSave,onPreview}:{articles:Article[];onChange:(next:Article[])=>void;onSave:(next:Article[])=>boolean;onPreview?:(article:Article)=>void}){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 
  const [id,setId]=useState<string|null>(articles[0]?.id||null),[preview,setPreview]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');const dialog=useRef<HTMLDialogElement>(null),titleInput=useRef<HTMLInputElement>(null);

@@ -13,13 +13,14 @@ const dictionaries=Object.fromEntries(['el','en'].map(locale=>[locale,JSON.parse
 // The isolated hook harnesses do not mount a React provider. Use the real ICU
 // translator and production dictionaries; fail immediately on missing messages.
 export function intlTestModule(name,locale='el'){
+ if(name.includes('/i18n/')&&name.endsWith('.ts'))return intlTestModule('@/i18n/'+name.split('/').at(-1).slice(0,-3),locale);
  if(name==='next-intl')return {
   createTranslator,
   useLocale:()=>locale,
   useTranslations:namespace=>createTranslator({locale,messages:dictionaries[locale],namespace,onError:error=>{throw error}})
  };
  if(name==='@/i18n/errors')return errorTools;
- if(name==='@/i18n/config'||name.endsWith('/i18n/config.ts'))return config;
+ if(name==='@/i18n/config'||(name.endsWith('/i18n/config.ts')||name.endsWith('/i18n/config')))return config;
  if(name==='@/i18n/recipient'||name.endsWith('/i18n/recipient'))return recipient;
  if(name==='@/i18n/messages')return {loadMessages:async locale=>dictionaries[locale]};
  if(name==='@/i18n/output-language')return outputLanguage;

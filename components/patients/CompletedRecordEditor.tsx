@@ -97,7 +97,7 @@ const riskOptions=[['not_assessed',t('clinical.notAssessed')],['unknown',t('comm
  return <section className="session-workspace completed-session-view corrected-record-view">
   <div className="session-work-head">
    <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError(t('visits.saveOrCancelCorrection'));return}onBack()}}>{t('visits.backToVisits')}</button><span className="visit-label completed"><span>{t('visits.finalizedKicker')}</span><i/> {session.session_type==='initial_assessment'?t('visits.initialAssessmentKicker'):t('visits.followupKicker')}</span><h2>{session.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{t('visits.correctionHistoryHelp')}</p></div>
-   <div className="completed-record-actions"><span className="draft-updated">{t('visits.completedPrefix')} {formatClinicDateTime(session.completed_at||session.started_at)}</span>{!editing&&<button type="button" disabled={!ready} onClick={beginEditing}>{ready?t('visits.correctRecord'):t('visits.loadingRecord')}</button>}</div>
+   <div className="completed-record-actions"><span className="draft-updated">{t('visits.completedPrefix')} {formatClinicDateTime(session.completed_at||session.started_at,locale)}</span>{!editing&&<button type="button" disabled={!ready} onClick={beginEditing}>{ready?t('visits.correctRecord'):t('visits.loadingRecord')}</button>}</div>
   </div>
 
   <fieldset disabled={!editing||busy} className="visit-document completed-record-form">
@@ -111,6 +111,6 @@ const riskOptions=[['not_assessed',t('clinical.notAssessed')],['unknown',t('comm
   </fieldset>
 
   {editing&&<div className="correction-save-bar"><label>{t('visits.correctionReason')}<input value={reason} maxLength={500} onChange={e=>setReason(e.target.value)} placeholder={t('visits.correctionReasonPlaceholder')}/></label><div><button type="button" className="finalize-later" disabled={busy} onClick={reset}><X size={15}/>  {t('common.cancel')}</button><button type="button" disabled={busy||!pending||!reason.trim()} onClick={()=>void save()}><Check size={15}/>{busy?t('common.saving'):pending?t('visits.saveCorrectionPrefix')+pending+')':t('common.noChanges')}</button></div>{error&&<p role="alert" className="save-state error">{systemMessage(error)}</p>}</div>}
-  {history.length>0&&<details className="correction-audit"><summary>{t('visits.correctionHistoryPrefix')} {history.length}</summary>{history.map(item=><article key={item.id}><strong>{formatClinicDateTime(item.created_at)}</strong><span>{item.reason}</span><small>{Object.keys(item.patch).length}  {t('visits.fieldsSectionsSuffix')}</small></article>)}</details>}
+  {history.length>0&&<details className="correction-audit"><summary>{t('visits.correctionHistoryPrefix')} {history.length}</summary>{history.map(item=><article key={item.id}><strong>{formatClinicDateTime(item.created_at,locale)}</strong><span>{item.reason}</span><small>{Object.keys(item.patch).length}  {t('visits.fieldsSectionsSuffix')}</small></article>)}</details>}
  </section>;
 }

@@ -605,8 +605,6 @@
     "stopResponse": "Stop response",
     "sendQuestion": "Send question",
     "closeResults": "Close results",
-    "newAppointmentFor": "New appointment for {name}",
-    "editPatientDetails": "Edit details for {name}",
     "closePreview": "Close preview",
     "closeTest": "Close test"
   },
@@ -864,7 +862,6 @@
     "lastVisit": "Last visit",
     "nextVisit": "Next visit",
     "loading": "Loading patients…",
-    "registryNumber": "No.",
     "last": "Last",
     "next": "Next",
     "editDetails": "Edit details",
@@ -903,7 +900,6 @@
     "loadingClinicalRecord": "Loading clinical record…",
     "syntheticReadOnlyExport": "This synthetic test supports reading and chat. Editing and export are disabled.",
     "syntheticPatientNotice": "Synthetic patient · full record for testing the NOIMA assistant · read only",
-    "clinicalRecord": "Clinical record",
     "newPatientSuffix": " · New patient",
     "lastVisitPrefix": "Last visit · ",
     "detailsHistory": "Details and history",
@@ -935,9 +931,6 @@
     "amkaSuffix": " · AMKA",
     "isNewPerson": "This is a new person",
     "linkToRecord": "Link to patient record",
-    "ageSummary": "{age} years old · ",
-    "ageSuffix": " · {age} years old",
-    "maskedAmka": " · AMKA ••••{digits}",
     "patientCount": "{count, plural, one {# patient} other {# patients}}"
   },
   "visits": {
@@ -1108,8 +1101,7 @@
       "mseChanges": "MSE changes",
       "psychometrics": "Measures",
       "review": "Review"
-    },
-    "pendingChangesCount": "{count, plural, one {# change pending} other {# changes pending}}"
+    }
   },
   "clinical": {
     "psychiatricInterview": "Psychiatric interview",
@@ -1596,7 +1588,7 @@
     "proposalCreate": "New appointment · {patient} · {start} – {end} · Europe/Athens",
     "proposalMove": "Reschedule from {before} · {patient} · {start} – {end} · Europe/Athens",
     "proposalCancel": "Cancel · {patient} · {start} · Europe/Athens",
-    "proposalSend": "Send {instruments} · {patient} · To: {recipient}{appointment} · Personal link, valid for 14 days. Recipient language: Greek. Sent immediately after confirmation.",
+    "proposalSend": "Send {instruments} · {patient} · To: {recipient}{appointment} · Personal link, valid for 14 days. Sent immediately after confirmation.",
     "proposalAppointment": " · Appointment {date}",
     "actionVerified": "The change was saved and verified in the database.",
     "patientRecordSource": "Patient record",
@@ -2026,7 +2018,6 @@
     "emailUnavailable": "Email unavailable for {code}",
     "printInstrument": "Print {code}",
     "noTestFor": "No test available yet for #{area}",
-    "scoreValue": "Total score {score}",
     "questionCount": "{count, plural, one {# question} other {# questions}}",
     "directVisitLink": "Directly linked to a clinical visit",
     "appointmentVisitLink": "Via an appointment linked to a clinical visit",
@@ -2084,7 +2075,6 @@
     "printConfirmedState": "Approved clinical state",
     "printEarlierBranch": "Earlier branch · ",
     "printNoVisitRisk": "No risk assessment has been recorded for this visit.",
-    "printCorrectionsCount": "{count, plural, one {# structured correction is applied to the corresponding fields.} other {# structured corrections are applied to the corresponding fields.}}",
     "printFinalized": " · Finalized record",
     "printFinalizedAt": " · Finalized: ",
     "printMedicationAtExport": "Medication recorded at export",
@@ -2104,10 +2094,8 @@
     "printSource": "Source:",
     "printSourceHelp": " Clinical entries and information from the fictional record at the time of export. This presents existing material and is not a new medical opinion or AI suggestion.",
     "printDrafts": "Draft records:",
-    "printDraftCount": "{count, plural, one {# draft record is excluded because it has not been finalized. It remains in the technical data copy.} other {# draft records are excluded because they have not been finalized. They remain in the technical data copy.}}",
     "printToolbar": "Printable version · Save as PDF from the print options",
     "printButton": "Print / PDF",
-    "printTitle": "Clinical record",
     "printFictionalPrefix": "TEST DATA · ",
     "printExportedPrefix": " · Exported ",
     "printFooter": "NOIMA · Test export of a fictional record · Review the content before sharing.",
@@ -2832,7 +2820,6 @@
     "m070": "Finish customization",
     "m071": "Customize record",
     "m072": "Section: ",
-    "m073": "Move ",
     "m074": "Move up: ",
     "m075": "Move down: ",
     "m076": "Expand: ",
@@ -2864,8 +2851,6 @@
     "m102": "Create the appointment for ",
     "m103": "? Availability will be checked again.",
     "m104": "Decline this request? No email will be sent.",
-    "m105": "appointment",
-    "m106": "decline",
     "m107": "The simulation was disconnected. No Google connection was made.",
     "m108": "Before a live connection",
     "m109": "1. You grant permission",
@@ -3091,5 +3076,15 @@
     "m128": "· test",
     "m129": "· linked to the open visit",
     "m130": "Live calling remains disabled."
+  },
+  "saveStatus": {
+    "m0": "Some changes could not be saved — your text is preserved. ",
+    "m1": "Changes waiting to be saved…",
+    "m2": "Notes saved — the visit record remains open"
+  },
+  "actionSelection": {
+    "m0": "Which time do you mean? Morning or afternoon?",
+    "m1": "Which appointment do you mean?",
+    "m2": "No appointment was found at that date and time. Choose:"
   }
 }

@@ -57,9 +57,9 @@ type OverviewPayload={events?:OverviewEvent[];tasks?:TodoTask[];psychometrics?:O
 const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
-const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
+const overviewDayLabel=(locale="el")=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase(locale);
 const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
-const reviewWhen=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
+const reviewWhen=(iso:string,locale="el")=>new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 
 
 
@@ -215,7 +215,7 @@ const nav = [
         <div className="content">
           <div className="page-heading">
             <div>
-              <p className="eyebrow">{overviewDayLabel()}</p>
+              <p className="eyebrow">{overviewDayLabel(locale)}</p>
               <h1>{t('dashboard.heading')}</h1>
               <p>{t('dashboard.description')}</p>
             </div>
@@ -308,7 +308,7 @@ const nav = [
 
           {widgetOpen==="psychometrics"&&<div className="dashboard-widget-list">
             {reviewSubmissions.length?reviewSubmissions.map(submission=><div className="dashboard-widget-row review-submission-row" key={submission.key}>
-              <div><div className="review-submission-title"><strong>{submission.patient_name||t('dashboard.newSubmission')}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?t('patients.identificationRequired'):t('common.received')}</span></div><span>{submission.tools.map(tool=>tool==="history"?t('history.initialHistory'):tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when)}</span></div>
+              <div><div className="review-submission-title"><strong>{submission.patient_name||t('dashboard.newSubmission')}</strong><span className={"review-submission-status "+(submission.status==="conflict"?"conflict":"new")}>{submission.status==="conflict"?t('patients.identificationRequired'):t('common.received')}</span></div><span>{submission.tools.map(tool=>tool==="history"?t('history.initialHistory'):tool).join(" · ")} · {reviewChannelLabel(submission.channel)} · {reviewWhen(submission.when,locale)}</span></div>
               {submission.status==="conflict"&&submission.intake_id
                 ?<button onClick={()=>setConflictIntake(submission.intake_id!)}>{t('patients.identify')} <ChevronRight size={15}/></button>
                 :submission.patient_id?<div className="review-row-actions">

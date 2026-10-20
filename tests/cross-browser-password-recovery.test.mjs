@@ -94,7 +94,7 @@ test('GET recovery form permits any browser without reading auth, verifying toke
   if(id.includes('config'))return {};
   return {mobileV2Enabled:false};
  });
- const response=await middleware.middleware({nextUrl:new URL('https://noima.example.invalid/reset-password')});
+ const response=await middleware.middleware({nextUrl:new URL('https://noima.example.invalid/reset-password'),headers:new Headers(),cookies:{get:()=>undefined}});
  assert.equal(response.headers.get('Cache-Control'),'private, no-store');
  assert.equal(response.headers.get('Referrer-Policy'),'no-referrer');
  assert.equal(response.headers.get('X-Robots-Tag'),'noindex, nofollow');

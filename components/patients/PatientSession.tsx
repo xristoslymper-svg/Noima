@@ -29,7 +29,7 @@ import {activeVisitPart,finalizationBlocker,finalizationIssues,visitSteps,previo
 
 
 const required=new Set<string>();
-const fmt=(value?:string|null)=>value?formatClinicDateTime(value):'—';
+const fmt=(value?:string|null,locale='el')=>value?formatClinicDateTime(value,locale):'—';
 const riskOptions=[['not_assessed','Δεν διερευνήθηκε'],['unknown','Άγνωστο'],['negative','Αρνητικό'],['positive','Θετικό']] as const;
 const riskLabel=(value:string)=>riskOptions.find(([key])=>key===value)?.[1]||value;
 
@@ -69,6 +69,7 @@ export default function PatientSession({
 }){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 const definitions=[
  ['interview',t('clinical.patientReportSymptoms'),t('clinical.patientReportHelp')],
@@ -227,8 +228,8 @@ const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'
   <fieldset disabled={registering||finalizing} style={{border:0,padding:0,margin:0,minWidth:0}}>
   {draft.session_type==='follow_up'&&!embedded&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>{t('visits.compactRecord')}</button>}
   {!embedded&&<div className="session-work-head">
-   <div><h2>{draft.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{fmt(draft.started_at)}</p></div>
-   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError})}</span><small>{t('common.getStarted')} {fmt(draft.started_at)}</small></div>
+   <div><h2>{draft.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{fmt(draft.started_at,locale)}</p></div>
+   <div className="session-save-overview"><span className={dirtyCount?'pending':''}>{draftSaveStatus({saving:flushing&&dirtyCount>0,dirty:dirtyCount>0,error:flushError},ui)}</span><small>{t('common.getStarted')} {fmt(draft.started_at,locale)}</small></div>
   </div>}
 
   {draft.session_type==='follow_up'&&<FollowupField field="transcript" title={t('visits.visitNotes')} rows={4}/>}
@@ -236,7 +237,7 @@ const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'
   <fieldset ref={documentRef} disabled={flushing||finalizing||finishingLater} className={draft.session_type==='initial_assessment'?'visit-document first-assessment':'visit-document'}>
    <VisitCanvas toolbarContext={embedded&&contextReady?<JourneyReference bundle={bundle} session={draft}/>:undefined} toolbarActions={embedded&&draft.session_type==='follow_up'?<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>{t('visits.compactRecord')}</button>:undefined} bundle={bundle} session={draft} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}><VisitPart anchor="interview" number="01" title={draft.session_type==='follow_up'?t('clinical.symptomsCourse'):t('clinical.presentingComplaintCurrentState')}>{editor('interview',draft.session_type==='follow_up'?t('clinical.symptomsCourse'):t('clinical.presentingComplaintCurrentState'),4)}<details className="visit-related-detail"><summary>{t('clinical.dailyLifeImpact')}{sections.find(s=>s.section_key==='functioning')?.content.trim()?t('clinical.recordExistsSuffix'):''}</summary>{editor('functioning',t('clinical.functioning'))}</details>{draft.session_type==='initial_assessment'&&bundle.patient.chief_complaint?.trim()&&<details className="visit-additional"><summary>{t('clinical.originalPresentingComplaint')}</summary><p style={{whiteSpace:'pre-wrap'}}>{bundle.patient.chief_complaint}</p></details>}</VisitPart>
    <VisitPart anchor="mse" number="02" title={draft.session_type==='follow_up'?t('clinical.mseChanges'):t('clinical.mentalStatusExamination')}>
-    {draft.session_type==='follow_up'&&<details className="visit-additional mse-reference"><summary>{t('clinical.previousMseFull')}</summary>{mseReference?<><small>{fmt(sessionClinicalTime(bundle,mseReference.session))}  {t('clinical.historicalEntrySuffix')}</small><p style={{whiteSpace:'pre-wrap'}}>{mseReference.section.content}</p>{mseReference.addenda.map(a=><div key={a.id}><strong>{a.kind==='correction'?t('clinical.correction'):t('common.add')} · {fmt(a.created_at)}</strong><p>{a.reason}</p><p style={{whiteSpace:'pre-wrap'}}>{a.content}</p></div>)}</>:<p>{contextReady?t('clinical.noPreviousMse'):t('clinical.loadingPreviousMse')}</p>}<p className="visit-hint">{t('clinical.mseHistoricalHelp')}</p></details>}
+    {draft.session_type==='follow_up'&&<details className="visit-additional mse-reference"><summary>{t('clinical.previousMseFull')}</summary>{mseReference?<><small>{fmt(sessionClinicalTime(bundle,mseReference.session))}  {t('clinical.historicalEntrySuffix')}</small><p style={{whiteSpace:'pre-wrap'}}>{mseReference.section.content}</p>{mseReference.addenda.map(a=><div key={a.id}><strong>{a.kind==='correction'?t('clinical.correction'):t('common.add')} · {fmt(a.created_at,locale)}</strong><p>{a.reason}</p><p style={{whiteSpace:'pre-wrap'}}>{a.content}</p></div>)}</>:<p>{contextReady?t('clinical.noPreviousMse'):t('clinical.loadingPreviousMse')}</p>}<p className="visit-hint">{t('clinical.mseHistoricalHelp')}</p></details>}
     {<StructuredVisitEditor key={draft.id+':mse'} sessionId={draft.id} kind="mse" existing={sections.find(s=>s.section_key==='mse')} followup={draft.session_type==='follow_up'} timeline={timeline} baseline={draft.session_type==='follow_up'?mseReference?.section:null} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}
    </VisitPart>
    <VisitPart anchor="risk" number="03" title={t('clinical.riskAssessment')}><RiskEditor key={draft.id} sessionId={draft.id} existing={risk} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></VisitPart>
@@ -275,15 +276,17 @@ function FollowupFinalizationGuard({guard}:{guard:MutableRefObject<((fresh:Patie
 }
 
 function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:string)=>void}){
+ const locale=useLocale();
  const t=useTranslations();
 
- return <div className="completed-session-list">{sessions.map(session=><button className="completed-session-row" key={session.id} onClick={()=>onSelect(session.id)}><CheckCircle2 size={18}/><div><strong>{session.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followupSession')}</strong><span>{t('visits.finalizedPrefix')} {fmt(session.completed_at)}</span></div><span className="open-session-label">{t('common.open')}</span></button>)}</div>;
+ return <div className="completed-session-list">{sessions.map(session=><button className="completed-session-row" key={session.id} onClick={()=>onSelect(session.id)}><CheckCircle2 size={18}/><div><strong>{session.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followupSession')}</strong><span>{t('visits.finalizedPrefix')} {fmt(session.completed_at,locale)}</span></div><span className="open-session-label">{t('common.open')}</span></button>)}</div>;
 }
 
 function CompletedSessionView({session,bundle,onBack,reload,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
+ const locale=useLocale();
  const t=useTranslations();
 
- return <>{session.continuity?.approved_at&&<section className="visit-part"><header><h3><PatientVisualIcon name="summary"/>{t('clinical.confirmedMemory')}</h3></header><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.clinical_state_summary}</p><p><strong>{t('clinical.treatmentDecisionPrefix')}</strong> {session.continuity.treatment_decision}</p><p><strong>{t('clinical.nextReviewPrefix')}</strong> {session.continuity.next_review_focus}</p><p><strong>{t('medications.adherencePrefix')}</strong> {session.continuity.adherence}</p>{session.continuity.pinned_context&&<p>📌 {session.continuity.pinned_context}</p>}<p className="visit-hint">{t('clinical.confirmedPrefix')} {fmt(session.continuity.approved_at)} · {session.continuity.source==='ai_assisted'?t('clinical.aiReviewedByClinician'):t('clinical.manualEntry')}</p><details><summary>{t('clinical.originalClinicianText')}</summary><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.transcript||t('clinical.noSeparateOriginal')}</p></details></section>}<CustomVisitSectionsRead bundle={bundle} sessionId={session.id}/><CompletedRecordEditor key={session.id} session={session} bundle={bundle} reload={reload} onBack={onBack} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>;
+ return <>{session.continuity?.approved_at&&<section className="visit-part"><header><h3><PatientVisualIcon name="summary"/>{t('clinical.confirmedMemory')}</h3></header><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.clinical_state_summary}</p><p><strong>{t('clinical.treatmentDecisionPrefix')}</strong> {session.continuity.treatment_decision}</p><p><strong>{t('clinical.nextReviewPrefix')}</strong> {session.continuity.next_review_focus}</p><p><strong>{t('medications.adherencePrefix')}</strong> {session.continuity.adherence}</p>{session.continuity.pinned_context&&<p>📌 {session.continuity.pinned_context}</p>}<p className="visit-hint">{t('clinical.confirmedPrefix')} {fmt(session.continuity.approved_at,locale)} · {session.continuity.source==='ai_assisted'?t('clinical.aiReviewedByClinician'):t('clinical.manualEntry')}</p><details><summary>{t('clinical.originalClinicianText')}</summary><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.transcript||t('clinical.noSeparateOriginal')}</p></details></section>}<CustomVisitSectionsRead bundle={bundle} sessionId={session.id}/><CompletedRecordEditor key={session.id} session={session} bundle={bundle} reload={reload} onBack={onBack} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>;
 }
 
 function VisitPart({number:_,title,children,anchor}:{number:string;title:string;children:React.ReactNode;anchor?:string}){

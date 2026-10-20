@@ -1,6 +1,6 @@
 'use client';
 import {useUiText} from '@/i18n/use-ui-text';
-import {useTranslations} from 'next-intl';
+import {useLocale,useTranslations} from 'next-intl';
 import {useCallback,useEffect,useLayoutEffect,useId,useRef,useState,type MutableRefObject} from 'react';
 import {Check,Mic,Plus,Square,X} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
@@ -16,6 +16,7 @@ const fromRecord=(record:PriorCourseRecord|null):Draft=>({version:record?.versio
 export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:Props){
  const ui=useUiText();
 
+ const locale=useLocale();
  const t=useTranslations();
 
  const tester=getDemoTesterId(),key='noima-prior-course:'+tester+':'+patientId,titleId=useId();
@@ -79,7 +80,7 @@ export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:
  }
  const status=<>{loading&&<p className={styles.meta} role="status">{t('current.m167')}</p>}{saved&&<p className={styles.success} role="status">{t('current.m168')}</p>}{error&&<p className={styles.error} role="alert">{ui(error)}{!ready&&!loading&&<button className={styles.secondary+' '+styles.retry} onClick={()=>void load()}>{t('calendar.recurrence')}</button>}{conflict&&<button className={styles.secondary+' '+styles.retry} onClick={()=>void reloadSaved()}>{t('current.m169')}</button>}</p>}</>;
  return <section className={styles.section} data-prior-pending={pending} aria-label={t('current.m170')}>
-  {!open&&<>{record?<div className={styles.read}><div className={styles.heading}><h3>{t('current.m170')}</h3><button type="button" className={styles.action} onClick={()=>{setOpen(true);setSaved(false)}} disabled={!ready}>{t('current.m171')}</button></div><p className={styles.meta}>{t('polish.m057')}{record.period_label?' · '+record.period_label:''} {t('polish.m058')}</p><p className={styles.content}>{record.content}</p><small className={styles.meta}>{t('polish.m059')} {new Intl.DateTimeFormat('el-GR',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Athens'}).format(new Date(record.created_at))}</small></div>:<button type="button" className={styles.action} disabled={!ready} onClick={()=>{setOpen(true);setSaved(false)}}><Plus size={16}/>{t('current.m170')}</button>}{ui(status)}</>}
+  {!open&&<>{record?<div className={styles.read}><div className={styles.heading}><h3>{t('current.m170')}</h3><button type="button" className={styles.action} onClick={()=>{setOpen(true);setSaved(false)}} disabled={!ready}>{t('current.m171')}</button></div><p className={styles.meta}>{t('polish.m057')}{record.period_label?' · '+record.period_label:''} {t('polish.m058')}</p><p className={styles.content}>{record.content}</p><small className={styles.meta}>{t('polish.m059')} {new Intl.DateTimeFormat(locale,{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Athens'}).format(new Date(record.created_at))}</small></div>:<button type="button" className={styles.action} disabled={!ready} onClick={()=>{setOpen(true);setSaved(false)}}><Plus size={16}/>{t('current.m170')}</button>}{ui(status)}</>}
   {open&&<div className={styles.form} onKeyDown={event=>{if(event.key==='Escape'&&!voiceBusy&&!saving){event.preventDefault();event.stopPropagation();cancel()}}}>
    <div className={styles.heading}><div><span className={styles.meta}>{t('current.m172')}</span><h3 id={titleId}>{t('current.m170')}</h3></div></div>
    <fieldset disabled={saving} style={{border:0,padding:0,margin:0,minWidth:0}}>

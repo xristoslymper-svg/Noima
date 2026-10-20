@@ -64,7 +64,7 @@ test('successful save collapses only after refresh; failed refresh cannot resubm
 
 const summaryModule={exports:{}};
 const summaryMocks={'./PatientJourney.module.css':{},'./PatientJourney':{JourneyOrientation:()=>React.createElement('section',{},'ΠΡΟΣΑΝΑΤΟΛΙΣΜΟΣ ΦΑΚΕΛΟΥ')},'@/components/mobile/mobile-v2':{mobileV2Enabled:false},'@/components/mobile/MobileClinical.module.css':{},'@/lib/clinical/completed-visit-notes':notes,'@/lib/clinical/risk-findings':riskFindings,'@/lib/clinical/patient-record':record,'@/lib/clinic-time':clinicTime,'@/lib/clinical/assessment-link':assessmentLink,'./PatientContext':()=>null,'./ClinicalSummary':props=>React.createElement('section',{'data-brief':String(props.brief),'data-read-only':String(props.readOnly)},'ΚΛΙΝΙΚΗ ΣΥΝΘΕΣΗ'),'./PatientReportedHistory':()=>React.createElement('p',{},'ΑΠΑΝΤΗΣΕΙΣ ΑΣΘΕΝΟΥΣ'),'./PatientRecord.module.css':{}};
-new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))(name=>name in summaryMocks?summaryMocks[name]:require(name),summaryModule,summaryModule.exports);
+new Function('require','module','exports',compiled('PatientRecordSummary.tsx'))(name=>intlTestModule(name)??(name in summaryMocks?summaryMocks[name]:require(name)),summaryModule,summaryModule.exports);
 function renderSummary(bundle){return renderToStaticMarkup(React.createElement(summaryModule.exports.default,{bundle,reload:async()=>{},onVisit:()=>{},onMeasurements:()=>{},onTreatment:()=>{},onHistory:()=>{}}))}
 test('real summary prioritizes active issues and concise synthesis, with dated records secondary',()=>{
  const bundle=fixture();bundle.medicationSideEffects=[{id:'effect',medication_id:'med',effect_text:'Υποθετική παρενέργεια',noted_on:'2026-01-01'}];

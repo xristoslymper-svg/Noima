@@ -912,7 +912,11 @@
       "browser-tests/current-i18n-fixture.tsx",
       "browser-tests/current-i18n.mjs",
       "tests/teleconsultations.test.mjs",
-      "tests/i18n-event-metadata.test.mjs"
+      "tests/i18n-event-metadata.test.mjs",
+      "app/patient-tool-polish.css",
+      "browser-tests/treatment-polish-fixture.tsx",
+      "browser-tests/treatment-polish.mjs",
+      ".github/workflows/clinical-ui.yml"
     ]
   }
 }

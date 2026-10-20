@@ -5,7 +5,6 @@ import {useTranslations} from 'next-intl';
 
 import {useLocale} from 'next-intl';
 
-import {isLocale,languageNames,locales,type Locale} from '@/i18n/config';
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {Check,Mail,Printer,Tablet,UserRound,X} from 'lucide-react';
@@ -47,7 +46,8 @@ export default function IntakeLauncher({
  const locale=useLocale();
 
  const account=useAccountSession();
- const [recipientLocale,setRecipientLocale]=useState<Locale>('el');
+ // Preserve the established delivery default; language is chosen only at login.
+ const recipientLocale='el';
  const [tools,setTools]=useState<string[]>(defaultTools);
  const [channel,setChannel]=useState<Channel>(initialChannel);
  const [devices,setDevices]=useState<Device[]>([]);
@@ -173,7 +173,8 @@ export default function IntakeLauncher({
    <button className="intake-launcher-close" onClick={onClose} disabled={busy} aria-label={t('common.close')}><X size={18}/></button>
    <span className="kicker">{t('history.assignmentKicker')}</span>
    <h2 id="assignment-title">{t('psychometrics.patientCompletion')}</h2>
-   <div className="assignment-language"><label>{t('documents.recipientLanguage')}<select disabled={busy||channel==='tablet'} value={recipientLocale} onChange={e=>{if(isLocale(e.target.value))setRecipientLocale(e.target.value)}}>{locales.map(code=><option key={code} value={code}>{languageNames[code]}</option>)}</select></label><small>{channel==='tablet'?t('documents.tabletLanguageHelp'):t('documents.recipientLanguageHelp')}</small>{tools.some(tool=>tool!=='history')&&<small>{t('psychometrics.originalInstrumentLanguage')}</small>}</div><p className="assignment-intro">{t('history.assignmentHelp')}</p>
+   <p className="assignment-intro">{t('history.assignmentHelp')}</p>
+   {tools.some(tool=>tool!=='history')&&<small className="assignment-instrument-note">{t('psychometrics.originalInstrumentLanguage')}</small>}
 
    <div className="assignment-step">
     <div className="assignment-step-title"><span>1</span><div><strong>{t('psychometrics.instrument')}</strong><small>{lockTools?t('psychometrics.selectedFromLibrary'):t('history.choosePatientTools')}</small></div></div>

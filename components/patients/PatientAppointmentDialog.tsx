@@ -16,6 +16,6 @@ export default function PatientAppointmentDialog({bundle,reload,onClose,onSaved}
   <button type="button" className="entry-close" onClick={close} disabled={busy} aria-label="Κλείσιμο"><X size={19}/></button>
   <h2 id="patient-appointment-title">Νέο ραντεβού</h2>
   <p>{bundle.patient.first_name} {bundle.patient.last_name}</p>
-  <VisitNextAppointment bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} showHeading={false} initialExpanded onSaved={onSaved} onCancel={close} onBusyChange={setBusy} appointmentType={bundle.sessions.length?'follow_up':'initial_assessment'}/>
+  <VisitNextAppointment bundle={bundle} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} showHeading={false} initialExpanded onSaved={onSaved} onCancel={close} onBusyChange={setBusy} appointmentType={bundle.sessions.some(s=>s.status==='completed')?'follow_up':'initial_assessment'}/>
  </section></div>;
 }

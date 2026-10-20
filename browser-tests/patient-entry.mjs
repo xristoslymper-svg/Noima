@@ -91,7 +91,13 @@ try{
  await p.keyboard.press('Escape');await p.locator('dialog[open]').waitFor({state:'detached'});
  report.push('new appointment creates its own visit and never relinks or closes the older record');
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
- const appointmentLink=p.getByRole('menuitem',{name:'Νέο ραντεβού',exact:true});assert.ok((await appointmentLink.getAttribute('href')).includes(first.id));
+ const beforeAppointment=p.url(),beforeWrites=writes.length;
+ await p.getByRole('menuitem',{name:'Νέο ραντεβού',exact:true}).click();
+ const appointmentDialog=p.getByRole('dialog',{name:'Νέο ραντεβού',exact:true});await appointmentDialog.waitFor();
+ assert.match(await appointmentDialog.textContent(),/Μαρία Δείγμα/);assert.equal(p.url(),beforeAppointment);
+ assert.equal(await appointmentDialog.getByLabel('Ημερομηνία',{exact:true}).isVisible(),true);
+ await p.keyboard.press('Escape');await appointmentDialog.waitFor({state:'detached'});assert.equal(writes.length,beforeWrites);
+ await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
  await p.getByRole('menuitem',{name:'Αποστολή ερωτηματολογίου',exact:true}).click();
  await p.getByText('Θα καταχωριστεί στον υπάρχοντα φάκελο.',{exact:true}).waitFor();
  assert.equal(writes.filter(w=>w.action==='assign').length,0);
@@ -103,7 +109,7 @@ try{
  const rect=await menu.boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=390);
  await p.screenshot({path:resolve(out,'mobile-patient-actions.png'),fullPage:true});
  await p.keyboard.press('Escape');await p.setViewportSize({width:1440,height:1000});
- report.push('appointment link carries patient; questionnaire is patient-scoped without assignment; Escape closes menu; mobile menu fits');
+ report.push('appointment popup keeps patient and URL without writes; questionnaire is patient-scoped without assignment; Escape closes menu; mobile menu fits');
  // Successful creation clears recovery; only the fixture receives this request.
  await p.goto(origin+'/patients/new');await p.getByLabel('Όνομα *',{exact:true}).fill('Άλλος Συνθετικός');
  failCreate=false;await p.getByRole('button',{name:'Δημιουργία φακέλου',exact:true}).click();

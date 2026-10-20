@@ -36,6 +36,7 @@ try{
  const open=async()=>{if(!await page.getByRole('region',{name:'Προσαρμογή στηλών',exact:true}).count())await page.getByRole('button',{name:'Στήλες',exact:true}).click()};
  await page.goto(origin+'/patients');await page.locator('[data-patient-id]').first().waitFor();
  assert.deepEqual(await headers(),['registry','name','age','phone','diagnosis','last','next']);
+ const numberHeader=await page.locator('th[data-column-id="registry"] [class*="headerLabel"]>span').evaluate(el=>({height:el.getBoundingClientRect().height,line:parseFloat(getComputedStyle(el).lineHeight)}));assert.ok(numberHeader.height<=numberHeader.line+1,'registry number label stays on one line');
  const firstRow=page.locator('[data-patient-id="'+rows[0].id+'"]');
  assert.equal(await firstRow.locator('.registry-patient-link').innerText(),'Μαρία Δείγμα');
  assert.equal(await firstRow.locator('[data-column-id="age"]').innerText(),'32 ετών');

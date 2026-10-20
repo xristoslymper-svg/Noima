@@ -2,7 +2,7 @@ export const registryColumns=[
   {
     "id": "registry",
     "label": "Α/Α",
-    "width": 64,
+    "width": 72,
     "visible": true
   },
   {

@@ -51,3 +51,8 @@
  .scroll{max-height:65dvh}.table th{padding:10px}.table td{padding:12px 10px}
  .appointment,.edit{min-height:44px}.edit{min-width:36px}
 }
+
+/* Keep the chooser bounded and registry numbering on one line. */
+.columnList{max-height:320px;overflow:auto;overscroll-behavior:contain;padding:2px}
+.table th[data-column-id="registry"] .headerLabel>span{white-space:nowrap}
+@media(max-width:760px){.columnList{max-height:40dvh}}

@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -31,7 +32,7 @@ function route({user={id:'verified-user',email:'doctor@example.invalid',app_meta
   rpc:async(name,input)=>{calls.push([name,input]);return {data:identity,error:identityError}}
  };
  const module={exports:{}};
- vm.runInNewContext(routeSource,{module,exports:module.exports,Response,URL,require:id=>id==='next/headers'?{cookies:async()=>({delete:name=>calls.push(['delete_cookie',name])})}:id.includes('auth-email')?{authEmailEnabled:emailEnabled}:{pilotClient:async()=>client}});
+ vm.runInNewContext(routeSource,{module,exports:module.exports,Response,URL,require:(id)=>(intlTestModule(id)??(id=>id==='next/headers'?{cookies:async()=>({delete:name=>calls.push(['delete_cookie',name])})}:id.includes('auth-email')?{authEmailEnabled:emailEnabled}:{pilotClient:async()=>client})(id))});
  return {...module.exports,calls};
 }
 const post=(body,origin='https://preview.noima.example.invalid')=>new Request('https://preview.noima.example.invalid/api/pilot',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -93,7 +94,7 @@ test('joining remains open and returns only the verified account workspace, with
 test('OAuth callback exchanges the code and selects recovery from verified claims, never a caller redirect',async()=>{
  async function callback({recovery=false,error=null,code=true}={}){
   const module={exports:{}};
-  vm.runInNewContext(callbackSource,{module,exports:module.exports,URL,require:id=>id==='next/server'?{NextResponse:{redirect:url=>new Response(null,{status:307,headers:{Location:String(url)}})}}:{pilotClient:async()=>({auth:{exchangeCodeForSession:async()=>({error}),getClaims:async()=>({data:{claims:{amr:[{method:recovery?'recovery':'oauth'}]}}})}})}});
+  vm.runInNewContext(callbackSource,{module,exports:module.exports,URL,require:(id)=>(intlTestModule(id)??(id=>id==='next/server'?{NextResponse:{redirect:url=>new Response(null,{status:307,headers:{Location:String(url)}})}}:{pilotClient:async()=>({auth:{exchangeCodeForSession:async()=>({error}),getClaims:async()=>({data:{claims:{amr:[{method:recovery?'recovery':'oauth'}]}}})}})})(id))});
   return module.exports.GET(new Request(`https://preview.noima.example.invalid/auth/callback?${code?'code=test-code&':''}next=https://attacker.example.invalid`));
  }
  assert.equal((await callback()).headers.get('location'),'https://preview.noima.example.invalid/pilot');

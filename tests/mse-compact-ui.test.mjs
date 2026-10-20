@@ -1,4 +1,5 @@
 import {draftSaveStatus} from '../lib/clinical/draft-save-status.ts';
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';

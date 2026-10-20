@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import { after } from 'next/server';
 import { withPilot } from '@/lib/pilot/route';
 import { listPatientRows, request } from '@/lib/patients/demo-runtime';
@@ -12,7 +13,7 @@ async function handlePOST(request:Request){
  const tester=body&&typeof body==='object'&&!Array.isArray(body)&&isClinicalId((body as Record<string,unknown>).tester)
   ?String((body as Record<string,unknown>).tester)
   :'';
- if(!tester)return Response.json({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
+ if(!tester)return errorJson({error:'Λείπει η δοκιμαστική ταυτότητα.'},{status:400});
 
  const patients=await listPatientRows(tester);
  const cachedRaw=await requestCache(tester);

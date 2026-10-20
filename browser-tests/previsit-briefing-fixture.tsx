@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 // Browser-only synthetic composition; never imported by an app route.
 import React from 'react';
 import {createRoot} from 'react-dom/client';
@@ -27,4 +28,4 @@ window.fetch=async(input,init)=>{
  return fetchOriginal(input,init);
 };
 const noop=()=>{};
-createRoot(document.getElementById('root')!).render(<main className="qa-brief-shell"><p className="qa-brief-disclaimer">Συνθετικό παράδειγμα — όχι πραγματικός φάκελος ασθενούς</p><div className="qa-brief-layout"><section className="qa-brief-agenda"><h2>Πρόγραμμα ημέρας</h2><div>10:00 · Συνθετικός Ασθενής · Επανεξέταση</div></section><aside className="qa-brief-panel"><span className="qa-brief-patient">Συνθετικός Ασθενής</span><ClinicalSummary bundle={bundle} compact overview onSessions={noop} onPsychometrics={noop} onMedications={noop} onHistory={noop}/></aside></div></main>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{<main className="qa-brief-shell"><p className="qa-brief-disclaimer">Συνθετικό παράδειγμα — όχι πραγματικός φάκελος ασθενούς</p><div className="qa-brief-layout"><section className="qa-brief-agenda"><h2>Πρόγραμμα ημέρας</h2><div>10:00 · Συνθετικός Ασθενής · Επανεξέταση</div></section><aside className="qa-brief-panel"><span className="qa-brief-patient">Συνθετικός Ασθενής</span><ClinicalSummary bundle={bundle} compact overview onSessions={noop} onPsychometrics={noop} onMedications={noop} onHistory={noop}/></aside></div></main>}</LocaleFixture>);

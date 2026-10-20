@@ -1,4 +1,5 @@
 'use client';
+import {useTranslations} from 'next-intl';
 import {useEffect,useState} from 'react';
 import PatientWorkspace from './PatientWorkspace';
 import fixture from '@/lib/clinical/treatment-preview.json';
@@ -6,6 +7,8 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {simulateVisitWrite} from '@/lib/patients/visit-simulation';
 const storageKey='noima-custom-visits-synthetic-v1';
 export default function CustomVisitPreview(){
+ const t=useTranslations();
+
  const [ready,setReady]=useState(false);
  useEffect(()=>{
   let bundle=structuredClone(fixture) as unknown as PatientBundle;
@@ -33,5 +36,5 @@ export default function CustomVisitPreview(){
   window.fetch=localFetch;setReady(true);
   return()=>{if(window.fetch===localFetch)window.fetch=original};
  },[]);
- return <>{ready?<><p className="record-state" role="status">Απομονωμένη συνθετική δοκιμή · Οι αλλαγές διατηρούνται με refresh σε αυτό το tab · Χωρίς εγγραφές στη βάση</p><PatientWorkspace patientRef={fixture.patient.id}/></>:<p className="record-state">Άνοιγμα συνθετικής δοκιμής…</p>}</>;
+ return <>{ready?<><p className="record-state" role="status">{t('current.m182')}</p><PatientWorkspace patientRef={fixture.patient.id}/></>:<p className="record-state">{t('current.m183')}</p>}</>;
 }

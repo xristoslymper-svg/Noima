@@ -1,4 +1,10 @@
 'use client';
+import {useSystemMessage} from '@/i18n/system-message';
+
+import {useLocale} from 'next-intl';
+
+import {useTranslations} from 'next-intl';
+
 import {useEffect,useId,useMemo,useRef,useState} from 'react';
 import {CalendarDays,CalendarPlus} from 'lucide-react';
 import {getDemoTesterId} from '@/lib/demo-tester';
@@ -7,6 +13,10 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {upcomingAppointments} from '@/lib/clinical/patient-record';
 import styles from './VisitNextAppointment.module.css';
 export default function VisitNextAppointment({bundle,reload,registerFlusher,onDirtyChange,showHeading=true,initialExpanded=false,onSaved,onCancel,onBusyChange,appointmentType='follow_up'}:{bundle:PatientBundle;reload:()=>Promise<unknown>;registerFlusher:(k:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(k:string,d:boolean)=>void;showHeading?:boolean;initialExpanded?:boolean;onSaved?:()=>void;onCancel?:()=>void;onBusyChange?:(busy:boolean)=>void;appointmentType?:'follow_up'|'initial_assessment'}){
+ const t=useTranslations();
+ const systemMessage=useSystemMessage();
+ const locale=useLocale();
+
  const [date,setDate]=useState(''),[time,setTime]=useState('09:00'),[duration,setDuration]=useState('50'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [smsReminder,setSmsReminder]=useState(true);
  const [expanded,setExpanded]=useState(initialExpanded),[notice,setNotice]=useState('');
@@ -23,37 +33,37 @@ export default function VisitNextAppointment({bundle,reload,registerFlusher,onDi
   setExpanded(true);
   dateRef.current?.scrollIntoView({block:'center'});
   dateRef.current?.focus({preventScroll:true});
-  throw new Error('Αποθηκεύστε ή ακυρώστε το επόμενο ραντεβού πριν ολοκληρώσετε.');
+  throw new Error(t('calendar.saveOrCancelNext'));
  }}),[registerFlusher,date,busy]);
  useEffect(()=>{if(expanded)dateRef.current?.focus();else if(notice)triggerRef.current?.focus()},[expanded,notice]);
- async function save(){if(saveRef.current)return;saveRef.current=true;setBusy(true);setError('');setNotice('');let committed=false;try{const start=clinicLocalToIso(date,time);const signature=JSON.stringify({patient:bundle.patient.id,start,duration,smsReminder,appointmentType});if(!createRequest.current||createRequest.current.signature!==signature)createRequest.current={signature,id:crypto.randomUUID()};const r=await fetch('/api/calendar/command/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),action:'create',patient_id:bundle.patient.id,start_iso:start,end_iso:new Date(Date.parse(start)+Number(duration)*60000).toISOString(),appointment_type:appointmentType,request_id:createRequest.current.id,sms_reminder_enabled:smsReminder&&hasMobile})});const d=await r.json();if(!r.ok)throw new Error(d.error);committed=true;setDate('');try{const refreshed=await reload();if(!refreshed)setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.');else{setExpanded(false);setNotice('Το ραντεβού αποθηκεύτηκε.');onSaved?.()}}catch{setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.')}}catch(e){setError(committed?'Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.':e instanceof Error?e.message:'Δεν αποθηκεύτηκε το ραντεβού')}finally{saveRef.current=false;setBusy(false)}}
+ async function save(){if(saveRef.current)return;saveRef.current=true;setBusy(true);setError('');setNotice('');let committed=false;try{const start=clinicLocalToIso(date,time);const signature=JSON.stringify({patient:bundle.patient.id,start,duration,smsReminder,appointmentType});if(!createRequest.current||createRequest.current.signature!==signature)createRequest.current={signature,id:crypto.randomUUID()};const r=await fetch('/api/calendar/command/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tester:getDemoTesterId(),action:'create',patient_id:bundle.patient.id,start_iso:start,end_iso:new Date(Date.parse(start)+Number(duration)*60000).toISOString(),appointment_type:appointmentType,request_id:createRequest.current.id,sms_reminder_enabled:smsReminder&&hasMobile})});const d=await r.json();if(!r.ok)throw new Error(d.error);committed=true;setDate('');try{const refreshed=await reload();if(!refreshed)setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.');else{setExpanded(false);setNotice(t('calendar.appointmentSaved'));onSaved?.()}}catch{setError('Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.')}}catch(e){setError(committed?'Το ραντεβού αποθηκεύτηκε, αλλά η προβολή δεν ανανεώθηκε. Ανανεώστε τον φάκελο.':e instanceof Error?e.message:'Δεν αποθηκεύτηκε το ραντεβού')}finally{saveRef.current=false;setBusy(false)}}
  function cancel(){if(onCancel){onCancel();return}setDate('');setExpanded(false);setError('');setNotice('');requestAnimationFrame(()=>triggerRef.current?.focus())}
  return <div className={'visit-next '+styles.root}>
-  {showHeading&&<div className="visit-next-heading"><strong>Επόμενο ραντεβού</strong></div>}
+  {showHeading&&<div className="visit-next-heading"><strong>{t('calendar.nextAppointment')}</strong></div>}
   <div className={styles.summary}>
    <span className={styles.summaryIcon} aria-hidden="true"><CalendarDays size={19}/></span>
    <div className={styles.summaryText}>
-    {next?<><strong>{formatClinicAppointment(next.scheduled_start)}</strong><span>Προγραμματισμένο</span></>:<span>Δεν έχει προγραμματιστεί επόμενο ραντεβού.</span>}
+    {next?<><strong>{formatClinicAppointment(next.scheduled_start, locale)}</strong><span>{t('calendar.scheduled')}</span></>:<span>{t('calendar.noNextAppointment')}</span>}
    </div>
   </div>
-  {appointments.length>1&&<details className={styles.others}><summary>Άλλα προγραμματισμένα · {appointments.length-1}</summary>{appointments.slice(1).map(a=><p key={a.id}><strong>{formatClinicAppointment(a.scheduled_start)}</strong> · Προγραμματισμένο</p>)}</details>}
-  <button type="button" className={styles.trigger} ref={triggerRef} hidden={formOpen} aria-expanded={formOpen} aria-controls={formId} onClick={()=>{setNotice('');setExpanded(true)}}><CalendarPlus size={16} aria-hidden="true"/>{next?'Νέο ραντεβού':'Προγραμματισμός'}</button>
+  {appointments.length>1&&<details className={styles.others}><summary>{t('calendar.otherScheduledPrefix')} {appointments.length-1}</summary>{appointments.slice(1).map(a=><p key={a.id}><strong>{formatClinicAppointment(a.scheduled_start, locale)}</strong>  {t('calendar.scheduledSuffix')}</p>)}</details>}
+  <button type="button" className={styles.trigger} ref={triggerRef} hidden={formOpen} aria-expanded={formOpen} aria-controls={formId} onClick={()=>{setNotice('');setExpanded(true)}}><CalendarPlus size={16} aria-hidden="true"/>{next?t('calendar.newAppointment'):t('calendar.scheduleAction')}</button>
   {/* The form must stay mounted when visually collapsed, preserving dirty/save guards. */}
   <div id={formId} className={styles.form} hidden={!formOpen}>
-   <div className={styles.quickDates}>{quickDates.map(item=><button type="button" key={item.weeks} className={date===item.value?styles.quickSelected:undefined} aria-pressed={date===item.value} onClick={()=>setDate(item.value)} disabled={busy}>Σε {item.weeks} εβδομάδες</button>)}</div>
+   <div className={styles.quickDates}>{quickDates.map(item=><button type="button" key={item.weeks} className={date===item.value?styles.quickSelected:undefined} aria-pressed={date===item.value} onClick={()=>setDate(item.value)} disabled={busy}>{t('calendar.inWeeks',{count:item.weeks})}</button>)}</div>
    <div className={styles.fields}>
-    <label className={styles.field}>Ημερομηνία<input ref={dateRef} type="date" value={date} onInput={e=>setDate(e.currentTarget.value)} disabled={busy}/></label>
-    <label className={styles.field}>Ώρα Αθήνας<input type="time" value={time} onInput={e=>setTime(e.currentTarget.value)} disabled={busy}/></label>
-    <label className={styles.field}>Διάρκεια<select value={duration} onChange={e=>setDuration(e.target.value)} disabled={busy}><option value="30">30′</option><option value="50">50′</option><option value="60">60′</option></select></label>
+    <label className={styles.field}>{t('common.date')}<input ref={dateRef} type="date" value={date} onInput={e=>setDate(e.currentTarget.value)} disabled={busy}/></label>
+    <label className={styles.field}>{t('calendar.athensTime')}<input type="time" value={time} onInput={e=>setTime(e.currentTarget.value)} disabled={busy}/></label>
+    <label className={styles.field}>{t('calendar.duration')}<select value={duration} onChange={e=>setDuration(e.target.value)} disabled={busy}><option value="30">30′</option><option value="50">50′</option><option value="60">60′</option></select></label>
    </div>
-   <p className={styles.feedback}>Με τον προγραμματισμό το ραντεβού προστίθεται άμεσα στο ημερολόγιο, ακόμη και αν η επίσκεψη δεν έχει καταχωριστεί οριστικά.</p>
+   <p className={styles.feedback}>{t('current.m076')}</p>
    <div className={styles.actions}>
-    <button type="button" className={styles.save} disabled={!date||busy} onClick={()=>void save()}><CalendarPlus size={16} aria-hidden="true"/>{busy?'Αποθήκευση…':'Προγραμματισμός'}</button>
-    <button type="button" className={styles.cancel} disabled={busy} onClick={cancel}>Ακύρωση</button>
+    <button type="button" className={styles.save} disabled={!date||busy} onClick={()=>void save()}><CalendarPlus size={16} aria-hidden="true"/>{busy?t('common.saving'):t('calendar.scheduleAction')}</button>
+    <button type="button" className={styles.cancel} disabled={busy} onClick={cancel}>{t('common.cancel')}</button>
    </div>
-   <details className={styles.reminders}><summary>Επιλογές υπενθύμισης</summary><label><input type="checkbox" checked={smsReminder&&hasMobile} disabled={busy||!hasMobile} onChange={e=>setSmsReminder(e.target.checked)}/> Υπενθύμιση SMS · 24 ώρες πριν</label><small>{hasMobile?'Κινητό …'+mobile.slice(-4)+' · Προσομοίωση αποστολής':'Χρειάζεται έγκυρο κινητό στον φάκελο ασθενή.'} Δεν αποστέλλεται πραγματικό SMS.</small></details>
+   <details className={styles.reminders}><summary>{t('calendar.reminderOptions')}</summary><label><input type="checkbox" checked={smsReminder&&hasMobile} disabled={busy||!hasMobile} onChange={e=>setSmsReminder(e.target.checked)}/>  {t('calendar.smsReminder')}</label><small>{hasMobile?t('calendar.maskedMobilePrefix')+mobile.slice(-4)+t('calendar.simulationSuffix'):t('calendar.validMobileRequired')}  {t('calendar.noRealSms')}</small></details>
   </div>
-  {notice&&<p className={styles.feedback} role="status">{notice}</p>}
-  {error&&<p className={styles.error} role="alert">{error}</p>}
+  {notice&&<p className={styles.feedback} role="status">{systemMessage(notice)}</p>}
+  {error&&<p className={styles.error} role="alert">{systemMessage(error)}</p>}
  </div>;
 }

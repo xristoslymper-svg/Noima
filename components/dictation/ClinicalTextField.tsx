@@ -1,4 +1,9 @@
 'use client';
+import {languageNames} from '@/i18n/config';
+import {useSystemMessage} from '@/i18n/system-message';
+
+import {useLocale,useTranslations} from 'next-intl';
+
 import {readRecovery,writeRecovery} from '@/lib/clinical/browser-recovery';
 import {useEffect,useRef,useState} from 'react';
 import {Check,Mic,Pause,Play,RotateCcw,Sparkles,X} from 'lucide-react';
@@ -11,6 +16,10 @@ let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
+ const t=useTranslations();
+ const systemMessage=useSystemMessage();
+ const locale=useLocale();
+
  const synthetic=Boolean(p.toolsDisabled);
  const [snapshot,setSnapshot]=useState<WritingSnapshot>({phase:'idle',pending:null,error:'',confirmed:p.value});
  const [seconds,setSeconds]=useState(0),[undo,setUndo]=useState<{before:string;after:string;expires:number}|null>(null);
@@ -30,7 +39,7 @@ export default function ClinicalTextField(p:Props){
  },[machine,storageKey]);
  useEffect(()=>{if(!p.recovery||machine.snapshot.pending||writingBusy(machine.snapshot.phase))return;machine.recover(p.recovery);p.onRecoveryConsumed?.()},[machine,p.recovery,p.onRecoveryConsumed]);
  useEffect(()=>{try{if(snapshot.pending)writeRecovery(sessionStorage,storageKey,JSON.stringify(snapshot.pending));else if(mounted.current)sessionStorage.removeItem(storageKey)}catch{}},[snapshot.pending,storageKey]);
- useEffect(()=>p.registerFlusher(key,async()=>{try{if(audio.current)throw new Error();machine.assertSafe()}catch{textarea.current?.focus();revealControls();throw new Error('Ολοκληρώστε τον έλεγχο στο πεδίο «'+latest.current.title+'» πριν συνεχίσετε.')}}),[machine,key,p.registerFlusher]);
+ useEffect(()=>p.registerFlusher(key,async()=>{try{if(audio.current)throw new Error();machine.assertSafe()}catch{textarea.current?.focus();revealControls();throw new Error(t('clinical.reviewFieldPrefix')+latest.current.title+t('clinical.reviewFieldSuffix'))}}),[machine,key,p.registerFlusher]);
  useEffect(()=>{latest.current.onDirtyChange(key,pending||busy||awaitingAudio);latest.current.onPendingChange?.(pending||busy||awaitingAudio);return()=>{latest.current.onDirtyChange(key,false);latest.current.onPendingChange?.(false)}},[key,pending,busy,awaitingAudio]);
  useEffect(()=>{if(!pending&&!busy&&!awaitingAudio)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending,busy,awaitingAudio]);
  // Scroll only when starting or resizing, never on timer updates or user scroll.
@@ -52,59 +61,59 @@ export default function ClinicalTextField(p:Props){
  }
  function releaseCapture(token:symbol|null){if(activeCapture===token)activeCapture=null;if(lease.current===token)lease.current=null}
  function stop(){request.current?.abort();recorder.current?.cancel();recorder.current=null;audio.current=null;releaseCapture(lease.current);setCancelOpen(false);machine.stop()}
- function retryTranscription(){if(activeCapture||writingBusy(machine.snapshot.phase)){machine.error('Ολοκληρώστε πρώτα την ενεργή υπαγόρευση.');return}const blob=audio.current;if(!blob)return;machine.stop();const ticket=machine.start('permission');if(ticket!==null){const token=Symbol('clinical-capture');activeCapture=token;lease.current=token;setCancelOpen(false);void transcribe(blob,ticket,token)}}
+ function retryTranscription(){if(activeCapture||writingBusy(machine.snapshot.phase)){machine.error(t('clinical.finishActiveDictation'));return}const blob=audio.current;if(!blob)return;machine.stop();const ticket=machine.start('permission');if(ticket!==null){const token=Symbol('clinical-capture');activeCapture=token;lease.current=token;setCancelOpen(false);void transcribe(blob,ticket,token)}}
  async function transcribe(blob:Blob,id:number,token:symbol){
   if(!mounted.current||!machine.current(id)){releaseCapture(token);return}audio.current=blob;machine.phase('transcribing');const abort=new AbortController();request.current=abort;const timeout=setTimeout(()=>abort.abort(),95000);
-  try{const form=new FormData();form.set('audio',blob,blob.type.includes('mp4')?'dictation.m4a':'dictation.webm');const r=await fetch('/api/transcribe',{method:'POST',body:form,signal:abort.signal});const result=await r.json();if(!r.ok||typeof result.text!=='string'||!result.text.trim())throw new Error(result.error||'Δεν προέκυψε μεταγραφή. Δοκιμάστε ξανά.');if(mounted.current&&machine.current(id)){machine.transcribed(id,result.text);audio.current=null;setCancelOpen(false);textarea.current?.focus()}}
-  catch(e){if(mounted.current&&machine.current(id))machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:'Η μεταγραφή δεν ολοκληρώθηκε. Ο ήχος παραμένει διαθέσιμος για νέα προσπάθεια.')}
+  try{const form=new FormData();form.set('audio',blob,blob.type.includes('mp4')?'dictation.m4a':'dictation.webm');const r=await fetch('/api/transcribe',{method:'POST',body:form,signal:abort.signal});const result=await r.json();if(!r.ok||typeof result.text!=='string'||!result.text.trim())throw new Error(result.error||t('errors.emptyTranscript'));if(mounted.current&&machine.current(id)){machine.transcribed(id,result.text);audio.current=null;setCancelOpen(false);textarea.current?.focus()}}
+  catch(e){if(mounted.current&&machine.current(id))machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:t('errors.transcriptAudioPreserved'))}
   finally{clearTimeout(timeout);releaseCapture(token)}
  }
  async function record(){
   if(writingBusy(machine.snapshot.phase))return;
-  if(activeCapture){machine.error('Ολοκληρώστε πρώτα την ενεργή υπαγόρευση.');return}
-  if(audio.current){machine.error('Υπάρχει ήχος προς μεταγραφή. Δοκιμάστε ξανά ή απορρίψτε τον πρώτα.');return}
+  if(activeCapture){machine.error(t('clinical.finishActiveDictation'));return}
+  if(audio.current){machine.error(t('clinical.pendingAudioHelp'));return}
   const id=machine.start('permission');if(id===null)return;const token=Symbol('clinical-capture');activeCapture=token;lease.current=token;setCancelOpen(false);setUndo(null);audio.current=null;setSeconds(0);
   const capture=new FieldRecorder((state,time)=>{if(mounted.current&&machine.current(id)){setSeconds(time);machine.phase(state)}},blob=>void transcribe(blob,id,token),error=>{releaseCapture(token);if(mounted.current)machine.fail(id,error)});recorder.current=capture;
-  try{await capture.start()}catch(e){releaseCapture(token);if(mounted.current)machine.fail(id,e instanceof Error?e.message:'Δεν ήταν δυνατή η πρόσβαση στο μικρόφωνο.')}
+  try{await capture.start()}catch(e){releaseCapture(token);if(mounted.current)machine.fail(id,e instanceof Error?e.message:t('errors.microphoneAccess'))}
  }
  async function polish(){
   if(audio.current)return;
   const base=machine.snapshot.confirmed;if(base.trim().length<2)return;const id=machine.start('ai');if(id===null)return;setUndo(null);const abort=new AbortController();request.current=abort;const timeout=setTimeout(()=>abort.abort(),60000);
-  try{const r=await fetch('/api/clinical/polish',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({session_id:p.sessionId,section:p.section,field_key:p.fieldKey,text:base})});const result=await r.json();if(!r.ok)throw new Error(result.error||'Δεν δημιουργήθηκε πρόταση.');if(typeof result.text!=='string'||!result.text.trim())throw new Error('Η πρόταση δεν ήταν έγκυρη.');if(mounted.current){machine.polished(id,base,result.text,result.model);textarea.current?.focus()}}
-  catch(e){if(mounted.current)machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:'Η βελτίωση ακυρώθηκε. Το αρχικό κείμενο διατηρείται.')}
+  try{const r=await fetch('/api/clinical/polish',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({session_id:p.sessionId,section:p.section,field_key:p.fieldKey,text:base})});const result=await r.json();if(!r.ok)throw new Error(result.error||t('errors.suggestionCreate'));if(typeof result.text!=='string'||!result.text.trim())throw new Error(t('errors.suggestionInvalid'));if(mounted.current){machine.polished(id,base,result.text,result.model);textarea.current?.focus()}}
+  catch(e){if(mounted.current)machine.fail(id,e instanceof Error&&e.name!=='AbortError'?e.message:t('clinical.writingCancelled'))}
   finally{clearTimeout(timeout)}
  }
  async function accept(){
   if(writingBusy(machine.snapshot.phase)||audio.current)return;
-  try{const candidate=machine.assertReview();if(candidate.text.length>(p.maxLength??20000))throw new Error('Το κείμενο υπερβαίνει το επιτρεπόμενο μήκος.');machine.phase('saving');const provenance:WritingProvenance={kind:candidate.kind,original:candidate.base,transcript:candidate.transcript,reviewed_text:candidate.text,model:candidate.model,reviewed_at:new Date().toISOString()};await latest.current.onConfirm(candidate.text,{pending:candidate,provenance,rememberProposal:id=>machine.proposalId(id)});if(!mounted.current)return;machine.accepted(candidate.text);if(candidate.kind==='ai')setUndo({before:candidate.base,after:candidate.text,expires:Date.now()+10000});textarea.current?.focus()}
-  catch(e){machine.error(e instanceof Error?e.message:'Δεν αποθηκεύτηκε το κείμενο. Ελέγξτε την καταγραφή και δοκιμάστε ξανά.')}
+  try{const candidate=machine.assertReview();if(candidate.text.length>(p.maxLength??20000))throw new Error(t('validation.textTooLong'));machine.phase('saving');const provenance:WritingProvenance={kind:candidate.kind,original:candidate.base,transcript:candidate.transcript,reviewed_text:candidate.text,model:candidate.model,reviewed_at:new Date().toISOString()};await latest.current.onConfirm(candidate.text,{pending:candidate,provenance,rememberProposal:id=>machine.proposalId(id)});if(!mounted.current)return;machine.accepted(candidate.text);if(candidate.kind==='ai')setUndo({before:candidate.base,after:candidate.text,expires:Date.now()+10000});textarea.current?.focus()}
+  catch(e){machine.error(e instanceof Error?e.message:t('errors.clinicalTextSave'))}
  }
  async function confirm(){await accept()}
  function askCancel(){if(snapshot.phase==='permission'){stop();return}if(snapshot.phase==='recording')recorder.current?.pause();setCancelOpen(true)}
  const id=p.sessionId+'-'+p.section+'-'+p.fieldKey;
- const aiHint=awaitingAudio&&!busy?'Μεταγράψτε ή απορρίψτε πρώτα τον αποθηκευμένο ήχο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':pending?'Επιβεβαιώστε πρώτα το κείμενο.':snapshot.confirmed.trim().length<2?'Γράψτε ή υπαγορεύστε κείμενο πρώτα.':'Βελτίωση διατύπωσης';
- const micHint=awaitingAudio&&!capturing?'Μεταγράψτε ή απορρίψτε πρώτα τον αποθηκευμένο ήχο.':capturing?'Η υπαγόρευση είναι ενεργή σε αυτό το πεδίο.':busy?'Ολοκληρώστε πρώτα την ενεργή ενέργεια.':snapshot.pending?.kind==='ai'?'Αποδεχτείτε ή απορρίψτε πρώτα την πρόταση AI.':'Υπαγόρευση';
- const status=snapshot.phase==='permission'?'Μικρόφωνο…':snapshot.phase==='transcribing'?'Μεταγραφή…':snapshot.phase==='paused'?'Σε παύση':'Ηχογράφηση';
+ const aiHint=(awaitingAudio&&!busy?t('clinical.transcribeOrDiscardFirst'):busy?t('clinical.completeActiveAction'):pending?t('clinical.confirmTextFirst'):snapshot.confirmed.trim().length<2?t('clinical.enterTextFirst'):t('clinical.improveWording'))+' · '+t('clinical.newAiLanguage',{language:languageNames[locale]});
+ const micHint=awaitingAudio&&!capturing?t('clinical.transcribeOrDiscardFirst'):capturing?t('clinical.dictationActiveField'):busy?t('clinical.completeActiveAction'):snapshot.pending?.kind==='ai'?t('clinical.reviewAiFirst'):t('clinical.dictation');
+ const status=snapshot.phase==='permission'?t('clinical.microphoneLoading'):snapshot.phase==='transcribing'?t('clinical.transcriptionLoading'):snapshot.phase==='paused'?t('clinical.paused'):t('clinical.recording');
  return <div className={styles.field} data-capture={capturing||undefined}>
   <div className={styles.heading}>{p.sectionHeading?<h3 className="clinical-field-section-title"><label htmlFor={id}>{p.title}</label></h3>:<label htmlFor={id}>{p.title}</label>}<div className={styles.tools}>
-   <button type="button" title={micHint} aria-label={'Υπαγόρευση: '+p.title} aria-pressed={capturing} className={styles.mic} disabled={synthetic||busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&' Υπαγόρευση'}</button>
-   <button type="button" title={aiHint} aria-label={'Βελτίωση διατύπωσης: '+p.title} disabled={synthetic||busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>Διατύπωση AI</span></button>
+   <button type="button" title={micHint} aria-label={t('accessibility.dictationPrefix')+p.title} aria-pressed={capturing} className={styles.mic} disabled={synthetic||busy||awaitingAudio||snapshot.pending?.kind==='ai'} onClick={()=>void record()}><Mic size={15} aria-hidden="true"/>{p.fullMicLabel&&t('clinical.dictation')}</button>
+   <button type="button" title={aiHint} aria-label={t('accessibility.improveWordingPrefix')+p.title} disabled={synthetic||busy||pending||awaitingAudio||snapshot.confirmed.trim().length<2} onClick={()=>void polish()}><Sparkles size={15} aria-hidden="true"/><span>{t('clinical.aiWording')}</span></button>
   </div></div>
   <div className={styles.editor} data-writing-editor="true">
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>
-   {capturing&&<div ref={controls} className={styles.recorder} data-writing-recorder="inline" role="region" aria-label={'Υπαγόρευση: '+p.title} aria-controls={id}>
-    {cancelOpen?<><span className={styles.recordStatus}>Απόρριψη ήχου;</span><div className={styles.actions}><button type="button" onClick={stop}>Απόρριψη</button><button type="button" onClick={()=>setCancelOpen(false)}>Πίσω</button></div></>:<>
+   {capturing&&<div ref={controls} className={styles.recorder} data-writing-recorder="inline" role="region" aria-label={t('accessibility.dictationPrefix')+p.title} aria-controls={id}>
+    {cancelOpen?<><span className={styles.recordStatus}>{t('clinical.discardAudioQuestion')}</span><div className={styles.actions}><button type="button" onClick={stop}>{t('common.discard')}</button><button type="button" onClick={()=>setCancelOpen(false)}>{t('common.goBack')}</button></div></>:<>
      <span className={styles.recordStatus} role="status"><span className={styles.indicator} data-paused={snapshot.phase!=='recording'} aria-hidden="true"/>{status}</span>
      <div className={styles.actions}>
-      {(snapshot.phase==='recording'||snapshot.phase==='paused')&&<><time className={styles.timer}>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time><button type="button" title={snapshot.phase==='paused'?'Συνέχιση':'Παύση'} aria-label={snapshot.phase==='paused'?'Συνέχιση υπαγόρευσης':'Παύση υπαγόρευσης'} onClick={()=>snapshot.phase==='paused'?recorder.current?.resume():recorder.current?.pause()}>{snapshot.phase==='paused'?<Play size={16} aria-hidden="true"/>:<Pause size={16} aria-hidden="true"/>}</button><button type="button" className={styles.finish} aria-label="Ολοκλήρωση υπαγόρευσης" title="Ολοκλήρωση και μεταγραφή" onClick={()=>{machine.phase('transcribing');recorder.current?.finish()}}><Check size={16} aria-hidden="true"/>Τέλος</button></>}
-      <button type="button" aria-label="Ακύρωση ηχογράφησης" title="Ακύρωση ηχογράφησης" onClick={askCancel}><X size={16} aria-hidden="true"/></button>
+      {(snapshot.phase==='recording'||snapshot.phase==='paused')&&<><time className={styles.timer}>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time><button type="button" title={snapshot.phase==='paused'?t('common.resume'):t('common.pause')} aria-label={snapshot.phase==='paused'?t('accessibility.resumeDictation'):t('accessibility.pauseDictation')} onClick={()=>snapshot.phase==='paused'?recorder.current?.resume():recorder.current?.pause()}>{snapshot.phase==='paused'?<Play size={16} aria-hidden="true"/>:<Pause size={16} aria-hidden="true"/>}</button><button type="button" className={styles.finish} aria-label={t('accessibility.finishDictation')} title={t('clinical.finishAndTranscribe')} onClick={()=>{machine.phase('transcribing');recorder.current?.finish()}}><Check size={16} aria-hidden="true"/>{t('common.finish')}</button></>}
+      <button type="button" aria-label={t('accessibility.cancelRecording')} title={t('accessibility.cancelRecording')} onClick={askCancel}><X size={16} aria-hidden="true"/></button>
      </div>
     </>}
    </div>}
-   {pending&&!capturing&&<div className={styles.review}><span>{snapshot.pending?.kind==='ai'?'Πρόταση AI':seconds>=60?'Όριο 1 λεπτού · συνέχεια με το μικρόφωνο':'Μεταγραφή προς έλεγχο'}</span><button type="button" disabled={busy||awaitingAudio} onClick={()=>void confirm()}><Check size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Αποδοχή':'Επιβεβαίωση'}</button><button type="button" disabled={busy} onClick={()=>{stop();machine.cancel();textarea.current?.focus()}}><RotateCcw size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?'Διατήρηση αρχικού':'Ακύρωση'}</button></div>}
-   {snapshot.phase==='ai'&&<div role="status" className={styles.review}><span>Βελτίωση διατύπωσης…</span><button type="button" onClick={stop}>Ακύρωση</button></div>}
-   {snapshot.error&&<div role="alert" className={styles.error}>{snapshot.error}{audio.current&&<button type="button" onClick={retryTranscription}>Νέα προσπάθεια μεταγραφής</button>}<button type="button" onClick={()=>audio.current?askCancel():stop()}>{audio.current?'Απόρριψη ήχου':'Κλείσιμο'}</button>{cancelOpen&&!capturing&&<span> Απόρριψη του αποθηκευμένου ήχου; <button type="button" onClick={stop}>Απόρριψη</button><button type="button" onClick={()=>setCancelOpen(false)}>Πίσω</button></span>}</div>}
-   {undo&&undo.after===p.value&&<div className={styles.review}><button type="button" className={styles.undo} onClick={()=>{latest.current.onChange(undo.before);machine.sync(undo.before);setUndo(null)}}><RotateCcw size={13} aria-hidden="true"/> Αναίρεση</button></div>}
+   {pending&&!capturing&&<div className={styles.review}><span>{snapshot.pending?.kind==='ai'?t('clinical.aiSuggestion'):seconds>=60?t('clinical.dictationLimit'):t('clinical.transcriptForReview')}</span><button type="button" disabled={busy||awaitingAudio} onClick={()=>void confirm()}><Check size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?t('common.accept'):t('common.confirm')}</button><button type="button" disabled={busy} onClick={()=>{stop();machine.cancel();textarea.current?.focus()}}><RotateCcw size={14} aria-hidden="true"/>{snapshot.pending?.kind==='ai'?t('clinical.keepOriginal'):t('common.cancel')}</button></div>}
+   {snapshot.phase==='ai'&&<div role="status" className={styles.review}><span>{t('clinical.improvingWording')}</span><button type="button" onClick={stop}>{t('common.cancel')}</button></div>}
+   {snapshot.error&&<div role="alert" className={styles.error}>{systemMessage(snapshot.error)}{audio.current&&<button type="button" onClick={retryTranscription}>{t('clinical.retryTranscription')}</button>}<button type="button" onClick={()=>audio.current?askCancel():stop()}>{audio.current?t('clinical.discardAudio'):t('common.close')}</button>{cancelOpen&&!capturing&&<span>  {t('clinical.discardSavedAudioQuestion')} <button type="button" onClick={stop}>{t('common.discard')}</button><button type="button" onClick={()=>setCancelOpen(false)}>{t('common.goBack')}</button></span>}</div>}
+   {undo&&undo.after===p.value&&<div className={styles.review}><button type="button" className={styles.undo} onClick={()=>{latest.current.onChange(undo.before);machine.sync(undo.before);setUndo(null)}}><RotateCcw size={13} aria-hidden="true"/>  {t('common.undo')}</button></div>}
   </div>
  </div>;
 }

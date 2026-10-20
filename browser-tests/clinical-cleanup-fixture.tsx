@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 // Test-only real PatientSession composition. No app route imports this file.
 import React,{useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
@@ -62,4 +63,4 @@ function Fixture(){
  setBundle({...current});
 }} onFinishLater={async()=>{}} finalizing={false} finalizeError="" selectedSessionId={sessionId} onSelectSession={()=>{}} beforeNavigate={beforeNavigate}/></section></main>;
 }
-createRoot(document.getElementById('root')!).render(<Fixture/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{<Fixture/>}</LocaleFixture>);

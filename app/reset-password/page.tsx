@@ -1,6 +1,9 @@
+import {useTranslations} from 'next-intl';
 import AuthShell from '@/components/AuthShell';
 import {PasswordChangeForm} from '@/components/PasswordForms';
 
 export default function ResetPassword(){
- return <AuthShell><h1>Νέος κωδικός</h1><p>Ορίστε νέο κωδικό για τον λογαριασμό σας.</p><PasswordChangeForm recovery/></AuthShell>;
+ const t=useTranslations();
+
+ return <AuthShell><h1>{t('settings.newPassword')}</h1><p>{t('settings.setPasswordHelp')}</p><PasswordChangeForm recovery/></AuthShell>;
 }

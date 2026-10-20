@@ -1,9 +1,10 @@
+import {errorJson} from '@/i18n/errors';
 import { pilotClient } from '@/lib/pilot/server';
 import { cookies } from 'next/headers';
 import {authEmailEnabled} from '@/lib/pilot/auth-email';
 export const dynamic='force-dynamic';
 function reply(body:Record<string,unknown>,options:{status?:number}={}) {
- return Response.json(body,{...options,headers:{'Cache-Control':'private, no-store'}});
+ return (body.error?errorJson:Response.json)(body,{...options,headers:{'Cache-Control':'private, no-store'}});
 }
 function emailValue(value:unknown) {
  const email=typeof value==='string'?value.trim().toLowerCase():'';

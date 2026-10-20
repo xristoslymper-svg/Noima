@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -32,7 +33,7 @@ function route(intent,options={}){
  const runtime={request:async()=>{rosterReads++;return options.roster||[patient]},patientBundle:async()=>{bundleReads++;return bundle},rpc:async()=>options.tasks||[]};
  const process={env:{OPENAI_API_KEY:'test'}};
  const fetch=async(url,init)=>{providerBody=JSON.parse(init.body);return {ok:true,json:async()=>({output:[{content:[{type:'output_text',text:JSON.stringify(intent)}]}]})}};
- new Function('require','module','exports','process','fetch','Response','AbortSignal',compile('app/api/records/search/route.ts'))(id=>id.endsWith('pilot/route')?{withPilot:fn=>async req=>{const b=await req.json();return fn(new Request(req.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,tester:'workspace'})}))}}:id.endsWith('demo-runtime')?runtime:id.endsWith('identity')?{isClinicalId:value=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value)}:pure.exports,module,module.exports,process,fetch,Response,AbortSignal);
+ new Function('require','module','exports','process','fetch','Response','AbortSignal',compile('app/api/records/search/route.ts'))((id)=>(intlTestModule(id)??(id=>id.endsWith('pilot/route')?{withPilot:fn=>async req=>{const b=await req.json();return fn(new Request(req.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,tester:'workspace'})}))}}:id.endsWith('demo-runtime')?runtime:id.endsWith('identity')?{isClinicalId:value=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value)}:pure.exports)(id)),module,module.exports,process,fetch,Response,AbortSignal);
  return {post:body=>module.exports.POST(new Request('https://noima.test/api/records/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'Τι αγωγή παίρνει η Μαρία Παπαδοπούλου;',...body})})),stats:()=>({bundleReads,rosterReads,providerBody})};
 }
 test('ambiguous names require selection before clinical data is fetched',async()=>{

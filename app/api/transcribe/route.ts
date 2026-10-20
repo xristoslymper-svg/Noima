@@ -1,3 +1,4 @@
+import {errorJson} from '@/i18n/errors';
 import { withPilot } from '@/lib/pilot/route';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 async function handlePOST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json(
+    return errorJson(
       { error: "Η υπηρεσία μεταγραφής δεν είναι ρυθμισμένη.", code: "missing_api_key" },
       { status: 503 },
     );
@@ -17,7 +18,7 @@ async function handlePOST(request: Request) {
   try {
     incoming = await request.formData();
   } catch {
-    return Response.json({ error: "Μη έγκυρη ηχογράφηση." }, { status: 400 });
+    return errorJson({ error: "Μη έγκυρη ηχογράφηση." }, { status: 400 });
   }
 
   // Calendar/legacy dictation sends `file`; ClinicalTextField sends `audio`.
@@ -27,10 +28,10 @@ async function handlePOST(request: Request) {
   const file = incoming.get("file") ?? incoming.get("audio");
   const purpose = incoming.get("purpose") === "calendar" ? "calendar" : "clinical";
   if (!(file instanceof File) || file.size === 0) {
-    return Response.json({ error: "Δεν βρέθηκε αρχείο ήχου." }, { status: 400 });
+    return errorJson({ error: "Δεν βρέθηκε αρχείο ήχου." }, { status: 400 });
   }
   if (file.size > MAX_AUDIO_BYTES) {
-    return Response.json({ error: "Η ηχογράφηση είναι πολύ μεγάλη." }, { status: 413 });
+    return errorJson({ error: "Η ηχογράφηση είναι πολύ μεγάλη." }, { status: 413 });
   }
 
   const body = new FormData();
@@ -57,7 +58,7 @@ async function handlePOST(request: Request) {
     });
 
     if (!response.ok) {
-      return Response.json(
+      return errorJson(
         { error: "Η μεταγραφή δεν ολοκληρώθηκε. Δοκιμάστε ξανά.", code: "transcription_failed" },
         { status: 502 },
       );
@@ -66,7 +67,7 @@ async function handlePOST(request: Request) {
     const data = (await response.json()) as { text?: string };
     const text = data.text?.trim();
     if (!text) {
-      return Response.json(
+      return errorJson(
         { error: "Δεν αναγνωρίστηκε ομιλία.", code: "empty_transcript" },
         { status: 422 },
       );
@@ -75,7 +76,7 @@ async function handlePOST(request: Request) {
     return Response.json({ text });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
-    return Response.json(
+    return errorJson(
       {
         error: timedOut
           ? "Η μεταγραφή άργησε πολύ. Δοκιμάστε ξανά."

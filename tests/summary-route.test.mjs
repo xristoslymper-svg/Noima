@@ -1,4 +1,5 @@
 import {withSummarySources} from '../lib/clinical/summary-sources.ts';
+import {intlTestModule} from './helpers/i18n.mjs';
 import {providerEvidence} from '../lib/clinical/provider-evidence.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';

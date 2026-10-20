@@ -1,4 +1,5 @@
 'use client';
+import {useTranslations} from 'next-intl';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {TeleconsultationWorkspace} from './TeleconsultationsPreview';
@@ -19,6 +20,8 @@ async function readVisit(patient:string,session:string,signal?:AbortSignal):Prom
  recordForVisit(d.bundle,patient,session);return d.bundle;
 }
 export default function TeleconsultationsConnected(){
+ const t=useTranslations();
+
  const [listing,setListing]=useState<Listing|null>(null),[connection,setConnection]=useState<RecordConnection|null>(null),[record,setRecord]=useState<FixtureRecord|null>(null),[patient,setPatient]=useState<DemoTelePatient|null>(null);
  const [error,setError]=useState(''),[loading,setLoading]=useState(true),[retry,setRetry]=useState(0),[busy,setBusy]=useState(false);
  const flight=useRef(false),alive=useRef(true);
@@ -58,5 +61,5 @@ export default function TeleconsultationsConnected(){
  const rows=[...(listing?.visits||[])].sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at)).map(visit=>{const linked=listing?.appointments.find(a=>a.session_id===visit.id);return {record:{patientId:visit.patient_id,sessionId:visit.id,version:visit.closure_version||0,notes:{transcript:'',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual' as const},assignments:[],appointment:{id:linked?.id||'visit:'+visit.id,patient_id:visit.patient_id,session_id:visit.id,status:visit.status==='completed'?'completed' as const:'scheduled' as const,scheduled_start:linked?.scheduled_start||visit.started_at,scheduled_end:linked?.scheduled_end||new Date(Date.parse(visit.started_at)+50*60000).toISOString()}},patient:patients.find(p=>p.id===visit.patient_id)!,active:visit.status==='draft'&&athensDay(visit.updated_at)===athensDay(Date.now()),completed:visit.status==='completed'};}).filter(row=>row.patient);
  const unstarted=(listing?.appointments||[]).filter(a=>!a.session_id&&a.status==='scheduled').map(a=>({record:{patientId:a.patient_id,sessionId:'appointment:'+a.id,version:0,notes:{transcript:'',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual' as const},assignments:[],appointment:{...a,session_id:'appointment:'+a.id,status:'scheduled' as const}},patient:patients.find(p=>p.id===a.patient_id)!,completed:false})).filter(row=>row.patient);
 
- return <>{loading?<main className="content" role="status">Φόρτωση επισκέψεων…</main>:error&&!listing?<main className="content" role="alert"><p>{error}</p><button className="small-button" onClick={()=>setRetry(n=>n+1)}>Δοκιμή ξανά</button><Link href="/patients">Άνοιγμα φακέλων ασθενών</Link></main>:<><TeleconsultationsLobby connected busy={busy} entries={[...rows,...unstarted]} patients={patients} onOpen={(r,p)=>void open(p,r)} onStart={p=>void open(p)}/>{busy&&<p className="content" role="status">Άνοιγμα επίσκεψης…</p>}{error&&<p className="content" role="alert">{error}</p>}</>}</>;
+ return <>{loading?<main className="content" role="status">{t('current.m238')}</main>:error&&!listing?<main className="content" role="alert"><p>{error}</p><button className="small-button" onClick={()=>setRetry(n=>n+1)}>{t('common.retry')}</button><Link href="/patients">{t('current.m239')}</Link></main>:<><TeleconsultationsLobby connected busy={busy} entries={[...rows,...unstarted]} patients={patients} onOpen={(r,p)=>void open(p,r)} onStart={p=>void open(p)}/>{busy&&<p className="content" role="status">{t('visits.openingVisit')}</p>}{error&&<p className="content" role="alert">{error}</p>}</>}</>;
 }

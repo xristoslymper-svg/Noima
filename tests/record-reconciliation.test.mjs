@@ -16,6 +16,15 @@ test('full and shell reloads cannot reopen a confirmed completed visit',()=>{
   assert.equal(result.sessions[0].status,'completed');assert.equal(result.sessions[0].version,3);
  }
 });
+test('a late lightweight shell preserves confirmed payment fields omitted from its projection',()=>{
+ const paid={id:'appointment-a',patient_id:patient.id,session_id:draft.id,status:'completed',payment_status:'paid',updated_at:'2026-10-12T12:00:00Z'};
+ const previous={...bundle([completed]),appointments:[paid]};
+ const shell={...bundle([completed]),appointments:[{id:paid.id,session_id:draft.id,status:'completed'}]};
+ assert.equal(reconcileRecord(previous,shell,'shell').appointments[0].payment_status,'paid');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[{...paid,payment_status:'pending',updated_at:'2026-10-12T11:00:00Z'}]},'shell').appointments[0].payment_status,'paid');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[{...paid,payment_status:'not_applicable',updated_at:'2026-10-12T13:00:00Z'}]},'shell').appointments[0].payment_status,'not_applicable');
+ assert.equal(reconcileRecord(previous,{...shell,appointments:[]},'shell').appointments.length,0);
+});
 test('closure version is independent and an empty newer field remains an intentional clear',()=>{
  const current={...draft,version:4,closure_version:7,closure_draft:{clinical_state_summary:''}};
  const late={...draft,version:5,closure_version:6,closure_draft:{clinical_state_summary:'STALE'}};

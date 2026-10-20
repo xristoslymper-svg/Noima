@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -19,7 +20,7 @@ function presentation(file,mocks){
  const source=readFileSync(new URL('../components/patients/'+file,import.meta.url),'utf8');
  const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const module={exports:{}};
- new Function('require','module','exports',compiled)(name=>name in mocks?mocks[name]:require(name),module,module.exports);
+ new Function('require','module','exports',compiled)((id)=>(intlTestModule(id)??(name=>name in mocks?mocks[name]:require(name))(id)),module,module.exports);
  return module.exports.default;
 }
 const empty=()=>null;

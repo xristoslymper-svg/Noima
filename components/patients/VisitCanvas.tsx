@@ -1,4 +1,5 @@
 'use client';
+import {useTranslations} from 'next-intl';
 import PatientVisualIcon from './PatientVisualIcon';
 import {Children,isValidElement,useEffect,useRef,useState,type ReactNode} from 'react';
 import {ArrowDown,ArrowUp,ChevronDown,ChevronUp,GripVertical,Plus,SlidersHorizontal} from 'lucide-react';
@@ -12,6 +13,8 @@ type Shared={bundle:PatientBundle;session:DemoSession;reload:()=>Promise<unknown
 const titles:Record<string,string>={notes:'Σημειώσεις επίσκεψης',interview:'Αναφορά ασθενούς',clinical:'Κλινική εικόνα & απόφαση',medication:'Αγωγή',mse:'Ψυχική κατάσταση (MSE)',risk:'Εκτίμηση κινδύνου',measures:'Ψυχομετρικές μετρήσεις',scores:'Ψυχομετρικές μετρήσεις',assessment:'Κλινική εκτίμηση',plan:'Πλάνο & επανέλεγχος',appointment:'Επόμενο ραντεβού',history:'Ιστορικό'};
 const empty=()=>normalizeVisitLayout(null);
 export default function VisitCanvas(p:Shared&{children:ReactNode;toolbarActions?:ReactNode;toolbarContext?:ReactNode}){
+ const t=useTranslations();
+
  const [layout,setLayout]=useState<VisitLayout>(empty),[ready,setReady]=useState(false),[editing,setEditing]=useState(false),[title,setTitle]=useState(''),[error,setError]=useState('');
  const dragging=useRef('');
  const storageKey=visitLayoutStorageKey(p.bundle.patient.tester_id,p.session.session_type);
@@ -31,7 +34,7 @@ export default function VisitCanvas(p:Shared&{children:ReactNode;toolbarActions?
  function add(){const name=title.trim();if(!name||name.length>100||layout.templates.length>=20)return;const id=customSectionKey(crypto.randomUUID());update({...layout,order:[...order,id],templates:[...layout.templates,{id,title:name}]});setTitle('')}
  return <div>
   <div className={styles.toolbar}>{p.toolbarContext&&<div className={styles.context}>{p.toolbarContext}</div>}<div className={styles.toolbarActions}>{p.toolbarActions}<button type="button" aria-pressed={editing} disabled={!ready} onClick={()=>setEditing(v=>!v)}><SlidersHorizontal size={15} aria-hidden="true"/> {editing?'Τέλος προσαρμογής':'Προσαρμογή καταγραφής'}</button></div></div>
-  {editing&&<p className={styles.hint}>Σύρε τις ενότητες ή χρησιμοποίησε τα βέλη. Η διάταξη θυμάται τον χώρο σου και τον τύπο επίσκεψης σε αυτόν τον browser. Δεν αλλάζει τις κλινικές συνδέσεις.</p>}
+  {editing&&<p className={styles.hint}>{t('current.m240')}</p>}
   {error&&<p role="alert">{error}</p>}
   <div className={editing?styles.customizing:undefined}><div className={styles.blocks}>{order.map((id,index)=>{const block=all.find(b=>b.id===id)!;if(block.fixed)return <div key={id}>{block.node}</div>;const collapsed=layout.collapsed.includes(id);return <section className={styles.block} key={id} aria-label={'Ενότητα: '+block.title} onDragOver={e=>{if(editing)e.preventDefault()}} onDrop={e=>{e.preventDefault();if(editing&&dragging.current&&dragging.current!==id)move(dragging.current,id);dragging.current=''}}>
    <div className={editing||collapsed?styles.tools:styles.quick}>
@@ -41,15 +44,17 @@ export default function VisitCanvas(p:Shared&{children:ReactNode;toolbarActions?
    </div>
    <div hidden={collapsed}>{block.node}</div>
   </section>})}</div>
-  {editing&&<aside className={styles.sidebar}><h3>Προσθήκη ενότητας</h3><div className={styles.add}><label>Τίτλος νέας ενότητας<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100} placeholder="π.χ. Ύπνος & καθημερινότητα"/></label><button type="button" disabled={!title.trim()||layout.templates.length>=20} onClick={add}><Plus size={15}/> Προσθήκη ενότητας</button></div><p className={styles.hint}>Οι νέες ενότητες αποθηκεύονται στην ίδια επίσκεψη. Μετά την καταχώριση είναι διαθέσιμες στη Σύνοψη ως αφηγηματική καταγραφή· δεν δημιουργούν αυτόματα διάγνωση ή αλλαγή αγωγής.</p><button type="button" onClick={()=>update(empty())}>Επαναφορά αρχικής διάταξης</button><p className={styles.hint}>Η επαναφορά δεν διαγράφει αποθηκευμένες ενότητες ή σημειώσεις.</p></aside>}</div>
+  {editing&&<aside className={styles.sidebar}><h3>{t('current.m241')}</h3><div className={styles.add}><label>{t('current.m242')}<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100} placeholder={t('current.m248')}/></label><button type="button" disabled={!title.trim()||layout.templates.length>=20} onClick={add}><Plus size={15}/>{t('current.m241')}</button></div><p className={styles.hint}>{t('current.m243')}</p><button type="button" onClick={()=>update(empty())}>{t('current.m244')}</button><p className={styles.hint}>{t('current.m245')}</p></aside>}</div>
  </div>;
 }
 function CustomVisitSection(p:Shared&{sectionKey:string;title:string;existing?:DemoSection}){
+ const t=useTranslations();
+
  const base=p.existing?readCustomSection(p.existing.content):{title:p.title,body:''};
  const key='section:'+p.sectionKey;
  const draft=useClinicalDraft({storageKey:p.session.id+':'+key,initial:base.body,version:p.existing?.version??null,write:async(content,version)=>{const result=await saveCustom({action:'save_custom_section',session_id:p.session.id,section_key:p.sectionKey,title:base.title,content,expected_version:version});return {value:readCustomSection(result.section.content).body,version:result.section.version}},onSaved:p.reload,onDirty:dirty=>p.onDirtyChange(key,dirty)});
  const [comparison,setComparison]=useState<DemoSection|null|undefined>();
  useEffect(()=>p.registerFlusher(key,draft.flush),[p.registerFlusher,key,draft.flush]);
- return <div className={styles.custom}><label>{base.title}<textarea rows={4} maxLength={20000} value={draft.value} placeholder="Γράψε τις σημειώσεις σου…" onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})}/></label><p role="status">{draftSaveStatus({saving:draft.saving,dirty:draft.dirty,error:draft.error,savedAt:draft.savedAt,recorded:Boolean(p.existing)})}</p>{draft.error&&<><button type="button" onClick={()=>void draft.flush().catch(()=>{})}>Επανάληψη αποθήκευσης</button><button type="button" onClick={()=>void p.reload().then(b=>setComparison((b as PatientBundle).sections.find(s=>s.session_id===p.session.id&&s.section_key===p.sectionKey)||null))}>Σύγκριση με αποθηκευμένο</button></>}{comparison!==undefined&&<div className="conflict-review"><p>Το δικό σου κείμενο διατηρείται.</p><p className={styles.read}>{comparison?readCustomSection(comparison.content).body:'Κενή ενότητα'}</p><button type="button" onClick={()=>{draft.resolve(draft.currentValue(),comparison?readCustomSection(comparison.content).body:'',comparison?.version??null);setComparison(undefined)}}>Διατήρηση του δικού μου</button><button type="button" onClick={()=>{draft.acceptServerPreservingLocal(comparison?readCustomSection(comparison.content).body:'',comparison?.version??null);setComparison(undefined)}}>Χρήση αποθηκευμένου με αντίγραφο ανάκτησης</button></div>}</div>;
+ return <div className={styles.custom}><label>{base.title}<textarea rows={4} maxLength={20000} value={draft.value} placeholder={t('current.m249')} onChange={e=>draft.change(e.target.value)} onBlur={()=>void draft.flush().catch(()=>{})}/></label><p role="status">{draftSaveStatus({saving:draft.saving,dirty:draft.dirty,error:draft.error,savedAt:draft.savedAt,recorded:Boolean(p.existing)})}</p>{draft.error&&<><button type="button" onClick={()=>void draft.flush().catch(()=>{})}>{t('visits.retrySave')}</button><button type="button" onClick={()=>void p.reload().then(b=>setComparison((b as PatientBundle).sections.find(s=>s.session_id===p.session.id&&s.section_key===p.sectionKey)||null))}>{t('visits.compareSaved')}</button></>}{comparison!==undefined&&<div className="conflict-review"><p>{t('current.m246')}</p><p className={styles.read}>{comparison?readCustomSection(comparison.content).body:'Κενή ενότητα'}</p><button type="button" onClick={()=>{draft.resolve(draft.currentValue(),comparison?readCustomSection(comparison.content).body:'',comparison?.version??null);setComparison(undefined)}}>{t('current.m247')}</button><button type="button" onClick={()=>{draft.acceptServerPreservingLocal(comparison?readCustomSection(comparison.content).body:'',comparison?.version??null);setComparison(undefined)}}>{t('current.m069')}</button></div>}</div>;
 }
 export function CustomVisitSectionsRead({bundle,sessionId}:{bundle:PatientBundle;sessionId:string}){return <>{bundle.sections.filter(s=>s.session_id===sessionId&&isCustomSection(s.section_key)).map(s=>{const value=readCustomSection(s.content);return <section className="visit-part" key={s.id}><header><h3><PatientVisualIcon name="notes"/>{value.title}</h3></header><p className={styles.read}>{value.body||'Δεν έχει καταγραφεί κείμενο.'}</p></section>})}</>}

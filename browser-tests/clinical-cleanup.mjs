@@ -45,14 +45,48 @@ try{
   assert.equal(session.closure_draft.clinical_state_summary,'LOCAL UNSAVED TEXT');
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  });
- await check('optional clinical fields retain section navigation and explicit registration review',{width:1280,height:1000},'/',async p=>{
+ await check('optional clinical fields keep navigation and register directly',{width:1280,height:1000},'/?register=1&empty=1',async p=>{
   assert.equal(await p.locator('[aria-label="Εκκρεμότητες ολοκλήρωσης"]').count(),0);
   assert.equal(await p.locator('sup[aria-label="Υποχρεωτικό"]').count(),0);
   await p.getByRole('navigation',{name:'Πλοήγηση επίσκεψης'}).getByRole('button',{name:'Κίνδυνος',exact:true}).click();
   assert.equal(await p.evaluate(()=>window.clinicalQA.writes.length),0);
   await p.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
-  await p.getByRole('region',{name:'Έλεγχος καταχώρισης'}).waitFor();
-  await p.getByText('Ελέγξτε όσα καταγράψατε. Όλα τα κλινικά πεδία είναι προαιρετικά· όσα αφήσατε κενά παραμένουν χωρίς καταγραφή.',{exact:true}).waitFor();
+  await p.waitForFunction(()=>window.clinicalQA.finalizations.length===1);
+  assert.equal(await p.getByRole('region',{name:'Έλεγχος καταχώρισης'}).count(),0);
+  const saved=await p.evaluate(()=>window.clinicalQA.bundle);
+  assert.equal(saved.sessions[0].status,'completed');assert.equal(saved.risks.length,0);
+  assert.ok(saved.sections.every(s=>!s.content.trim()));
+
+ });
+ await check('compact follow-up registers notes only once with the saved closure version',{width:1280,height:1000},'/?followup=1&register=1&empty=1',async p=>{
+  const notes=p.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.fill('ONLY CURRENT SYNTHETIC NOTES');
+  await p.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+  await p.waitForFunction(()=>window.clinicalQA.finalizations.length===1);
+  const state=await p.evaluate(()=>({bundle:window.clinicalQA.bundle,finalizations:window.clinicalQA.finalizations}));
+  assert.equal(state.bundle.sessions[0].status,'completed');
+  assert.equal(state.bundle.sessions[0].closure_draft.transcript,'ONLY CURRENT SYNTHETIC NOTES');
+  assert.equal(state.finalizations[0].closure,true);assert.equal(state.finalizations[0].closureVersion,state.bundle.sessions[0].closure_version);
+  assert.equal(state.bundle.risks.length,0);assert.equal(await p.getByRole('region',{name:'Έλεγχος καταχώρισης'}).count(),0);
+ });
+ await check('detailed follow-up registers without returning to the compact editor',{width:1280,height:1000},'/?followup=1&register=1&empty=1',async p=>{
+  await p.getByRole('button',{name:'Αναλυτική καταγραφή',exact:true}).click();
+  await p.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true}).fill('DETAILED CURRENT NOTES');
+  await p.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+  await p.waitForFunction(()=>window.clinicalQA.finalizations.length===1);
+  const state=await p.evaluate(()=>({bundle:window.clinicalQA.bundle,finalizations:window.clinicalQA.finalizations}));
+  assert.equal(state.finalizations[0].closure,true);
+  assert.equal(state.bundle.sessions[0].closure_draft.transcript,'DETAILED CURRENT NOTES');
+ });
+ await check('failed save preserves notes and blocks registration until retry succeeds',{width:1280,height:1000},'/?followup=1&register=1&empty=1&save-fail=1',async p=>{
+  const notes=p.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.fill('RETAIN THIS SYNTHETIC TEXT');
+  const register=p.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true});await register.click();
+  await p.getByRole('alert').filter({hasText:'Synthetic save failure'}).first().waitFor();
+  assert.equal(await notes.inputValue(),'RETAIN THIS SYNTHETIC TEXT');
+  assert.equal(await p.evaluate(()=>window.clinicalQA.finalizations.length),0);
+  assert.equal(await p.evaluate(()=>window.clinicalQA.bundle.sessions[0].status),'draft');
+  await p.evaluate(()=>window.clinicalQA.failSave=false);await register.click();
+  await p.waitForFunction(()=>window.clinicalQA.finalizations.length===1);
+  assert.equal(await p.evaluate(()=>window.clinicalQA.bundle.sessions[0].closure_draft.transcript),'RETAIN THIS SYNTHETIC TEXT');
  });
  await check('MSE selection then clearing stays empty, not normal; values and save contract retained',{width:1280,height:1000},'/',async p=>{
   const mood=p.locator('[data-mse-domain="mood"]');await mood.locator(':scope>summary').click();const choice=mood.locator('.mse-options button').first();await choice.click();assert.equal(await choice.getAttribute('aria-pressed'),'true');await mood.getByRole('button',{name:/Εκκαθάριση επιλογών:/}).click();

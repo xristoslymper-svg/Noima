@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
 import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
-import {journeyReviewFingerprint} from '@/lib/clinical/patient-journey';
-import {JourneyReview} from './PatientJourney';
 import FollowupClosure from './FollowupClosure';
 import VisitCanvas,{CustomVisitSectionsRead} from './VisitCanvas';
 import RiskEditor from './RiskTreeEditor';
@@ -14,7 +12,7 @@ import VisitHistory from './VisitHistory';
 import VisitNextAppointment from './VisitNextAppointment';
 import VisitScores from './VisitScores';
 import MedicationTable from './MedicationTable';
-import {FollowupDraftProvider,FollowupField} from './FollowupDraft';
+import {FollowupDraftProvider,FollowupField,useFollowupDraft} from './FollowupDraft';
 import {followupFields} from '@/lib/clinical/followup-fields';
 import SectionEditor from './SectionEditor';
 import type { DemoRisk, DemoSection, DemoSession, PatientBundle } from '@/lib/patients/demo-runtime';
@@ -71,7 +69,8 @@ export default function PatientSession({
  onSelectSession:(sessionId?:string|null)=>void;
 }){
  const [detailed,setDetailed]=useState(false);
- const [reviewBundle,setReviewBundle]=useState<PatientBundle|null>(null);
+ const [registering,setRegistering]=useState(false);
+ const followupConsistency=useRef<((fresh:PatientBundle)=>void)|null>(null);
  const [narrativeMode,setNarrativeMode]=useState<Record<string,boolean>>({});
  const completed=bundle.sessions.filter(s=>s.status==='completed').sort((a,b)=>Date.parse(sessionClinicalTime(bundle,b))-Date.parse(sessionClinicalTime(bundle,a)));
  const requested=selectedSessionId?bundle.sessions.find(s=>s.id===selectedSessionId):undefined;
@@ -158,21 +157,21 @@ export default function PatientSession({
   setFinishingLater(true);
   try{await flushAll();await onFinishLater(draft.id)}catch{}finally{setFinishingLater(false)}
  }
- async function finalizeSafely(confirm=false){
-  if(finishing.current)return;finishing.current=true;
+ async function finalizeSafely(){
+  if(finishing.current)return;finishing.current=true;setRegistering(true);
   try{
    const fresh=await flushAll(true) as PatientBundle;
-   if(draft?.session_type==='follow_up'){setDetailed(false);return}
+   if(draft?.session_type==='follow_up')followupConsistency.current?.(fresh);
    const reference=draft?.session_type==='follow_up'?{section:{document:{kind:'mse' as const,fields:Object.values(mseTimeline(fresh,draft.id,draft.started_at).references).map(r=>r.field)}}}:null;
    const blocker=finalizationBlocker(fresh.sections.filter(s=>s.session_id===draft?.id),fresh.risks.find(r=>r.session_id===draft?.id),reference?.section.document,draft?.session_type==='initial_assessment');
    if(!draft)throw new Error('Δεν υπάρχει η επιλεγμένη καταγραφή.');
-   if(blocker){setReviewBundle(null);setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
-   if(!confirm){setReviewBundle(fresh);return}
-   if(reviewBundle&&journeyReviewFingerprint(fresh,draft.id)!==journeyReviewFingerprint(reviewBundle,draft.id)){setReviewBundle(fresh);setFlushError('Η καταγραφή άλλαξε μετά τον έλεγχο. Ελέγξτε τη νέα έκδοση και επιβεβαιώστε ξανά.');return}
-   await onFinalize(draft.id);
-  }catch{
-   // The concrete save/finalize error is already rendered in the workspace.
-  }finally{finishing.current=false}
+   if(blocker){setShowFinalizeGuidance(true);goToPart(blocker.anchor);return}
+   const saved=fresh.sessions.find(s=>s.id===draft.id);
+   if(!saved||saved.patient_id!==bundle.patient.id||saved.status!=='draft')throw new Error('Η επιλεγμένη επίσκεψη άλλαξε. Ανανεώστε τον φάκελο.');
+   await onFinalize(draft.id,draft.session_type==='follow_up',draft.session_type==='follow_up'?saved.closure_version||0:undefined);
+  }catch(cause){
+   setFlushError(cause instanceof Error?cause.message:'Δεν καταχωρίστηκε η επίσκεψη. Δοκιμάστε ξανά.');
+  }finally{finishing.current=false;setRegistering(false)}
  }
 
  if(selected){
@@ -194,7 +193,7 @@ export default function PatientSession({
  const sections=bundle.sections.filter(x=>x.session_id===draft.id);
  const mseReference=previousMse??previousMseReference(bundle,draft.id,draft.started_at);
  const timeline=draft.session_type==='follow_up'&&contextReady?mseTimeline(bundle,draft.id,draft.started_at):undefined;
- const sharedDraft=(view:React.ReactNode)=>draft.session_type==='follow_up'?<FollowupDraftProvider key={draft.id} bundle={bundle} session={draft} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}>{view}</FollowupDraftProvider>:view;
+ const sharedDraft=(view:React.ReactNode)=>draft.session_type==='follow_up'?<FollowupDraftProvider key={draft.id} bundle={bundle} session={draft} reload={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}><FollowupFinalizationGuard guard={followupConsistency}/>{view}</FollowupDraftProvider>:view;
  if(draft.session_type==='follow_up'&&!detailed)return sharedDraft(<FollowupClosure key={draft.id} bundle={bundle} session={draft} reload={reload} reloadContext={reloadContext} contextReady={contextReady} onDirtyChange={onDirtyChange} registerFlusher={registerFlusher} flushAll={flushAll} onDetailed={()=>void flushAll(true).then(()=>setDetailed(true)).catch(()=>{})} onFinalize={version=>onFinalize(draft.id,true,version)} onFinishLater={onFinishLater?finishLater:undefined} finalizing={finalizing} finalizeError={finalizeError||flushError} />);
  const blocker=finalizationBlocker(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null,draft.session_type==='initial_assessment');
  const remaining=finalizationIssues(sections,risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null,draft.session_type==='initial_assessment');
@@ -210,8 +209,7 @@ export default function PatientSession({
  const editor=(key:string,sectionTitle?:string,rows=2)=>{const d=definitions.find(([k])=>k===key)!;if(draft.session_type==='follow_up'&&key in followupFields)return <FollowupField sectionHeading={Boolean(sectionTitle)} field={followupFields[key as keyof typeof followupFields]} title={(sectionTitle||d[1])+(required.has(key)?' *':'')} rows={rows}/>;return <SectionEditor rows={rows} key={draft.id+':'+key} sessionId={draft.id} definition={{key,title:sectionTitle||d[1]}} sectionHeading={Boolean(sectionTitle)} existing={sections.find(s=>s.section_key===key)} proposals={bundle.proposals.filter(p=>p.session_id===draft.id&&p.section_key===key)} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>};
  const assessment=()=> draft.session_type==='initial_assessment'?<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={false} firstAssessment onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>:<VisitPart anchor="assessment" number={draft.session_type==='follow_up'?'07':'05'} title="Κλινική εκτίμηση">{narrativeMode.assessment?editor('assessment'):<StructuredVisitEditor key={draft.id+':assessment'} sessionId={draft.id} kind="assessment" existing={sections.find(s=>s.section_key==='assessment')} followup={draft.session_type==='follow_up'} onSaved={reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>}<button type="button" className="visit-text-button" onClick={()=>void flushAll(true).then(()=>setNarrativeMode(v=>({...v,assessment:!v.assessment}))).catch(()=>{})}>{narrativeMode.assessment?'Δομημένη αξιολόγηση':'Ελεύθερο κείμενο / έλεγχος υπαγόρευσης αξιολόγησης'}</button></VisitPart>;
  return sharedDraft(<section className="session-workspace runtime-session">
-  {reviewBundle&&<JourneyReview bundle={reviewBundle} session={reviewBundle.sessions.find(s=>s.id===draft.id)||draft} busy={flushing||finalizing} error={finalizeError||flushError} onBack={()=>setReviewBundle(null)} onConfirm={()=>void finalizeSafely(true)}/>}
-  <div hidden={Boolean(reviewBundle)}>
+  <fieldset disabled={registering||finalizing} style={{border:0,padding:0,margin:0,minWidth:0}}>
   {draft.session_type==='follow_up'&&<button type="button" onClick={()=>void flushAll(true).then(()=>setDetailed(false)).catch(()=>{})}>Σύντομη καταγραφή</button>}
   <div className="session-work-head">
    <div><h2>{draft.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</h2><p>{fmt(draft.started_at)}</p></div>
@@ -250,9 +248,15 @@ export default function PatientSession({
   {refreshError&&<div className="save-state" role="status">{refreshError}</div>}
   {finalizeError&&<div className="save-state error" role="alert">{finalizeError}</div>}
 
-  </div>
-  {completed.length>0&&!reviewBundle&&<div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ</span><CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/></div>}
+  </fieldset>
+  {completed.length>0&&<div className="previous-visits"><span className="kicker">ΠΡΟΗΓΟΥΜΕΝΕΣ</span><CompletedList sessions={completed} onSelect={id=>void flushAll().then(()=>onSelectSession(id)).catch(()=>{})}/></div>}
  </section>);
+}
+
+function FollowupFinalizationGuard({guard}:{guard:MutableRefObject<((fresh:PatientBundle)=>void)|null>}){
+ const {checkConsistency}=useFollowupDraft();
+ useEffect(()=>{guard.current=checkConsistency;return()=>{if(guard.current===checkConsistency)guard.current=null}},[guard,checkConsistency]);
+ return null;
 }
 
 function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:string)=>void}){

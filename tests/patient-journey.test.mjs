@@ -31,10 +31,10 @@ test('review reads the selected visit only and distinguishes already committed w
 test('orientation excerpts preserve the source text and visibly mark truncation',()=>{
  assert.equal(journeyExcerpt(' source text '),'source text');assert.equal(journeyExcerpt('abcdefgh',4),'abcd…');
 });
-test('both editors flush, validate and require explicit review confirmation before finalization',()=>{
+test('both editors register directly after flush and identity validation without a review screen',()=>{
  const full=readFileSync('components/patients/PatientSession.tsx','utf8'),compact=readFileSync('components/patients/FollowupClosure.tsx','utf8');
- for(const source of [full,compact]){assert.match(source,/JourneyReview/);assert.match(source,/if\(!confirm\)\{setReviewBundle\(fresh\);return\}/);assert.match(source,/flushAll\(true\)/);}
- assert.match(full,/hidden=\{Boolean\(reviewBundle\)\}/);assert.match(compact,/hidden=\{Boolean\(reviewBundle\)\}/);
+ for(const source of [full,compact]){assert.doesNotMatch(source,/JourneyReview|reviewBundle|setReviewBundle/);assert.match(source,/flushAll\(true\)/);assert.match(source,/saved\.patient_id!==bundle\.patient\.id/);assert.match(source,/saved\.status!=='draft'/);}
+ assert.match(full,/FollowupFinalizationGuard/);assert.match(full,/onFinalize\(draft.id,draft.session_type==='follow_up'/);assert.match(compact,/onFinalize\(saved.closure_version\|\|0\)/);
  const workspace=readFileSync('components/patients/PatientWorkspace.tsx','utf8');
  assert.ok(workspace.indexOf('confirmedCompletion(fresh.sessions')<workspace.indexOf("applyTab('timeline',null"));
  assert.match(workspace,/<VisitDialog open=\{tab==='record'\}/);assert.match(workspace,/JourneyCompletion/);

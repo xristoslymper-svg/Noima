@@ -1,7 +1,5 @@
 'use client';
 import {draftSaveStatus} from '@/lib/clinical/draft-save-status';
-import {journeyReviewFingerprint} from '@/lib/clinical/patient-journey';
-import {JourneyReview} from './PatientJourney';
 import {useEffect,useRef,useState} from 'react';
 import {CalendarDays,ChevronRight,Pencil} from 'lucide-react';
 import type {DemoSession,PatientBundle} from '@/lib/patients/demo-runtime';
@@ -31,7 +29,6 @@ export default function FollowupClosure(p:Props){
  function goToReadiness(anchor:string){const target=closureRoot.current?.querySelector<HTMLElement>('[data-mobile-section="'+anchor+'"]');if(target instanceof HTMLDetailsElement)target.open=true;target?.scrollIntoView({behavior:'smooth',block:'start'})}
  const [savedComparison,setSavedComparison]=useState<{value:ContinuityDraft;version:number}|null>(null);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
- const [reviewBundle,setReviewBundle]=useState<PatientBundle|null>(null);
  const [writing,setWriting]=useState<Record<string,boolean>>({});
  const currentDraft=useRef(draft);currentDraft.current=draft;
  const flight=useRef(false);
@@ -47,7 +44,7 @@ export default function FollowupClosure(p:Props){
   change('clinical_state_summary',updated);
  }
  function writingField(key:'transcript'|'clinical_state_summary'|'treatment_decision'|'next_review_focus'|'adherence'|'pinned_context',title:string,placeholder='',rows=2){return <FollowupField field={key} title={title} placeholder={placeholder} rows={rows} onPendingChange={pending=>setWriting(v=>v[key]===pending?v:{...v,[key]:pending})}/>}
- async function finalize(confirm=false){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;checkConsistency(fresh);const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=followupCompletionIssues(draft.currentValue(),sections,fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)})[0];if(blocker){setReviewBundle(null);throw new Error(blocker.message)}if(!confirm){setReviewBundle(fresh);return}if(reviewBundle&&journeyReviewFingerprint(fresh,session.id)!==journeyReviewFingerprint(reviewBundle,session.id)){setReviewBundle(fresh);setError('Η καταγραφή άλλαξε μετά τον έλεγχο. Ελέγξτε τη νέα έκδοση και επιβεβαιώστε ξανά.');return}await p.onFinalize(draft.version()||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
+ async function finalize(){if(flight.current)return;flight.current=true;setBusy(true);setError('');try{const fresh=await p.flushAll(true) as PatientBundle;checkConsistency(fresh);const timeline=mseTimeline(fresh,session.id,session.started_at);const sections=fresh.sections.filter(s=>s.session_id===session.id);const blocker=followupCompletionIssues(draft.currentValue(),sections,fresh.risks.find(r=>r.session_id===session.id),{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)})[0];if(blocker){throw new Error(blocker.message)}const saved=fresh.sessions.find(s=>s.id===session.id);if(!saved||saved.patient_id!==bundle.patient.id||saved.status!=='draft')throw new Error('Η επιλεγμένη επίσκεψη άλλαξε. Ανανεώστε τον φάκελο.');await p.onFinalize(saved.closure_version||0)}catch(e){setError(e instanceof Error?e.message:'Δεν ολοκληρώθηκε η επίσκεψη.')}finally{flight.current=false;setBusy(false)}}
  const risk=bundle.risks.find(r=>r.session_id===session.id);
  const mse=bundle.sections.find(s=>s.session_id===session.id&&s.section_key==='mse');
  const reference=previousMseReference(bundle,session.id,session.started_at);
@@ -56,8 +53,7 @@ export default function FollowupClosure(p:Props){
  const medicationChanges=bundle.medicationEvents.filter(e=>e.session_id===session.id&&e.event_type==='changed'&&!(bundle.medicationRevisions||[]).some(r=>r.event_id===e.id));
  const timeline=p.contextReady?mseTimeline(bundle,session.id,session.started_at):undefined;
  return <section ref={closureRoot} className={styles.closure+(mobileV2Enabled?` ${mobileStyles.followup}`:``)} data-clinical-followup="true">
-  {reviewBundle&&<JourneyReview bundle={reviewBundle} session={reviewBundle.sessions.find(s=>s.id===session.id)||session} busy={busy||p.finalizing} error={error||p.finalizeError} onBack={()=>setReviewBundle(null)} onConfirm={()=>void finalize(true)}/>}
-  <div hidden={Boolean(reviewBundle)}>
+  <fieldset disabled={busy||p.finalizing} style={{border:0,padding:0,margin:0,minWidth:0}}>
   <header className={styles.heading}><div><span className="kicker">ΚΑΤΑΓΡΑΦΗ ΕΠΙΣΚΕΨΗΣ</span><h2>Επανεξέταση</h2><p className={styles.cardMeta}>{formatClinicDateTime(session.started_at)} · Μη ολοκληρωμένη</p></div><button type="button" onClick={p.onDetailed} disabled={busy}>Αναλυτική καταγραφή <ChevronRight size={15} aria-hidden="true"/></button></header>
   <MobileFollowupTools/><VisitCanvas bundle={bundle} session={session} reload={p.reload} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}><section className={styles.card} data-mobile-section="notes" tabIndex={mobileV2Enabled?-1:undefined} aria-label="Σημειώσεις επίσκεψης">
    {writingField('transcript','Σημειώσεις επίσκεψης','Τι ανέφερε ο ασθενής, ποια ήταν η πορεία του, τι άλλαξε σήμερα…',4)}
@@ -120,7 +116,7 @@ export default function FollowupClosure(p:Props){
   {p.contextReady&&<div className="visit-finalize-guidance" aria-label="Εκκρεμότητες ολοκλήρωσης">{followupCompletionIssues(draft.value,bundle.sections.filter(s=>s.session_id===session.id),risk,timeline?{kind:'mse',fields:Object.values(timeline.references).map(r=>r.field)}:null).map((item,index)=><p key={item.anchor+index}><button type="button" onClick={()=>goToReadiness(item.anchor)}>{item.message}</button></p>)}</div>}
   <p className={styles.cardMeta}>«Συνέχεια αργότερα»: η καταγραφή αποθηκεύεται και προστίθεται στις εκκρεμότητες. Η επίσκεψη παραμένει ανοιχτή. Αγωγή και ραντεβού που αποθηκεύτηκαν ισχύουν ήδη στον φάκελο.</p>
   <div className={styles.footerActions}><button type="button" className={styles.actionPrimary} disabled={busy||p.finalizing||Boolean(med)||!p.contextReady} onClick={()=>void finalize()}>{busy||p.finalizing?'Καταχώριση…':'Καταχώριση επίσκεψης'}</button>{p.onFinishLater&&<button type="button" disabled={busy||p.finalizing||Boolean(med)} onClick={()=>void p.onFinishLater?.()}>Συνέχεια αργότερα</button>}</div>
-  </div>
+  </fieldset>
   {med&&<MedicationModal bundle={bundle} sessionId={session.id} initialMode={med.mode} initialMedicationId={med.id} onClose={()=>setMed(null)} onSaved={async()=>{await p.reloadContext();setMed(null)}}/>}
  </section>;
 }

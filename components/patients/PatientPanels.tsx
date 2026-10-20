@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
 import PatientVisualIcon from './PatientVisualIcon';
@@ -17,6 +18,8 @@ import readingStyles from './PatientReading.module.css';
 
 const date=(value?:string|null)=>value?new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value)):'—';
 export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
 const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.previousTreatments')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning','Κοινωνική λειτουργικότητα'],['allergies','Αλλεργίες']] as const;
@@ -72,13 +75,13 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
   </nav>
   <section id={sectionId+'-details'} className={'patient-details-card patient-demographics'+(incomplete?' incomplete':'')}>
    <div className="patient-details-head"><div><strong>{t('patients.details')}</strong><span>{incomplete?t('patients.basicDetailsIncomplete'):t('patients.basicDetailsComplete')}</span></div></div>
-   <div className={readingStyles.contactLine} aria-label={t('current.m034')}><span><strong>{t('current.m029')}</strong> {bundle.patient.phone||'Δεν έχει καταγραφεί'}</span><span><strong>Email:</strong> {bundle.patient.email||'Δεν έχει καταγραφεί'}</span></div>
+   <div className={readingStyles.contactLine} aria-label={t('current.m034')}><span><strong>{t('current.m029')}</strong> {bundle.patient.phone||ui('Δεν έχει καταγραφεί')}</span><span><strong>Email:</strong> {bundle.patient.email||ui('Δεν έχει καταγραφεί')}</span></div>
    <dl className="patient-demographics-list">{patientFields.map(([key,label])=>{
     const editing=editingPatientField===key,value=patientInitial()[key];
     const change=(value:string)=>{patientDirty.current=true;setPatientValues(v=>({...v,[key]:key==='age'?value.replace(/\D/g,''):key==='amka'?value.replace(/\D/g,'').slice(0,11):value}))};
     const cancel=()=>{patientDirty.current=false;setPatientValues(patientInitial());setEditingPatientField(null);setPatientState('')};
     return <div className="patient-demographics-row" key={key}>
-     <dt><label htmlFor={editing?'patient-detail-'+key:undefined}>{label}</label></dt>
+     <dt><label htmlFor={editing?'patient-detail-'+key:undefined}>{ui(label)}</label></dt>
      <dd>{editing?<form className="patient-demographics-editor" onSubmit={event=>{event.preventDefault();void savePatient().catch(()=>{})}} onKeyDown={event=>{if(event.key==='Escape'&&!patientSaving){event.preventDefault();cancel()}}}>
       {key==='chief_complaint'?<textarea id={'patient-detail-'+key} autoFocus disabled={patientSaving} rows={2} value={patientValues[key]} onChange={event=>change(event.target.value)}/>:<input id={'patient-detail-'+key} autoFocus disabled={patientSaving} required={key==='first_name'} type={key==='email'?'email':'text'} inputMode={key==='age'||key==='amka'?'numeric':key==='phone'||key==='landline'||key==='contact_phone'?'tel':undefined} value={patientValues[key]} onChange={event=>change(event.target.value)}/>}
       <div className="patient-demographics-actions"><button type="submit" disabled={patientSaving} aria-label={t('accessibility.saveFieldPrefix')+label} title={t('common.save')}><Check size={17}/></button><button type="button" disabled={patientSaving} onClick={cancel} aria-label={t('accessibility.cancelFieldPrefix')+label} title={t('common.cancel')}><X size={17}/></button></div>
@@ -91,15 +94,15 @@ const historyFields=[['psychiatric_history',t('history.psychiatric')],['medical_
   <section id={sectionId+'-notes'} className={readingStyles.anchor}><details className="patient-doctor-notes">
    <summary>{t('history.clinicalNotesTitle')} <span>{historyFields.some(([key])=>values[key]?.trim())?t('clinical.entryExists'):t('common.optionalPlural')}</span></summary>
    <p className="patient-reported-muted">{t('history.sharedNotesHelp')}</p>
-   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{state}</div>}
+   {state&&<div role={draft.error?'alert':'status'} className={draft.error?'save-state error':'save-state ok'}>{ui(state)}</div>}
    {draft.olderRecovery&&<details className="patient-older-notes">
     <summary>{t('current.m030')}</summary>
     <p className="patient-reported-muted">{t('history.localDraftHelp')}</p>
-    <div className="patient-reported-answers">{historyFields.filter(([key])=>draft.olderRecovery?.[key]?.trim()).map(([key,label])=><div key={key}><strong>{label}</strong><p>{draft.olderRecovery?.[key]}</p></div>)}</div>
+    <div className="patient-reported-answers">{historyFields.filter(([key])=>draft.olderRecovery?.[key]?.trim()).map(([key,label])=><div key={key}><strong>{ui(label)}</strong><p>{draft.olderRecovery?.[key]}</p></div>)}</div>
     <button type="button" className="patient-reported-link" onClick={draft.dismissOlderRecovery}>{t('current.m031')}</button>
    </details>}
-   {!editingHistory?<><div className={readingStyles.notesReading}>{historyFields.map(([key,label])=><article key={key}><strong>{label}</strong><p>{values[key]?.trim()||'Δεν έχει καταγραφεί κλινική σημείωση.'}</p></article>)}</div><button type="button" className="patient-reported-link" onClick={()=>setEditingHistory(true)}>{t('current.m032')}</button></>:<>
-   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{label}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={event=>{if(!(event.relatedTarget instanceof HTMLElement&&event.relatedTarget.dataset.historySave))void draft.flush().catch(()=>{})}} placeholder={t('history.addClinicalNotePlaceholder')}/></label>)}</div>
+   {!editingHistory?<><div className={readingStyles.notesReading}>{historyFields.map(([key,label])=><article key={key}><strong>{ui(label)}</strong><p>{values[key]?.trim()||'Δεν έχει καταγραφεί κλινική σημείωση.'}</p></article>)}</div><button type="button" className="patient-reported-link" onClick={()=>setEditingHistory(true)}>{t('current.m032')}</button></>:<>
+   <div className="history-editor-grid">{historyFields.map(([key,label])=><label key={key}>{ui(label)}<textarea rows={4} value={values[key]} onChange={e=>draft.change({...values,[key]:e.target.value})} onBlur={event=>{if(!(event.relatedTarget instanceof HTMLElement&&event.relatedTarget.dataset.historySave))void draft.flush().catch(()=>{})}} placeholder={t('history.addClinicalNotePlaceholder')}/></label>)}</div>
    <button type="button" className="record compact" data-history-save="true" onClick={()=>void save().then(()=>{if(!dirty.current&&!draft.hasConflict)setEditingHistory(false)}).catch(()=>{})} disabled={saving}>{saving?t('common.saving'):t('history.saveNotes')}</button>
    </>}
   </details></section>

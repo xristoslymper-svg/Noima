@@ -24,6 +24,7 @@ const messages:Record<string,string>={
  copilot_stale:'Ο φάκελος άλλαξε κατά την επεξεργασία. Επαναλάβετε την ερώτηση.',
 };
 async function post(req:Request){
+ const t=outputTranslator();
  const b=await req.json().catch(()=>null),started=Date.now();
  if(!b||typeof b.query!=='string'||b.query.trim().length<3||b.query.length>1500||(b.patient_id!==undefined&&!isClinicalId(b.patient_id))||b.conversation&&typeof b.conversation!=='string')return errorJson({error:'Γράψτε ερώτηση έως 1500 χαρακτήρες.'},{status:400});
  const usage:Usage={calls:0,input_tokens:0,output_tokens:0};
@@ -77,7 +78,7 @@ async function post(req:Request){
   }else if(intent.tool==='tasks'){
    const rows=await rpc('demo_task_list',{p_tester:b.tester});
    const tasks=(Array.isArray(rows)?rows:[]).filter(t=>t.patient_id===patient.id&&t.status==='open');
-   result={answer:tasks.length?t('clinical.openTasksPrefix'):t('clinical.noOpenTasks'),blocks:tasks.map(t=>({title:'Εκκρεμότητα',text:t.title+(t.due_at?' · '+t.due_at:''),sources:[{label:t('visits.record'),href:'/patients/demo/'+patient.id+(t.source_session_id?'?tab=record&session='+t.source_session_id:'')}]})),sources:[]};
+   result={answer:tasks.length?t('clinical.openTasksPrefix'):t('clinical.noOpenTasks'),blocks:tasks.map(task=>({title:'Εκκρεμότητα',text:task.title+(task.due_at?' · '+task.due_at:''),sources:[{label:t('visits.record'),href:'/patients/demo/'+patient.id+(task.source_session_id?'?tab=record&session='+task.source_session_id:'')}]})),sources:[]};
   }else if(intent.tool==='psychometrics'){
    const values=bundle.assessments.filter(a=>a.status==='completed').sort((a,b)=>(b.completed_at||b.created_at).localeCompare(a.completed_at||a.created_at));
    result={answer:values.length?t('clinical.recordedMeasuresNewest'):t('clinical.noMeasuresNotNegative'),blocks:values.map(a=>({title:a.instrument,text:String(a.score??t('clinical.scoreNotRecorded'))+' · '+(a.completed_at||a.created_at).slice(0,10),sources:[{label:a.instrument,href:'/patients/demo/'+patient.id+'?tab=psychometrics&assessment='+a.id}]})),sources:[]};

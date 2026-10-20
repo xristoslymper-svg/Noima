@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import Link from 'next/link';
 import {useEffect,useId,useMemo,useRef,useState} from 'react';
@@ -15,6 +16,8 @@ type Receipt={id:string;token:string;printLink:string};
 const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('el-GR').trim();
 const toolName=(tool:string)=>tool==='history'?'Αρχικό ιστορικό':tool;
 export default function LibraryIntakeLauncher({defaultTools=['history'],initialChannel='email',onClose,onDone}:{defaultTools?:string[];initialChannel?:Channel;lockTools?:boolean;onClose:()=>void;onDone?:()=>void}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const tools=defaultTools,channel=initialChannel,account=useAccountSession(),id=useId();
@@ -78,7 +81,7 @@ export default function LibraryIntakeLauncher({defaultTools=['history'],initialC
    if(event.key==='Tab'){const elements=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]')||[]).filter(el=>el.getClientRects().length>0);const firstElement=elements[0],lastElement=elements[elements.length-1];if(event.shiftKey&&document.activeElement===firstElement){event.preventDefault();lastElement?.focus()}else if(!event.shiftKey&&document.activeElement===lastElement){event.preventDefault();firstElement?.focus()}}
   }}>
    <button className={styles.close} type="button" onClick={close} disabled={busy} aria-label={t('common.close')}><X size={19}/></button>
-   <header className={styles.header}><p>{t('navigation.library')}</p><h2 id={id+'-title'}>{tools.map(toolName).join(' · ')} · {channel==='email'?'Email':channel==='tablet'?'Tablet':'Εκτύπωση'}</h2></header>
+   <header className={styles.header}><p>{t('navigation.library')}</p><h2 id={id+'-title'}>{tools.map(toolName).join(' · ')} · {channel==='email'?'Email':channel==='tablet'?'Tablet':ui('Εκτύπωση')}</h2></header>
    <form onSubmit={event=>{event.preventDefault();void send()}}>
     <fieldset disabled={locked} style={{border:0,padding:0,margin:0,minWidth:0}}><div className={styles.fields}>
      <div className={styles.field}><label htmlFor={id+'-patient'}>{t('patients.patient')}</label><div className={styles.patientSearch}><Search size={17} aria-hidden="true"/><input ref={search} id={id+'-patient'} type="search" autoComplete="off" value={query} placeholder={t('current.m113')} role="combobox" aria-autocomplete="list" aria-expanded={listOpen} aria-controls={id+'-results'} aria-activedescendant={listOpen&&active>=0?id+'-option-'+active:undefined} onFocus={()=>{if(query.trim().length>=2)setShowMatches(true)}} onChange={event=>{setQuery(event.target.value);setPatient(null);setIsNew(false);setEmail('');setShowMatches(true);setActive(-1)}} onKeyDown={event=>{if(event.key==='ArrowDown'&&matches.length){event.preventDefault();setShowMatches(true);setActive(value=>Math.min(value+1,matches.length-1))}else if(event.key==='ArrowUp'){event.preventDefault();setActive(value=>Math.max(0,value-1))}else if(event.key==='Enter'&&listOpen&&active>=0&&matches[active]){event.preventDefault();choose(matches[active])}else if(event.key==='Escape'&&listOpen){event.preventDefault();event.stopPropagation();setShowMatches(false)}}}/></div>
@@ -90,8 +93,8 @@ export default function LibraryIntakeLauncher({defaultTools=['history'],initialC
      {channel==='email'&&<div className={styles.field}><label htmlFor={id+'-email'}>{t('notifications.recipientEmail')}</label><input id={id+'-email'} type="email" required autoComplete="off" value={email} onChange={event=>setEmail(event.target.value)}/></div>}
      {channel==='tablet'&&<div className={styles.field}><label htmlFor={id+'-device'}>{t('history.device')}</label>{devices.length?<select id={id+'-device'} value={deviceId} onChange={event=>setDeviceId(event.target.value)}>{devices.map(device=><option key={device.id} value={device.id}>{device.label}</option>)}</select>:<p>{t('current.m109')}<Link href="/tablet" target="_blank" rel="noopener noreferrer">{t('current.m110')}</Link></p>}</div>}
     </div></fieldset>
-    {loading&&<p role="status">{t('common.loading')}</p>}{error&&<p className={styles.error} role="alert">{error}{!ready&&!loading&&<button type="button" onClick={()=>setReload(value=>value+1)}>{t('common.retryLoading')}</button>}</p>}{unknown&&<p className={styles.error}>{t('current.m111')}</p>}{done&&<p className={styles.success} role="status"><Check size={16}/>{done}</p>}{manual&&<a className={styles.submit} href={manual}>{t('current.m112')}</a>}
-    <footer className={styles.footer}><button type="button" onClick={close} disabled={busy}>{t('common.close')}</button><button type="submit" className={styles.submit} disabled={busy||!valid||Boolean(done)||unknown}>{busy?'Προετοιμασία…':prepared?'Επανάληψη ίδιας αποστολής':channel==='email'?'Αποστολή email':channel==='tablet'?'Αποστολή στο tablet':'Εκτύπωση'}</button></footer>
+    {loading&&<p role="status">{t('common.loading')}</p>}{error&&<p className={styles.error} role="alert">{ui(error)}{!ready&&!loading&&<button type="button" onClick={()=>setReload(value=>value+1)}>{t('common.retryLoading')}</button>}</p>}{unknown&&<p className={styles.error}>{t('current.m111')}</p>}{done&&<p className={styles.success} role="status"><Check size={16}/>{done}</p>}{manual&&<a className={styles.submit} href={manual}>{t('current.m112')}</a>}
+    <footer className={styles.footer}><button type="button" onClick={close} disabled={busy}>{t('common.close')}</button><button type="submit" className={styles.submit} disabled={busy||!valid||Boolean(done)||unknown}>{busy?ui('Προετοιμασία…'):prepared?ui('Επανάληψη ίδιας αποστολής'):channel==='email'?ui('Αποστολή email'):channel==='tablet'?ui('Αποστολή στο tablet'):ui('Εκτύπωση')}</button></footer>
    </form>
   </section>
  </div>;

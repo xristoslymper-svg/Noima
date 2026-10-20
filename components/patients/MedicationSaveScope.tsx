@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {createContext,useContext,useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
@@ -11,6 +12,8 @@ const SaveContext=createContext<Post|null>(null);
 export function useMedicationPost():Post{return useContext(SaveContext)||demoPost}
 /** Attribution is decided only for this write; it never becomes a hidden page mode. */
 export default function MedicationSaveScope({bundle,children}:{bundle:PatientBundle;children:ReactNode}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const current=useRef(bundle);current.current=bundle;
@@ -44,7 +47,7 @@ export default function MedicationSaveScope({bundle,children}:{bundle:PatientBun
   <span className="kicker">{t('current.m114')}</span><h2 id={title}>{t('current.m115')}</h2>
   {medication&&<p>{String(medication)}</p>}
   <p>{t('current.m116')}</p>
-  <label>{t('current.m117')}<select ref={selectRef} aria-label={t('current.m121')} disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">{t('current.m118')}</option>{drafts.map(s=><option key={s.id} value={s.id}>Μη ολοκληρωμένη · {formatClinicDateTime(s.started_at)} · {s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</option>)}</select></label>
+  <label>{t('current.m117')}<select ref={selectRef} aria-label={t('current.m121')} disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">{t('current.m118')}</option>{drafts.map(s=><option key={s.id} value={s.id}>Μη ολοκληρωμένη · {formatClinicDateTime(s.started_at)} · {s.session_type==='initial_assessment'?ui('Αρχική αξιολόγηση'):ui('Επανεξέταση')}</option>)}</select></label>
   <p className="visit-hint">{t('current.m119')}</p>
   <div className="entry-footer"><button type="button" disabled={busy} onClick={cancel}>{t('current.m120')}</button><button type="button" className="entry-primary" disabled={busy} onClick={()=>void confirm()}>{busy?'Αποθήκευση…':'Αποθήκευση αλλαγής'}</button></div>
  </section></div>}</SaveContext.Provider>;

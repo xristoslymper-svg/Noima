@@ -16,9 +16,10 @@ import PatientReportedHistory from './PatientReportedHistory';
 import {mobileV2Enabled} from '@/components/mobile/mobile-v2';
 import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import styles from './PatientRecord.module.css';
-export function recordDate(value:string){return value.length===10?new Intl.DateTimeFormat(intlLocale(locale),{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Athens'}).format(new Date(value+'T12:00:00Z')):formatClinicDateTime(value)}
+export function recordDate(value:string,locale:Locale='el'){return value.length===10?new Intl.DateTimeFormat(intlLocale(locale),{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Athens'}).format(new Date(value+'T12:00:00Z')):formatClinicDateTime(value,locale)}
 export default function PatientRecordSummary({bundle,reload,onVisit,onTimeline,onMeasurements,onTreatment,onHistory}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onVisit:(id?:string)=>void;onTimeline:()=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;onHistory:()=>void}){
  const t=useTranslations();
+ const locale=useLocale();
  const displayLabel=useOptionLabel();
 
  const record=patientRecord(bundle);

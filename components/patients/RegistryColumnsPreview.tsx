@@ -1,9 +1,12 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useEffect,useState} from 'react';
 import Patients from '@/app/patients/page';
 import {registrySimulation} from '@/lib/patients/registry-simulation';
 export default function RegistryColumnsPreview(){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const [ready,setReady]=useState(false),[notice,setNotice]=useState('');
@@ -23,7 +26,7 @@ export default function RegistryColumnsPreview(){
  },[]);
  return <div onClickCapture={event=>{const anchor=(event.target as HTMLElement).closest('a');if(anchor&&/^\/(patients\/(demo\/|new)|calendar)/.test(new URL(anchor.href,location.origin).pathname)){event.preventDefault();event.stopPropagation();setNotice('Συνθετικό παράδειγμα · οι ενέργειες ασθενών δεν εκτελούνται εδώ. Οι ρυθμίσεις στηλών λειτουργούν κανονικά.')}}}>
   <p className="record-state" role="status">{t('current.m180')}</p>
-  {notice&&<p className="record-state" role="status">{notice}</p>}
+  {notice&&<p className="record-state" role="status">{ui(notice)}</p>}
   {ready?<Patients/>:<p role="status">{t('current.m181')}</p>}
  </div>;
 }

@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useLocale} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
@@ -25,16 +26,7 @@ import { demoPost } from '@/lib/patients/demo-client';
 import { formatClinicDateTime } from '@/lib/clinic-time';
 import {activeVisitPart,finalizationBlocker,finalizationIssues,visitSteps,previousMseReference,sessionClinicalTime,mseTimeline} from '@/lib/clinical/visit-workspace-state';
 
-const definitions=[
- ['interview','Αναφορά ασθενούς & συμπτώματα','Αίτημα, συμπτώματα, πορεία και τι άλλαξε.'],
- ['mse','Εξέταση ψυχικής κατάστασης (MSE)','Στοχευμένα ευρήματα της σημερινής εξέτασης.'],
- ['assessment','Κλινική εκτίμηση','Διάγνωση / διαφορική, formulation και κλινική αποτίμηση.'],
- ['plan','Θεραπευτικό πλάνο','Αγωγή, παρεμβάσεις, παραπομπές και οδηγίες.'],
- ['review','Επανεκτίμηση','Χρονικός ορίζοντας και τι πρέπει να ελεγχθεί στην επίσκεψη.'],
- ['functioning','Λειτουργικότητα','Εργασία, σχέσεις, καθημερινότητα και ύπνος.'],
- ['effects','Παρενέργειες','Ανεπιθύμητες ενέργειες και επίδρασή τους.'],
- ['adherence','Λήψη αγωγής','Λήψη αγωγής, παραλείψεις και δυσκολίες.'],
-] as const;
+
 
 const required=new Set<string>();
 const fmt=(value?:string|null)=>value?formatClinicDateTime(value):'—';
@@ -75,7 +67,20 @@ export default function PatientSession({
  selectedSessionId:string|null;
  onSelectSession:(sessionId?:string|null)=>void;
 }){
+ const ui=useUiText();
+
  const t=useTranslations();
+const definitions=[
+ ['interview',t('clinical.patientReportSymptoms'),t('clinical.patientReportHelp')],
+ ['mse',t('clinical.mentalStatusExamination'),t('clinical.mseTodayHelp')],
+ ['assessment',t('clinical.assessment'),t('clinical.assessmentHelp')],
+ ['plan',t('clinical.treatmentPlan'),t('clinical.treatmentPlanHelp')],
+ ['review',t('clinical.review'),t('clinical.reviewHelp')],
+ ['functioning',t('clinical.functioning'),t('clinical.functioningHelp')],
+ ['effects',t('medications.sideEffects'),t('medications.sideEffectsHelp')],
+ ['adherence',t('medications.adherence'),t('medications.adherenceHelp')],
+] as const;
+const stepLabels={interview:t('visits.steps.interview'),mse:t('visits.steps.mse'),risk:t('visits.steps.risk'),history:t('visits.steps.history'),assessment:t('visits.steps.assessment'),diagnosis:t('visits.steps.diagnosis'),medication:t('visits.steps.medication'),plan:t('visits.steps.plan'),symptoms:t('visits.steps.symptoms'),adherence:t('visits.steps.adherence'),mseChanges:t('visits.steps.mseChanges'),psychometrics:t('visits.steps.psychometrics'),review:t('visits.steps.review')};
  const systemMessage=useSystemMessage();
 
  const [detailed,setDetailed]=useState(false);
@@ -250,7 +255,7 @@ export default function PatientSession({
   {remaining.length>0&&<div className="visit-finalize-guidance" aria-label={t('current.m048')}><strong>{t('current.m046')}</strong><ul>{remaining.map((item,index)=><li key={item.anchor+index}><button type="button" onClick={()=>goToPart(item.anchor)}>{item.message}</button></li>)}</ul></div>}
   <p className="visit-hint">{t('current.m047')}</p>
   <div className="finalize-bar">
-   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?'Αποθήκευση αλλαγών…':finalizing?'Καταχώριση…':'Καταχώριση επίσκεψης'}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση σημειώσεων…':'Συνέχεια αργότερα'}</button>}
+   <button onClick={()=>void finalizeSafely()} aria-describedby={showFinalizeGuidance&&blocker?'visit-finalize-guidance':undefined} disabled={finalizing||flushing||finishingLater}><Check size={16}/>{flushing&&dirtyCount>0?'Αποθήκευση αλλαγών…':finalizing?ui('Καταχώριση…'):ui('Καταχώριση επίσκεψης')}</button>{onFinishLater&&<button type="button" className="finalize-later" disabled={finalizing||flushing||finishingLater} onClick={()=>void finishLater()}>{finishingLater?'Αποθήκευση σημειώσεων…':'Συνέχεια αργότερα'}</button>}
    {showFinalizeGuidance&&blocker&&<span id="visit-finalize-guidance" className="visit-finalize-guidance" role="status">{systemMessage(blocker.message)} <button type="button" onClick={()=>goToPart(blocker.anchor)}>{t('common.goTo')}</button></span>}
   </div>
 

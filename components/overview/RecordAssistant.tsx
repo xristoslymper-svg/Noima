@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {languageNames} from '@/i18n/config';
 import {useSystemMessage} from '@/i18n/system-message';
 
@@ -110,6 +111,8 @@ export default function RecordAssistant({synthetic:forceSynthetic=false}:{synthe
  </div>,document.body);
 }
 export function OverviewShortcuts({searchOnly=false}:{searchOnly?:boolean}={}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const [query,setQuery]=useState(''),[patients,setPatients]=useState<SearchPatient[]>([]),[status,setStatus]=useState('');
@@ -130,7 +133,7 @@ export function OverviewShortcuts({searchOnly=false}:{searchOnly?:boolean}={}){
  function closeResults(){if(timer.current)clearTimeout(timer.current);pending.current?.abort();sequence.current++;setPatients([]);setStatus('')}
  return <div className={styles.shortcuts+(searchOnly?' '+styles.toolbarSearch:'')}>
   <div className={styles.searchWrap}><form onSubmit={event=>{event.preventDefault();void search()}}><Search size={16} aria-hidden="true"/><input aria-label={t('patients.searchPatient')} placeholder={t('patients.searchPatientPlaceholder')} maxLength={100} value={query} onKeyDown={event=>{if(event.key==='Escape')closeResults()}} onChange={event=>{sequence.current++;setQuery(event.target.value);setPatients([]);setStatus('')}}/>{!searchOnly&&<button disabled={query.trim().length<2} type="submit">{t('common.search')}</button>}</form>
-   {(patients.length>0||status)&&<div className={styles.results}><button className={styles.close} aria-label={t('accessibility.closeResults')} onClick={closeResults}>×</button><span role="status">{status}</span>{patients.map(patient=><Link key={patient.id} href={'/patients/demo/'+patient.id}>{patient.first_name} {patient.last_name}<small>{t('patients.recordDotPrefix')} {patient.id.slice(-6)}</small></Link>)}</div>}
+   {(patients.length>0||status)&&<div className={styles.results}><button className={styles.close} aria-label={t('accessibility.closeResults')} onClick={closeResults}>×</button><span role="status">{ui(status)}</span>{patients.map(patient=><Link key={patient.id} href={'/patients/demo/'+patient.id}>{patient.first_name} {patient.last_name}<small>{t('patients.recordDotPrefix')} {patient.id.slice(-6)}</small></Link>)}</div>}
   </div>
   {!searchOnly&&<><Link className={styles.primary} href="/calendar?new=1">{t('calendar.addAppointment')}</Link>
   <Link href="/patients/new">{t('patients.addNewPatient')}</Link></>}

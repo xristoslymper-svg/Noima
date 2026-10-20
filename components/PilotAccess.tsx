@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import LanguageSelector from '@/components/LanguageSelector';
 import {useTranslations} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
@@ -8,6 +9,8 @@ import AuthShell from '@/components/AuthShell';
 import {useAccountSession} from '@/components/AccountSessionBoundary';
 import {notifyAccountChange} from '@/lib/pilot/browser-session';
 export default function PilotAccess({activate=false}:{activate?:boolean}){
+ const ui=useUiText();
+
  const t=useTranslations();
  const systemMessage=useSystemMessage();
 
@@ -25,7 +28,7 @@ export default function PilotAccess({activate=false}:{activate?:boolean}){
   const r=await fetch('/api/pilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(activate?{action:'join',name}:{action:signup?'signup':'login',email,password})});const d=await r.json();if(!r.ok)throw new Error(d.error);
   if(d.confirmation_required){setMessage(t('settings.confirmationEmailHelp'));setSignup(false);setPassword('');}else {notifyAccountChange();window.location.replace(activate?'/':'/pilot');}
  }catch(e){setError(e instanceof Error?e.message:t('errors.actionFailed'))}finally{setBusy(false)}}
- return <AuthShell><h1>{activate?'Ο προσωπικός σας χώρος':signup?'Δημιουργία λογαριασμού' :'Σύνδεση στο NOIMA'}</h1>{activate&&<p className="account-email">{account?.email}</p>}<p>{activate?'Συμπληρώστε το όνομά σας μία φορά. Ο προσωπικός σας χώρος ξεκινά άδειος και είναι ορατός μόνο σε εσάς.':signup?'Δημιουργήστε τον προσωπικό σας χώρο.':'Συνεχίστε στον προσωπικό σας χώρο.'}</p>{!activate&&google&&<button className="auth-google" disabled={busy} onClick={()=>void googleLogin()}>{t('settings.continueGoogle')}</button>}{!activate&&google&&<small className="login-method-hint">{t('settings.emailAlternative')} NOIMA</small>}<form onSubmit={submit}><fieldset disabled={busy}>
+ return <AuthShell><h1>{activate?ui('Ο προσωπικός σας χώρος'):signup?ui('Δημιουργία λογαριασμού') :'Σύνδεση στο NOIMA'}</h1>{activate&&<p className="account-email">{account?.email}</p>}<p>{activate?ui('Συμπληρώστε το όνομά σας μία φορά. Ο προσωπικός σας χώρος ξεκινά άδειος και είναι ορατός μόνο σε εσάς.'):signup?'Δημιουργήστε τον προσωπικό σας χώρο.':'Συνεχίστε στον προσωπικό σας χώρο.'}</p>{!activate&&google&&<button className="auth-google" disabled={busy} onClick={()=>void googleLogin()}>{t('settings.continueGoogle')}</button>}{!activate&&google&&<small className="login-method-hint">{t('settings.emailAlternative')} NOIMA</small>}<form onSubmit={submit}><fieldset disabled={busy}>
  {activate?<><label>{t('common.fullName')}<input required minLength={2} maxLength={100} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label></>:<><label>Email<input type="email" required placeholder="doctor@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>{t('settings.password')}<input type="password" placeholder={signup?'Τουλάχιστον 12 χαρακτήρες':'Εισάγετε τον κωδικό σας'} required minLength={signup?12:1} maxLength={128} autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>{signup&&<small>{t('settings.passwordSignupHelp')}</small>}</>}
  <button className="pilot-primary" type="submit">{busy?t('common.pleaseWait'):activate?t('common.getStarted'):signup?t('settings.createAccount'):t('settings.signIn')}</button></fieldset></form>
  {!activate&&!signup&&<>{emailRecovery&&<Link href="/forgot-password">{t('settings.forgotPassword')}</Link>}<small>{t('settings.googleAccountHelp')}</small></>}

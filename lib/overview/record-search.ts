@@ -13,6 +13,7 @@ export function matchPatients(patients:SearchPatient[],name:string){
 }
 const date=(iso:string)=>new Intl.DateTimeFormat(intlLocale(outputLocale()),{timeZone:'Europe/Athens',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));
 export function recordAnswer(bundle:PatientBundle,topic:SearchTopic,now=Date.now()):SearchAnswer{
+ const t=outputTranslator();
  const patient={id:bundle.patient.id,first_name:bundle.patient.first_name,last_name:bundle.patient.last_name},base='/patients/demo/'+patient.id;
  const result=(answer:string,label:string,href:string):SearchAnswer=>({answer,patient,sources:[{label,href}]});
  if(topic==='medications'){

@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useLocale,useTranslations} from 'next-intl';
 import {useOptionLabel} from '@/i18n/option-labels';
 import PatientVisualIcon from './PatientVisualIcon';
@@ -12,6 +13,8 @@ import styles from './PatientRecord.module.css';
 import journeyStyles from './PatientJourney.module.css';
 
 export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeasurements,onTreatment,viewer,beforeNavigate,priorCourseEnabled=false,onPriorCourseSettled,readOnly=false}:{readOnly?:boolean;beforeNavigate?:MutableRefObject<(()=>Promise<void>)|null>;priorCourseEnabled?:boolean;onPriorCourseSettled?:(warning:string)=>void;bundle:PatientBundle;selectedSessionId:string|null;onVisit:(id:string|null)=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;viewer:ReactNode}){
+ const ui=useUiText();
+
  const t=useTranslations();
  const locale=useLocale();
 
@@ -35,7 +38,7 @@ export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeas
      {filter!=='treatment'&&!!linked.measurements.length&&<div><span className={styles.contextLabel}>{t('psychometrics.measurements')}</span>{linked.measurements.map(({current,previous})=><button key={current.id} data-assessment-id={current.id} disabled={readOnly} className={styles.contextEntry} onClick={()=>onMeasurements(current.id)}><strong>{current.instrument} · {previous?previous.score+' → ':''}{current.score}</strong><small>{recordDate(current.completed_at!,locale)}{previous?t('medications.previousSuffix')+recordDate(previous.completed_at!):''}</small>{current.item9_review&&!current.item9_reviewed_at&&<span>{t('psychometrics.itemNinePendingReview')}</span>}</button>)}</div>}
     </div>
    </li>;
-  })}</ol>:<div role="status"><p className={styles.muted}>{emptyMessage}</p>{visits.length>0&&filter!=='all'&&<button type="button" className={styles.link} onClick={()=>setFilter('all')}>{t('current.m056')}</button>}{independent.length>0&&<p className={styles.muted}>{t('current.m057')}</p>}</div>}
+  })}</ol>:<div role="status"><p className={styles.muted}>{ui(emptyMessage)}</p>{visits.length>0&&filter!=='all'&&<button type="button" className={styles.link} onClick={()=>setFilter('all')}>{t('current.m056')}</button>}{independent.length>0&&<p className={styles.muted}>{t('current.m057')}</p>}</div>}
   {!!independent.length&&<details className={styles.details} data-unlinked-events="true"><summary>Καταγραφές χωρίς σύνδεση με επίσκεψη · {independent.length}</summary><p className={styles.muted}>{t('current.m058')}</p><ol className={styles.list}>{independent.map(event=><li key={event.id} className={styles.item}><time dateTime={event.date}>{recordDate(event.date)}</time><div><strong>{event.title}{event.scheduled?t('calendar.scheduledSuffix'):''}</strong><p className={styles.muted}>{event.detail}</p><button disabled={readOnly} className={styles.link} onClick={event.kind==='measurements'?()=>onMeasurements(event.assessmentId):onTreatment}>{event.kind==='measurements'?t('psychometrics.scoresAnswers'):t('medications.treatmentDetails')}</button></div></li>)}</ol></details>}
   {selectedSessionId&&bundle.sessions.some(s=>s.id===selectedSessionId&&s.status==='completed')&&<div ref={viewerRef} className={styles.viewer} role="region" aria-label={t('visits.completedRecord')}><button disabled={readOnly} className={styles.link} onClick={()=>onVisit(null)}>{t('visits.closeRecord')}</button>{viewer}</div>}
   {selectedSessionId&&!bundle.sessions.some(s=>s.id===selectedSessionId)&&<p role="status">{t('visits.recordUnavailable')}</p>}

@@ -1,4 +1,5 @@
 "use client";
+import {useUiText} from '@/i18n/use-ui-text';
 import {useSystemMessage} from '@/i18n/system-message';
 
 import {useLocale} from 'next-intl';
@@ -57,9 +58,15 @@ const TIMEZONE="Europe/Athens";
 const overviewDateKey=(value:Date)=>{const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);const pick=(type:string)=>parts.find(part=>part.type===type)?.value||"";return pick("year")+"-"+pick("month")+"-"+pick("day")};
 const overviewTime=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const overviewDayLabel=()=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,weekday:"long",day:"numeric",month:"long"}).format(new Date()).toLocaleUpperCase("el-GR");
-const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email",t('common.paper'),t('common.link')].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?t('common.paper'):provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
+const reviewChannelLabel=(channel:string,provenance="")=>["Tablet","Email","Έντυπο","Σύνδεσμος"].includes(channel)?channel:channel==="tablet"||provenance.includes("patient_intake:tablet")?"Tablet":channel==="email"||provenance.includes("patient_intake:email")?"Email":channel==="print"||channel==="scanned_paper"||provenance.includes("patient_intake:print")||provenance.includes("patient_intake:scanned_paper")?"Έντυπο":provenance.includes("patient_link")?"Σύνδεσμος":"Noima";
 const reviewWhen=(iso:string)=>new Intl.DateTimeFormat("el-GR",{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 
+
+
+export default function Page() {
+ const ui=useUiText();
+
+ const t=useTranslations();
 const nav = [
   [Home, "Επισκόπηση", "/"],
   [CalendarDays, t('navigation.calendar'), "/calendar"],
@@ -68,9 +75,6 @@ const nav = [
   [Video, "Τηλεσυνεδρίες", "/teleconsultations"],
   [Globe, "Ψηφιακή παρουσία", "/digital-presence"],
 ] as const;
-
-export default function Page() {
- const t=useTranslations();
  const systemMessage=useSystemMessage();
  const locale=useLocale();
 
@@ -146,7 +150,7 @@ export default function Page() {
     for(const assessment of psychometricsForReview){
       const key=assessment.intake_id?"intake:"+assessment.intake_id:"assessment:"+assessment.id;
       const existing=groups.get(key);
-      const group=existing||{key,intake_id:assessment.intake_id,patient_id:assessment.patient_id,patient_name:assessment.patient_name,tools:[],channel:reviewChannelLabel("",assessment.provenance||""),status:"ready" as const,when:assessment.completed_at||assessment.created_at,has_history:false,psychometrics:[],assessmentIds:[]};
+      const group:ReviewSubmission=existing||{key,intake_id:assessment.intake_id,patient_id:assessment.patient_id,patient_name:assessment.patient_name,tools:[],channel:reviewChannelLabel("",assessment.provenance||""),status:"ready" as const,when:assessment.completed_at||assessment.created_at,has_history:false,psychometrics:[],assessmentIds:[]};
       addTool(group,assessment.instrument);
       group.assessmentIds.push({id:assessment.id,instrument:assessment.instrument});
       group.patient_id=group.patient_id||assessment.patient_id;
@@ -197,7 +201,7 @@ export default function Page() {
         </div>
 
         <nav className="nav">
-          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={href}><Icon size={19}/><span>{label}</span></Link>)}
+          {nav.map(([Icon,label,href])=><Link href={href} className={href==="/"?"nav-item active":"nav-item"} key={href}><Icon size={19}/><span>{ui(label)}</span></Link>)}
         </nav>
         
       </aside>
@@ -318,7 +322,7 @@ export default function Page() {
             <div className="todo-compose"><input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addTask()}} placeholder={t('dashboard.taskPlaceholder')} maxLength={240}/><button disabled={widgetBusy||!taskTitle.trim()} onClick={()=>void addTask()}>{t('common.add')}</button></div>
             <div className="dashboard-widget-list">
               {openTasks.length?openTasks.map(task=><div className="dashboard-widget-row todo-row" key={task.id}>
-                <div><strong>{task.source_session_id?task.title.replace(/πρόχειρης επίσκεψης/gi,'μη ολοκληρωμένης επίσκεψης').replace(/πρόχειρης καταγραφής/gi,'μη ολοκληρωμένης καταγραφής').replace(/πρόχειρη καταγραφή/gi,'μη ολοκληρωμένη καταγραφή'):task.title}</strong><span>{task.source_session_id?"Μη ολοκληρωμένη καταγραφή":"Εργασία"}{task.due_at?" · "+new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
+                <div><strong>{task.source_session_id?task.title.replace(/πρόχειρης επίσκεψης/gi,'μη ολοκληρωμένης επίσκεψης').replace(/πρόχειρης καταγραφής/gi,'μη ολοκληρωμένης καταγραφής').replace(/πρόχειρη καταγραφή/gi,'μη ολοκληρωμένη καταγραφή'):task.title}</strong><span>{task.source_session_id?"Μη ολοκληρωμένη καταγραφή":ui("Εργασία")}{task.due_at?" · "+new Intl.DateTimeFormat(locale,{timeZone:TIMEZONE,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(task.due_at)):""}</span></div>
                 {task.source_session_id&&task.patient_id?<Link className="todo-done" href={"/patients/demo/"+task.patient_id+"?tab=record&session="+task.source_session_id} aria-label={t('visits.continueRecord')}><ChevronRight size={16}/></Link>:<button className="todo-done" disabled={widgetBusy} onClick={()=>void completeTask(task)} aria-label={t('common.complete')+task.title}><Check size={16}/></button>}
               </div>):<div className="dashboard-widget-empty">{t('dashboard.noPendingTasks')}</div>}
             </div>
@@ -339,7 +343,9 @@ function TodoMetric({value,onOpen}:{value:string;onOpen:()=>void}){
 }
 
 function Metric({ icon, label, value, tone, onClick }: { icon: React.ReactNode; label: string; value: string; tone: string; onClick?:()=>void }) {
-  const content=<><div className="metric-icon">{icon}</div><span>{label}</span><strong>{value}</strong></>;
+ const ui=useUiText();
+
+  const content=<><div className="metric-icon">{icon}</div><span>{ui(label)}</span><strong>{value}</strong></>;
   return onClick?<button type="button" className={`metric ${tone} metric-action`} onClick={onClick}>{content}</button>:<div className={`metric ${tone}`}>{content}</div>;
 }
 

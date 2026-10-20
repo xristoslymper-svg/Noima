@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useLocale} from 'next-intl';
 import PatientVisualIcon from './PatientVisualIcon';
@@ -8,10 +9,13 @@ import {getDemoTesterId} from '@/lib/demo-tester';
 import {historyDraftFromAnswers} from '@/lib/intake/history';
 import {normalizedPatientHistory,patientReportedHighlights,receivedPatientHistories,type ReceivedHistory} from '@/lib/intake/patient-report';
 
-const fields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.treatmentsMedication')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning',t('history.social')],['allergies',t('history.allergies')]] as const;
-const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
+const dateLabel=(value:string|null,locale='el')=>value?new Intl.DateTimeFormat(locale,{timeZone:'Europe/Athens',day:'numeric',month:'short',year:'numeric'}).format(new Date(value)):'';
 export default function PatientReportedHistory({patientId,compact=false,onOpen}:{patientId:string;compact?:boolean;onOpen?:()=>void}){
+ const ui=useUiText();
+
  const t=useTranslations();
+ const locale=useLocale();
+const fields=[['psychiatric_history',t('history.psychiatric')],['medical_history',t('history.medical')],['previous_treatments',t('history.treatmentsMedication')],['hospitalizations',t('history.hospitalizations')],['family_history',t('history.family')],['substance_history',t('history.substances')],['social_functioning',t('history.social')],['allergies',t('history.allergies')]] as const;
 
  const synthetic=useSyntheticChart();
  const preview=useSyntheticHistoryPreview();
@@ -68,7 +72,7 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   {failure}
   <span className="kicker">{t('history.patientAnswersKicker')}</span>
   <h2><PatientVisualIcon name="history"/>{t('history.patientCompleted')}</h2>
-  <p className="patient-reported-muted">{t('history.answersFromPrefix')} {dateLabel(latest.submitted_at)}  {t('history.selfReportDisclaimer')}</p>
+  <p className="patient-reported-muted">{t('history.answersFromPrefix')} {dateLabel(latest.submitted_at,locale)}  {t('history.selfReportDisclaimer')}</p>
   {(h.suicide_attempt==='yes'||h.self_harm==='yes')&&<p><strong>{t('current.m075')}</strong></p>}
   {overview.length>0&&<ul>{overview.slice(0,3).map(item=><li key={item}>{item}</li>)}</ul>}
   {onOpen&&<button type="button" className="patient-reported-link" onClick={onOpen}>{t('history.allAnswersLink')}</button>}
@@ -79,9 +83,9 @@ export default function PatientReportedHistory({patientId,compact=false,onOpen}:
   {data.map((item,index)=>{
    const answers=normalizedPatientHistory(item.history_answers),report=historyDraftFromAnswers(answers),highlights=patientReportedHighlights(answers);
    return <article key={item.id} className="patient-reported-card">
-    <div className="patient-reported-card-head"><strong>{index===0?t('history.latestHistory'):t('history.previousHistory')} · {dateLabel(item.submitted_at)}</strong><span>{item.channel==='email'?'Email':item.channel==='tablet'?'Tablet':t('psychometrics.questionnaire')}  {t('history.patientReportSuffix')}</span></div>
+    <div className="patient-reported-card-head"><strong>{index===0?t('history.latestHistory'):t('history.previousHistory')} · {dateLabel(item.submitted_at,locale)}</strong><span>{item.channel==='email'?'Email':item.channel==='tablet'?'Tablet':t('psychometrics.questionnaire')}  {t('history.patientReportSuffix')}</span></div>
     {highlights.length>0&&<ul>{highlights.map(fact=><li key={fact}>{fact}</li>)}</ul>}
-    <details><summary>{t('history.allAnswers')}</summary><div className="patient-reported-answers">{fields.map(([key,label])=><div key={key}><strong>{label}</strong><p>{report[key]}</p></div>)}</div></details>
+    <details><summary>{t('history.allAnswers')}</summary><div className="patient-reported-answers">{fields.map(([key,label])=><div key={key}><strong>{ui(label)}</strong><p>{report[key]}</p></div>)}</div></details>
    </article>;
   })}
  </section>;

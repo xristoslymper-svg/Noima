@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useLocale} from 'next-intl';
 
 import {useTranslations} from 'next-intl';
@@ -17,6 +18,8 @@ import {formatClinicDateTime} from '@/lib/clinic-time';
 import {visibleMseField,recordMseField,mseReviewCounts,confirmMseUnchanged} from '@/lib/clinical/mse-review';
 const assessmentLabels:Record<string,string>={diagnosis:'Διάγνωση',formulation:'Κλινικές σημειώσεις',impression:'Κλινική εκτίμηση'};
 export default function StructuredVisitEditor({sessionId,kind,existing,followup,baseline,timeline,onSaved,registerFlusher,onDirtyChange,compact=false,firstAssessment=false,saveDocument}:{saveDocument?:(document:VisitDocument,version:number|null)=>Promise<{value:VisitDocument;version:number}>;firstAssessment?:boolean;compact?:boolean;sessionId:string;kind:'mse'|'assessment';existing?:DemoSection;followup:boolean;baseline?:DemoSection|null;timeline?:ReturnType<typeof mseTimeline>;onSaved:()=>Promise<unknown>;registerFlusher:(key:string,f:()=>Promise<void>)=>(()=>void);onDirtyChange:(key:string,dirty:boolean)=>void}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const [domainsOpen,setDomainsOpen]=useState(false);
@@ -45,7 +48,7 @@ export default function StructuredVisitEditor({sessionId,kind,existing,followup,
   const label=diagnosis?t('clinical.diagnosticHypothesis'):assessmentLabels[field.key]||(differential?t('clinical.differentialDiagnosis'):field.label);
   const placeholder=diagnosis?t('clinical.diagnosisPlaceholder'):field.key==='impression'?(firstAssessment?t('clinical.assessmentPlaceholder'):t('clinical.todayAssessmentPlaceholder')):field.key==='formulation'?t('clinical.formulationPlaceholder'):differential?t('clinical.differentialPlaceholder'):'';
   return <div className="visit-assessment-field" key={field.key}>
-   <ClinicalTextField sessionId={sessionId} section="assessment" fieldKey={field.key} title={label} placeholder={placeholder} value={field.text} onChange={text=>change(index,{text})} onBlur={()=>void draft.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={pending=>setWritingFields(v=>v[field.key]===pending?v:{...v,[field.key]:pending})} onConfirm={async(text,{provenance})=>{
+   <ClinicalTextField sessionId={sessionId} section="assessment" fieldKey={field.key} title={ui(label)} placeholder={placeholder} value={field.text} onChange={text=>change(index,{text})} onBlur={()=>void draft.flush().catch(()=>{})} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange} onPendingChange={pending=>setWritingFields(v=>v[field.key]===pending?v:{...v,[field.key]:pending})} onConfirm={async(text,{provenance})=>{
     await currentDraft.current.flush();const latest=currentDraft.current;
     const value=latest.currentValue();const target=value.fields.find(f=>f.key===field.key);if(!target||target.text!==provenance.original)throw new Error(t('errors.fieldChanged'));
     latest.change({...value,fields:value.fields.map(f=>f.key===field.key?{...f,text,writing_provenance:provenance}:f)});

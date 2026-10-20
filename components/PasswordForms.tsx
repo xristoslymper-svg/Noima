@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
 import {useState,type FormEvent} from 'react';
@@ -13,6 +14,8 @@ async function post(body:Record<string,unknown>){
 }
 
 export function PasswordResetRequest(){
+ const ui=useUiText();
+
  const t=useTranslations();
  const systemMessage=useSystemMessage();
 
@@ -23,10 +26,12 @@ export function PasswordResetRequest(){
   catch(e){setError(e instanceof Error?e.message:t('errors.actionFailed'))}
   finally{setBusy(false)}
  }
- return <form onSubmit={submit}><fieldset disabled={busy}><label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><button className="pilot-primary" type="submit">{busy?t('common.sending'):t('settings.sendResetLink')}</button></fieldset>{message&&<p role="status">{message}</p>}{error&&<p role="alert" className="pilot-error">{systemMessage(error)}</p>}</form>;
+ return <form onSubmit={submit}><fieldset disabled={busy}><label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><button className="pilot-primary" type="submit">{busy?t('common.sending'):t('settings.sendResetLink')}</button></fieldset>{message&&<p role="status">{ui(message)}</p>}{error&&<p role="alert" className="pilot-error">{systemMessage(error)}</p>}</form>;
 }
 
 export function PasswordChangeForm({recovery=false}:{recovery?:boolean}){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const [current,setCurrent]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
@@ -41,5 +46,5 @@ export function PasswordChangeForm({recovery=false}:{recovery?:boolean}){
    setCurrent('');setPassword('');setConfirm('');setMessage(t('settings.passwordUpdated'));
   }catch(e){setError(e instanceof Error?e.message:t('errors.actionFailed'))}finally{setBusy(false)}
  }
- return <form onSubmit={submit}><fieldset disabled={busy}>{!recovery&&<label>{t('settings.currentPassword')}<input type="password" required maxLength={128} autoComplete="current-password" value={current} onChange={e=>setCurrent(e.target.value)}/></label>}<label>{t('settings.newPassword')}<input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/></label><label>{t('settings.confirmPassword')}<input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><small>{t('validation.passwordMinimum')}</small><button className="pilot-primary" type="submit">{busy?t('common.saving'):recovery?t('settings.setPassword'):t('settings.changePassword')}</button></fieldset>{message&&<p role="status">{message}</p>}{error&&<p role="alert" className="pilot-error">{error}</p>}</form>;
+ return <form onSubmit={submit}><fieldset disabled={busy}>{!recovery&&<label>{t('settings.currentPassword')}<input type="password" required maxLength={128} autoComplete="current-password" value={current} onChange={e=>setCurrent(e.target.value)}/></label>}<label>{t('settings.newPassword')}<input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/></label><label>{t('settings.confirmPassword')}<input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><small>{t('validation.passwordMinimum')}</small><button className="pilot-primary" type="submit">{busy?t('common.saving'):recovery?t('settings.setPassword'):t('settings.changePassword')}</button></fieldset>{message&&<p role="status">{ui(message)}</p>}{error&&<p role="alert" className="pilot-error">{ui(error)}</p>}</form>;
 }

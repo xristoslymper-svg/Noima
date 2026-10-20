@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useLocale} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
@@ -37,6 +38,8 @@ import { formatClinicAppointment } from '@/lib/clinic-time';
 
 type Tab=WorkspaceTab;
 export default function PatientWorkspace({patientRef,previewBundle}:{patientRef:string;previewBundle?:PatientBundle}){
+ const ui=useUiText();
+
  const t=useTranslations();
  const systemMessage=useSystemMessage();
  const [documentLocale,setDocumentLocale]=useState<Locale>('el');
@@ -151,7 +154,7 @@ export default function PatientWorkspace({patientRef,previewBundle}:{patientRef:
     {backgroundTab==='treatment'&&<PatientTreatment bundle={bundle} reload={load} beforeNavigate={sectionBeforeNavigate} measurementsOpen={measurementsOpen} selectedAssessmentId={selectedAssessmentId} onVisit={id=>void setTab('record',id)}/>}
     {backgroundTab==='history'&&<HistoryPanel bundle={bundle} reload={load} beforeNavigate={sectionBeforeNavigate}/>}
 
-   </>}</fieldset></div><VisitDialog open={tab==='record'} onClose={closeRecord}><section hidden={tab!=='record'} className={journeyStyles.visitSurface+' patient-visit-surface'} aria-labelledby="record-dialog-title"><header className={styles.recordDialogHeader}><div><h2 id="record-dialog-title">{t('visits.visitRecord')}</h2><p>{p.first_name} {p.last_name}{visitId&&bundle.sessions.find(s=>s.id===visitId)&&<span> · {bundle.sessions.find(s=>s.id===visitId)!.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</span>}{visitId&&bundle.sessions.find(s=>s.id===visitId)?' · '+formatClinicAppointment(bundle.sessions.find(s=>s.id===visitId)!.started_at):''}</p></div><button type="button" onClick={()=>void closeRecord()} aria-label={t('accessibility.closeVisitToRecord')}><span>{t('current.m053')}</span></button></header>{error&&<div className="record-state error" role="alert">{error}</div>}    {tab==='record'&&!visitId&&<section className="record-entry"><h2>{t('visits.record')}</h2>{intended?.session_id?<button onClick={()=>void setTab('record',intended.session_id)}>{t('visits.openRecordPrefix')} {formatClinicAppointment(intended.scheduled_start)}</button>:drafts.length>0?<><p>{t('current.m054')}</p>{drafts.map(s=><button key={s.id} onClick={()=>void setTab('record',s.id)}>{s.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')} · {formatClinicAppointment(s.started_at)}</button>)}</>:<button disabled={starting} onClick={()=>void startSession(intended?.id,isEstablished?'follow_up':'initial_assessment')}>{isEstablished?t('visits.newFollowup'):t('visits.newInitialAssessment')}</button>}</section>}<div> {tab==='record'&&completedJourney&&bundle.sessions.find(s=>s.id===completedJourney)?.status==='completed'&&<JourneyCompletion session={bundle.sessions.find(s=>s.id===completedJourney)!} onSummary={()=>void setTab('summary')} onRead={()=>setCompletedJourney(null)}/>}
+   </>}</fieldset></div><VisitDialog open={tab==='record'} onClose={closeRecord}><section hidden={tab!=='record'} className={journeyStyles.visitSurface+' patient-visit-surface'} aria-labelledby="record-dialog-title"><header className={styles.recordDialogHeader}><div><h2 id="record-dialog-title">{t('visits.visitRecord')}</h2><p>{p.first_name} {p.last_name}{visitId&&bundle.sessions.find(s=>s.id===visitId)&&<span> · {bundle.sessions.find(s=>s.id===visitId)!.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</span>}{visitId&&bundle.sessions.find(s=>s.id===visitId)?' · '+formatClinicAppointment(bundle.sessions.find(s=>s.id===visitId)!.started_at):''}</p></div><button type="button" onClick={()=>void closeRecord()} aria-label={t('accessibility.closeVisitToRecord')}><span>{t('current.m053')}</span></button></header>{error&&<div className="record-state error" role="alert">{ui(error)}</div>}    {tab==='record'&&!visitId&&<section className="record-entry"><h2>{t('visits.record')}</h2>{intended?.session_id?<button onClick={()=>void setTab('record',intended.session_id)}>{t('visits.openRecordPrefix')} {formatClinicAppointment(intended.scheduled_start)}</button>:drafts.length>0?<><p>{t('current.m054')}</p>{drafts.map(s=><button key={s.id} onClick={()=>void setTab('record',s.id)}>{s.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')} · {formatClinicAppointment(s.started_at)}</button>)}</>:<button disabled={starting} onClick={()=>void startSession(intended?.id,isEstablished?'follow_up':'initial_assessment')}>{isEstablished?t('visits.newFollowup'):t('visits.newInitialAssessment')}</button>}</section>}<div> {tab==='record'&&completedJourney&&bundle.sessions.find(s=>s.id===completedJourney)?.status==='completed'&&<JourneyCompletion session={bundle.sessions.find(s=>s.id===completedJourney)!} onSummary={()=>void setTab('summary')} onRead={()=>setCompletedJourney(null)}/>}
  {visitId&&<div className={journeyStyles.editorLayout}><div hidden={Boolean(completedJourney)}><VisitWorkspace embedded beforeNavigate={visitBeforeNavigate} key={visitId} sessionId={visitId} patientId={p.id} context={contextReady?bundle:null} reloadContext={load} onDeferred={async(_,reason)=>{navigationSequence.current++;setRecordNotice('Η καταγραφή αποθηκεύτηκε ως μη ολοκληρωμένη καταγραφή και προστέθηκε στις εκκρεμότητές σας.'+(reason?' '+reason:''));applyTab('summary',visitId,{clearAppointment:true})}} onFinalized={handleFinalized} onSelect={(id)=>void setTab('record',id)}/></div></div>}
 </div></section></VisitDialog></div>
  </div></section>
@@ -163,6 +166,8 @@ export default function PatientWorkspace({patientRef,previewBundle}:{patientRef:
  </main>
 }
 function Nav({active,onClick,icon,label,badge}:{active:boolean;onClick:()=>void;icon:React.ReactNode;label:string;badge?:string}){
+ const ui=useUiText();
+
  const [documentLocale,setDocumentLocale]=useState<Locale>('el');
-return <button aria-current={active?'page':undefined} onClick={onClick}><span className={journeyStyles.tabIcon} aria-hidden="true">{icon}</span><span className={journeyStyles.tabLabel}>{label}</span>{badge&&<i>{badge}</i>}</button>}
+return <button aria-current={active?'page':undefined} onClick={onClick}><span className={journeyStyles.tabIcon} aria-hidden="true">{icon}</span><span className={journeyStyles.tabLabel}>{ui(label)}</span>{badge&&<i>{badge}</i>}</button>}
 

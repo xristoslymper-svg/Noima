@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {languageNames} from '@/i18n/config';
 import {useSystemMessage} from '@/i18n/system-message';
 
@@ -16,6 +17,8 @@ let activeCapture:symbol|null=null;
 
 // Keep recording controls next to their field in the patient workspace.
 export default function ClinicalTextField(p:Props){
+ const ui=useUiText();
+
  const t=useTranslations();
  const systemMessage=useSystemMessage();
  const locale=useLocale();
@@ -103,7 +106,7 @@ export default function ClinicalTextField(p:Props){
    <textarea ref={textarea} id={id} className={[styles.textarea,p.className].filter(Boolean).join(' ')} rows={p.rows??2} maxLength={p.maxLength??20000} placeholder={p.placeholder} value={snapshot.pending?.text??p.value} readOnly={snapshot.phase==='saving'} onChange={e=>{machine.edit(e.target.value);if(!machine.snapshot.pending)latest.current.onChange(e.target.value);setUndo(null)}} onBlur={p.onBlur}/>
    {capturing&&<div ref={controls} className={styles.recorder} data-writing-recorder="inline" role="region" aria-label={t('accessibility.dictationPrefix')+p.title} aria-controls={id}>
     {cancelOpen?<><span className={styles.recordStatus}>{t('clinical.discardAudioQuestion')}</span><div className={styles.actions}><button type="button" onClick={stop}>{t('common.discard')}</button><button type="button" onClick={()=>setCancelOpen(false)}>{t('common.goBack')}</button></div></>:<>
-     <span className={styles.recordStatus} role="status"><span className={styles.indicator} data-paused={snapshot.phase!=='recording'} aria-hidden="true"/>{status}</span>
+     <span className={styles.recordStatus} role="status"><span className={styles.indicator} data-paused={snapshot.phase!=='recording'} aria-hidden="true"/>{ui(status)}</span>
      <div className={styles.actions}>
       {(snapshot.phase==='recording'||snapshot.phase==='paused')&&<><time className={styles.timer}>{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time><button type="button" title={snapshot.phase==='paused'?t('common.resume'):t('common.pause')} aria-label={snapshot.phase==='paused'?t('accessibility.resumeDictation'):t('accessibility.pauseDictation')} onClick={()=>snapshot.phase==='paused'?recorder.current?.resume():recorder.current?.pause()}>{snapshot.phase==='paused'?<Play size={16} aria-hidden="true"/>:<Pause size={16} aria-hidden="true"/>}</button><button type="button" className={styles.finish} aria-label={t('accessibility.finishDictation')} title={t('clinical.finishAndTranscribe')} onClick={()=>{machine.phase('transcribing');recorder.current?.finish()}}><Check size={16} aria-hidden="true"/>{t('common.finish')}</button></>}
       <button type="button" aria-label={t('accessibility.cancelRecording')} title={t('accessibility.cancelRecording')} onClick={askCancel}><X size={16} aria-hidden="true"/></button>

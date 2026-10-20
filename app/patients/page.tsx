@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useTranslations} from 'next-intl';
 import {useLocale} from 'next-intl';
 import {useSystemMessage} from '@/i18n/system-message';
@@ -21,6 +22,8 @@ import {patientMatches} from '@/lib/patients/patient-entry';
 const normalize=(value:string)=>value.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('el');
 
 export default function Patients(){
+ const ui=useUiText();
+
  const t=useTranslations();
 
  const [assign,setAssign]=useState<string|null>(null);
@@ -52,6 +55,6 @@ export default function Patients(){
   <div className="registry-heading"><div><span className="kicker">{t('patients.registryKicker')}</span><h1>{t('navigation.patients')}</h1><p>{t('patients.registryDescription')}</p></div><Link href="/patients/new" className="record"><Plus size={18}/>  {t('patients.newPatient')}</Link></div>
   {assign&&<p role="status">{t('patients.selectForAssignment')} {assign}.</p>}<div className="registry-stats"><div><Users/><span>{t('patients.patientCount',{count:rows.length})}</span></div><div><FileClock/><span>{t('visits.pendingDraftCount',{count:rows.filter(x=>x.draft).length})}</span></div></div>
   <div className="registry-tools"><div className="registry-search"><Search size={17}/><input type="search" aria-label={t('patients.search')} value={q} onChange={e=>setQ(e.target.value)} placeholder={t('current.m026')}/></div><div className="registry-filters"><button aria-pressed={filter==='all'} className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>{t('common.allPeople')}</button><button aria-pressed={filter==='active'} className={filter==='active'?'active':''} onClick={()=>setFilter('active')}>{t('patients.active')}</button><button aria-pressed={filter==='draft'} className={filter==='draft'?'active':''} onClick={()=>setFilter('draft')}>{t('current.m025')}</button><select value={sort} onChange={e=>setSort(e.target.value as 'registry'|'name'|'recent'|'next')} aria-label={t('common.sort')}><option value="registry">{t('patients.registrySort')}</option><option value="name">{t('patients.firstName')}</option><option value="recent">{t('patients.lastVisit')}</option><option value="next">{t('patients.nextVisit')}</option></select></div></div>
-  {loading?<div className="registry-state" role="status">{t('patients.loading')}</div>:<>{error&&<div className="registry-state error" role="alert">{error} <button type="button" className="registry-reset" onClick={()=>setRetry(x=>x+1)}>{t('calendar.recurrence')}</button></div>}{(!error||rows.length>0)&&<PatientRegistryTable rows={filtered} total={rows.length} assign={assign} onReset={()=>{setQ('');setFilter('all')}}/>}</>}
+  {loading?<div className="registry-state" role="status">{t('patients.loading')}</div>:<>{error&&<div className="registry-state error" role="alert">{ui(error)} <button type="button" className="registry-reset" onClick={()=>setRetry(x=>x+1)}>{t('calendar.recurrence')}</button></div>}{(!error||rows.length>0)&&<PatientRegistryTable rows={filtered} total={rows.length} assign={assign} onReset={()=>{setQ('');setFilter('all')}}/>}</>}
  </section></div></section></main>
 }

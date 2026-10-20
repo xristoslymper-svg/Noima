@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useOptionLabel} from '@/i18n/option-labels';
 
 import {useTranslations} from 'next-intl';
@@ -7,6 +8,8 @@ import {type DocumentField} from '@/lib/clinical/visit-document';
 import {mseAxes,axisValues,toggleMseChoice,mseNote,replaceMseNote} from '@/lib/clinical/mse-options';
 import {mseDomainLabel,mseRecordedPreview} from '@/lib/clinical/mse-presentation';
 export default function MseDomain({field,previousField,referenceLabel,olderReference=false,pending=false,review=field.review,onKeep,onSkip,onContinue,onChange,onBlur}:{field:DocumentField;previousField?:DocumentField;referenceLabel?:string;olderReference?:boolean;pending?:boolean;review?:DocumentField['review'];onKeep?:()=>void;onSkip?:()=>void;onContinue?:()=>void;onChange:(text:string)=>void;onBlur:()=>void}){
+ const ui=useUiText();
+
  const t=useTranslations();
  const displayLabel=useOptionLabel();
 
@@ -14,7 +17,7 @@ export default function MseDomain({field,previousField,referenceLabel,olderRefer
  const status=review==='not_assessed'?'':changed?t('clinical.changed'):pending?(olderReference?t('clinical.olderReference'):t('clinical.previousEntry')):previousField?.text.trim()?t('clinical.retained'):'';
  const label=displayLabel(mseDomainLabel(field)),preview=review==='not_assessed'?'':mseRecordedPreview(field);
  return <details data-mse-domain={field.key} className={'mse-item '+(preview?'has-value ':'')+(changed?'mse-changed':'')}>
-  <summary><span className="mse-domain-name">{label}</span><span className={'mse-domain-preview'+(preview?'':' mse-empty')} title={preview||undefined}>{preview}</span>{status&&<small className={'mse-domain-status '+(changed?'mse-note-change':pending?'mse-pending':'mse-same')}>{status}</small>}<b className="mse-chevron" aria-hidden="true">⌄</b></summary>
+  <summary><span className="mse-domain-name">{ui(label)}</span><span className={'mse-domain-preview'+(preview?'':' mse-empty')} title={preview||undefined}>{preview}</span>{status&&<small className={'mse-domain-status '+(changed?'mse-note-change':pending?'mse-pending':'mse-same')}>{ui(status)}</small>}<b className="mse-chevron" aria-hidden="true">⌄</b></summary>
   <div className="mse-body">
    {referenceLabel&&<p className="mse-source-date">{referenceLabel}</p>}
    {(mseAxes[field.key]||[]).map(axis=><fieldset className="mse-axis" key={axis.label}><legend>{displayLabel(axis.label)}{axis.multiple&&<small>  {t('clinical.multipleChoiceSuffix')}</small>}</legend><div className="mse-options">{axis.options.map(option=><button type="button" key={option} aria-pressed={axisValues(field.text,axis).includes(option)} onClick={()=>onChange(toggleMseChoice(field.text,axis,option))}>{displayLabel(option)}</button>)}</div></fieldset>)}

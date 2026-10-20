@@ -1,4 +1,5 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
 import {useLocale,useTranslations} from 'next-intl';
 import {useOptionLabel} from '@/i18n/option-labels';
 import PatientVisualIcon from './PatientVisualIcon';
@@ -14,6 +15,8 @@ import styles from './PatientRecord.module.css';
 import layout from './PatientTreatment.module.css';
 
 export default function PatientTreatment({bundle,reload,beforeNavigate,measurementsOpen,selectedAssessmentId,onVisit}:{bundle:PatientBundle;reload:()=>Promise<unknown>;beforeNavigate:MutableRefObject<(()=>Promise<void>)|null>;measurementsOpen:boolean;selectedAssessmentId:string|null;onVisit:(id:string)=>void}){
+ const ui=useUiText();
+
  const t=useTranslations();
  const locale=useLocale();
 
@@ -25,7 +28,7 @@ export default function PatientTreatment({bundle,reload,beforeNavigate,measureme
  return <div className={styles.record}>
   <section className={styles.section} aria-label={t('current.m037')}>
    <span className="kicker">{t('current.m036')}</span><h2><PatientVisualIcon name="plan"/>{t('current.m037')}</h2>
-   {notes?<><div className={layout.planGrid}><div><h3>{t('current.m038')}</h3><p className={layout.narrative}>{notes.plan||'Δεν έχει καταγραφεί ξεχωριστό πλάνο στην τελευταία ολοκληρωμένη επίσκεψη.'}</p></div><div><h3>{t('clinical.nextReview')}</h3><p className={layout.narrative}>{notes.review||'Δεν έχει καταγραφεί ξεχωριστή εστίαση επανεκτίμησης. Ελέγξτε και τις οδηγίες του πλάνου.'}</p></div></div><p className={styles.muted}>Ολοκληρωμένη επίσκεψη · {recordDate(notes.date)}{notes.corrected?' · με καταγεγραμμένες διορθώσεις':''} · <button type="button" className={styles.link} onClick={()=>onVisit(notes.sessionId)}>{t('current.m039')}</button></p></>:<p className={styles.muted}>{t('current.m040')}</p>}
+   {notes?<><div className={layout.planGrid}><div><h3>{t('current.m038')}</h3><p className={layout.narrative}>{notes.plan||'Δεν έχει καταγραφεί ξεχωριστό πλάνο στην τελευταία ολοκληρωμένη επίσκεψη.'}</p></div><div><h3>{t('clinical.nextReview')}</h3><p className={layout.narrative}>{notes.review||'Δεν έχει καταγραφεί ξεχωριστή εστίαση επανεκτίμησης. Ελέγξτε και τις οδηγίες του πλάνου.'}</p></div></div><p className={styles.muted}>Ολοκληρωμένη επίσκεψη · {recordDate(notes.date)}{notes.corrected?ui(' · με καταγεγραμμένες διορθώσεις'):''} · <button type="button" className={styles.link} onClick={()=>onVisit(notes.sessionId)}>{t('current.m039')}</button></p></>:<p className={styles.muted}>{t('current.m040')}</p>}
    {drafts.length>0&&<p className={styles.muted}>{t('current.m041')}</p>}
   </section>
   <MedicationSaveScope bundle={bundle}><MedicationsPanel bundle={bundle} reload={reload} beforeNavigate={beforeNavigate} currentOnly onVisit={onVisit}/></MedicationSaveScope>

@@ -104,12 +104,13 @@ try{
    assert.equal(await navigation.getByRole('button').count(),4);
    await page.getByRole('region',{name:'Κλινική σύνοψη'}).waitFor();
    assert.equal(await page.getByText('Καταγραφές και πηγές φακέλου',{exact:true}).count(),1);
-   await page.locator('.patient-voice-cta').click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
+   await page.locator('.patient-voice-cta').click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await page.locator('.patient-visit-surface:not([hidden])').waitFor();
    assert.equal(await page.locator('dialog[open]').count(),0);
    await page.getByRole('complementary',{name:'Προηγούμενη επιβεβαιωμένη εικόνα'}).waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await nav('Στοιχεία & ιστορικό').click();await nav('Σύνοψη').click();
-   await page.locator('.patient-voice-cta').click();
+   await page.locator('.patient-voice-cta').click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
+   await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(requests.filter(r=>r.action==='start_session'||r.action==='finalize_session').length,0);
   });
@@ -117,10 +118,10 @@ try{
    const old=new Date(Date.now()-3*86400000).toISOString();state.sessions.find(s=>s.id===visitId).started_at=old;
    state.appointments=[{id:'90000000-0000-4000-8000-000000000015',patient_id:patientId,status:'scheduled',appointment_type:'follow_up',scheduled_start:new Date().toISOString(),scheduled_end:new Date(Date.now()+3000000).toISOString(),session_id:null}];
    await open('?tab=summary');await page.locator('.patient-voice-cta').click();
-   const choices=page.getByRole('region',{name:'Επιλογή συγκεκριμένης επίσκεψης'});await choices.waitFor();
+   const choices=page.getByRole('menu',{name:'Ενέργειες ασθενή'});await choices.waitFor();
    assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
-   assert.equal(await choices.getByRole('button',{name:/Σημερινό ραντεβού/}).isDisabled(),true,'old draft cannot be relinked to today');
-   await choices.getByRole('button',{name:/Άνοιγμα παλαιότερου προχείρου/}).click();
+   assert.match(await choices.innerText(),/Η ανεξάρτητη νέα επίσκεψη δεν έχει ενεργοποιηθεί/);
+   await choices.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
    await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);
@@ -143,7 +144,7 @@ try{
   });
   await check('record-resume-identity',async({page,open,nav})=>{
    await open(`?tab=record&session=${visitId}`);const text=page.getByRole('textbox',{name:/Λόγος προσέλευσης & παρούσα εικόνα/});await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Σύνοψη').click();await page.getByRole('button',{name:/Συνέχεια πρόχειρης επίσκεψης/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Σύνοψη').click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await page.reload();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(requests.filter(r=>r.action==='start_session').length,0);
   });
   await check('verified-finalization-and-refresh',async({page,open,nav})=>{

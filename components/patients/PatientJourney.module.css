@@ -178,4 +178,7 @@
 .actionsMenu svg{flex-shrink:0}.actionsMenu small{display:block;margin-top:3px;font-size:11px;color:#708277}
 .actionsDivider{height:1px;background:#e1e7e3;margin:5px 7px}
 .actionsCaption,.actionsHint{margin:6px 10px;font-size:11px;line-height:1.5;color:#708277}.actionsCaption{font-weight:600}.actionsHint{padding-top:5px}
-@media(max-width:600px){.actionsMenu{right:auto;left:0}.patientActions{align-self:flex-start}}
+.workspace :global(.patient-hero):has(.patientActions){flex-direction:row!important;align-items:flex-start!important}
+.workspace :global(.patient-hero):has(.patientActions)>div:first-child{min-width:0}
+.patientActions{margin-top:24px}
+@media(max-width:600px){.actionsMenu{right:0;left:auto}.patientActions{align-self:flex-start}}

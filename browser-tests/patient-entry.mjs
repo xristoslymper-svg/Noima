@@ -77,7 +77,7 @@ try{
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
  await p.getByRole('menu',{name:'Ενέργειες ασθενή'}).waitFor();
  await p.getByRole('menuitem',{name:'Νέα επίσκεψη',exact:true}).click();
- await p.getByRole('alert').filter({hasText:'Υπάρχει πρόχειρη επίσκεψη προηγούμενης ημέρας'}).waitFor();
+ await p.getByRole('alert').filter({hasText:'Η ανεξάρτητη νέα επίσκεψη με ανοιχτές σημειώσεις'}).waitFor();
  assert.equal(writes.filter(w=>w.action==='start_session').length,0);
  report.push('unlinked appointment cannot relink an older draft');
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
@@ -88,7 +88,12 @@ try{
  await p.keyboard.press('Escape');
  await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();await p.keyboard.press('Escape');
  assert.equal(await p.getByRole('menu',{name:'Ενέργειες ασθενή'}).count(),0);
- report.push('appointment link carries patient; questionnaire is patient-scoped without assignment; Escape closes menu');
+ await p.setViewportSize({width:390,height:844});await p.getByRole('button',{name:'Ενέργειες',exact:true}).click();
+ const menu=p.getByRole('menu',{name:'Ενέργειες ασθενή'});
+ const rect=await menu.boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=390);
+ await p.screenshot({path:resolve(out,'mobile-patient-actions.png'),fullPage:true});
+ await p.keyboard.press('Escape');await p.setViewportSize({width:1440,height:1000});
+ report.push('appointment link carries patient; questionnaire is patient-scoped without assignment; Escape closes menu; mobile menu fits');
  // Successful creation clears recovery; only the fixture receives this request.
  await p.goto(origin+'/patients/new');await p.getByLabel('Όνομα *',{exact:true}).fill('Άλλος Συνθετικός');
  failCreate=false;await p.getByRole('button',{name:'Δημιουργία φακέλου',exact:true}).click();

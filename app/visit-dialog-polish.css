@@ -1,0 +1,28 @@
+/* Recorder chrome only: no field visibility, ordering, requirements or behavior changes. */
+[data-record-header]{align-items:center;gap:16px;flex-wrap:wrap}
+[data-record-header]>div:first-child{flex:1 1 300px;min-width:0}
+[data-record-header] h2{line-height:1.35}
+[data-record-header] p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+[data-record-controls]{display:flex;align-items:center;justify-content:flex-end;flex:0 1 auto;gap:8px;min-width:0;max-width:100%;margin-left:auto}
+[data-record-controls]>button{height:44px;min-height:44px;padding:10px 14px;font:600 13px/1.45 Inter,ui-sans-serif,system-ui,sans-serif;white-space:normal}
+[data-record-controls]>.profile-compact{width:44px;min-width:44px;padding:10px;flex:none}
+[data-visit-toolbar]{align-items:center;gap:12px;margin-bottom:12px;padding:10px 0 12px;border-bottom:1px solid #e1e7e3}
+[data-visit-actions]{align-items:center;gap:8px}
+[data-visit-actions]>button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;max-width:100%;padding:9px 12px;border:1px solid #dce5df;border-radius:10px;background:#fffefa;color:#315e50;font:600 13px/1.45 Inter,ui-sans-serif,system-ui,sans-serif;white-space:normal;cursor:pointer}
+[data-visit-actions]>button:hover:not(:disabled){background:#eef3ef}
+[data-visit-actions]>button:focus-visible,[data-record-controls]>button:focus-visible{outline:2px solid #72a696;outline-offset:3px}
+[data-visit-actions]>button:disabled{opacity:.55;cursor:not-allowed}
+[data-visit-actions]>button svg{flex:none}
+[data-visit-context]{flex:1 1 320px;min-width:0;font-size:13px;line-height:1.6}
+[data-visit-context] summary{flex-wrap:wrap;min-width:0}
+[data-visit-block-controls]{align-items:center}
+@media(max-width:700px){
+ [data-record-header]{align-items:flex-start;gap:10px}
+ [data-record-header]>div:first-child{flex-basis:100%}
+ [data-record-controls]{width:100%;justify-content:flex-end}
+ [data-record-controls]>button{height:auto;min-height:44px}
+ [data-record-controls]>.profile-compact{height:44px}
+ [data-visit-context]{flex-basis:100%}
+ [data-visit-actions]{width:100%;justify-content:flex-end}
+ [data-visit-actions]>button{min-height:44px;flex:0 1 auto}
+}

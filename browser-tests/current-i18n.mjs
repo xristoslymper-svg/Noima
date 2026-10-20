@@ -54,6 +54,16 @@ try{
  const visit='20000000-0000-4000-8000-000000000009';
  await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);
  const dialog=page.locator('dialog[aria-labelledby="record-dialog-title"]');await dialog.waitFor({state:'visible'});
+ const checkRecorderChrome=async(mobile)=>{
+  const controls=await dialog.locator('[data-record-controls]>button').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height}}));
+  assert.equal(controls.length,2);assert.ok(controls.every(r=>r.height>=44));assert.ok(controls[1].x>=controls[0].right+5);assert.ok(Math.abs(controls[0].y-controls[1].y)<2);
+  const buttons=await dialog.locator('[data-visit-actions]>button').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return {height:r.height,radius:parseFloat(s.borderRadius),border:s.borderStyle}}));
+  assert.ok(buttons.length>0);assert.ok(buttons.every(b=>b.height>=44&&b.radius>=10&&b.border==='solid'));
+  assert.ok(await dialog.evaluate(d=>d.scrollWidth<=d.clientWidth+1));
+  await page.screenshot({path:resolve(out,mobile?'recorder-chrome-mobile.png':'recorder-chrome-desktop.png'),fullPage:true});
+ };
+ await checkRecorderChrome(false);
+
  const notes=dialog.locator('textarea').first();await notes.fill('SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
  const locationBefore=page.url();await notes.evaluate(el=>el.dataset.localeTestIdentity='same-editor');
  await dialog.getByRole('button',{name:'Profile and settings',exact:true}).click();
@@ -86,6 +96,10 @@ try{
  }
  report.push('paired Greek/English mobile layouts fit the viewport with identical heading colors and typography');
 
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});
+ await checkRecorderChrome(true);assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
+ await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();
+ report.push('recorder header controls align without overlap and customization buttons retain consistent styling on desktop/mobile; saved notes unchanged');
  // Real auth components: the selector exists only on login and preference survives navigation/refresh.
  await page.goto(origin+'/login?surface=login');
  await page.getByRole('button',{name:'English',exact:true}).waitFor();

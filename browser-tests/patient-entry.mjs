@@ -63,7 +63,7 @@ try{
  // Explicitly discard; no server deletion.
  await p.getByRole('button',{name:'Καθαρισμός προσχεδίου'}).click();await p.reload();assert.equal(await p.getByLabel('Όνομα *',{exact:true}).inputValue(),'');
  await p.goto(origin+'/patients');await p.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('6900000002');
- await p.locator('.registry-patient-link').first().waitFor();assert.equal(await p.locator('.registry-patient-link').count(),1);assert.match(await p.locator('.registry-patient-link').innerText(),/second@example.invalid/);
+ await p.locator('.registry-patient-link').first().waitFor();assert.equal(await p.locator('.registry-patient-link').count(),1);assert.match(await p.locator('[data-patient-id="'+second.id+'"] [data-column-id="phone"]').innerText(),/6900000002/);assert.match(await p.locator('[data-patient-id="'+second.id+'"] [data-column-id="age"]').innerText(),/54 ετών/);
  await p.getByRole('searchbox',{name:'Αναζήτηση ασθενών'}).fill('μαρια δειγμα');assert.equal(await p.locator('.registry-patient-link').count(),2);
  await p.screenshot({path:resolve(out,'same-names.png'),fullPage:true});report.push('same names distinguished by age/contact/registry and searchable by phone');
  await p.goto(origin+'/patients/demo/'+first.id+'?tab=summary');

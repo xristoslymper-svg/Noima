@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 
 const overview=readFileSync('app/page.tsx','utf8');
 const css=readFileSync('app/globals.css','utf8');
@@ -8,7 +8,7 @@ const css=readFileSync('app/globals.css','utf8');
 test('Overview KPI cards contain only titles, numeric values and icons',()=>{
  for(const heading of ['Επόμενα ραντεβού σήμερα','Εκκρεμότητες','Υποβολές ασθενών','Πληρωμές'])assert.ok(overview.includes(heading),heading);
  assert.match(overview,/function Metric\(\{ icon, label, value, tone, onClick \}/);
- assert.match(overview,/const content=<><div className="metric-icon">\{icon\}<\/div><span>\{label\}<\/span><strong>\{value\}<\/strong><\/>/);
+ assert.match(overview,/const content=<><div className="metric-icon">\{icon\}<\/div><span>\{(?:ui\(label\)|label)\}<\/span><strong>\{value\}<\/strong><\/>/);
  assert.match(overview,/className="metric rose metric-action" onClick=\{onOpen\}/);
  assert.match(overview,/<span>Εκκρεμότητες<\/span><strong>\{value\}<\/strong>/);
  assert.doesNotMatch(overview,/<small>\{note\}<\/small>/);

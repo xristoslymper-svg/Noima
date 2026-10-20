@@ -1,3 +1,4 @@
+import {readLocalizedSource} from './helpers/localized-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -68,24 +69,24 @@ test('Daily adapter sends no patient identifiers, rejects ambiguous provider res
  await assert.rejects(()=>createDailyRoom({...input,fetcher:async()=>new Response('',{status:409})}));
 });
 test('preview reuses existing visit draft fields and disables real network tools',async()=>{
- const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ const ui=await readLocalizedSource('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
  assert.match(ui,/FollowupDraftProvider/);assert.match(ui,/<FollowupField field="transcript"/);
  assert.match(ui,/saveFixtureNotes/);assert.doesNotMatch(ui,/fetch\(/);
  assert.match(ui,/SyntheticChartContext.Provider value=\{true\}/);
- const field=await readFile('components/dictation/ClinicalTextField.tsx','utf8');assert.match(field,/disabled=\{synthetic\|\|busy/);
+ const field=await readLocalizedSource('components/dictation/ClinicalTextField.tsx','utf8');assert.match(field,/disabled=\{synthetic\|\|busy/);
 });
 
 test('call and notes modes keep one mounted editor and independent scroll',async()=>{
- const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ const ui=await readLocalizedSource('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
  assert.equal((ui.match(/<FollowupField field="transcript"/g)||[]).length,1);
  assert.match(ui,/hidden=\{view!=='notes'\}/);
  assert.match(ui,/setSelectionRange/);assert.match(ui,/notesPanel.current\?\.scrollTop/);
- const css=await readFile('components/teleconsultations/Teleconsultations.module.css','utf8');
+ const css=await readLocalizedSource('components/teleconsultations/Teleconsultations.module.css','utf8');
  assert.match(css,/position:sticky/);assert.match(css,/overscroll-behavior:contain/);
 });
 
 test('polished workspace has one note source and optional scoped read-only references',async()=>{
- const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ const ui=await readLocalizedSource('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
  assert.doesNotMatch(ui,/Αποθηκευμένο συνθετικό προσχέδιο/);
  assert.match(ui,/Αναφορά φακέλου ασθενή/);
  assert.match(ui,/row.patient_id===patientId/);
@@ -93,7 +94,7 @@ test('polished workspace has one note source and optional scoped read-only refer
 });
 
 test('teleconsultation uses existing MSE and risk editors with isolated persistence',async()=>{
- const ui=await readFile('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
+ const ui=await readLocalizedSource('components/teleconsultations/TeleconsultationsPreview.tsx','utf8');
  assert.match(ui,/<StructuredVisitEditor[^>]*kind="mse"/);
  assert.match(ui,/<RiskTreeEditor/);
  assert.match(ui,/saveDocument=\{saveMse\}/);
@@ -101,14 +102,14 @@ test('teleconsultation uses existing MSE and risk editors with isolated persiste
  assert.match(ui,/reviewFixtureVisit\(/);
  assert.match(ui,/baseline=\{connection\?/);
  for(const path of ['StructuredVisitEditor','RiskTreeEditor']){
-  const editor=await readFile('components/patients/'+path+'.tsx','utf8');
+  const editor=await readLocalizedSource('components/patients/'+path+'.tsx','utf8');
   assert.match(editor,/if\(save(?:Document|Risk)\)return save(?:Document|Risk)\(/);
  }
 });
 
 test('production simulation retains explicit notices and no live network persistence',async()=>{
  for(const path of ['TeleconsultationsLobby','TeleconsultationsPreview']){
-  const ui=await readFile('components/teleconsultations/'+path+'.tsx','utf8');
+  const ui=await readLocalizedSource('components/teleconsultations/'+path+'.tsx','utf8');
   assert.match(ui,/Προσομοίωση τηλεσυνεδρίας/);
   assert.match(ui,/χάνονται με ανανέωση/);
   assert.doesNotMatch(ui,/fetch\(|createDailyRoom\(|getUserMedia\(/);

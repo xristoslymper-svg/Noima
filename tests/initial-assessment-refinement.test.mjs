@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -11,7 +12,7 @@ import postcss from 'postcss';
 const source=readFileSync('components/patients/VisitHistory.tsx','utf8');
 const mod={exports:{}};
 vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,{
- exports:mod.exports,module:mod,require:name=>name==='react'?React:name==='react/jsx-runtime'?jsx:name==='./useClinicalDraft'?{useClinicalDraft:({initial})=>({value:initial,change(){},flush:async()=>{},saving:false,error:'',savedAt:''})}:{},
+ exports:mod.exports,module:mod,require:(id)=>(intlTestModule(id)??(name=>name==='react'?React:name==='react/jsx-runtime'?jsx:name==='./useClinicalDraft'?{useClinicalDraft:({initial})=>({value:initial,change(){},flush:async()=>{},saving:false,error:'',savedAt:''})}:{})(id)),
 });
 function render(type){return renderToStaticMarkup(React.createElement(mod.exports.default,{
  bundle:{sessions:[{id:'synthetic',session_type:type}],history:{psychiatric_history:'Υποθετική καταγραφή κλινικού',allergies:'Δεν διερευνήθηκε'}},

@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 import './selective-browser-env';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
@@ -10,6 +11,6 @@ import '../app/clinical-editor.css';
 import '../app/noima-ui.css';
 import PatientWorkspace from '../components/patients/PatientWorkspace';
 import Library from '../app/psychometrics/page';
-import Intake from '../app/intake/page';
+import Intake from '../app/intake/IntakeForm';
 const page=location.pathname;
-createRoot(document.getElementById('root')!).render(page==='/psychometrics'?<Library/>:page==='/intake'?<Intake/>:<PatientWorkspace patientRef={page.split('/').at(-1)||''}/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{page==='/psychometrics'?<Library/>:page==='/intake'?<Intake/>:<PatientWorkspace patientRef={page.split('/').at(-1)||''}/>}</LocaleFixture>);

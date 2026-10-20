@@ -1,4 +1,5 @@
 'use client';
+import {useTranslations} from 'next-intl';
 import {useEffect,useState} from 'react';
 import PatientWorkspace from './PatientWorkspace';
 import fixture from '@/lib/clinical/treatment-preview.json';
@@ -6,6 +7,8 @@ import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {simulateVisitWrite} from '@/lib/patients/visit-simulation';
 const storageKey='noima-independent-visits-synthetic-v1';
 export default function IndependentVisitPreview(){
+ const t=useTranslations();
+
  const [ready,setReady]=useState(false);
  useEffect(()=>{
   let bundle=structuredClone(fixture) as unknown as PatientBundle;
@@ -15,7 +18,7 @@ export default function IndependentVisitPreview(){
    const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.origin);
    if(url.origin!==location.origin&&url.pathname.startsWith('/auth/v1/'))return original(input,init);
    if(url.origin!==location.origin)return Response.json({error:'Η συνθετική δοκιμή δεν συνδέεται με εξωτερικές υπηρεσίες.'},{status:403});
-   if(!url.pathname.startsWith('/api/'))return original(input,init);
+   if(!url.pathname.startsWith('/api/')||url.pathname==='/api/locale')return original(input,init);
    if(url.pathname.startsWith('/api/pilot')&&(!init?.method||init.method==='GET'))return original(input,init);
    if(url.pathname.includes('summary'))return Response.json({error:'Η AI σύνοψη δεν εκτελείται στη συνθετική δοκιμή.'},{status:503});
    if(url.pathname==='/api/patients/demo/runtime'||url.pathname==='/api/patients/demo/visit'){
@@ -33,5 +36,5 @@ export default function IndependentVisitPreview(){
   window.fetch=localFetch;setReady(true);
   return()=>{if(window.fetch===localFetch)window.fetch=original};
  },[]);
- return <>{ready?<><p className="record-state" role="status">Απομονωμένη συνθετική δοκιμή · Οι αλλαγές διατηρούνται με refresh σε αυτό το tab · Χωρίς εγγραφές στη βάση</p><PatientWorkspace patientRef={fixture.patient.id}/></>:<p className="record-state">Άνοιγμα συνθετικής δοκιμής…</p>}</>;
+ return <>{ready?<><p className="record-state" role="status">{t('current.m182')}</p><PatientWorkspace patientRef={fixture.patient.id}/></>:<p className="record-state">{t('current.m183')}</p>}</>;
 }

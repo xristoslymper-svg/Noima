@@ -1,4 +1,6 @@
 import {withSummarySources} from '@/lib/clinical/summary-sources';
+import {withOutputLanguage} from '@/i18n/output-language';
+import {errorJson} from '@/i18n/errors';
 import {buildClinicalCard} from '@/lib/clinical/clinical-card';
 import {providerEvidence} from '@/lib/clinical/provider-evidence';
 import { withPilot } from '@/lib/pilot/route';
@@ -58,7 +60,7 @@ async function verifyGrounding(narrative:Finding[],context:ReturnType<typeof bui
  }
 }
 async function generateAttempt(context:ReturnType<typeof buildSummaryContext>,repairReason=''){
- const r=await fetch(`${process.env.OPENAI_BASE_URL||'https://api.openai.com/v1'}/responses`,{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model,store:false,instructions:CLINICAL_WRITING_PROMPT+(repairReason?' A previous attempt failed source validation ('+repairReason+'). Correct only the citation contract; do not invent or strengthen clinical claims.':''),input:JSON.stringify(providerEvidence({as_of:context.day,sources:context.sources,corrections:context.layers.corrections})),text:{format:{type:'json_schema',name:'clinical_evidence',strict:true,schema:{...schema,properties:{findings:{...schema.properties.findings,minItems:minimumBriefingItems(context),items:{...schema.properties.findings.items,properties:{...schema.properties.findings.items.properties,source_ids:{...schema.properties.findings.items.properties.source_ids,items:{type:'string',enum:context.sources.map(s=>s.id)}}}}}}}}}})});
+ const r=await fetch(`${process.env.OPENAI_BASE_URL||'https://api.openai.com/v1'}/responses`,{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model,store:false,instructions:withOutputLanguage(CLINICAL_WRITING_PROMPT+(repairReason?' A previous attempt failed source validation ('+repairReason+'). Correct only the citation contract; do not invent or strengthen clinical claims.':'')),input:JSON.stringify(providerEvidence({as_of:context.day,sources:context.sources,corrections:context.layers.corrections})),text:{format:{type:'json_schema',name:'clinical_evidence',strict:true,schema:{...schema,properties:{findings:{...schema.properties.findings,minItems:minimumBriefingItems(context),items:{...schema.properties.findings.items,properties:{...schema.properties.findings.items.properties,source_ids:{...schema.properties.findings.items.properties.source_ids,items:{type:'string',enum:context.sources.map(s=>s.id)}}}}}}}}}})});
  if(!r.ok){console.error('clinical_summary_provider_failed',{status:r.status,model});throw new Error(`provider_failed_${r.status}`);}
  const narrative=validateNarrative(responseText(await r.json()),context);
  if(narrative.length>8||narrative.reduce((n,f)=>n+f.text.split(/\s+/u).length,0)>260)throw new Error('invalid_count');
@@ -120,9 +122,9 @@ async function precomputeClinicalSummary(tester:string,patient:string,force=fals
  return persisted;
 }
 async function handleGET(req:Request){
- if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
+ if(process.env.CLINICAL_DATA_MODE==='real')return errorJson({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
  const url=new URL(req.url);const tester=url.searchParams.get('tester')||'';const patient=url.searchParams.get('patient_id')||'';
- if(!isClinicalId(tester)||!isClinicalId(patient))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
+ if(!isClinicalId(tester)||!isClinicalId(patient))return errorJson({error:'Μη έγκυρος φάκελος.'},{status:400});
  try{
  // Both reads remain scoped by withPilot. Always validate the fresh bundle's
  // hash and policy before using the cache, regardless of completion order.
@@ -132,18 +134,18 @@ async function handleGET(req:Request){
  const findings=canonicalSummaryFindings(context);
  return Response.json({card:buildClinicalCard(bundle,context),findings,sources:context.sources,context_hash:hash,mode:'canonical',reason:summaryReadiness(bundle,context)||'summary_pending',as_of:context.day},{headers:{'Cache-Control':'no-store'}});
  }
- if(!cached)return Response.json({error:'Η σύνοψη προετοιμάζεται.',code:'summary_pending'},{status:404});
+ if(!cached)return errorJson({error:'Η σύνοψη προετοιμάζεται.',code:'summary_pending'},{status:404});
  if(cached.context_hash!==hash||cached.policy_version!==SUMMARY_POLICY_VERSION)return Response.json({code:'summary_pending'},{status:404});
  return Response.json({...cached,card:buildClinicalCard(bundle,context,cached.findings,true),mode:'synthesis',reason:null},{headers:{'Cache-Control':'no-store'}});
- }catch{return Response.json({error:'Δεν φορτώθηκαν τα κλινικά δεδομένα.'},{status:503})}
+ }catch{return errorJson({error:'Δεν φορτώθηκαν τα κλινικά δεδομένα.'},{status:503})}
 }
 async function handlePOST(req:Request){
- const raw=await req.json().catch(()=>null);if(!raw||typeof raw!=='object'||Array.isArray(raw))return Response.json({error:'Μη έγκυρο αίτημα.'},{status:400});const b=raw;
- if(!isClinicalId(b.tester)||!isClinicalId(b.patient_id))return Response.json({error:'Μη έγκυρος φάκελος.'},{status:400});
- if(process.env.CLINICAL_DATA_MODE==='real')return Response.json({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
+ const raw=await req.json().catch(()=>null);if(!raw||typeof raw!=='object'||Array.isArray(raw))return errorJson({error:'Μη έγκυρο αίτημα.'},{status:400});const b=raw;
+ if(!isClinicalId(b.tester)||!isClinicalId(b.patient_id))return errorJson({error:'Μη έγκυρος φάκελος.'},{status:400});
+ if(process.env.CLINICAL_DATA_MODE==='real')return errorJson({error:'Η πρόσβαση πραγματικών ασθενών δεν έχει ενεργοποιηθεί.'},{status:403});
  try{
   const bundle=await summaryBundle(b.tester,b.patient_id);const context=buildSummaryContext(bundle);const context_hash=await summaryContextHash(bundle,context.day);
-  if(b.context_hash&&b.context_hash!==context_hash)return Response.json({error:'Ο φάκελος άλλαξε. Ενημερώστε τη σύνοψη.',code:'stale_context',context_hash},{status:409});
+  if(b.context_hash&&b.context_hash!==context_hash)return errorJson({error:'Ο φάκελος άλλαξε. Ενημερώστε τη σύνοψη.',code:'stale_context',context_hash},{status:409});
   let mode:'synthesis'|'canonical'='synthesis';let reason:string|null=null;
   try{
    const verified=await precomputeClinicalSummary(b.tester,b.patient_id,true);
@@ -162,7 +164,7 @@ async function handlePOST(req:Request){
   if(reason&&!['no_completed_visit','insufficient_notes'].includes(reason))console.error('clinical_summary_synthesis_unavailable',{reason});
   const findings=canonicalSummaryFindings(context);assertCriticalCoverage(findings,context);
   return Response.json({card:buildClinicalCard(bundle,context),findings,sources:context.sources,context_hash,as_of:context.day,generated_at:new Date().toISOString(),mode,reason,model:null},{headers:{'Cache-Control':'no-store'}});
- }catch(e){const missing=e instanceof Error&&e.message.includes('patient_not_found');return Response.json({error:missing?'Ο φάκελος δεν βρέθηκε.':'Δεν φορτώθηκαν τα κλινικά δεδομένα. Δεν εμφανίζεται παλαιότερη σύνοψη.'},{status:missing?404:503});}
+ }catch(e){const missing=e instanceof Error&&e.message.includes('patient_not_found');return errorJson({error:missing?'Ο φάκελος δεν βρέθηκε.':'Δεν φορτώθηκαν τα κλινικά δεδομένα. Δεν εμφανίζεται παλαιότερη σύνοψη.'},{status:missing?404:503});}
 }
 
 export const GET = withPilot(handleGET);

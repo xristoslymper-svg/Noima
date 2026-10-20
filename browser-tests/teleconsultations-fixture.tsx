@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import TeleGuestPreview from '../components/teleconsultations/TeleGuestPreview';
@@ -9,4 +10,4 @@ import '../app/mobile.css';
 import '../app/initial-assessment.css';
 import '../app/clinical-editor.css';
 import '../app/noima-ui.css';
-createRoot(document.getElementById('root')!).render(location.pathname==='/assessment/teleconsultation-preview'?<TeleGuestPreview/>:<TeleconsultationsPreview/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{location.pathname==='/assessment/teleconsultation-preview'?<TeleGuestPreview/>:<TeleconsultationsPreview/>}</LocaleFixture>);

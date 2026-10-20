@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -15,7 +16,7 @@ function route({patients=[],cached=[]}={},fetcher=async()=>new Response(null,{st
  const module={exports:{}};
  const sandbox={
   module,exports:module.exports,Request,Response,URL,console,fetch:fetcher,
-  require:id=>{
+  require:(id)=>(intlTestModule(id)??(id=>{
    if(id==='next/server')return {after:fn=>{afterTask=fn}};
    if(id.includes('pilot/route'))return {withPilot:handler=>handler};
    if(id.includes('demo-runtime'))return {
@@ -27,7 +28,7 @@ function route({patients=[],cached=[]}={},fetcher=async()=>new Response(null,{st
    };
    if(id.includes('identity'))return {isClinicalId};
    throw new Error('unexpected_require:'+id);
-  },
+  })(id)),
  };
  vm.runInNewContext(code,sandbox);
  return {handler:module.exports,runAfter:async()=>{if(afterTask)await afterTask()},hasAfter:()=>Boolean(afterTask)};

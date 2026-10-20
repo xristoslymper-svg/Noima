@@ -1,1 +1,2 @@
-import React from 'react';import {createRoot} from 'react-dom/client';import PresenceEditor from '../components/presence/PresenceEditor';import '../app/globals.css';import '../app/noima-ui.css';createRoot(document.getElementById('root')!).render(<PresenceEditor storageKey="presence-browser-fixture"/>);
+import LocaleFixture from './LocaleFixture';
+import React from 'react';import {createRoot} from 'react-dom/client';import PresenceEditor from '../components/presence/PresenceEditor';import '../app/globals.css';import '../app/noima-ui.css';createRoot(document.getElementById('root')!).render(<LocaleFixture>{<PresenceEditor storageKey="presence-browser-fixture"/>}</LocaleFixture>);

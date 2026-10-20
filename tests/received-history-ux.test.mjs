@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 import {emptyHistory} from '../lib/intake/history.ts';
 import {receivedPatientHistories,normalizedPatientHistory,patientReportedHighlights} from '../lib/intake/patient-report.ts';
 

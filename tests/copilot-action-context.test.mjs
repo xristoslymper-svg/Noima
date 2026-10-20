@@ -1,3 +1,4 @@
+import {intlTestModule} from './helpers/i18n.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -21,7 +22,7 @@ function app(intent,prepare){
  '@/lib/copilot/actions':{prepareAction:async(w,b,q,k,u,pending)=>{seen.prepared.push(b.patient.id);return prepare?prepare(q,k,pending):{proposal:{id:'proposal'},answer:'Confirm first'};}},
  '@/lib/clinical/summary-context':{}
  };
- new Function('require','module','exports',compiled)(name=>mocks[name],module,module.exports);
+ new Function('require','module','exports',compiled)(name=>intlTestModule(name)??mocks[name],module,module.exports);
  return {seen,post:async(body)=>{const r=await module.exports.POST(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({query:'Create appointment',tester:'workspace',...body})}));return {status:r.status,body:await r.json()};}};
 }
 test('open chart initializes action scope and bypasses duplicate-name guessing',async()=>{

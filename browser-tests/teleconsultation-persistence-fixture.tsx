@@ -1,3 +1,4 @@
+import LocaleFixture from './LocaleFixture';
 import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import TeleconsultationsConnected from '../components/teleconsultations/TeleconsultationsConnected';
@@ -18,4 +19,4 @@ function Folder(){
  useEffect(()=>{void reload()},[]);
  return bundle?<section className="visit-workspace"><PatientSession bundle={bundle} reload={reload} onFinalize={async()=>{throw new Error('Use teleconsultation registration')}} onFinishLater={async()=>{}} finalizing={false} finalizeError="" selectedSessionId={session} onSelectSession={()=>{}} beforeNavigate={beforeNavigate}/></section>:<p>Φόρτωση φακέλου…</p>;
 }
-createRoot(document.getElementById('root')!).render(location.pathname==='/folder'?<Folder/>:<TeleconsultationsConnected/>);
+createRoot(document.getElementById('root')!).render(<LocaleFixture>{location.pathname==='/folder'?<Folder/>:<TeleconsultationsConnected/>}</LocaleFixture>);

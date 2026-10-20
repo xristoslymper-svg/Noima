@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readLocalizedSource as readFileSync} from './helpers/localized-source.mjs';
 
 const page=readFileSync(new URL('../app/calendar/page.tsx',import.meta.url),'utf8');
 const home=readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8');

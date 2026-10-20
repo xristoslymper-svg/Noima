@@ -1,4 +1,6 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
+import {useLocale,useTranslations} from 'next-intl';
 import {createContext,useContext,useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {demoPost} from '@/lib/patients/demo-client';
@@ -10,6 +12,11 @@ const SaveContext=createContext<Post|null>(null);
 export function useMedicationPost():Post{return useContext(SaveContext)||demoPost}
 /** Attribution is decided only for this write; it never becomes a hidden page mode. */
 export default function MedicationSaveScope({bundle,children}:{bundle:PatientBundle;children:ReactNode}){
+ const ui=useUiText();
+
+ const locale=useLocale();
+ const t=useTranslations();
+
  const current=useRef(bundle);current.current=bundle;
  const flight=useRef<Pending|null>(null),posting=useRef(false),returnFocus=useRef<HTMLElement|null>(null);
  const [pending,setPending]=useState<Pending|null>(null),[selected,setSelected]=useState(''),[busy,setBusy]=useState(false);
@@ -38,11 +45,11 @@ export default function MedicationSaveScope({bundle,children}:{bundle:PatientBun
   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancel()}
   if(event.key==='Tab'){const controls=Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled),select:not(:disabled)'));if(!controls.length){event.preventDefault();return}const first=controls[0],last=controls[controls.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
  }}>
-  <span className="kicker">ΑΠΟΘΗΚΕΥΣΗ ΑΓΩΓΗΣ</span><h2 id={title}>Πού να καταγραφεί η αλλαγή;</h2>
+  <span className="kicker">{t('current.m114')}</span><h2 id={title}>{t('current.m115')}</h2>
   {medication&&<p>{String(medication)}</p>}
-  <p>Υπάρχει μη ολοκληρωμένη καταγραφή επίσκεψης. Μπορείτε να κρατήσετε την αλλαγή στον φάκελο ή να τη συνδέσετε με συγκεκριμένη επίσκεψη.</p>
-  <label>Καταχώριση<select ref={selectRef} aria-label="Καταχώριση αλλαγής αγωγής" disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">Στον φάκελο ασθενούς</option>{drafts.map(s=><option key={s.id} value={s.id}>Μη ολοκληρωμένη · {formatClinicDateTime(s.started_at)} · {s.session_type==='initial_assessment'?'Αρχική αξιολόγηση':'Επανεξέταση'}</option>)}</select></label>
-  <p className="visit-hint">Η αλλαγή ισχύει μόλις αποθηκευτεί, ακόμη κι αν η επίσκεψη δεν έχει καταχωριστεί οριστικά.</p>
-  <div className="entry-footer"><button type="button" disabled={busy} onClick={cancel}>Επιστροφή στην αλλαγή</button><button type="button" className="entry-primary" disabled={busy} onClick={()=>void confirm()}>{busy?'Αποθήκευση…':'Αποθήκευση αλλαγής'}</button></div>
+  <p>{t('current.m116')}</p>
+  <label>{t('current.m117')}<select ref={selectRef} aria-label={t('current.m121')} disabled={busy} value={selected} onChange={event=>setSelected(event.target.value)}><option value="">{t('current.m118')}</option>{drafts.map(s=><option key={s.id} value={s.id}>{t('polish.m027')} {formatClinicDateTime(s.started_at,locale)} · {s.session_type==='initial_assessment'?ui('Αρχική αξιολόγηση'):ui('Επανεξέταση')}</option>)}</select></label>
+  <p className="visit-hint">{t('current.m119')}</p>
+  <div className="entry-footer"><button type="button" disabled={busy} onClick={cancel}>{t('current.m120')}</button><button type="button" className="entry-primary" disabled={busy} onClick={()=>void confirm()}>{busy?t('common.saving'):t('currentExtra.m029')}</button></div>
  </section></div>}</SaveContext.Provider>;
 }

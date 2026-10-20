@@ -16,9 +16,12 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
       - run: node browser-tests/registry-columns.mjs
+      - run: node browser-tests/current-i18n.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: registry-columns-evidence
-          path: test-results/registry-columns
+          path: |
+            test-results/registry-columns
+            test-results/current-i18n
           retention-days: 7

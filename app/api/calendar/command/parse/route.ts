@@ -1,3 +1,7 @@
+import {outputTranslator,outputLocale} from '@/i18n/output-translator';
+import {intlLocale} from '@/i18n/config';
+import {withOutputLanguage} from '@/i18n/output-language';
+import {errorJson} from '@/i18n/errors';
 import { withPilot } from '@/lib/pilot/route';
 import {clinicLocalToIso} from "@/lib/clinic-time";
 import { fetchDemoCalendarEvents, type DemoCalendarEvent } from "@/lib/calendar/demo-supabase";
@@ -43,7 +47,7 @@ function dateKeyInAthens(value: Date) {
 }
 
 function formatDateTime(iso: string) {
-  return new Intl.DateTimeFormat("el-GR", {
+  return new Intl.DateTimeFormat(intlLocale(outputLocale()), {
     timeZone: TIMEZONE,
     weekday: "short",
     day: "numeric",
@@ -80,11 +84,12 @@ function addMinutes(iso: string, minutes: number) {
 function localAthensToIso(date:string,minute:number){return clinicLocalToIso(date,String(Math.floor(minute/60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0"))}
 
 function availabilityWindow(text: string) {
+ const t=outputTranslator();
   const value = normalized(text);
-  if (value.includes("πρωι")) return { start: 9 * 60, end: 12 * 60, label: "πρωί" };
-  if (value.includes("μεσημερι")) return { start: 12 * 60, end: 15 * 60, label: "μεσημέρι" };
-  if (value.includes("απογευμα")) return { start: 14 * 60, end: 18 * 60, label: "απόγευμα" };
-  if (value.includes("βραδυ")) return { start: 17 * 60, end: 18 * 60, label: "βράδυ" };
+  if ((value.includes("πρωι")||value.includes("morning"))) return { start: 9 * 60, end: 12 * 60, label: t('calendar.morning') };
+  if ((value.includes("μεσημερι")||value.includes("midday"))) return { start: 12 * 60, end: 15 * 60, label: t('calendar.midday') };
+  if ((value.includes("απογευμα")||value.includes("afternoon"))) return { start: 14 * 60, end: 18 * 60, label: t('calendar.afternoon') };
+  if ((value.includes("βραδυ")||value.includes("evening"))) return { start: 17 * 60, end: 18 * 60, label: t('calendar.evening') };
   return { start: 9 * 60, end: 18 * 60, label: "" };
 }
 
@@ -152,58 +157,61 @@ function resolvePatient(name: string | null, patients: DemoPatient[], followUps:
 }
 
 function formatDateKey(date: string) {
-  return new Intl.DateTimeFormat("el-GR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(date + "T12:00:00Z"));
+  return new Intl.DateTimeFormat(intlLocale(outputLocale()), { timeZone: TIMEZONE, weekday: "long", day: "numeric", month: "long" }).format(new Date(date + "T12:00:00Z"));
 }
 
 function buildSummary(command: ParsedCommand, events: DemoCalendarEvent[], availabilityLabel="") {
+ const t=outputTranslator();
   const event = command.event_id ? events.find(item => item.id === command.event_id) : undefined;
   if (command.action === "move" && event && command.start_iso) {
-    return `Μετακίνηση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)} → ${formatDateTime(command.start_iso)}`;
+    return t('calendar.moveSummary',{patient:event.patient_name,before:formatDateTime(event.scheduled_start),after:formatDateTime(command.start_iso)});
   }
   if (command.action === "cancel" && event) {
-    return `Ακύρωση: ${event.patient_name} · ${formatDateTime(event.scheduled_start)}`;
+    return t('calendar.cancelSummary',{patient:event.patient_name,date:formatDateTime(event.scheduled_start)});
   }
   if ((command.action === "create" || command.action === "schedule_follow_up") && command.patient_name && command.start_iso) {
     const duration = command.duration_minutes ?? 50;
-    const kind = command.new_patient ? "Νέος ασθενής + αρχική αξιολόγηση" : "Νέο ραντεβού";
+    const kind = command.new_patient ? t('calendar.newPatientAppointment') : t('calendar.newAppointment');
     return `${kind}: ${command.patient_name} · ${formatDateTime(command.start_iso)} · ${duration}′`;
   }
   if (command.action === "find_availability" && command.target_date) {
     const suffix = availabilityLabel ? ` · ${availabilityLabel}` : "";
     return command.patient_name
-      ? `Διαθέσιμες ώρες για ${command.patient_name} · ${formatDateKey(command.target_date)}${suffix}`
-      : `Διαθέσιμες ώρες · ${formatDateKey(command.target_date)}${suffix}`;
+      ? t('calendar.availablePatient',{patient:command.patient_name,date:formatDateKey(command.target_date),period:suffix})
+      : t('calendar.availableDate',{date:formatDateKey(command.target_date),period:suffix});
   }
-  return "Χρειάζομαι μία διευκρίνιση πριν γίνει οποιαδήποτε αλλαγή.";
+  return t('calendar.clarifyBeforeChange');
 }
 
 function specificClarification(command: ParsedCommand) {
+ const t=outputTranslator();
   const missing = new Set(command.missing_fields);
   const intent = command.intended_action;
-  const newPatientPrefix = command.new_patient && command.patient_name ? `Για τον νέο ασθενή ${command.patient_name}, ` : "";
+  const newPatientPrefix = command.new_patient && command.patient_name ? t('calendar.newPatientPrefix',{patient:command.patient_name}) : "";
 
   if (missing.has("recurrence")) {
-    return "Για ολόκληρη σειρά, επιλέξτε «Νέο ραντεβού» και «Επανάληψη» στο ημερολόγιο. Δεν θα δημιουργηθεί μεμονωμένο ραντεβού από αυτή την εντολή.";
+    return t('calendar.recurrenceManual');
   }
   if (missing.has("appointment")) {
-    if (intent === "cancel") return "Ποιο ακριβώς ραντεβού θέλετε να ακυρώσω;";
-    if (intent === "move") return "Ποιο ακριβώς ραντεβού θέλετε να μεταφέρω;";
-    return "Ποιο ακριβώς ραντεβού εννοείτε;";
+    if (intent === "cancel") return t('calendar.whichCancel');
+    if (intent === "move") return t('calendar.whichMove');
+    return t('calendar.whichAppointment');
   }
   if (missing.has("patient") && missing.has("date") && missing.has("time")) {
-    return "Για ποιον ασθενή και ποια ημέρα και ώρα να κλείσω το ραντεβού;";
+    return t('calendar.whichPatientDateTime');
   }
   if (missing.has("patient")) {
-    if (command.new_patient && command.patient_name) return `Υπάρχει ήδη φάκελος για ${command.patient_name}. Θέλετε τον υπάρχοντα φάκελο ή να δημιουργηθεί νέος;`;
-    return "Για ποιον ασθενή να κλείσω το ραντεβού;";
+    if (command.new_patient && command.patient_name) return t('calendar.existingOrNew',{patient:command.patient_name});
+    return t('calendar.whichPatient');
   }
-  if (missing.has("date") && missing.has("time")) return newPatientPrefix + "ποια ημέρα και ώρα θέλετε;";
-  if (missing.has("date")) return newPatientPrefix + "ποια ημέρα θέλετε;";
-  if (missing.has("time")) return intent === "move" ? "Σε τι ώρα θέλετε να μεταφερθεί;" : newPatientPrefix + "τι ώρα θέλετε;";
-  return command.clarification || "Τι θα θέλατε να συμπληρώσετε;";
+  if (missing.has("date") && missing.has("time")) return newPatientPrefix + t('calendar.whichDateTime');
+  if (missing.has("date")) return newPatientPrefix + t('calendar.whichDate');
+  if (missing.has("time")) return intent === "move" ? t('calendar.whichMoveTime') : newPatientPrefix + t('calendar.whichTime');
+  return command.clarification || t('calendar.clarifyDetails');
 }
 
 function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[], patients: DemoPatient[]): ClarificationOption[] {
+ const t=outputTranslator();
   const missing = new Set(command.missing_fields);
   if (missing.has("appointment")) {
     const candidates = command.patient_name
@@ -222,8 +230,8 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
     }) : patients;
     const options = candidates.slice(0, 5).map(patient => {
       const details = [
-        patient.reported_age ? `${patient.reported_age} ετών` : "",
-        patient.phone ? `τηλ. …${patient.phone.replace(/\D/g,"").slice(-4)}` : "",
+        patient.reported_age ? t('calendar.candidateAge',{age:patient.reported_age}) : "",
+        patient.phone ? t('calendar.candidatePhone',{lastFour:patient.phone.replace(/\D/g,'').slice(-4)}) : "",
       ].filter(Boolean).join(" · ");
       return {
         label: patientName(patient) + (details ? ` · ${details}` : ""),
@@ -232,7 +240,7 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
     });
     if (command.new_patient && command.patient_name) {
       options.push({
-        label: `Νέος φάκελος · ${command.patient_name}`,
+        label: t('calendar.newRecordCandidate',{patient:command.patient_name}),
         value: `Δημιούργησε νέο φάκελο για ${command.patient_name} [create_new_patient:true]`,
       });
     }
@@ -240,7 +248,7 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
   }
   if (missing.has("recurrence")) {
     return [
-      { label: "Ακύρωση", value: "Όχι, ακύρωσε την εντολή." },
+      { label: t('common.cancel'), value: "Όχι, ακύρωσε την εντολή." },
     ];
   }
   return [];
@@ -249,7 +257,7 @@ function clarificationOptions(command: ParsedCommand, events: DemoCalendarEvent[
 async function handlePOST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
+    return errorJson({ error: "Η υπηρεσία κατανόησης εντολών δεν είναι ρυθμισμένη." }, { status: 503 });
   }
 
   let transcript = "";
@@ -263,15 +271,15 @@ async function handlePOST(request: Request) {
       ? body.follow_ups.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean).slice(-6)
       : [];
   } catch {
-    return Response.json({ error: "Μη έγκυρη εντολή." }, { status: 400 });
+    return errorJson({ error: "Μη έγκυρη εντολή." }, { status: 400 });
   }
 
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tester)) {
-    return Response.json({ error: "Λείπει η δοκιμαστική ταυτότητα." }, { status: 400 });
+    return errorJson({ error: "Λείπει η δοκιμαστική ταυτότητα." }, { status: 400 });
   }
 
   if (!transcript || transcript.length > 1000 || followUps.some(item => item.length > 300)) {
-    return Response.json({ error: "Η εντολή είναι κενή ή πολύ μεγάλη." }, { status: 400 });
+    return errorJson({ error: "Η εντολή είναι κενή ή πολύ μεγάλη." }, { status: 400 });
   }
 
   let events: DemoCalendarEvent[];
@@ -280,7 +288,7 @@ async function handlePOST(request: Request) {
     [events, patients] = await Promise.all([fetchDemoCalendarEvents(tester), listPatients(tester)]);
     events = events.filter(event => event.status === "scheduled");
   } catch {
-    return Response.json({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
+    return errorJson({ error: "Δεν ήταν δυνατή η ανάγνωση του ημερολογίου ή των ασθενών." }, { status: 502 });
   }
 
   const now = new Date();
@@ -321,7 +329,7 @@ async function handlePOST(request: Request) {
   };
 
   const prompt = [
-    "You are a deterministic Greek calendar-command parser for a psychiatrist.",
+    "You are a deterministic Greek and English calendar-command parser for a psychiatrist.",
     `Current date in ${TIMEZONE}: ${today}. Current instant: ${now.toISOString()}.`,
     "Never execute anything. Return only the requested structured output.",
     "Allowed intents: move, cancel, create, schedule_follow_up, find_availability.",
@@ -359,18 +367,19 @@ async function handlePOST(request: Request) {
         model: "gpt-6-luna",
         reasoning: { effort: "none" },
         store: false,
+        instructions: withOutputLanguage('Keep canonical command fields, identifiers and enum values unchanged. Write clarification and other display-only prose in the explicitly selected output language.'),
         input: prompt,
         text: { format: { type: "json_schema", name: "calendar_command", strict: true, schema } },
       }),
     });
 
     if (!response.ok) {
-      return Response.json({ error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." }, { status: 502 });
+      return errorJson({ error: "Δεν μπόρεσα να καταλάβω την εντολή. Δοκιμάστε ξανά." }, { status: 502 });
     }
 
     const payload = await response.json();
     const outputText = extractOutputText(payload);
-    if (!outputText) return Response.json({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
+    if (!outputText) return errorJson({ error: "Δεν προέκυψε έγκυρη εντολή." }, { status: 502 });
 
     let command = JSON.parse(outputText) as ParsedCommand;
     const intended = command.action === "clarify" ? command.intended_action : command.action;
@@ -378,7 +387,7 @@ async function handlePOST(request: Request) {
     const userCancelled =
       command.action === "clarify" &&
       command.missing_fields.length === 0 &&
-      Boolean(command.clarification?.toLocaleLowerCase("el").includes("ακυρώ"));
+      Boolean(command.clarification?.toLocaleLowerCase("el").includes("ακυρώ")||/cancelled|canceled/i.test(command.clarification||""));
 
     if (!userCancelled && command.event_id && !events.some(event => event.id === command.event_id)) {
       command = { ...command, action: "clarify", event_id: null, missing_fields: ["appointment"], clarification: null };
@@ -481,7 +490,7 @@ async function handlePOST(request: Request) {
     });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
-    return Response.json({ error: timedOut ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά." : "Δεν ήταν δυνατή η κατανόηση της εντολής." }, { status: 502 });
+    return errorJson({ error: timedOut ? "Η κατανόηση της εντολής άργησε πολύ. Δοκιμάστε ξανά." : "Δεν ήταν δυνατή η κατανόηση της εντολής." }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }

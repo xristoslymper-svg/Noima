@@ -104,7 +104,7 @@ test('draft-linked medication stays beside its real source visit; unlinked stop 
  ]});
  const saved=JSON.stringify(input),result=patientTimeline(input,now);
  assert.deepEqual(result.visits.map(e=>e.sessionId),['draft','completed']);
- assert.equal(result.visits[0].draft,true);assert.match(result.visits[0].detail,/δεν έχει οριστικοποιηθεί/);
+ assert.equal(result.visits[0].draft,true);assert.match(result.visits[0].detail,/Η επίσκεψη δεν έχει καταχωριστεί οριστικά/);
  assert.deepEqual(result.context.get('draft').treatment.map(e=>e.id),['med-start']);
  assert.deepEqual(new Set(result.unlinked.map(e=>e.id)),new Set(['med-stop','med-missing','med-cross-patient']));
  assert.equal(result.unlinked.some(e=>e.id==='med-start'),false);

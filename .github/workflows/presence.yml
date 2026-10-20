@@ -26,10 +26,19 @@ jobs:
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
-      - run: node browser-tests/presence.mjs
+      - run: |
+          node browser-tests/presence.mjs
+          node browser-tests/public-practice.mjs
+      - name: Read-only hosted public URL without login
+        if: github.head_ref == 'codex/public-practice'
+        env:
+          PRESENCE_LIVE_URL: https://noima-git-codex-public-practice-xristoslymper-3481.vercel.app/iatreio/iatreio-8407b134fef44c3dab885b181b747cf7
+        run: node browser-tests/public-practice-live.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: presence-synthetic-evidence
-          path: test-results/presence
+          path: |
+            test-results/presence
+            test-results/public-practice
           retention-days: 7

@@ -2,5 +2,5 @@ export function draftSaveStatus({saving,dirty,error,savedAt='',recorded=true}:{s
  if(error)return 'Δεν αποθηκεύτηκαν όλες οι αλλαγές — το κείμενό σας διατηρείται. '+error;
  if(saving)return 'Αποθήκευση αλλαγών…';
  if(dirty)return 'Αλλαγές σε αναμονή αποθήκευσης…';
- return recorded?'Αποθηκεύτηκαν όλες οι αλλαγές'+(savedAt?' · '+savedAt:''):'Δεν έχει καταγραφεί';
+ return recorded?'Οι σημειώσεις αποθηκεύτηκαν — η καταγραφή παραμένει ανοιχτή'+(savedAt?' · '+savedAt:''):'Δεν έχει καταγραφεί';
 }

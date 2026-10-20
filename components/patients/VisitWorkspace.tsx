@@ -57,7 +57,7 @@ export default function VisitWorkspace({sessionId,patientId,context,reloadContex
   catch(cause){setFinalizeError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η ολοκλήρωση.')}
   finally{if(mounted.current)setFinalizing(false)}
  }
- async function defer(targetSessionId=sessionId,reason?:string){if(targetSessionId!==sessionId)throw new Error('Η επίσκεψη έχει αλλάξει.');setFinalizeError('');try{await demoPost({action:'finish_session_later',session_id:sessionId});await onDeferred(sessionId,reason)}catch(cause){const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η πρόχειρη καταγραφή.';setFinalizeError(message);throw cause}}
+ async function defer(targetSessionId=sessionId,reason?:string){if(targetSessionId!==sessionId)throw new Error('Η επίσκεψη έχει αλλάξει.');setFinalizeError('');try{await demoPost({action:'finish_session_later',session_id:sessionId});await onDeferred(sessionId,reason)}catch(cause){const message=cause instanceof Error?cause.message:'Δεν αποθηκεύτηκε η μη ολοκληρωμένη καταγραφή.';setFinalizeError(message);throw cause}}
  const currentSession=record?.sessions.find(row=>row.id===sessionId&&row.patient_id===patientId);
  return <section className="visit-workspace" aria-label="Κλινική επίσκεψη">
   {finalizeError&&<p role="alert">{finalizeError} <button type="button" disabled={finalizing} onClick={()=>void checkCompletion()}>Έλεγχος ολοκλήρωσης</button></p>}

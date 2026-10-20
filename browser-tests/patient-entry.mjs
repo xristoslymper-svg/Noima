@@ -68,7 +68,9 @@ try{
  assert.equal(writes.filter(w=>w.action==='start_session').length,0);
  await p.screenshot({path:resolve(out,'old-draft-choice.png'),fullPage:true});
  await p.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
- await p.locator('.visit-workspace').waitFor();assert.match(p.url(),new RegExp(draft.id));
+ await p.locator('dialog[open] .visit-workspace').waitFor();assert.match(p.url(),new RegExp(draft.id));
+ await p.keyboard.press('Escape');await p.locator('dialog[open]').waitFor({state:'detached'});
+ assert.equal(await p.getByRole('button',{name:'Ενέργειες',exact:true}).isVisible(),true);
  assert.equal(writes.filter(w=>w.action==='start_session').length,0);
  report.push('old draft is explicitly selected and keeps identity; no new session or relinking');
  // Existing appointment entry must not silently adopt yesterday's draft.

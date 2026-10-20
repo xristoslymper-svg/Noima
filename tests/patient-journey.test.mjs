@@ -36,8 +36,8 @@ test('both editors flush, validate and require explicit review confirmation befo
  for(const source of [full,compact]){assert.match(source,/JourneyReview/);assert.match(source,/if\(!confirm\)\{setReviewBundle\(fresh\);return\}/);assert.match(source,/flushAll\(true\)/);}
  assert.match(full,/hidden=\{Boolean\(reviewBundle\)\}/);assert.match(compact,/hidden=\{Boolean\(reviewBundle\)\}/);
  const workspace=readFileSync('components/patients/PatientWorkspace.tsx','utf8');
- assert.ok(workspace.indexOf('confirmedCompletion(fresh.sessions')<workspace.indexOf('setCompletedJourney(session.id)'));
- assert.doesNotMatch(workspace,/<dialog/);assert.match(workspace,/JourneyCompletion/);
+ assert.ok(workspace.indexOf('confirmedCompletion(fresh.sessions')<workspace.indexOf("applyTab('timeline',null"));
+ assert.match(workspace,/<VisitDialog open=\{tab==='record'\}/);assert.match(workspace,/JourneyCompletion/);
 });
 
 test('review identity detects post-review clinical edits and version changes',()=>{

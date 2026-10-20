@@ -51,7 +51,7 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
    const positions=await page.locator('nav[aria-label="Καρτέλες φακέλου"] > button').evaluateAll(buttons=>buttons.map(b=>Math.round(b.getBoundingClientRect().top)));
    assert.equal(positions.length,4);assert.equal(new Set(positions).size,size==='sidebar'?2:1,size+' '+tab+': balanced navigation rows '+positions.join(','));
    for(const label of ['Σύνοψη','Επισκέψεις','Θεραπευτικό πλάνο','Στοιχεία & ιστορικό']){
-    const button=page.getByRole('navigation',{name:'Καρτέλες φακέλου'}).getByRole('button',{name:label,exact:true});
+    const button=page.getByRole('navigation',{name:'Καρτέλες φακέλου',includeHidden:true}).getByRole('button',{name:label,exact:true,includeHidden:true});
     assert.equal(await button.locator('svg').isVisible(),true,label+' retains its visible icon');
     assert.equal(await button.locator('span').last().isVisible(),true,label+' retains its visible label');
    }
@@ -69,7 +69,7 @@ try{for(const [size,viewport] of Object.entries({desktop:{width:1440,height:1000
   }
   if(tab==='timeline'){
    const row=page.locator('[data-session-id="'+bundle.sessions.at(-1).id+'"]');
-   await row.getByText('Επανεξέταση · Πρόχειρη',{exact:true}).waitFor();
+   await row.getByText('Επανεξέταση · Μη ολοκληρωμένη',{exact:true}).waitFor();
    assert.equal(await row.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1);
    assert.equal(await page.locator('[data-treatment-event="med-timeline-draft-start"]').count(),1,'linked event must not be duplicated');
    assert.ok(await page.locator('[data-assessment-id]').count()>0,'linked measurements stay with visits');

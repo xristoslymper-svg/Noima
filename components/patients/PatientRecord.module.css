@@ -434,3 +434,11 @@
 .contextEntry:focus-visible { outline:2px solid #719685; outline-offset:4px; }
 @media(max-width:1000px){ .enrichedVisit { grid-template-columns:100px minmax(0,1fr); } .visitContext { grid-column:2; } }
 @media(max-width:700px){ .enrichedVisit { grid-template-columns:1fr; } .visitContext { grid-column:1; margin-top:10px; } }
+
+/* Same clinical editor in a native modal; the file remains visible behind it. */
+.recordDialog{box-sizing:border-box;margin:auto;font-family:inherit;background:#f8f5ef;color:#263a32;overscroll-behavior:contain}
+.recordDialogHeader{position:sticky;top:-24px;z-index:8;background:#f8f5ef;padding:16px 0}
+.recordDialogHeader h2{font-size:18px}
+.recordDialog :global(.patient-visit-surface){border:0;padding:0;background:transparent;margin:0}
+.recordDialog :global(.visit-finalize){position:sticky;bottom:-24px;z-index:7;background:#f8f5ef}
+@media(max-width:700px){.recordDialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0;padding:14px}.recordDialogHeader{top:-14px;gap:10px}.recordDialogHeader button{font-size:12px;padding:8px}.recordDialog :global(.visit-finalize){bottom:-14px}}

@@ -21,8 +21,8 @@ function failure(error:unknown){
  if(message.includes('confirmed_context_required')||message.includes('context_resolved')||message.includes('invalid_context'))return Response.json({error:'Το context δεν είναι διαθέσιμο για αυτή την αλλαγή. Ανανεώστε τον φάκελο.'},{status:422});
  if(message.includes('invalid_patient'))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
  if(message.includes('patient_not_found'))return Response.json({error:'Ο δοκιμαστικός ασθενής δεν βρέθηκε.',code:'not_found'},{status:404});
- if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή πρόχειρη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
- if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή πρόχειρη καταγραφή διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
+ if(message.includes('draft_linked_elsewhere'))return Response.json({error:'Υπάρχει ήδη άλλη ανοιχτή μη ολοκληρωμένη καταγραφή για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'draft_linked_elsewhere'},{status:409});
+ if(message.includes('open_draft_conflict'))return Response.json({error:'Υπάρχει ήδη ανοιχτή μη ολοκληρωμένη καταγραφή διαφορετικού τύπου για αυτόν τον ασθενή. Συνεχίστε ή ολοκληρώστε πρώτα εκείνη.',code:'open_draft_conflict'},{status:409});
  if(message.includes('appointment_unavailable'))return Response.json({error:'Το ραντεβού δεν είναι πλέον διαθέσιμο για έναρξη.',code:'appointment_unavailable'},{status:409});
  if(message.includes('mse_review_required'))return Response.json({error:'Ελέγξτε τις προηγούμενες ενότητες MSE: διατήρηση, αλλαγή ή μη αξιολόγηση σήμερα.'},{status:422});
  if(message.includes('closure_confirmation_required'))return Response.json({error:'Συμπληρώστε και επιβεβαιώστε την κλινική μνήμη, τη θεραπευτική απόφαση, τη λήψη αγωγής και τον επόμενο έλεγχο.'},{status:422});

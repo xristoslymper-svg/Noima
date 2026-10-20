@@ -34,7 +34,7 @@ export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Δεν φορτώθηκε η προηγούμενη πορεία.');
    if(controller.signal.aborted||!alive.current)return;
    const row=data.priorCourse?confirmedPriorCourse(data.priorCourse,patientId,tester):null;setRecord(row);let next=fromRecord(row);let recovered=false;
-   if(restore){try{const raw=readRecovery(sessionStorage,key);const value=raw?JSON.parse(raw):null;if(value&&Number.isSafeInteger(value.version)&&typeof value.period==='string'&&value.period.length<=120&&typeof value.content==='string'&&value.content.length<=12000&&(value.content!==next.content||value.period!==next.period)){next=value;recovered=true;if(value.version!==(row?.version||0)){setConflict(true);setError('Υπάρχει νεότερη αποθηκευμένη έκδοση. Το πρόχειρό σας διατηρήθηκε.')}}}catch{}}
+   if(restore){try{const raw=readRecovery(sessionStorage,key);const value=raw?JSON.parse(raw):null;if(value&&Number.isSafeInteger(value.version)&&typeof value.period==='string'&&value.period.length<=120&&typeof value.content==='string'&&value.content.length<=12000&&(value.content!==next.content||value.period!==next.period)){next=value;recovered=true;if(value.version!==(row?.version||0)){setConflict(true);setError('Υπάρχει νεότερη αποθηκευμένη έκδοση. Το κείμενό σας διατηρήθηκε.')}}}catch{}}
    setDraft(next);setOpen(recovered);setReady(true);
   }catch(cause){if(!controller.signal.aborted&&alive.current){setReady(false);setError(cause instanceof Error?cause.message:'Δεν φορτώθηκε η προηγούμενη πορεία.')}}
   finally{if(!controller.signal.aborted&&alive.current)setLoading(false)}
@@ -44,8 +44,8 @@ export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:
  useEffect(()=>{if(!pending)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[pending]);
  useEffect(()=>{if(open)textarea.current?.focus()},[open]);
  function change(patch:Partial<Draft>){setDraft(value=>({...value,...patch}));setSaved(false)}
- function cancel(){if(savingRef.current||voiceBusy)return;if((dirty||hasAudio)&&!window.confirm('Να απορριφθεί το μη αποθηκευμένο πρόχειρο;'))return;recorder.current?.cancel();audio.current=null;setHasAudio(false);setDraft(fromRecord(record));setOpen(false);setError('');setConflict(false);request.current=null;clearDraft();onSettled?.(navigationWarning)}
- async function reloadSaved(){if(pending&&!window.confirm('Να φορτωθεί η αποθηκευμένη έκδοση; Το μη αποθηκευμένο πρόχειρο θα απορριφθεί.'))return;clearDraft();setConflict(false);request.current=null;await load(false)}
+ function cancel(){if(savingRef.current||voiceBusy)return;if((dirty||hasAudio)&&!window.confirm('Να απορριφθεί το μη αποθηκευμένο κείμενο;'))return;recorder.current?.cancel();audio.current=null;setHasAudio(false);setDraft(fromRecord(record));setOpen(false);setError('');setConflict(false);request.current=null;clearDraft();onSettled?.(navigationWarning)}
+ async function reloadSaved(){if(pending&&!window.confirm('Να φορτωθεί η αποθηκευμένη έκδοση; Το μη αποθηκευμένο κείμενο θα απορριφθεί.'))return;clearDraft();setConflict(false);request.current=null;await load(false)}
  async function save(){
   if(savingRef.current||!ready||voiceBusy||hasAudio||conflict)return;
   const signature=JSON.stringify(draft);if(request.current?.signature!==signature)request.current={signature,id:crypto.randomUUID()};
@@ -56,7 +56,7 @@ export default function PriorCourseSection({patientId,beforeNavigate,onSettled}:
    if(!response.ok){if(data.code==='stale_prior_course')setConflict(true);throw new Error(data.error||'Δεν επιβεβαιώθηκε η αποθήκευση. Δοκιμάστε ξανά.')}
    const row=confirmedPriorCourse(data.priorCourse,patientId,tester,input);if(!alive.current)return;
    setRecord(row);setDraft(fromRecord(row));setOpen(false);setSaved(true);clearDraft();request.current=null;onSettled?.(navigationWarning);
-  }catch(cause){if(alive.current)setError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η αποθήκευση. Το πρόχειρό σας διατηρείται.')}
+  }catch(cause){if(alive.current)setError(cause instanceof Error?cause.message:'Δεν επιβεβαιώθηκε η αποθήκευση. Το κείμενό σας διατηρείται.')}
   finally{savingRef.current=false;if(alive.current)setSaving(false)}
  }
  async function transcribe(blob:Blob){

@@ -34,7 +34,7 @@ test('printable clinical record uses readable Greek headings and corrections, no
  const html=patientRecordPrintableHtml(sample(),'test-nonce','2026-10-10T08:00:00Z');
  for(const phrase of ['Κλινικός φάκελος','Καταγεγραμμένο ιστορικό','Κλινικές επισκέψεις','TEST-MED','Νέα κλινική αποτίμηση','Ενημερωμένο θεραπευτικό πλάνο','Ψυχομετρικές μετρήσεις','Εκκρεμεί ανασκόπηση στοιχείου 9','Προγραμματισμένο','Εκτύπωση / PDF'])assert.ok(html.includes(phrase),phrase);
  for(const absent of ['ΑΝΕΓΚΡΙΤΟ ΠΡΟΧΕΙΡΟ ΠΕΡΙΕΧΟΜΕΝΟ','ΑΠΟΡΡΗΤΗ ΜΗ ΕΓΚΕΚΡΙΜΕΝΗ ΠΡΟΤΑΣΗ AI','Παλιά εκτίμηση','Παλαιό πλάνο','patient-sensitive-id','appointment-internal-id','ΚΑΝΟΝΙΚΑ ΔΕΔΟΜΕΝΑ','JSON.stringify','"event_type"'])assert.ok(!html.includes(absent),absent);
- assert.ok(html.includes('Πρόχειρες καταγραφές:'));
+ assert.ok(html.includes('Μη ολοκληρωμένες καταγραφές:'));
  assert.match(html,/Cache-Control|ΔΟΚΙΜΑΣΤΙΚΑ ΔΕΔΟΜΕΝΑ/);
 });
 

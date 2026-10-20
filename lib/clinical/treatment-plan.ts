@@ -6,7 +6,7 @@ import {completedMeasurements,patientRecord} from './patient-record.ts';
 export function medicationSessionId(bundle:Pick<PatientBundle,'patient'|'sessions'>,selected?:string|null){
  if(!selected)return null;
  const session=bundle.sessions.find(s=>s.id===selected&&s.patient_id===bundle.patient.id&&s.status==='draft');
- if(!session)throw new Error('Η επιλεγμένη πρόχειρη επίσκεψη δεν είναι πλέον διαθέσιμη. Ανανεώστε τον φάκελο και επιλέξτε ξανά.');
+ if(!session)throw new Error('Η επιλεγμένη επίσκεψη με μη ολοκληρωμένη καταγραφή δεν είναι πλέον διαθέσιμη. Ανανεώστε τον φάκελο και επιλέξτε ξανά.');
  return session.id;
 }
 export function treatmentPlan(bundle:PatientBundle,now=new Date()){

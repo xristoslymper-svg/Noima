@@ -5,7 +5,7 @@ await build({entryPoints:['browser-tests/visit-layout-fixture.tsx'],bundle:true,
 let bundle=JSON.parse(readFileSync('lib/clinical/treatment-preview.json','utf8'));let writes=0;
 const server=createServer(async(req,res)=>{res.setHeader('cache-control','no-store');const url=new URL(req.url,'http://localhost');
  if(url.pathname==='/bundle'){res.setHeader('content-type','application/json');return res.end(JSON.stringify(bundle))}
- if(url.pathname==='/api/patients/demo/runtime'){
+ if(url.pathname==='/api/patients/demo/custom-section'){
   let raw='';for await(const part of req)raw+=part;const body=JSON.parse(raw);assert.equal(body.action,'save_custom_section');writes++;
   let section=bundle.sections.find(s=>s.session_id===body.session_id&&s.section_key===body.section_key);
   if(section&&section.version!==body.expected_version){res.statusCode=409;return res.end(JSON.stringify({error:'stale_section'}))}

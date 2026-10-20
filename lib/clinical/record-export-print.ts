@@ -1,3 +1,4 @@
+import {isCustomSection,readCustomSection} from './visit-layout.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 import {correctionsFor,effectiveRisk} from './corrections.ts';
@@ -40,8 +41,9 @@ function renderRecordedSection(b:PatientBundle,sessionId:string,sectionEntry:Pat
  }
  const document=typeof correction==='string'?null:correction&&typeof correction==='object'&&'kind' in correction?(correction as VisitDocument):sectionEntry.document;
  const narrative=typeof correction==='string'?correction:sectionEntry.content;
- const label=sectionNames[sectionEntry.section_key]||sectionEntry.section_key;
- const content=document?.fields?renderDocument(document):paragraph(narrative);
+ const custom=isCustomSection(sectionEntry.section_key)?readCustomSection(narrative):null;
+ const label=custom?.title||sectionNames[sectionEntry.section_key]||sectionEntry.section_key;
+ const content=document?.fields?renderDocument(document):paragraph(custom?custom.body:narrative);
  return '<div class="entry"><h3>'+escapeHtml(label)+'</h3>'+content+'</div>';
 }
 const historyFields=[

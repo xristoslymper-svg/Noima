@@ -35,3 +35,8 @@ test('custom section rejects stale, non-custom keys and invalid titles',()=>{
  assert.throws(()=>simulateVisitWrite(b,{...write,section_key:'mse'},''),/invalid_section/);
  assert.throws(()=>simulateVisitWrite(b,{...write,title:'Α\nΒ'},''),/invalid_section/);
 });
+
+test('empty custom titles are not clinical evidence or sufficient summary notes',()=>{
+ const b=fixture();b.sessions=[{id:'only',status:'completed',started_at:'2026-10-20T10:00:00Z'}];b.sections=[{id:'custom',session_id:'only',section_key:key,content:customSectionContent('Προσωπική ενότητα χωρίς περιεχόμενο','')}];
+ assert.ok(!buildSummaryContext(b).sources.some(s=>s.section_key===key));assert.equal(summaryReadiness(b),'insufficient_notes');
+});

@@ -1,3 +1,3 @@
 import {notFound} from 'next/navigation';
-import IndependentVisitPreview from '@/components/patients/IndependentVisitPreview';
-export default function Page(){if(process.env.VERCEL_ENV==='production')notFound();return <IndependentVisitPreview customization/>}
+import CustomVisitPreview from '@/components/patients/CustomVisitPreview';
+export default function Page(){if(process.env.VERCEL_ENV==='production')notFound();return <CustomVisitPreview/>}

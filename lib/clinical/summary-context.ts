@@ -118,7 +118,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
  for(const session of completed){
   const encounterTime=clinicalSessionTime(bundle,session);
   for(const section of bundle.sections.filter(s=>s.session_id===session.id)){
-   const content=correctedSectionContent(bundle,section);if(!content.trim())continue;
+   const content=correctedSectionContent(bundle,section);if(!content.trim()||(isCustomSection(section.section_key)&&!readCustomSection(content).body.trim()))continue;
    const required_correction_ids=structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},section.section_key)).map(c=>'structured_correction:'+c.id);
    add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||(isCustomSection(section.section_key)?readCustomSection(content).title:section.section_key)}`,date:encounterTime,session_id:session.id,section_key:section.section_key,required_correction_ids,content,target:'sessions',record_id:section.id});
   }
@@ -230,7 +230,7 @@ export function minimumBriefingItems(_context:SummaryContext){
 export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
  if(!bundle.sessions.some(s=>s.status==='completed'))return 'no_completed_visit';
  const narrative=context.sources.filter(s=>s.kind==='session_section'&&(['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||'')||isCustomSection(s.section_key||'')));
- const meaningful=narrative.some(s=>typeof s.content==='string'&&s.content.trim().length>=12&&s.content.trim().split(/\s+/u).length>=3);
+ const meaningful=narrative.some(s=>{if(typeof s.content!=='string')return false;const text=isCustomSection(s.section_key||'')?readCustomSection(s.content).body:s.content;return text.trim().length>=12&&text.trim().split(/\s+/u).length>=3});
  return meaningful?null:'insufficient_notes';
 }
 // A useful record-derived briefing remains available without a model. Whole

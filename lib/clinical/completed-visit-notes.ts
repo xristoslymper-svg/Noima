@@ -1,3 +1,4 @@
+import {isCustomSection} from './visit-layout.ts';
 import type {PatientBundle,DemoSession} from '../patients/demo-runtime';
 import {correctionsFor,effectiveText} from './corrections.ts';
 
@@ -14,7 +15,7 @@ export function completedVisitNotes(bundle:PatientBundle,session?:DemoSession){
   return section||corrected?effectiveText(section,bundle.corrections,session.id,key):fallback;
  };
  return {
-  clinical:read('interview',memory?.clinical_state_summary),
+  clinical:read('interview',memory?.clinical_state_summary)||sections.filter(s=>isCustomSection(s.section_key)).map(s=>s.content).join('\n\n'),
   plan:read('plan',memory?.treatment_decision),
   review:read('review',memory?.next_review_focus),
   adherence:read('adherence',memory?.adherence),

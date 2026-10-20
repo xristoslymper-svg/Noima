@@ -26,6 +26,13 @@ export function simulateVisitWrite(bundle:PatientBundle,body:Record<string,unkno
   for(const appointment of bundle.appointments)if(appointment.session_id===session.id&&appointment.status==='scheduled')appointment.status='completed';
   return {session};
  }
+ if(body.action==='correct_session'){
+  if(session.status!=='completed'||typeof body.reason!=='string'||!body.reason.trim())throw new Error('completed_session_required');
+  const changes=bundle.corrections.filter(c=>c.session_id===session.id);
+  if(changes.length!==body.expected_count)throw new Error('stale_correction');
+  const correction={id:String(body.request_id),request_id:String(body.request_id),tester_id:bundle.patient.tester_id,actor_id:'synthetic',patient_id:bundle.patient.id,session_id:session.id,reason:body.reason,patch:body.patch,created_at:now} as PatientBundle['corrections'][number];
+  bundle.corrections.push(correction);return {correction};
+ }
  if(session.status!=='draft')throw new Error('session_unavailable');
  if(body.action==='save_closure'){
   if(body.expected_version!==(session.closure_version||0))throw new Error('stale_closure');

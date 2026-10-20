@@ -723,7 +723,9 @@
       "browser-tests/patient-entry.mjs",
       "tests/mse-timeline.test.mjs",
       "tests/teleconsultation-lifecycle.test.mjs",
-      "lib/teleconsultations/visit-lifecycle.ts"
+      "lib/teleconsultations/visit-lifecycle.ts",
+      "components/patients/CompletedRecordEditor.tsx",
+      "tests/completed-record-editor.test.mjs"
     ]
   }
 }

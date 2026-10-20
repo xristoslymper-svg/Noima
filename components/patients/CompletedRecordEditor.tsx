@@ -35,7 +35,7 @@ export default function CompletedRecordEditor({session,bundle,reload,onBack,regi
  const baseline=useRef({mse:baseMse,assessment:baseAssessment,risk:baseRisk,narrative:baseNarrative,count:0});
  // Viewing always follows canonical data. Editing starts from one frozen version.
  const mse=editing?editedMse:baseMse,assessment=editing?editedAssessment:baseAssessment,risk=editing?editedRisk:baseRisk,narrative=editing?editedNarrative:baseNarrative;
- const ready=['interview','mse','assessment','plan','review'].every(key=>Boolean(find(key)))&&Boolean(bundle.risks.find(item=>item.session_id===session.id));
+ const ready=session.status==='completed'&&session.patient_id===bundle.patient.id;
  function beginEditing(){
   if(!ready)return;
   baseline.current={mse:baseMse,assessment:baseAssessment,risk:baseRisk,narrative:baseNarrative,count:correctionsFor(corrections,session.id).length};

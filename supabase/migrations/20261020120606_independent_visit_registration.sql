@@ -11,6 +11,8 @@ declare s public.demo_sessions; e public.demo_calendar_events;
 begin
  perform private.pilot_assert_owner(p_tester);
  if p_request is null or p_type is null or p_type not in ('initial_assessment','follow_up') then raise exception 'invalid_session_type'; end if;
+ -- Share the calendar start lock order with older browser clients.
+ perform pg_advisory_xact_lock(hashtextextended(p_tester::text,721));
  perform 1 from public.demo_patients where id=p_patient and tester_id=p_tester for update;
  if not found then raise exception 'patient_not_found'; end if;
  if p_appointment is not null then

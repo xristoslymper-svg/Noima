@@ -58,11 +58,10 @@ try{
  const locationBefore=page.url();await notes.evaluate(el=>el.dataset.localeTestIdentity='same-editor');
  await dialog.getByRole('button',{name:'Profile and settings',exact:true}).click();
  const settings=page.locator('dialog.profile-settings-dialog[open]');assert.equal(await settings.getByRole('combobox').count(),0);assert.equal(await settings.getByRole('group',{name:'Language',exact:true}).count(),0);
- await settings.getByRole('button',{name:'Close',exact:true}).click();await switchTo('el');
+ await settings.getByRole('button',{name:'Close',exact:true}).click();
  assert.equal(await dialog.locator('[data-locale-test-identity="same-editor"]').inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');assert.equal(page.url(),locationBefore);
- await switchTo('en');
  await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();await page.reload();
- await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('same visit and same editor retained across two language changes; working note saved through the existing visit path');
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('removing in-app language settings preserves the same editor, visit and working note through refresh');
  await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();
  await page.getByRole('button',{name:'Summary',exact:true}).click();
  await page.getByText("We couldn't confirm an updated summary. Showing record excerpts.",{exact:true}).waitFor();

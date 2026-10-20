@@ -109,6 +109,8 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),surface+' fits mobile');
   await page.screenshot({path:resolve(out,'auth-'+surface+'-en-mobile.png'),fullPage:true});
  }
+ await page.goto(origin+'/?surface=account');await page.locator('.pilot-account h1').waitFor();
+ assert.equal(await page.locator('.language-setting').count(),0);
  await page.goto(origin+'/patients');await page.locator('[data-patient-id]').first().waitFor();
  await page.getByRole('button',{name:'Profile and settings',exact:true}).click();
  assert.equal(await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').count(),0);

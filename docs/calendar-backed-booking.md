@@ -1,0 +1,13 @@
+# Calendar-backed public requests
+- Google & Maps now visible in production as simulation; real start/callback stay disabled.
+- Existing public practice pages remain in their isolated store. A narrow booking_target read resolves their verified owner; no arbitrary client-supplied owner is accepted by the Vercel gateway.
+- New booking settings and requests live in private tables in the same primary database as calendar events. Public functions expose only opt-in free start/end intervals or a generic receipt. Tables have RLS and no direct client grants.
+- Owner explicitly enables weekday windows (08:00–22:00), duration and buffer. Horizon 14 days, public lead time 2 hours, timezone Europe/Athens. Busy events and buffers are excluded. No Google availability is used.
+- Pending requests do not reserve capacity. Approval requires explicit patient choice and confirmation, authenticates the current NOIMA owner/workspace, acquires the existing calendar writer lock, and rechecks availability. Calendar creation and request linkage are one transaction. Repeated/concurrent approval returns the same event.
+- Public retries are idempotent by UUID plus normalized email/start fingerprint. Daily/global free intake caps. No payments, email sending, Google connection or paid provider added.
+- Existing unstructured legacy requests remain visible separately. They are not silently migrated or marked approved.
+- Calendar deep link opens the linked event/date; moved/cancelled/completed events are reflected live in request status.
+- CI PostgreSQL fixture tests perform real concurrent transactions in an ephemeral GitHub service. Browser fixtures cover desktop/mobile and deny all external writes. Do not run fixture SQL against hosted databases.
+- Additive primary schema deployment source: docs/sql/practice-booking.sql. Edge update only booking_target action on existing isolated practice-preview.
+
+Security advisor review: the private tables intentionally have no client policies/grants. Public availability/submission are deliberately narrow SECURITY DEFINER entry points for anonymous booking, with empty search_path, opt-in and input/cap checks; the owner entry point verifies auth.uid(), active pilot_identity and workspace ownership before any access. The general advisor warnings about definer RPC execution were reviewed as intentional, not ignored. See https://supabase.com/docs/guides/database/database-linter for the checks. No broad grants or existing RLS policies changed.

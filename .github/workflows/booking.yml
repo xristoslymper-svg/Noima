@@ -1,0 +1,38 @@
+name: Calendar-backed booking transactions
+on:
+  pull_request:
+    paths:
+      - 'docs/sql/practice-booking.sql'
+      - 'browser-tests/booking-db*'
+      - '.github/workflows/booking.yml'
+      - 'lib/presence/booking*'
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: booking_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false pg@8.16.3
+      - run: node browser-tests/booking-db.mjs
+        env:
+          BOOKING_TEST_DATABASE_URL: postgres://postgres:fixture-only@127.0.0.1:5432/booking_fixture

@@ -8,6 +8,7 @@ on:
       - 'tests/presence.test.mjs'
       - 'browser-tests/presence*'
       - 'browser-tests/google-maps*'
+      - 'browser-tests/booking*'
       - 'tests/google-maps.test.mjs'
       - 'app/api/presence/google/**'
       - '.github/workflows/presence.yml'
@@ -30,9 +31,15 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.57.0 esbuild@0.25.0
       - run: npx playwright install --with-deps chromium
       - run: |
+          node browser-tests/booking.mjs
           node browser-tests/google-maps.mjs
           node browser-tests/presence.mjs
           node browser-tests/public-practice.mjs
+      - name: Read-only hosted booking availability and auth gates
+        if: github.head_ref == 'codex/public-booking-calendar'
+        env:
+          BOOKING_LIVE_URL: https://noima-git-codex-public-booking-calendar-xristoslymper-3481.vercel.app/iatreio/iatreio-8407b134fef44c3dab885b181b747cf7
+        run: node browser-tests/booking-live.mjs
       - name: Read-only hosted public URL without login
         if: github.head_ref == 'codex/public-practice'
         env:
@@ -43,6 +50,7 @@ jobs:
         with:
           name: presence-synthetic-evidence
           path: |
+            test-results/booking
             test-results/google-maps
             test-results/presence
             test-results/public-practice

@@ -293,6 +293,18 @@ export default function CalendarPage() {
     }
   }, [patients, focusDate]);
 
+  useEffect(()=>{
+    if(loading||!positionReady)return;
+    const url=new URL(window.location.href),id=url.searchParams.get('event');
+    if(!id)return;
+    const linked=events.find(e=>e.id===id);
+    if(!linked)return;
+    setFocusDate(dateKey(new Date(linked.scheduled_start)));
+    setStatusFilter('all');setSelectedEvent(linked);
+    url.searchParams.delete('event');
+    window.history.replaceState(window.history.state,'',url.pathname+url.search);
+  },[events,loading,positionReady]);
+
   const dayEvents = useMemo(
     () => visibleEvents
       .filter(event => segment(event,focusDate))

@@ -13,11 +13,12 @@ Deno.serve(async req=>{
  if(req.method!=='POST')return json({error:'method'},405);
  const raw=await req.text();if(raw.length>250000)return json({error:'Το περιεχόμενο είναι πολύ μεγάλο.'},413);
  const b=JSON.parse(raw);let result;
- if(b.action==='read'||b.action==='request'){
+ if(b.action==='read'||b.action==='request'||b.action==='booking_target'){
   if(typeof b.slug!=='string'||!/^[a-z0-9][a-z0-9-]{2,59}$/.test(b.slug))return json({error:'Η σελίδα δεν βρέθηκε.'},404);
-  const {data:s,error}=await db.from('practice_sites').select('content,revision').eq('slug',b.slug).maybeSingle();
+  const {data:s,error}=await db.from('practice_sites').select('owner_id,content,revision').eq('slug',b.slug).maybeSingle();
   if(error)throw error;if(!s)return json({error:'Η σελίδα δεν βρέθηκε.'},404);
   if(b.action==='read')return json(s.content);
+  if(b.action==='booking_target')return json({owner_id:s.owner_id,online:s.content.practice.online===true});
   const r=validateBooking(b.request);if(r.kind==='Online'&&!s.content.practice.online)return json({error:'Δεν προσφέρονται online συνεδρίες.'},400);
   const {data,error:e}=await db.rpc('practice_request',{p_slug:b.slug,p_id:r.id,p_payload:r});if(e)throw e;return json(data);
  }

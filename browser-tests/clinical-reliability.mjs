@@ -119,7 +119,8 @@ try{
    await open('?tab=summary');await page.locator('.patient-voice-cta').click();
    const choices=page.getByRole('region',{name:'Επιλογή συγκεκριμένης επίσκεψης'});await choices.waitFor();
    assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
-   await choices.getByRole('button',{name:/Συνέχεια προχείρου/}).click();
+   assert.equal(await choices.getByRole('button',{name:/Σημερινό ραντεβού/}).isDisabled(),true,'old draft cannot be relinked to today');
+   await choices.getByRole('button',{name:/Άνοιγμα παλαιότερου προχείρου/}).click();
    await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);

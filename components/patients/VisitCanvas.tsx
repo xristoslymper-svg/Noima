@@ -27,7 +27,7 @@ export default function VisitCanvas(p:Shared&{children:ReactNode;toolbarActions?
  const blocks=nodes.map((node,index)=>{
   const props=isValidElement(node)?node.props as Record<string,unknown>:{};
   const id=String(props['data-mobile-section']||props.anchor||props['data-visit-part']||'fixed:'+index);
-  return {id,title:titles[id]||String(props.title||id),node,fixed:id.startsWith('fixed:')};
+  return {id,title:titles[id]?ui(titles[id]):String(props.title||id),node,fixed:id.startsWith('fixed:')};
  });
  const saved=p.bundle.sections.filter(s=>s.session_id===p.session.id&&isCustomSection(s.section_key));
  const customIds=[...new Set([...saved.map(s=>s.section_key),...layout.templates.map(t=>t.id)])];

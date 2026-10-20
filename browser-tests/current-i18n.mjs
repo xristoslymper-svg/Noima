@@ -53,16 +53,16 @@ try{
  const visit='20000000-0000-4000-8000-000000000009';
  await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);
  const dialog=page.locator('dialog[aria-labelledby="record-dialog-title"]');await dialog.waitFor({state:'visible'});
- const notes=dialog.getByRole('textbox',{name:'Visit notes',exact:false}).first();await notes.fill('SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
+ const notes=dialog.locator('textarea').first();await notes.fill('SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');
  const locationBefore=page.url();await notes.evaluate(el=>el.dataset.localeTestIdentity='same-editor');
- await dialog.getByRole('button',{name:'Profile',exact:true}).click();
+ await dialog.getByRole('button',{name:'Profile and settings',exact:true}).click();
  const settings=page.locator('dialog.profile-settings-dialog[open]');await settings.getByRole('combobox').selectOption('el');await page.waitForFunction(()=>document.documentElement.lang==='el');
  await settings.getByRole('button',{name:'Κλείσιμο',exact:true}).click();
  assert.equal(await dialog.locator('[data-locale-test-identity="same-editor"]').inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');assert.equal(page.url(),locationBefore);
- await dialog.getByRole('button',{name:'Προφίλ',exact:true}).click();await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
+ await dialog.getByRole('button',{name:'Προφίλ και ρυθμίσεις',exact:true}).click();await page.locator('dialog.profile-settings-dialog[open]').getByRole('combobox').selectOption('en');await page.waitForFunction(()=>document.documentElement.lang==='en');
  await page.locator('dialog.profile-settings-dialog[open]').getByRole('button',{name:'Close',exact:true}).click();
- await dialog.getByRole('button',{name:'Save and close',exact:true}).click();await page.reload();
- await page.getByRole('button',{name:'Patient actions',exact:true}).waitFor();report.push('same visit and same editor retained across two language changes; working note saved through the existing visit path');
+ await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();await page.reload();
+ await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('same visit and same editor retained across two language changes; working note saved through the existing visit path');
  for(const [surface,heading]of [['tele','Teleconsultations'],['presence','My practice page'],['library','Clinical library']]){
   await page.goto(origin+'/?surface='+surface);await page.getByRole('heading',{name:heading,exact:true}).waitFor();await page.screenshot({path:resolve(out,surface+'-en.png'),fullPage:true});
   report.push(surface+' current screen renders English controls with unchanged synthetic content');

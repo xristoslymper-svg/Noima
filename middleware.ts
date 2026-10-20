@@ -6,10 +6,11 @@ import {recipientLocale} from './i18n/recipient';
 import {mobileV2Enabled} from './components/mobile/mobile-v2';
 
 export async function middleware(request:NextRequest) {
-  if(/^\/iatreio\/[a-z0-9][a-z0-9-]{2,59}\/?$/.test(request.nextUrl.pathname)&&(process.env.VERCEL_ENV==='production'||(process.env.VERCEL_ENV==='preview'&&['codex/public-practice','codex/public-booking-calendar'].includes(process.env.VERCEL_GIT_COMMIT_REF||'')))){const result=NextResponse.next();result.headers.set('Cache-Control','no-store');result.headers.set('X-Robots-Tag','noindex, nofollow');result.headers.set('Referrer-Policy','no-referrer');return result;}
+  if(/^\/iatreio\/[a-z0-9][a-z0-9-]{2,59}\/?$/.test(request.nextUrl.pathname)&&(process.env.VERCEL_ENV==='production'||(process.env.VERCEL_ENV==='preview'&&['codex/public-practice','codex/public-booking-calendar'].includes(process.env.VERCEL_GIT_COMMIT_REF||'')))){const publicHeaders=new Headers(request.headers);publicHeaders.delete('x-noima-locale');publicHeaders.set('x-noima-locale',recipientLocale(request.nextUrl.searchParams.get('lang')));const result=NextResponse.next({request:{headers:publicHeaders}});result.headers.set('Cache-Control','no-store');result.headers.set('X-Robots-Tag','noindex, nofollow');result.headers.set('Referrer-Policy','no-referrer');return result;}
   // Public form only: GET never verifies or consumes an email recovery token.
   if(request.nextUrl.pathname==='/reset-password'){
-    const recovery=NextResponse.next({request});
+    const recoveryHeaders=new Headers(request.headers);recoveryHeaders.delete('x-noima-locale');recoveryHeaders.set('x-noima-locale',resolveLocale(request.nextUrl.searchParams.get('lang'),request.cookies.get(localeCookie)?.value));
+    const recovery=NextResponse.next({request:{headers:recoveryHeaders}});
     recovery.headers.set('Cache-Control','private, no-store');
     recovery.headers.set('Referrer-Policy','no-referrer');
     recovery.headers.set('X-Robots-Tag','noindex, nofollow');

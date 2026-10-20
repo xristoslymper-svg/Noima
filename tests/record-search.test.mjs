@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 const compile=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const pure={exports:{}};new Function('require','module','exports',compile('lib/overview/record-search.ts'))(()=>{},pure,pure.exports);
+const pure={exports:{}};new Function('require','module','exports',compile('lib/overview/record-search.ts'))(name=>intlTestModule(name),pure,pure.exports);
 const {matchPatients,recordAnswer}=pure.exports;
 const patient={id:'11111111-1111-4111-8111-111111111111',first_name:'Μαρία',last_name:'Παπαδοπούλου'};
 const other={...patient,id:'22222222-2222-4222-8222-222222222222'};

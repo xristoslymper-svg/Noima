@@ -1,5 +1,5 @@
 export const googleMapsBranch='codex/google-maps-foundation';
-export function googleMapsPreview(env:Record<string,string|undefined>){return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&[googleMapsBranch,'codex/public-booking-calendar'].includes(env.VERCEL_GIT_COMMIT_REF||''))}
+export function googleMapsPreview(env:Record<string,string|undefined>){return env.VERCEL_ENV==='production'||(env.VERCEL_ENV==='preview'&&[googleMapsBranch,'codex/public-booking-calendar','codex/english-current-ui'].includes(env.VERCEL_GIT_COMMIT_REF||''))}
 // Deliberately code-locked. Credentials or an environment flag cannot activate Google.
 export function googleMapsLiveEnabled(){return false}
 export const profileFields=['phone','city','hours','website'] as const;

@@ -73,12 +73,19 @@ try{
   report.push(surface+' current screen renders English controls with unchanged synthetic content');
  }
  await page.setViewportSize({width:390,height:844});
- for(const [surface,heading]of [['registry','Patients'],['tele','Teleconsultations'],['presence','My practice page'],['library','Library']]){
+ for(const [surface,heading,greekHeading]of [['registry','Patients','Ασθενείς'],['tele','Teleconsultations','Τηλεσυνεδρίες'],['presence','My practice page','Η σελίδα του ιατρείου μου'],['library','Library','Βιβλιοθήκη']]){
   await page.goto(origin+'/?surface='+surface);await page.getByRole('heading',{name:heading,exact:true}).waitFor();
+  const styleSignature=()=>page.locator('h1').evaluate(el=>{const s=getComputedStyle(el);return {font:s.fontFamily,size:s.fontSize,weight:s.fontWeight,color:s.color}});
+  const englishStyle=await styleSignature();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),surface+' English mobile page must fit the viewport');
   await page.screenshot({path:resolve(out,surface+'-en-mobile.png'),fullPage:true});
+  await switchTo('el');await page.getByRole('heading',{name:greekHeading,exact:true}).waitFor();
+  assert.deepEqual(await styleSignature(),englishStyle,surface+' Greek/English heading typography and colors must match');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),surface+' Greek mobile page must fit the viewport');
+  await page.screenshot({path:resolve(out,surface+'-el-mobile.png'),fullPage:true});
+  await switchTo('en');
  }
- report.push('English mobile layouts fit the viewport without changing existing styles');
+ report.push('paired Greek/English mobile layouts fit the viewport with identical heading colors and typography');
  assert.deepEqual(errors,[]);assert.equal(deniedWrites,0);assert.ok(localeWrites>=4);
  writeFileSync(resolve(out,'report.json'),JSON.stringify({report,localeWrites,deniedWrites,externalConnections:false},null,2));
  console.log(JSON.stringify(report,null,2));

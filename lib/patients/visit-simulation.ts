@@ -1,3 +1,4 @@
+import {isCustomSection,customSectionContent} from '../clinical/visit-layout.ts';
 import type {PatientBundle,DemoSession} from './demo-runtime';
 import type {ContinuityDraft} from '../clinical/continuity';
 export function simulateVisitWrite(bundle:PatientBundle,body:Record<string,unknown>,now:string):unknown{
@@ -37,6 +38,10 @@ export function simulateVisitWrite(bundle:PatientBundle,body:Record<string,unkno
  if(body.action==='save_closure'){
   if(body.expected_version!==(session.closure_version||0))throw new Error('stale_closure');
   session.closure_draft=body.value as ContinuityDraft;session.closure_version=(session.closure_version||0)+1;session.version++;session.updated_at=now;return {session};
+ }
+ if(body.action==='save_custom_section'){
+  if(!isCustomSection(String(body.section_key))||typeof body.title!=='string'||!body.title.trim()||body.title.length>100||/[\n\r]/.test(body.title)||typeof body.content!=='string'||body.content.length>20000)throw new Error('invalid_section');
+  return simulateVisitWrite(bundle,{...body,action:'save_section',content:customSectionContent(body.title,body.content)},now);
  }
  if(body.action==='save_section'||body.action==='save_document'){
   const key=String(body.section_key);let section=bundle.sections.find(s=>s.session_id===session.id&&s.section_key===key);

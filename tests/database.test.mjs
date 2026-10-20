@@ -1090,3 +1090,24 @@ test('optional registration preserves partially assessed positive risk and does 
  assert.equal(done.status,'completed');assert.deepEqual((await sql('select * from demo_risk_assessments where session_id=$1',[s.id]))[0],before);
  assert.equal((await sql("select count(*)::int n from demo_session_sections where session_id=$1 and section_key='mse'",[s.id]))[0].n,0);
 });
+
+test('custom visit sections retain identity, optimistic locking, immutability and owner authorization',async()=>{
+ const owner='63200000-0000-4000-8000-000000000001',stranger='63200000-0000-4000-8000-000000000002';
+ await sql('insert into auth.users(id) values($1),($2)',[owner,stranger]);
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Custom Owner'),($2,'Custom Stranger')",[owner,stranger]);
+ const [{identity}]=await asUser(owner,()=>sql('select pilot_identity() identity'));const t=identity.workspace_id;
+ await sql('select demo_tester_bootstrap($1)',[t]);const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Custom')).id id",[t]);
+ const [session]=await asUser(owner,()=>sql("select * from demo_visit_create($1,$2,'initial_assessment',$3,null)",[t,p,'63200000-0000-4000-8000-000000000003']));
+ const key='custom:63200000-0000-4000-8000-000000000004';
+ const args=[t,session.id,key,'Ύπνος','Αναφέρει βελτίωση ύπνου.',null];
+ await rejected(stranger,'select demo_visit_custom_save($1,$2,$3,$4,$5,$6)',args,/pilot_not_authorized/);
+ const [saved]=await asUser(owner,()=>sql('select * from demo_visit_custom_save($1,$2,$3,$4,$5,$6)',args));
+ assert.equal(saved.session_id,session.id);assert.equal(saved.patient_id,p);assert.equal(saved.content,'Ύπνος\n\nΑναφέρει βελτίωση ύπνου.');
+ await rejected(owner,'select demo_visit_custom_save($1,$2,$3,$4,$5,$6)',args,/stale_section/);
+ await rejected(owner,'select demo_visit_custom_save($1,$2,$3,$4,$5,$6)',[t,session.id,'mse','Title','Body',null],/invalid_section/);
+ const [updated]=await asUser(owner,()=>sql('select * from demo_visit_custom_save($1,$2,$3,$4,$5,$6)',[t,session.id,key,'Ύπνος','Νεότερη καταγραφή.',saved.version]));
+ assert.equal(updated.id,saved.id);
+ await asUser(owner,()=>sql('select demo_visit_register($1,$2,(select version from demo_sessions where id=$2),true,null)',[t,session.id]));
+ await rejected(owner,'select demo_visit_custom_save($1,$2,$3,$4,$5,$6)',[t,session.id,key,'Ύπνος','Late overwrite',updated.version],/session_unavailable/);
+ assert.equal((await sql('select content from demo_session_sections where id=$1',[saved.id]))[0].content,'Ύπνος\n\nΝεότερη καταγραφή.');
+});

@@ -1,10 +1,11 @@
+import {isCustomSection,readCustomSection} from './visit-layout.ts';
 import {riskFindings,riskFindingLabel} from './risk-findings.ts';
 import {continuityContexts} from './continuity-context.ts';
 import type {SummaryBundle} from './summary-sources.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 import type {VisitDocument} from './visit-document';
 
-export const SUMMARY_POLICY_VERSION=25;
+export const SUMMARY_POLICY_VERSION=26;
 export const categories=['Τρέχουσα εικόνα','Πορεία','Κίνδυνος','Αγωγή','Παρενέργειες','Ψυχομετρικά','Πλάνο','Χρειάζεται επιβεβαίωση','Σημαντικό ιστορικό'] as const;
 export type Category=typeof categories[number];
 export type Evidence={id:string;kind:string;label:string;date?:string;session_id?:string;section_key?:string;required_correction_ids?:string[];content:unknown;target:'sessions'|'medications'|'psychometrics'|'history'|'calendar'|'timeline';record_id:string};
@@ -119,7 +120,7 @@ export function buildSummaryContext(bundle:PatientBundle,day=clinicDay()){
   for(const section of bundle.sections.filter(s=>s.session_id===session.id)){
    const content=correctedSectionContent(bundle,section);if(!content.trim())continue;
    const required_correction_ids=structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},section.section_key)).map(c=>'structured_correction:'+c.id);
-   add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||section.section_key}`,date:encounterTime,session_id:session.id,section_key:section.section_key,required_correction_ids,content,target:'sessions',record_id:section.id});
+   add({id:'section:'+section.id,kind:'session_section',label:`Συνεδρία ${dateLabel(encounterTime)} · ${names[section.section_key]||(isCustomSection(section.section_key)?readCustomSection(content).title:section.section_key)}`,date:encounterTime,session_id:session.id,section_key:section.section_key,required_correction_ids,content,target:'sessions',record_id:section.id});
   }
   const risk=correctedRisk(bundle,session.id);if(risk)add({id:'risk:'+session.id,kind:'structured_risk',label:`Συνεδρία ${dateLabel(encounterTime)} · Κίνδυνος`,date:encounterTime,session_id:session.id,required_correction_ids:structuredCorrections(bundle,session.id).filter(c=>Object.hasOwn(c.patch||{},'risk')).map(c=>'structured_correction:'+c.id),content:risk,target:'sessions',record_id:session.id});
  }
@@ -228,7 +229,7 @@ export function minimumBriefingItems(_context:SummaryContext){
 // A short factual note is enough; bare placeholders must not be expanded.
 export function summaryReadiness(bundle:PatientBundle,context=buildSummaryContext(bundle)){
  if(!bundle.sessions.some(s=>s.status==='completed'))return 'no_completed_visit';
- const narrative=context.sources.filter(s=>s.kind==='session_section'&&['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||''));
+ const narrative=context.sources.filter(s=>s.kind==='session_section'&&(['interview','functioning','adherence','effects','plan','review'].includes(s.section_key||'')||isCustomSection(s.section_key||'')));
  const meaningful=narrative.some(s=>typeof s.content==='string'&&s.content.trim().length>=12&&s.content.trim().split(/\s+/u).length>=3);
  return meaningful?null:'insufficient_notes';
 }
@@ -245,7 +246,7 @@ export function canonicalSummaryFindings(context:SummaryContext):Finding[]{
  const additions:Finding[]=[];
  for(const source of selected){
   const suffix=source.label.split(' · ').pop();
-  const category:Category|undefined=['Assessment','Interview','MSE','Λειτουργικότητα'].includes(suffix||'')?'Τρέχουσα εικόνα':['Πλάνο','Επανεκτίμηση'].includes(suffix||'')?'Πλάνο':undefined;
+  const category:Category|undefined=isCustomSection(source.section_key||'')?'Τρέχουσα εικόνα':['Assessment','Interview','MSE','Λειτουργικότητα'].includes(suffix||'')?'Τρέχουσα εικόνα':['Πλάνο','Επανεκτίμηση'].includes(suffix||'')?'Πλάνο':undefined;
   if(!category)continue;
   const corrections=context.layers.corrections.filter(c=>c.kind==='structured_correction'&&c.session_id===source.session_id);
   additions.push({key:'record:'+source.id,label:category,text:source.label+(corrections.length?' — με τις καταγεγραμμένες διορθώσεις: ':' — καταγεγραμμένο: ')+String(source.content),source_ids:[source.id,...corrections.map(c=>c.id)],attention:false,origin:'documented'});

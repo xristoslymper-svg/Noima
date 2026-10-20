@@ -5,11 +5,11 @@ import fixture from '@/lib/clinical/treatment-preview.json';
 import type {PatientBundle} from '@/lib/patients/demo-runtime';
 import {simulateVisitWrite} from '@/lib/patients/visit-simulation';
 const storageKey='noima-independent-visits-synthetic-v1';
-export default function IndependentVisitPreview(){
+export default function IndependentVisitPreview({customization=false}:{customization?:boolean}){
  const [ready,setReady]=useState(false);
  useEffect(()=>{
   let bundle=structuredClone(fixture) as unknown as PatientBundle;
-  try{const saved=sessionStorage.getItem(storageKey);if(saved){const parsed=JSON.parse(saved) as PatientBundle;if(parsed.patient.id===bundle.patient.id)bundle=parsed}}catch{}
+  try{const saved=sessionStorage.getItem(customization?storageKey+':customization':storageKey);if(saved){const parsed=JSON.parse(saved) as PatientBundle;if(parsed.patient.id===bundle.patient.id)bundle=parsed}}catch{}
   const original=window.fetch;
   const localFetch:typeof fetch=async(input,init)=>{
    const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.origin);
@@ -20,7 +20,7 @@ export default function IndependentVisitPreview(){
    if(url.pathname.includes('summary'))return Response.json({error:'Η AI σύνοψη δεν εκτελείται στη συνθετική δοκιμή.'},{status:503});
    if(url.pathname==='/api/patients/demo/runtime'||url.pathname==='/api/patients/demo/visit'){
     if(init?.method==='POST'){
-     try{const body=JSON.parse(String(init.body||'{}'));const next=structuredClone(bundle);const result=simulateVisitWrite(next,body,new Date().toISOString());sessionStorage.setItem(storageKey,JSON.stringify(next));bundle=next;return Response.json(result)}catch(error){return Response.json({error:error instanceof Error?error.message:'Δεν αποθηκεύτηκε η συνθετική αλλαγή.'},{status:409})}
+     try{const body=JSON.parse(String(init.body||'{}'));const next=structuredClone(bundle);const result=simulateVisitWrite(next,body,new Date().toISOString());sessionStorage.setItem(customization?storageKey+':customization':storageKey,JSON.stringify(next));bundle=next;return Response.json(result)}catch(error){return Response.json({error:error instanceof Error?error.message:'Δεν αποθηκεύτηκε η συνθετική αλλαγή.'},{status:409})}
     }
     const selected=url.searchParams.get('session');
     return Response.json({bundle:selected?{...bundle,sessions:bundle.sessions.filter(s=>s.id===selected)}:bundle});
@@ -32,6 +32,6 @@ export default function IndependentVisitPreview(){
   };
   window.fetch=localFetch;setReady(true);
   return()=>{if(window.fetch===localFetch)window.fetch=original};
- },[]);
+ },[customization]);
  return <>{ready?<><p className="record-state" role="status">Απομονωμένη συνθετική δοκιμή · Οι αλλαγές διατηρούνται με refresh σε αυτό το tab · Χωρίς εγγραφές στη βάση</p><PatientWorkspace patientRef={fixture.patient.id}/></>:<p className="record-state">Άνοιγμα συνθετικής δοκιμής…</p>}</>;
 }

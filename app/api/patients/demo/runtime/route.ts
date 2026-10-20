@@ -10,6 +10,7 @@ const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
  if(message.includes('Could not find the function public.demo_visit_'))return Response.json({error:'Η νέα ροή χρειάζεται ενεργοποίηση στην απομονωμένη βάση preview. Η παλιά καταγραφή δεν άλλαξε.',code:'visit_policy_unavailable'},{status:503});
+ if(message.includes('Could not find the function public.demo_visit_custom_save'))return Response.json({error:'Η αποθήκευση προσωπικών ενοτήτων χρειάζεται ενεργοποίηση βάσης για αυτό το preview. Το κείμενό σας διατηρείται για ανάκτηση.',code:'custom_sections_unavailable'},{status:503});
  if(message.includes('request_conflict'))return Response.json({error:'Η συγκεκριμένη ενέργεια αντιστοιχεί σε άλλη επίσκεψη. Ανανεώστε τον φάκελο πριν συνεχίσετε.',code:'request_conflict'},{status:409});
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return Response.json({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return Response.json({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});
@@ -66,6 +67,7 @@ async function handlePOST(request:Request){
     if(body.request_id){if(!isClinicalId(body.request_id)||!isClinicalId(body.patient_id))return Response.json({error:'Η ταυτότητα της νέας επίσκεψης δεν είναι έγκυρη.'},{status:400});return Response.json({session:first(await rpc('demo_visit_create',{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type,p_request:body.request_id,p_appointment:body.appointment_id||null}))})}
     return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
    }
+   case 'save_custom_section': return Response.json({section:first(await rpc('demo_visit_custom_save',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_title:body.title,p_content:body.content,p_expected_version:body.expected_version??null}))});
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});
    case 'save_risk': return Response.json({risk:first(await rpc('demo_session_save_risk_tree',{p_tester:tester,p_session:body.session_id,p_risk:body.risk||{},p_expected_version:body.expected_version??null}))});
    case 'save_history': {const history=first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{},p_expected_version:body.expected_version??null}));queueSummary(request,body.patient_id);return Response.json({history})}

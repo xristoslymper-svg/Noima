@@ -150,7 +150,7 @@ try{
   });
   await check('record-resume-identity',async({page,open,nav})=>{
    await open(`?tab=record&session=${visitId}`);const text=page.getByRole('textbox',{name:/Λόγος προσέλευσης & παρούσα εικόνα/});await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);
-   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await nav('Σύνοψη').click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
+   await page.getByRole('button',{name:'Κλείσιμο καταγραφής και επιστροφή στον φάκελο',exact:true}).click();await page.locator('dialog[open][aria-labelledby="record-dialog-title"]').waitFor({state:'detached'});await nav('Σύνοψη').click();await page.getByRole('button',{name:'Ενέργειες',exact:true}).click();await page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    await page.reload();await text.waitFor();assert.match(await text.inputValue(),/QA CURRENT VISIT/);assert.equal(requests.filter(r=>r.action==='start_session').length,0);
   });
   await check('popup-escape-preserves-unsaved-work-and-resumes-same-visit',async({page,open})=>{

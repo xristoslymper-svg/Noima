@@ -746,7 +746,8 @@
       "tests/followup-ux-design.test.mjs",
       "components/patients/VisitWorkspace.tsx",
       "components/patients/FollowupClosure.module.css",
-      "components/patients/PatientJourney.module.css"
+      "components/patients/PatientJourney.module.css",
+      "tests/selective-production.test.mjs"
     ]
   }
 }

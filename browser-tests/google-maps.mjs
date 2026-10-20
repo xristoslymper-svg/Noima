@@ -16,6 +16,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  page.on('pageerror',e=>errors.push(e.message));await context.route('**/*',route=>{if(!route.request().url().startsWith(origin)){external.push(route.request().url());return route.abort()}return route.continue()});
  await page.goto(origin+'/?view=google');await page.getByRole('heading',{name:'Το ιατρείο σας, πιο εύκολα προσβάσιμο'}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Google & Maps',exact:true}).getAttribute('aria-pressed'),'true');
+ assert.equal(await page.getByRole('button',{name:'Δημοσίευση σελίδας (δοκιμή)',exact:true}).count(),0);
  assert.equal(await page.getByRole('button',{name:'Σύνδεση Google · σύντομα'}).isDisabled(),true);
  await page.getByRole('button',{name:'Δοκιμή με συνθετικό ιατρείο'}).click();
  await page.getByRole('button',{name:'Δεν δίνω άδεια'}).click();await page.getByRole('status').filter({hasText:'Δεν δόθηκε άδεια'}).waitFor();

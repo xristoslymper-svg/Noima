@@ -1,4 +1,6 @@
 'use client';
+import {useUiText} from '@/i18n/use-ui-text';
+import {recordEventText} from '@/i18n/static-text';
 import {intlLocale} from '@/i18n/config';
 import type {Locale} from '@/i18n/config';
 import {useLocale,useTranslations} from 'next-intl';
@@ -18,6 +20,7 @@ import mobileStyles from '@/components/mobile/MobileClinical.module.css';
 import styles from './PatientRecord.module.css';
 export function recordDate(value:string,locale:Locale='el'){return value.length===10?new Intl.DateTimeFormat(intlLocale(locale),{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Athens'}).format(new Date(value+'T12:00:00Z')):formatClinicDateTime(value,locale)}
 export default function PatientRecordSummary({bundle,reload,onVisit,onTimeline,onMeasurements,onTreatment,onHistory}:{bundle:PatientBundle;reload:()=>Promise<unknown>;onVisit:(id?:string)=>void;onTimeline:()=>void;onMeasurements:(id?:string)=>void;onTreatment:()=>void;onHistory:()=>void}){
+ const ui=useUiText();
  const t=useTranslations();
  const locale=useLocale();
  const displayLabel=useOptionLabel();
@@ -34,7 +37,7 @@ export default function PatientRecordSummary({bundle,reload,onVisit,onTimeline,o
   <PatientReportedHistory patientId={bundle.patient.id} compact onOpen={onHistory}/>
   <ClinicalSummary bundle={bundle} brief readOnly onSessions={onVisit} onPsychometrics={onMeasurements} onMedications={onTreatment} onHistory={onHistory}/>
   <details className={journeyStyles.details}><summary>{t('current.m049')}</summary>
-  <section className={styles.section}><span className="kicker">{t('current.m050')}</span>{record.sinceLatest.length?<ul className={styles.list}>{record.sinceLatest.slice(0,4).map(event=><li key={event.id}><span className={styles.muted}>{recordDate(event.date)}</span> · <strong>{event.title}</strong> · {event.detail}{event.assessmentId&&<> <button className={styles.link} onClick={()=>onMeasurements(event.assessmentId)}>{t('clinical.reviewAction')}</button></>}</li>)}</ul>:<p className={styles.muted}>{t('clinical.noNewEntries')}</p>}{record.sinceLatest.length>4&&<button className={styles.link} onClick={onTimeline}>{t('visits.allChangesInVisits')}</button>}</section>
+  <section className={styles.section}><span className="kicker">{t('current.m050')}</span>{record.sinceLatest.length?<ul className={styles.list}>{record.sinceLatest.slice(0,4).map(event=><li key={event.id}><span className={styles.muted}>{recordDate(event.date,locale)}</span> · <strong>{recordEventText(event,ui).title}</strong> · {recordEventText(event,ui).detail}{event.assessmentId&&<> <button className={styles.link} onClick={()=>onMeasurements(event.assessmentId)}>{t('clinical.reviewAction')}</button></>}</li>)}</ul>:<p className={styles.muted}>{t('clinical.noNewEntries')}</p>}{record.sinceLatest.length>4&&<button className={styles.link} onClick={onTimeline}>{t('visits.allChangesInVisits')}</button>}</section>
   <JourneyOrientation bundle={bundle} onVisit={id=>onVisit(id)}/>
   <section className={styles.section}><span className="kicker">{t('current.m051')}</span><div className={styles.currentRows}>
    <div><strong>{t('psychometrics.measurements')}</strong><p>{record.latestScores.length?record.latestScores.map(({current,previous})=><span key={current.id}><button className={styles.link} onClick={()=>onMeasurements(current.id)}>{current.instrument} {previous?previous.score+' → ':''}{current.score}</button> <span className={styles.muted}>({recordDate(current.completed_at!)}) · {assessmentLinkLabel(bundle,current,displayLabel)}</span>{' '}</span>):t('psychometrics.noCompletedMeasure')}</p></div>

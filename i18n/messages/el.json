@@ -1101,7 +1101,8 @@
       "mseChanges": "MSE αλλαγές",
       "psychometrics": "Μετρήσεις",
       "review": "Επανεκτίμηση"
-    }
+    },
+    "savedUnfinished": "Οι σημειώσεις έχουν αποθηκευτεί. Η επίσκεψη δεν έχει καταχωριστεί οριστικά."
   },
   "clinical": {
     "psychiatricInterview": "Ψυχιατρική συνέντευξη",

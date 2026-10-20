@@ -1101,7 +1101,8 @@
       "mseChanges": "MSE changes",
       "psychometrics": "Measures",
       "review": "Review"
-    }
+    },
+    "savedUnfinished": "Notes saved. This visit has not been finalized."
   },
   "clinical": {
     "psychiatricInterview": "Psychiatric interview",

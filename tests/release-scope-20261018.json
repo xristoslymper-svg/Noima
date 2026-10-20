@@ -911,7 +911,8 @@
       "tests/i18n-current-contract.test.mjs",
       "browser-tests/current-i18n-fixture.tsx",
       "browser-tests/current-i18n.mjs",
-      "tests/teleconsultations.test.mjs"
+      "tests/teleconsultations.test.mjs",
+      "tests/i18n-event-metadata.test.mjs"
     ]
   }
 }

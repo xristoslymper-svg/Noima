@@ -1,5 +1,5 @@
 // Only code-owned UI labels belong here. Never apply this adapter to clinical prose or user content.
-export const staticTextKeys:Readonly<Record<string,string>>={"Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;":"actionSelection.m0",
+export const staticTextKeys:Readonly<Record<string,string>>={"Οι σημειώσεις έχουν αποθηκευτεί. Η επίσκεψη δεν έχει καταχωριστεί οριστικά.":"visits.savedUnfinished","Ποια ώρα εννοείς ακριβώς; Πρωί ή απόγευμα;":"actionSelection.m0",
 "Ποιο ραντεβού εννοείς;":"actionSelection.m1",
 "Δεν βρέθηκε ραντεβού σε αυτή την ημερομηνία και ώρα. Επίλεξε:":"actionSelection.m2","Δεν αποθηκεύτηκαν όλες οι αλλαγές — το κείμενό σας διατηρείται. ":"saveStatus.m0",
 "Αλλαγές σε αναμονή αποθήκευσης…":"saveStatus.m1",
@@ -2936,4 +2936,17 @@ export function translateUiLabel(value:string,translate:(key:string)=>string):st
 export function translateStaticMarkup(value:string,translate:(key:string)=>string):string{
  const exact=staticTextKeys[value];if(exact)return translate(exact);
  return value.replace(/>([^<>]+)</g,(all,text:string)=>{const key=staticTextKeys[text.trim()];return key?'>'+translate(key)+'<':all});
+}
+
+// Only system-generated event metadata is localized. Medication names, reasons,
+// adverse-effect descriptions and instrument identifiers are recorded content.
+export function recordEventText(event:{kind:string;title:string;detail:string},display:(value:string)=>string){
+ const title=event.kind==='measurements'?event.title:display(event.title);
+ if(event.kind==='visits')return {title,detail:display(event.detail)};
+ if(event.kind==='measurements'){
+  const prefixes=['Απάντηση στο στοιχείο 9 · εκκρεμεί κλινική ανασκόπηση','Ολοκληρωμένη μέτρηση'];
+  const prefix=prefixes.find(value=>event.detail.startsWith(value+' · '));
+  if(prefix)return {title,detail:display(prefix)+' · '+display(event.detail.slice(prefix.length+3))};
+ }
+ return {title,detail:event.detail};
 }

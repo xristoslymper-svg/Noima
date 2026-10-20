@@ -707,7 +707,18 @@
       "browser-tests/booking-fixture.tsx",
       "browser-tests/booking.mjs",
       "docs/calendar-backed-booking.md",
-      "browser-tests/booking-live.mjs"
+      "browser-tests/booking-live.mjs",
+      "lib/clinical/visit-start.ts",
+      "app/api/patients/demo/runtime/route.ts",
+      "supabase/migrations/20261020120606_independent_visit_registration.sql",
+      "tests/visit-workspace-state.test.mjs",
+      "tests/database.test.mjs",
+      "tests/visit-start.test.mjs",
+      "tests/mse-review.test.mjs",
+      "lib/clinical/patient-journey.ts",
+      "lib/patients/visit-simulation.ts",
+      "components/patients/IndependentVisitPreview.tsx",
+      "app/patients/demo/independent-visits-preview/page.tsx"
     ]
   }
 }

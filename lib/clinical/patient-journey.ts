@@ -14,7 +14,7 @@ export function journeyReview(bundle:PatientBundle,session:DemoSession){
  const read=(key:string)=>sections.find(s=>s.section_key===key)?.content||'';
  const followup=session.session_type==='follow_up';
  return {
- clinical:followup?memory?.clinical_state_summary||read('interview'):read('interview'),
+ clinical:followup?memory?.clinical_state_summary||memory?.transcript||read('interview'):read('interview'),
  plan:followup?memory?.treatment_decision||read('plan'):read('plan'),
  review:followup?memory?.next_review_focus||read('review'):read('review'),
  medicationWrites:bundle.medicationEvents.filter(e=>e.session_id===session.id&&!(bundle.medicationRevisions||[]).some(r=>r.event_id===e.id)).length,

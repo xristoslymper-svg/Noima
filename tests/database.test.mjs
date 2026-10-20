@@ -1015,3 +1015,64 @@ test('copilot questionnaire confirmation preserves tokens and prevents duplicate
  const [accepted]=await asUser(owner,()=>sql('select pilot_mail_claim($1,$2,$3) status',[assessment,'b3'.repeat(32),'fictional@example.invalid']));
  assert.equal(accepted.status,'accepted');
 });
+
+test('independent visits preserve old notes, appointment lineage and idempotent retries',async()=>{
+ const t='63100000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Independent')).id id",[t]);
+ const [old]=await sql("select * from demo_session_start($1,$2,'initial_assessment')",[t,p]);
+ await sql("update demo_sessions set started_at=now()-interval '4 days' where id=$1",[old.id]);
+ await sql("select demo_session_save_section($1,$2,'interview','OLDER NOTES KEEP EXACTLY','manual',null)",[t,old.id]);
+ const [oldBefore]=await sql('select * from demo_sessions where id=$1',[old.id]);
+ const [{sectionBefore}]=await sql("select to_jsonb(s) as \"sectionBefore\" from demo_session_sections s where session_id=$1 and section_key='interview'",[old.id]);
+ const request='63100000-0000-4000-8000-000000000002';
+ const [fresh]=await sql("select * from demo_visit_create($1,$2,'follow_up',$3,null)",[t,p,request]);
+ assert.notEqual(fresh.id,old.id);assert.equal(fresh.status,'draft');
+ assert.equal((await sql("select * from demo_visit_create($1,$2,'follow_up',$3,null)",[t,p,request]))[0].id,fresh.id);
+ assert.deepEqual((await sql('select * from demo_sessions where id=$1',[old.id]))[0],oldBefore);
+ assert.deepEqual((await sql("select to_jsonb(s) as \"value\" from demo_session_sections s where session_id=$1 and section_key='interview'",[old.id]))[0].value,sectionBefore);
+ assert.equal((await sql('select count(*)::int n from demo_session_sections where session_id=$1',[fresh.id]))[0].n,0);
+ const [{event}]=await sql("select demo_calendar_apply_v2($1,'create',null,$2,null,'2099-12-08 10:00 Europe/Athens','2099-12-08 10:50 Europe/Athens','follow_up') event",[t,p]);
+ const req2='63100000-0000-4000-8000-000000000003';
+ const [linked]=await sql("select * from demo_visit_create($1,$2,'follow_up',$3,$4)",[t,p,req2,event.id]);
+ const [retry]=await sql("select * from demo_visit_create($1,$2,'follow_up',$3,$4)",[t,p,'63100000-0000-4000-8000-000000000004',event.id]);
+ assert.equal(retry.id,linked.id);assert.notEqual(linked.id,fresh.id);
+ const [{id:other}]=await sql("select (demo_patient_create_v2($1,'TEST Other')).id id",[t]);
+ await assert.rejects(sql("select demo_visit_create($1,$2,'follow_up',$3,null)",[t,other,request]),/request_conflict/);
+});
+
+test('optional registration accepts empty and notes-only visits and never manufactures MSE or risk',async()=>{
+ const t='63110000-0000-4000-8000-000000000001';await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Optional')).id id",[t]);
+ for(const [type,request] of [['initial_assessment','63110000-0000-4000-8000-000000000002'],['follow_up','63110000-0000-4000-8000-000000000003']]){
+  const [s]=await sql('select * from demo_visit_create($1,$2,$3,$4,null)',[t,p,type,request]);
+  const [task]=await sql('select * from demo_task_for_session($1,$2)',[t,s.id]);
+  if(type==='follow_up')await sql("select demo_closure_save($1,$2,$3,0)",[t,s.id,JSON.stringify({transcript:'ONLY NOTES FROM THIS VISIT',clinical_state_summary:'',treatment_decision:'',next_review_focus:'',pinned_context:'',adherence:'',source:'manual'})]);
+  const [{version,closure_version}]=await sql('select version,closure_version from demo_sessions where id=$1',[s.id]);
+  await assert.rejects(sql('select demo_visit_register($1,$2,$3,false,$4)',[t,s.id,version,closure_version]),/confirmation_required/);
+  await assert.rejects(sql('select demo_visit_register($1,$2,$3,true,$4)',[t,s.id,version+1,closure_version]),/stale_session/);
+  const [done]=await sql('select * from demo_visit_register($1,$2,$3,true,$4)',[t,s.id,version,closure_version]);
+  assert.equal(done.id,s.id);assert.equal(done.status,'completed');
+  assert.equal((await sql('select status from demo_tasks where id=$1',[task.id]))[0].status,'completed');
+  assert.equal((await sql('select count(*)::int n from demo_risk_assessments where session_id=$1',[s.id]))[0].n,0);
+  const sections=await sql('select section_key,content from demo_session_sections where session_id=$1 order by section_key',[s.id]);
+  assert.deepEqual(sections,type==='follow_up'?[{section_key:'interview',content:'ONLY NOTES FROM THIS VISIT'}]:[]);
+  assert.equal((await sql('select * from demo_visit_register($1,$2,$3,true,$4)',[t,s.id,version,closure_version]))[0].version,done.version);
+  await assert.rejects(sql("select demo_session_save_section($1,$2,'interview','late mutation','manual',null)",[t,s.id]),/session_unavailable/);
+ }
+});
+
+test('new visit RPCs retain authenticated ownership and deny direct foreign writes',async()=>{
+ const owner='63120000-0000-4000-8000-000000000001',stranger='63120000-0000-4000-8000-000000000002';
+ await sql('insert into auth.users(id) values($1),($2)',[owner,stranger]);
+ await sql("insert into private.pilot_members(user_id,full_name) values($1,'Owner'),($2,'Stranger')",[owner,stranger]);
+ const [{identity}]=await asUser(owner,()=>sql('select pilot_identity() identity'));const t=identity.workspace_id;
+ await sql('select demo_tester_bootstrap($1)',[t]);
+ const [{id:p}]=await sql("select (demo_patient_create_v2($1,'TEST Ownership')).id id",[t]);
+ const request='63120000-0000-4000-8000-000000000003';
+ await rejected(stranger,"select demo_visit_create($1,$2,'follow_up',$3,null)",[t,p,request],/pilot_not_authorized/);
+ const [s]=await asUser(owner,()=>sql("select * from demo_visit_create($1,$2,'follow_up',$3,null)",[t,p,request]));
+ await rejected(stranger,'select demo_visit_register($1,$2,$3,true,null)',[t,s.id,s.version],/pilot_not_authorized/);
+ assert.equal((await sql('select status from demo_sessions where id=$1',[s.id]))[0].status,'draft');
+ const [done]=await asUser(owner,()=>sql('select * from demo_visit_register($1,$2,$3,true,null)',[t,s.id,s.version]));
+ assert.equal(done.status,'completed');
+});

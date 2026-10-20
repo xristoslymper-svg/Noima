@@ -9,6 +9,8 @@ const testerOf=(value:unknown)=>isClinicalId(value)?value:'';
 const first=<T,>(value:unknown):T=>Array.isArray(value)?value[0] as T:value as T;
 function failure(error:unknown){
  const message=error instanceof Error?error.message:'';
+ if(message.includes('demo_visit_create')||message.includes('demo_visit_register'))return Response.json({error:'Η νέα ροή χρειάζεται ενεργοποίηση στην απομονωμένη βάση preview. Η παλιά καταγραφή δεν άλλαξε.',code:'visit_policy_unavailable'},{status:503});
+ if(message.includes('request_conflict'))return Response.json({error:'Η συγκεκριμένη ενέργεια αντιστοιχεί σε άλλη επίσκεψη. Ανανεώστε τον φάκελο πριν συνεχίσετε.',code:'request_conflict'},{status:409});
  if(message.includes('event_date_conflict')||message.includes('event_after_stop_or_before_start')||message.includes('conflicting_start'))return Response.json({error:'Η αλλαγή συγκρούεται με το υπάρχον χρονολόγιο. Διορθώστε ή ακυρώστε πρώτα το σχετικό συμβάν.'},{status:409});
  if(message.includes('stale_'))return Response.json({error:'Η καταχώρηση άλλαξε σε άλλη καρτέλα. Επαναφορτώστε τα δεδομένα πριν συνεχίσετε.',code:'stale'},{status:409});
  if(message.includes('missing_sections'))return Response.json({error:'Συμπληρώστε Ψυχιατρική συνέντευξη, MSE, Κλινική εκτίμηση, Πλάνο και Επανεκτίμηση πριν την ολοκλήρωση.',code:'missing_sections'},{status:422});
@@ -60,7 +62,10 @@ async function handlePOST(request:Request){
     if(!firstName||(age!==null&&(!Number.isInteger(age)||age<0||age>120)))return Response.json({error:'Συμπληρώστε έγκυρα στοιχεία ασθενή.'},{status:400});
     {const patient=first<{patient_id?:string}>(await rpc('demo_patient_update_v2',{p_tester:tester,p_patient:body.patient_id,p_first_name:firstName,p_last_name:String(body.last_name||'').trim(),p_age:age,p_phone:String(body.phone||'').trim(),p_landline:String(body.landline||'').trim(),p_contact_phone:String(body.contact_phone||'').trim(),p_amka:String(body.amka||'').trim(),p_address:String(body.address||'').trim(),p_email:String(body.email||'').trim(),p_complaint:String(body.chief_complaint||'').trim(),p_expected_updated_at:body.expected_updated_at||null}));queueSummary(request,String(patient.patient_id||body.patient_id));return Response.json({patient})}
    }
-   case 'start_session': return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
+   case 'start_session': {
+    if(body.request_id){if(!isClinicalId(body.request_id)||!isClinicalId(body.patient_id))return Response.json({error:'Η ταυτότητα της νέας επίσκεψης δεν είναι έγκυρη.'},{status:400});return Response.json({session:first(await rpc('demo_visit_create',{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type,p_request:body.request_id,p_appointment:body.appointment_id||null}))})}
+    return Response.json({session:first(await rpc(body.appointment_id?'demo_calendar_start_session':'demo_session_start',body.appointment_id?{p_tester:tester,p_event:body.appointment_id}:{p_tester:tester,p_patient:body.patient_id,p_type:body.session_type}))});
+   }
    case 'save_section': return Response.json({section:first(await rpc('demo_session_save_section',{p_tester:tester,p_session:body.session_id,p_section:body.section_key,p_content:String(body.content||''),p_source:body.source||'manual',p_expected_version:body.expected_version??null}))});
    case 'save_risk': return Response.json({risk:first(await rpc('demo_session_save_risk_tree',{p_tester:tester,p_session:body.session_id,p_risk:body.risk||{},p_expected_version:body.expected_version??null}))});
    case 'save_history': {const history=first(await rpc('demo_history_save',{p_tester:tester,p_patient:body.patient_id,p_history:body.history||{},p_expected_version:body.expected_version??null}));queueSummary(request,body.patient_id);return Response.json({history})}
@@ -78,8 +83,8 @@ async function handlePOST(request:Request){
    }
    case 'revise_context': return Response.json({revision:first(await rpc('demo_context_revise',{p_tester:tester,p_session:body.source_session_id,p_request:body.request_id,p_action:body.context_action,p_content:body.content||'',p_expected_revision:body.expected_revision}))});
    case 'save_closure': {const session=first(await rpc('demo_closure_save',{p_tester:tester,p_session:body.session_id,p_value:body.value,p_expected_version:body.expected_version}));return Response.json({session})}
-   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_closure_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
-   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_session_finalize',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version)}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_closure': {const session=first<{patient_id:string}>(await rpc('demo_visit_register',{p_tester:tester,p_session:body.session_id,p_expected_version:body.expected_version,p_confirmed:body.confirmed,p_expected_closure_version:body.expected_closure_version??null}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
+   case 'finalize_session': {const session=first<{patient_id:string}>(await rpc('demo_visit_register',{p_tester:tester,p_session:body.session_id,p_expected_version:Number(body.expected_version),p_confirmed:true,p_expected_closure_version:null}));confirmedCompletion(session,body.session_id);queueSummary(request,session.patient_id);return Response.json({session})}
    default:return Response.json({error:'Άγνωστη ενέργεια.'},{status:400});
   }
  }catch(error){return failure(error)}

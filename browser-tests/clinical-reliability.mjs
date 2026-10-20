@@ -45,8 +45,19 @@ function handle(body){
   if(body.document){section.document=body.document;section.content=body.document.fields.map(f=>f.text||'').join('\n')}else section.content=body.content;
   section.version++;section.updated_at=new Date().toISOString();return {section};
  }
+ if(body.action==='start_session'){
+  assert.equal(body.patient_id,patientId);assert.match(body.request_id,/^[0-9a-f-]{36}$/i);
+  const appointment=body.appointment_id?state.appointments.find(a=>a.id===body.appointment_id):null;
+  const existing=state.sessions.find(s=>s.id===(appointment?.session_id||body.request_id));if(existing)return {session:existing};
+  const now=new Date().toISOString();const created={id:body.request_id,patient_id:patientId,tester_id:state.patient.tester_id,session_type:body.session_type,status:'draft',version:0,closure_version:0,closure_draft:null,continuity:null,started_at:now,updated_at:now,completed_at:null};
+  state.sessions.push(created);if(appointment)appointment.session_id=created.id;return {session:created};
+ }
+ if(body.action==='save_closure'){
+  assert.ok(s&&s.status==='draft');assert.equal(body.expected_version,s.closure_version);
+  Object.assign(s,{closure_draft:body.value,closure_version:s.closure_version+1,version:s.version+1});return {session:s};
+ }
  if(body.action==='save_risk'){assert.ok(s);const r=state.risks.find(x=>x.session_id===s.id);Object.assign(r,body.risk,{version:r.version+1});return {risk:r}}
- if(body.action==='finalize_session'){
+ if(body.action==='finalize_session'||body.action==='finalize_closure'){
   assert.ok(s);assert.equal(body.expected_version,s.version);
   if(completionMode==='malformed')return {session:{...s}};
   Object.assign(s,{status:'completed',version:s.version+1,completed_at:new Date().toISOString(),updated_at:new Date().toISOString()});return {session:s};
@@ -126,12 +137,34 @@ try{
    await open('?tab=summary');await page.locator('.patient-voice-cta').click();
    const choices=page.getByRole('menu',{name:'Ενέργειες ασθενή'});await choices.waitFor();
    assert.equal(requests.filter(r=>r.action==='start_session').length,0,'opening the choice must not create an encounter');
-   assert.match(await choices.innerText(),/Η ανεξάρτητη νέα επίσκεψη δεν έχει ενεργοποιηθεί/);
+   assert.match(await choices.innerText(),/χωρίς να αλλάζει τις παλιές σημειώσεις/);
    await choices.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/}).click();
    await page.locator('.patient-visit-surface:not([hidden]) .visit-workspace').waitFor();
    assert.equal(new URL(page.url()).searchParams.get('session'),visitId);
    assert.equal(state.sessions.find(s=>s.id===visitId).started_at,old);
    assert.equal(requests.filter(r=>r.action==='start_session').length,0);
+  });
+  await check('new-visit-keeps-old-record-and-registers-notes-only',async({page,open})=>{
+   const old=state.sessions.find(s=>s.id===visitId);old.started_at=new Date(Date.now()-4*86400000).toISOString();
+   const before=JSON.stringify(old),oldSections=JSON.stringify(state.sections.filter(s=>s.session_id===visitId));
+   await open('?tab=timeline');await page.locator('.patient-voice-cta').click();
+   await page.getByRole('menuitem',{name:'Νέα επίσκεψη',exact:true}).click();
+   await page.locator('.patient-visit-surface .visit-workspace').waitFor();
+   const newId=new URL(page.url()).searchParams.get('session');assert.notEqual(newId,visitId);assert.ok(newId);
+   const notes=page.getByRole('textbox',{name:'Σημειώσεις επίσκεψης',exact:true});await notes.waitFor();await notes.fill('ONLY NEW VISIT NOTES - SYNTHETIC');
+   await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'detached'});
+   await page.locator('.patient-voice-cta').click();const choices=page.getByRole('menuitem',{name:/Ολοκλήρωση σημειώσεων/});assert.equal(await choices.count(),2);
+   await choices.last().click();
+   assert.equal(new URL(page.url()).searchParams.get('session'),newId);
+   await notes.waitFor();await page.reload();await notes.waitFor();assert.equal(await notes.inputValue(),'ONLY NEW VISIT NOTES - SYNTHETIC');
+   await page.getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+   await page.getByRole('region',{name:'Έλεγχος καταχώρισης'}).getByRole('button',{name:'Καταχώριση επίσκεψης',exact:true}).click();
+   await page.getByRole('status').filter({hasText:'Η επίσκεψη καταχωρίστηκε'}).waitFor();
+   assert.equal(state.sessions.find(s=>s.id===newId).status,'completed');
+   assert.equal(JSON.stringify(state.sessions.find(s=>s.id===visitId)),before);
+   assert.equal(JSON.stringify(state.sections.filter(s=>s.session_id===visitId)),oldSections);
+   assert.equal(state.risks.some(r=>r.session_id===newId),false);
+   assert.equal(requests.filter(r=>r.action==='start_session').length,1);
   });
   await check('exact-assessment-and-explicit-review',async({page,open})=>{
    await open(`?tab=psychometrics&assessment=${assessmentId}`);

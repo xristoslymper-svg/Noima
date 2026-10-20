@@ -17,17 +17,13 @@ test('history destinations distinguish draft, completed, and non-session tabs',(
  assert.deepEqual(workspaceLocation('?session=legacy-draft'),{tab:'record',sessionId:'legacy-draft'});
  assert.deepEqual(workspaceLocation('?tab=invalid&session=draft'),{tab:'summary',sessionId:'draft'});
 });
-test('risk represents uncertainty separately; completion matches canonical required fields',()=>{
+test('clinical content is optional without turning missing risk into a negative finding',()=>{
  assert.deepEqual(riskChoices.map(x=>x[0]),['not_assessed','unknown','negative','positive']);
- assert.equal(new Set(riskChoices.map(x=>x[1])).size,4);
  const sections=['interview','mse','assessment','plan','review'].map(section_key=>({section_key,content:'Recorded'}));
- assert.equal(finalizationBlocker(sections)?.anchor,'risk');
- for(const suicidal_ideation of ['unknown','negative'])assert.equal(finalizationBlocker(sections,{suicidal_ideation}),null);
- const risk={suicidal_ideation:'positive',intent:'not_assessed',plan:'unknown',self_harm:'negative',attempt_history:'positive'};
- assert.equal(finalizationBlocker(sections,risk)?.anchor,'risk');
- assert.equal(finalizationBlocker(sections,{...risk,intent:'unknown'}),null);
- assert.equal(finalizationBlocker(sections.filter(s=>s.section_key!=='review'),{suicidal_ideation:'negative'}).anchor,'plan');
- assert.equal(finalizationBlocker(sections.map(s=>({...s,content:s.section_key==='mse'?' ':s.content})),{suicidal_ideation:'negative'}).anchor,'mse');
+ assert.equal(finalizationBlocker([]),null);
+ assert.equal(finalizationBlocker(sections),null);
+ assert.equal(finalizationBlocker([], {suicidal_ideation:'positive',intent:'not_assessed'}),null);
+ assert.equal(finalizationBlocker(sections.filter(s=>s.section_key!=='review')),null);
 });
 test('previous MSE includes corrections and never becomes today’s document',()=>{
  const fixture={sessions:[{id:'old',status:'completed',completed_at:'2026-10-01',started_at:'2026-10-01'},{id:'today',status:'draft',started_at:'2026-10-04'},{id:'future',status:'completed',completed_at:'2026-10-05',started_at:'2026-10-05'}],sections:[{id:'mse-old',session_id:'old',section_key:'mse',content:'Prior mood observation'},{session_id:'future',section_key:'mse',content:'Future'}],addenda:[{id:'correction',session_id:'old',kind:'correction',content:'Corrected prior observation'},{id:'other',session_id:'future'}],corrections:[],appointments:[]};
@@ -144,11 +140,9 @@ test('legacy timeline visit links open Record while new timeline URLs retain bac
  assert.deepEqual(workspaceLocation(workspaceTransitionSearch(search,'record')),{tab:'record',sessionId:'exact'});
 });
 
-test('first assessment needs one plan but retains risk and follow-up review safeguards',()=>{
- const sections=['interview','mse','assessment','plan'].map(section_key=>({section_key,content:'Recorded'}));
- assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'},undefined,true),null);
- assert.equal(finalizationBlocker(sections,{suicidal_ideation:'negative'}).anchor,'plan');
- assert.equal(finalizationBlocker(sections,undefined,undefined,true).anchor,'risk');
+test('first assessment also registers with no clinical fields completed',()=>{
+ assert.equal(finalizationBlocker([],undefined,undefined,true),null);
+ assert.equal(finalizationBlocker([{section_key:'interview',content:'Only clinician notes'}],undefined,undefined,true),null);
 });
 test('first assessment adds empty slots while preserving legacy diagnoses and certainty',()=>{
  const original={kind:'assessment',fields:[{key:'legacy',label:'Legacy',text:'Original narrative'},{key:'diagnosis',label:'Diagnosis',text:'Prior description',status:'provisional',codes:[]}]};

@@ -1,4 +1,5 @@
 'use client';
+import PatientVisualIcon from './PatientVisualIcon';
 import { useCallback, useEffect, useMemo, useState, useRef, useId, type MutableRefObject } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
 import type { PatientBundle } from '@/lib/patients/demo-runtime';
@@ -59,7 +60,7 @@ export function HistoryPanel({bundle,reload,beforeNavigate}:{bundle:PatientBundl
  useEffect(()=>{const flush=()=>flushRef.current();beforeNavigate.current=flush;const leave=(e:BeforeUnloadEvent)=>{if(dirty.current||patientDirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',leave);return()=>{if(beforeNavigate.current===flush)beforeNavigate.current=null;window.removeEventListener('beforeunload',leave)}},[beforeNavigate]);
  const incomplete=bundle.patient.reported_age==null||!bundle.patient.phone||!bundle.patient.amka||!bundle.patient.address;
  return <section className="panel-stack">
-  <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2>Στοιχεία & ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
+  <div className="panel-heading"><div><span className="kicker">ΦΑΚΕΛΟΣ ΑΣΘΕΝΟΥΣ</span><h2><PatientVisualIcon name="history"/>Στοιχεία & ιστορικό</h2><p>Οι απαντήσεις του ασθενούς εμφανίζονται εδώ μόλις υποβληθούν.</p></div></div>
   <nav className={readingStyles.sectionLinks} aria-label="Ενότητες στοιχείων και ιστορικού">
    <a className="patient-reported-link" href={'#'+sectionId+'-details'}>Στοιχεία ασθενή</a>
    <a className="patient-reported-link" href={'#'+sectionId+'-reported'}>Απαντήσεις ασθενούς</a>
@@ -109,7 +110,7 @@ export function MedicationsPanel({bundle,reload,beforeNavigate,currentOnly=false
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(!dirty.current.size)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[]);
  return <section className="panel-stack medication-record">
   <div className="panel-heading medication-record-head">
-   <div><span className="kicker">ΑΓΩΓΗ</span><h2>{currentOnly?'Τρέχουσα αγωγή':'Αγωγή'}</h2></div>
+   <div><span className="kicker">ΑΓΩΓΗ</span><h2><PatientVisualIcon name="medication"/>{currentOnly?'Τρέχουσα αγωγή':'Αγωγή'}</h2></div>
   </div>
   <MedicationTable bundle={currentOnly?{...bundle,medications:bundle.medications.filter(m=>m.status==='active'||m.status==='planned')}:bundle} reload={reload} sessionId={sessionId} editablePlan editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/>
   {currentOnly&&bundle.medications.some(m=>m.status!=='active'&&m.status!=='planned')&&<details className="medication-history-details"><summary>Παλαιότερη αγωγή</summary><MedicationTable bundle={{...bundle,medications:bundle.medications.filter(m=>m.status!=='active'&&m.status!=='planned')}} reload={reload} sessionId={sessionId} editableEffects registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></details>}

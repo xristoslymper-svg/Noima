@@ -1,4 +1,5 @@
 'use client';
+import PatientVisualIcon from './PatientVisualIcon';
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ArrowLeft, Check, CheckCircle2, RotateCcw, ShieldCheck } from 'lucide-react';
@@ -267,14 +268,14 @@ function CompletedList({sessions,onSelect}:{sessions:DemoSession[];onSelect:(id:
 }
 
 function CompletedSessionView({session,bundle,onBack,reload,registerFlusher,onDirtyChange}:{session:DemoSession;bundle:PatientBundle;onBack:()=>void;reload:()=>Promise<unknown>;registerFlusher:RegisterFlusher;onDirtyChange:DirtyChange}){
- return <>{session.continuity?.approved_at&&<section className="visit-part"><header><h3>Επιβεβαιωμένη κλινική μνήμη</h3></header><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.clinical_state_summary}</p><p><strong>Απόφαση θεραπείας:</strong> {session.continuity.treatment_decision}</p><p><strong>Επόμενος έλεγχος:</strong> {session.continuity.next_review_focus}</p><p><strong>Λήψη αγωγής:</strong> {session.continuity.adherence}</p>{session.continuity.pinned_context&&<p>📌 {session.continuity.pinned_context}</p>}<p className="visit-hint">Επιβεβαιώθηκε {fmt(session.continuity.approved_at)} · {session.continuity.source==='ai_assisted'?'Πρόταση AI ελεγμένη από τον κλινικό':'Χειροκίνητη καταγραφή'}</p><details><summary>Αρχικό κείμενο κλινικού</summary><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.transcript||'Δεν χρησιμοποιήθηκε ξεχωριστή αρχική καταγραφή.'}</p></details></section>}<CustomVisitSectionsRead bundle={bundle} sessionId={session.id}/><CompletedRecordEditor key={session.id} session={session} bundle={bundle} reload={reload} onBack={onBack} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>;
+ return <>{session.continuity?.approved_at&&<section className="visit-part"><header><h3><PatientVisualIcon name="summary"/>Επιβεβαιωμένη κλινική μνήμη</h3></header><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.clinical_state_summary}</p><p><strong>Απόφαση θεραπείας:</strong> {session.continuity.treatment_decision}</p><p><strong>Επόμενος έλεγχος:</strong> {session.continuity.next_review_focus}</p><p><strong>Λήψη αγωγής:</strong> {session.continuity.adherence}</p>{session.continuity.pinned_context&&<p>📌 {session.continuity.pinned_context}</p>}<p className="visit-hint">Επιβεβαιώθηκε {fmt(session.continuity.approved_at)} · {session.continuity.source==='ai_assisted'?'Πρόταση AI ελεγμένη από τον κλινικό':'Χειροκίνητη καταγραφή'}</p><details><summary>Αρχικό κείμενο κλινικού</summary><p style={{whiteSpace:'pre-wrap'}}>{session.continuity.transcript||'Δεν χρησιμοποιήθηκε ξεχωριστή αρχική καταγραφή.'}</p></details></section>}<CustomVisitSectionsRead bundle={bundle} sessionId={session.id}/><CompletedRecordEditor key={session.id} session={session} bundle={bundle} reload={reload} onBack={onBack} registerFlusher={registerFlusher} onDirtyChange={onDirtyChange}/></>;
 }
 
 function VisitPart({number:_,title,children,anchor}:{number:string;title:string;children:React.ReactNode;anchor?:string}){
  // Single-field interview and structured MSE already own their content surface.
  const ownsSurface=anchor==='interview'||anchor==='mse';
  return <section className="visit-part" data-visit-part={anchor}>
-  {anchor!=='interview'&&<header><h3>{title}</h3></header>}
+  {anchor!=='interview'&&<header><h3><PatientVisualIcon name={anchor}/>{title}</h3></header>}
   <div className={ownsSurface?'visit-part-content':'visit-part-surface'}>{children}</div>
  </section>;
 }

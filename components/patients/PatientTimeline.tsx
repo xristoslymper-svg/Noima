@@ -1,4 +1,5 @@
 'use client';
+import PatientVisualIcon from './PatientVisualIcon';
 import type {MutableRefObject} from 'react';
 import PriorCourseSection from './PriorCourseSection';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
@@ -16,7 +17,7 @@ export default function PatientTimeline({bundle,selectedSessionId,onVisit,onMeas
  const events=visits.filter(e=>filter==='all'||(filter==='treatment'?context.get(e.sessionId!)!.treatment.length:context.get(e.sessionId!)!.measurements.length));
  const independent=unlinked;
  const emptyMessage=!visits.length?'Δεν έχουν καταγραφεί επισκέψεις ακόμη.':filter==='treatment'?'Δεν υπάρχουν επισκέψεις με συνδεδεμένες αλλαγές αγωγής ή παρενέργειες.':'Δεν υπάρχουν επισκέψεις με συνδεδεμένες ολοκληρωμένες μετρήσεις.';
- return <section className={styles.record+' '+journeyStyles.timeline}><span className="kicker">ΔΙΑΧΡΟΝΙΚΟΣ ΦΑΚΕΛΟΣ</span><h2>Επισκέψεις</h2>
+ return <section className={styles.record+' '+journeyStyles.timeline}><span className="kicker">ΔΙΑΧΡΟΝΙΚΟΣ ΦΑΚΕΛΟΣ</span><h2><PatientVisualIcon name="timeline"/>Επισκέψεις</h2>
   {priorCourseEnabled&&<PriorCourseSection key={bundle.patient.id} patientId={bundle.patient.id} beforeNavigate={beforeNavigate} onSettled={onPriorCourseSettled}/>}
   <div className={styles.filters} aria-label="Φίλτρα πορείας">{([['all','Όλες οι επισκέψεις'],['treatment','Με αλλαγές αγωγής'],['measurements','Με μετρήσεις']] as const).map(([key,label])=><button key={key} aria-pressed={filter===key} onClick={()=>setFilter(key)}>{label}</button>)}</div>
   {events.length?<ol className={styles.list} aria-label="Επισκέψεις με συνδεδεμένη αγωγή και μετρήσεις">{events.map(event=>{

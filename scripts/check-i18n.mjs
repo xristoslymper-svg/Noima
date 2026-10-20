@@ -38,7 +38,7 @@ export function auditDictionaries(root=process.cwd()){
     while(parent){
      if(ts.isCallExpression(parent)&&['ui','displayLabel','systemMessage','translateUiLabel','translateStaticMarkup'].includes(parent.expression.getText(ast))){exempt=true;break}
      if(ts.isBinaryExpression(parent)&&['===','!==','==','!='].includes(parent.operatorToken.getText(ast))){exempt=true;break}
-     if(ts.isJsxAttribute(parent)){display=['title','label','help','description','placeholder','aria-label','alt'].includes(parent.name.getText(ast));break}
+     if(ts.isJsxAttribute(parent)){display=['title','label','help','description','placeholder','aria-label','alt','statusText','emptyText','emptyMessage','loadingText','savingText','confirmLabel','cancelLabel','buttonLabel'].includes(parent.name.getText(ast));break}
      if(ts.isJsxExpression(parent)&&!ts.isJsxAttribute(parent.parent)){display=true}
      if(ts.isJsxElement(parent)||ts.isJsxSelfClosingElement(parent))break;
      parent=parent.parent;

@@ -49,7 +49,7 @@ export default function ClinicalSummary({bundle,compact=false,overview=false,bri
  const reason=result?.key===key?result.data.reason:null;
  const readinessText=reason==='no_completed_visit'?t('clinical.summaryAfterFirstVisit'):reason==='insufficient_notes'?t('clinical.briefNotesSummaryHelp'):reason?t('clinical.summaryUnavailableFallback'):null;
  const hasDraft=bundle.sessions.some(s=>s.status==='draft');
- if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} statusText={state==='unavailable'?'Δεν επιβεβαιώθηκε η ενημέρωση της σύνθεσης· εμφανίζονται αποσπάσματα φακέλου.':result?.key===key&&result.data.reason==='summary_pending'?'Ο φάκελος άλλαξε ή δεν υπάρχει σύνθεση· εμφανίζονται τρέχοντα αποσπάσματα.':undefined} onRefresh={()=>setRefresh(n=>n+1)}/>;
+ if(brief)return <BriefClinicalSummary card={card} patientId={bundle.patient.id} findings={state!=='unavailable'&&result?.key===key?result.data.findings:undefined} loading={state==='loading'} statusText={state==='unavailable'?t('clinical.summaryRefreshUnconfirmed'):result?.key===key&&result.data.reason==='summary_pending'?t('clinical.summaryPendingExcerpts'):undefined} onRefresh={()=>setRefresh(n=>n+1)}/>;
  return <section className="clinical-summary">
   <header className="clinical-summary-head"><div><span className="summary-editorial-kicker">{compact?t('clinical.beforeVisitKicker'):t('clinical.atAGlanceKicker')}</span><h2>{compact?t('clinical.briefOverview'):t('clinical.currentState')}</h2></div></header>
   {readinessText&&<p className="clinical-summary-notice" role="status">{readinessText}</p>}

@@ -506,7 +506,7 @@
     "components/patients/ClinicalSummary.tsx": "cecdb9e8155a4199cd21223b3de20518d920eecd",
     "components/patients/FollowupClosure.tsx": "ea2c85bc8448461c9c862ae3ab709c456ca14ed6",
     "components/patients/PatientContext.tsx": "d1b9102c2d2929d0db1fc8a69994b0fe93770dbd",
-    "components/patients/PatientJourney.module.css": "e58a232642525fae271c83b0df305cb470a46226",
+    "components/patients/PatientJourney.module.css": "0484fe5b0d4fd6e02efef3c400bc8c759f65b35f",
     "components/patients/PatientJourney.tsx": "3adb7dbcd21ebefc3516aa1ece872cf720050d38",
     "components/patients/PatientPanels.tsx": "aa79d8371ad0b1a71357b208294ab8dd2b6e48d9",
     "components/patients/PatientReading.module.css": "ef171bb77501a90422675567f2ef72f556d250d0",

@@ -94,7 +94,7 @@ const riskOptions=[['not_assessed',t('clinical.notAssessed')],['unknown',t('comm
   catch(e){setError(e instanceof Error?e.message:t('errors.correctionSave'))}
   finally{setBusy(false)}
  }
- return <section className="session-workspace completed-session-view corrected-record-view">
+ return <section data-completed-record data-reading={!editing} className="session-workspace completed-session-view corrected-record-view">
   <div className="session-work-head">
    <div><button className="session-back-button" onClick={()=>{if(correctionDirty){setError(t('visits.saveOrCancelCorrection'));return}onBack()}}>{t('visits.backToVisits')}</button><span className="visit-label completed"><span>{t('visits.finalizedKicker')}</span><i/> {session.session_type==='initial_assessment'?t('visits.initialAssessmentKicker'):t('visits.followupKicker')}</span><h2>{session.session_type==='initial_assessment'?t('visits.initialAssessment'):t('visits.followup')}</h2><p>{t('visits.correctionHistoryHelp')}</p></div>
    <div className="completed-record-actions"><span className="draft-updated">{t('visits.completedPrefix')} {formatClinicDateTime(session.completed_at||session.started_at,locale)}</span>{!editing&&<button type="button" disabled={!ready} onClick={beginEditing}>{ready?t('visits.correctRecord'):t('visits.loadingRecord')}</button>}</div>

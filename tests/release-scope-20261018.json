@@ -917,7 +917,8 @@
       "browser-tests/treatment-polish-fixture.tsx",
       "browser-tests/treatment-polish.mjs",
       ".github/workflows/clinical-ui.yml",
-      "app/visit-dialog-polish.css"
+      "app/visit-dialog-polish.css",
+      "app/screen-polish.css"
     ]
   }
 }

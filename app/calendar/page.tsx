@@ -498,7 +498,7 @@ const {timeLabel,appointmentType,weekKeys,focusTitle,statusLabel,dateTimeLabel}=
           <PilotProfile/>
         </header>
 
-        <div className="calendar-page-content">
+        <div className="calendar-page-content" data-screen-polish="calendar">
           <div className="calendar-page-heading">
             <div>
               <h1>{t('navigation.calendar')}</h1>

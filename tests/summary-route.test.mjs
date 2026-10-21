@@ -160,7 +160,7 @@ test('longitudinal prompt receives all four completed encounters and keeps the t
   const body=JSON.parse(o.body),input=JSON.parse(body.input);
   if(++calls===1){
    assert.match(body.instructions,/BRIEFING PRIORITIES/);
-   assert.match(body.instructions,/all relevant encounter sources/);
+   assert.match(body.instructions,/Never list every score or visit/);
    assert.match(body.instructions,/including in the brief view/);
    assert.equal(new Set(input.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size,4);
    return response({findings:[{text:'Αναφέρεται μείωση GAD-7 από 17 τον Ιούλιο σε 7 τον Οκτώβριο.',source_ids:['section:report-0','section:report-3'],theme:'psychometrics'}]});

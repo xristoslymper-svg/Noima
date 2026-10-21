@@ -3114,10 +3114,8 @@
     "lastVisit": "Last completed visit: {date}",
     "review": "Review focus",
     "completedOnly": "Based on completed visits · not a current assessment.",
-    "attention": "Source review needed",
     "noDiagnosis": "No diagnosis / ICD-10 recorded.",
     "differential": "Differential diagnosis",
-    "riskNote": "Risk note · review needed",
     "sourceDetails": "Evidence notes"
   }
 }

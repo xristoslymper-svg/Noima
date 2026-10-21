@@ -3108,12 +3108,15 @@
     "missing": "Temporary record excerpts — no up-to-date summary is available. Select “Create summary”.",
     "failed": "The verified synthesis could not be completed. These are record excerpts, not an AI summary. You can try again.",
     "verified": "Source-checked synthesis · review the sources before use",
-    "diagnosis": "Diagnosis & differential",
+    "diagnosis": "Diagnosis / ICD-10",
     "medication": "Recorded active medication",
     "noStructuredMedication": "No active medication is recorded. This does not confirm non-use.",
     "lastVisit": "Last completed visit: {date}",
-    "review": "Review focus from the latest plan",
+    "review": "Review focus",
     "completedOnly": "Based on completed visits · not a current assessment.",
-    "attention": "Source review needed"
+    "attention": "Source review needed",
+    "noDiagnosis": "No diagnosis / ICD-10 recorded.",
+    "differential": "Differential diagnosis",
+    "riskNote": "Risk note · review needed"
   }
 }

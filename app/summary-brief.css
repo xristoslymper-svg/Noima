@@ -11,3 +11,10 @@
 @media(max-width:700px){[data-summary-facts]{grid-template-columns:minmax(0,1fr)}[data-summary-header]{align-items:flex-start}[data-summary-generate]{width:100%}}
 
 [data-summary-alerts]{padding:14px 16px;border:1px solid #dfc69f;border-radius:12px;background:#fff8ed;margin:16px 0;font-size:13px}
+
+[data-summary-differential]{margin-top:8px;font-size:12px;color:#5c7064}
+[data-summary-differential] summary,[data-summary-risk-note] summary{cursor:pointer;min-height:32px;align-content:center}
+[data-summary-risk-note]{padding:10px 14px;margin-top:14px;border:1px solid #dfc69f;border-radius:10px;background:#fff8ed;font-size:12px;color:#66543b}
+[data-summary-risk-note] p{font-size:13px;margin:8px 0 0}
+[data-summary-facts]{gap:10px;margin:12px 0}
+[data-summary-facts]>div,[data-summary-review]{padding:11px 14px}

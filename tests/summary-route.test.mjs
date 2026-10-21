@@ -172,3 +172,29 @@ test('longitudinal prompt receives all four completed encounters and keeps the t
  assert.equal(result.mode,'synthesis',JSON.stringify(result));
  assert.equal(calls,2);
 });
+
+test('sparse clinical note stays a single finding without invented medication or personal context',async()=>{
+ const b=fixture();b.addenda=[];b.assessments=[];b.medications=[];b.risks=[];
+ b.sections=[{id:'sparse',session_id:'s',section_key:'interview',content:'Reports persistent difficulty sleeping.'}];
+ let calls=0;const h=route(b,async()=>response(++calls===1?{findings:[{text:'Reports persistent difficulty sleeping.',source_ids:['section:sparse'],theme:'course'}]}:{checks:[{key:'briefing:0',supported:true,issue:'none'}]}));
+ const d=await(await h.POST(request())).json();assert.equal(d.mode,'synthesis',JSON.stringify(d));
+ assert.equal(d.findings.filter(f=>f.origin==='synthesis').length,1);
+ assert.deepEqual(d.card.medications,[]);assert.deepEqual(d.card.diagnoses,[]);
+ assert.ok(d.card.alerts.some(f=>f.key==='risk-missing'));
+});
+
+test('conflicting narrative dose cannot replace authoritative medication when grounding rejects it',async()=>{
+ const b=fixture();b.addenda=[];b.assessments=[];b.risks=[];
+ b.medications=[{id:'active-med',status:'active',medication_name:'Escitalopram',dose:10,unit:'mg',frequency:'daily'}];
+ b.sections=[{id:'reported-dose',session_id:'s',section_key:'interview',content:'Patient reports taking 20 mg; dose discrepancy is unresolved.'}];
+ let calls=0;const h=route(b,async(u,o)=>{
+  const input=JSON.parse(JSON.parse(o.body).input);
+  if(++calls===1)return response({findings:[{text:'Current prescribed dose is 20 mg.',source_ids:['section:reported-dose'],theme:'medication'}]});
+  assert.ok(input.canonical.some(s=>s.id==='medication:active-med'&&s.content.dose===10));
+  return response({checks:[{key:'briefing:0',supported:false,issue:'canonical_conflict'}]});
+ });
+ const d=await(await h.POST(request())).json();
+ assert.equal(d.mode,'canonical');assert.equal(d.reason,'grounding_not_verified');
+ assert.match(d.card.medications[0].text,/10 mg/);
+ assert.ok(!d.findings.some(f=>f.origin==='synthesis'));
+});

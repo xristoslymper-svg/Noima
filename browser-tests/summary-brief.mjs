@@ -3,7 +3,8 @@ import {build} from 'esbuild';import {chromium} from 'playwright';import {create
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';
 import {buildClinicalCard} from '../lib/clinical/clinical-card.ts';import {buildSummaryContext} from '../lib/clinical/summary-context.ts';
 const bundle=JSON.parse(readFileSync('lib/clinical/treatment-preview.json','utf8'));
-const context=buildSummaryContext(bundle),card=buildClinicalCard(bundle,context);
+const context=buildSummaryContext(bundle),base=buildClinicalCard(bundle,context);
+const card={...base,diagnoses:[{text:'F41.1 · QA DIAGNOSIS · provisional',source_ids:[]},{text:'Διαφορική: QA DIFFERENTIAL IN FULL',source_ids:[]}],medications:[{text:'QA MEDICATION · 10 mg · daily',source_ids:[]}],alerts:[{key:'risk-note',text:'QA NARRATIVE RISK NOTE IN FULL',source_ids:[],attention:true},{key:'risk',text:'QA STRUCTURED SAFETY SIGNAL',source_ids:[],attention:true}]};
 const finding={key:'briefing:0',label:'Πορεία',text:'Αναφέρει σταδιακή βελτίωση με υπολειπόμενες δυσκολίες. Η ιστορική εικόνα δεν αποτελεί σημερινή αξιολόγηση.',source_ids:context.sources.filter(s=>s.kind==='session_section'&&s.section_key==='interview').slice(0,2).map(s=>s.id),attention:false,origin:'synthesis',theme:'course'};
 const out=resolve('test-results/summary-brief');mkdirSync(out,{recursive:true});
 await build({entryPoints:['browser-tests/summary-brief-fixture.tsx'],bundle:true,outfile:resolve(out,'fixture.js'),jsx:'automatic',define:{'process.env':'{}','process.env.NODE_ENV':'"production"'},alias:{'@':process.cwd()},loader:{'.module.css':'local-css'},plugins:[{name:'navigation',setup(b){
@@ -39,7 +40,17 @@ try{
   const create=page.getByRole('button',{name:lang==='el'?'Δημιουργία σύνοψης':'Create summary',exact:true});
   await create.waitFor();assert.equal(posts,lang==='el'?0:1);
   const header=await create.boundingBox();assert.ok(header.y<300);
-  assert.ok(await page.locator('[data-summary-facts]').innerText());
+  assert.match(await page.locator('[data-summary-facts]').innerText(),/F41.1.*provisional/s);
+  await page.getByText('QA MEDICATION · 10 mg · daily',{exact:true}).waitFor();
+  await page.getByText('QA STRUCTURED SAFETY SIGNAL',{exact:true}).waitFor();
+  assert.equal(await page.getByText('Διαφορική: QA DIFFERENTIAL IN FULL',{exact:true}).isVisible(),false);
+  await page.locator('[data-summary-differential]>summary').click();
+  assert.equal(await page.getByText('Διαφορική: QA DIFFERENTIAL IN FULL',{exact:true}).isVisible(),true);
+  await page.locator('[data-summary-differential]>summary').click();
+  assert.equal(await page.getByText('QA NARRATIVE RISK NOTE IN FULL',{exact:true}).isVisible(),false);
+  await page.locator('[data-summary-risk-note]>summary').click();
+  assert.equal(await page.getByText('QA NARRATIVE RISK NOTE IN FULL',{exact:true}).isVisible(),true);
+  await page.locator('[data-summary-risk-note]>summary').click();
   assert.ok(await page.locator('[data-summary-review]').innerText());
   const beforePosts=posts;await create.click();
   await page.getByRole('button',{name:lang==='el'?'Δημιουργία…':'Creating…',exact:true}).waitFor();

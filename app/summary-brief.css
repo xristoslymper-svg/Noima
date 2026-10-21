@@ -18,3 +18,7 @@
 [data-summary-risk-note] p{font-size:13px;margin:8px 0 0}
 [data-summary-facts]{gap:10px;margin:12px 0}
 [data-summary-facts]>div,[data-summary-review]{padding:11px 14px}
+
+[data-summary-alerts]{background:transparent;border-color:#e4e9e3;color:#65766c;font-size:12px;margin-top:16px}
+[data-summary-alerts]>summary{cursor:pointer;min-height:32px;align-content:center}
+[data-summary-alerts] p{font-size:12px}

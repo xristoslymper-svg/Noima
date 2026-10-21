@@ -3107,7 +3107,7 @@
     "checkingHelp": "Checking for an up-to-date summary. Showing record excerpts temporarily.",
     "missing": "Temporary record excerpts — no up-to-date summary is available. Select “Create summary”.",
     "failed": "The verified synthesis could not be completed. These are record excerpts, not an AI summary. You can try again.",
-    "verified": "Source-checked synthesis · review the sources before use",
+    "verified": "Record-based synthesis",
     "diagnosis": "Diagnosis / ICD-10",
     "medication": "Recorded active medication",
     "noStructuredMedication": "No active medication is recorded. This does not confirm non-use.",
@@ -3117,6 +3117,7 @@
     "attention": "Source review needed",
     "noDiagnosis": "No diagnosis / ICD-10 recorded.",
     "differential": "Differential diagnosis",
-    "riskNote": "Risk note · review needed"
+    "riskNote": "Risk note · review needed",
+    "sourceDetails": "Evidence notes"
   }
 }

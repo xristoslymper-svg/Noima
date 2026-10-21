@@ -32,3 +32,16 @@ test('brief disclosure never hides structured risk, missing risk or medication/c
  assert.deepEqual([...result.visible,...result.notes].flatMap(i=>i.source_ids).sort(),alerts.flatMap(i=>i.source_ids).sort());
  assert.equal(JSON.stringify(alerts),before);
 });
+
+test('brief starts with clinical orientation and preserves evidence in a secondary disclosure',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const ui=readFileSync('components/patients/BriefClinicalSummary.tsx','utf8');
+ assert.ok(ui.indexOf('data-summary-facts')<ui.indexOf('data-summary-alerts'));
+ assert.match(ui,/<details data-summary-alerts>/);
+ assert.match(ui,/alerts.visible.map/);
+ assert.match(ui,/alerts.notes.map/);
+ assert.ok(ui.indexOf('summaryBrief.verified')>ui.indexOf('briefFooter'));
+ const route=readFileSync('app/api/clinical/summary/route.ts','utf8');
+ assert.match(route,/Never list every score or visit/);
+ assert.match(route,/independent clinical evidence verifier/);
+});

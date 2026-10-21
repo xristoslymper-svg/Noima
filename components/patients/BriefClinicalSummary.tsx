@@ -23,7 +23,7 @@ export default function BriefClinicalSummary({card,patientId,findings,loading,on
  return <section className={styles.section} aria-label={t('current.m131')} data-summary-brief title={statusText}>
  <div className="panel-heading" data-summary-header><div><span className="kicker">{t('clinical.atAGlanceKicker')}</span><h2><PatientVisualIcon name="summary"/>{t('current.m131')}</h2></div><button type="button" className="patient-reported-link" data-summary-generate disabled={loading} onClick={onRefresh}>{generating?t('summaryBrief.generating'):loading?t('summaryBrief.checking'):card.synthesized?t('summaryBrief.refresh'):t('summaryBrief.create')}</button></div>
  {!synthesis.length&&<p role="status" className={styles.muted}>{generating?t('summaryBrief.generatingHelp'):unavailable?t('summaryBrief.failed'):loading?t('summaryBrief.checkingHelp'):t('summaryBrief.missing')}</p>}
- {synthesis.length&&<p className={styles.muted} role="status">{t('summaryBrief.verified')}{generatedAt?' · '+formatClinicDateTime(generatedAt,locale):''}</p>}
+ {synthesis.length>0&&<p className={styles.muted} role="status">{t('summaryBrief.verified')}{generatedAt?' · '+formatClinicDateTime(generatedAt,locale):''}</p>}
  {card.alerts.length>0&&<div data-summary-alerts><strong>{t('summaryBrief.attention')}</strong>{card.alerts.map(item=><p key={item.key}>{item.text}</p>)}</div>}
  <div data-summary-facts>
  {facts.diagnoses.length>0&&<div><strong>{t('summaryBrief.diagnosis')}</strong>{facts.diagnoses.map((item,index)=><p key={index}>{item.text}</p>)}</div>}

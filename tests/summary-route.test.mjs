@@ -27,7 +27,7 @@ function route(bundle,fetcher,env={OPENAI_API_KEY:'local-fixture'},db={}){
   }
   throw new Error('unexpected_rpc:'+name);
  };
- const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal,process:{env},fetch:fetcher,require:id=>intlTestModule(id)??(id.includes('summary-sources')?{withSummarySources}:id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:id.includes('clinical-card')?{buildClinicalCard}:id.includes('provider-evidence')?{providerEvidence}:context)};vm.runInNewContext(code,sandbox);return module.exports;
+ const module={exports:{}};const sandbox={module,exports:module.exports,console:{error(){}},Error,Response,URL,AbortSignal:db.abortSignal||AbortSignal,process:{env},fetch:fetcher,require:id=>intlTestModule(id)??(id.includes('summary-sources')?{withSummarySources}:id.includes('pilot/route')?{withPilot:handler=>handler}:id.includes('demo-runtime')?{patientBundle:async()=>{if(bundle instanceof Error)throw bundle;return bundle},request:apiRequest,rpc:apiRpc}:id.includes('identity')?{isClinicalId}:id.includes('clinical-card')?{buildClinicalCard}:id.includes('provider-evidence')?{providerEvidence}:context)};vm.runInNewContext(code,sandbox);return module.exports;
 }
 const request=(body={})=>new Request('http://localhost/api/clinical/summary',{method:'POST',body:JSON.stringify({tester:'668a6cc0-1692-4c17-a807-c84d09e9f02e',patient_id:'61dd44b6-bd6f-cd2a-c3ac-b0092d267eb1',...body})});
 const withPresentation=data=>data&&Array.isArray(data.findings)?{...data,findings:data.findings.map(f=>({...f,group_label:f.group_label||'Γενική εικόνα',theme:f.theme||'general'}))}:data;
@@ -197,4 +197,21 @@ test('conflicting narrative dose cannot replace authoritative medication when gr
  assert.equal(d.mode,'canonical');assert.equal(d.reason,'grounding_not_verified');
  assert.match(d.card.medications[0].text,/10 mg/);
  assert.ok(!d.findings.some(f=>f.origin==='synthesis'));
+});
+
+test('one total generation deadline aborts slow output, labels timeout and never commits unverified prose',async()=>{
+ const b=fixture();b.addenda=[];const budgets=[];let calls=0;
+ const db={abortSignal:{any:AbortSignal.any.bind(AbortSignal),timeout(ms){
+  budgets.push(ms);const controller=new AbortController();
+  setTimeout(()=>{const error=new Error('redacted');error.name='TimeoutError';controller.abort(error)},ms===95000?10:100);
+  return controller.signal;
+ }}};
+ const h=route(b,async(u,o)=>{calls++;return new Promise((resolve,reject)=>{
+  if(o.signal.aborted)return reject(o.signal.reason);
+  o.signal.addEventListener('abort',()=>reject(o.signal.reason),{once:true});
+ })},{OPENAI_API_KEY:'fixture'},db);
+ const d=await(await h.POST(request())).json();
+ assert.equal(d.mode,'canonical');assert.equal(d.reason,'provider_timeout');
+ assert.deepEqual(budgets,[95000,45000]);assert.equal(calls,1);
+ assert.equal(db.cache,undefined);assert.ok(!db.calls.some(c=>c.name==='demo_clinical_summary_commit'));
 });

@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import LocaleProvider from '../i18n/LocaleProvider';
+import el from '../i18n/messages/el.json';import en from '../i18n/messages/en.json';
+import ClinicalSummary from '../components/patients/ClinicalSummary';
+import type {PatientBundle} from '../lib/patients/demo-runtime';
+import fixture from '../lib/clinical/treatment-preview.json';
+import '../app/globals.css';import '../app/noima-ui.css';import '../app/clinical-refinement.css';import '../app/summary-brief.css';
+const locale=new URLSearchParams(location.search).get('lang')==='en'?'en':'el';
+const bundle=structuredClone(fixture) as unknown as PatientBundle;
+createRoot(document.getElementById('root')!).render(<LocaleProvider initialLocale={locale} initialMessages={locale==='en'?en:el}><main style={{maxWidth:1000,margin:'auto',padding:20}}><ClinicalSummary bundle={bundle} brief readOnly onSessions={()=>{}} onPsychometrics={()=>{}} onMedications={()=>{}} onHistory={()=>{}}/></main></LocaleProvider>);

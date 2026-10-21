@@ -1,0 +1,24 @@
+[data-summary-header]{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+[data-summary-header] [data-summary-generate]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid #bfd3ca;border-radius:10px;background:#edf5f1;color:#2f6758;font:inherit;font-size:13px;font-weight:650;cursor:pointer;text-decoration:none}
+[data-summary-generate]:disabled{opacity:.6;cursor:wait}
+[data-summary-generate]:focus-visible{outline:2px solid #356e59;outline-offset:3px}
+[data-summary-facts]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+[data-summary-facts]>div,[data-summary-review]{padding:14px 16px;border:1px solid #e4e9e3;border-radius:12px;background:#fff;min-width:0}
+[data-summary-brief] p{overflow-wrap:anywhere;line-height:1.65}
+[data-summary-facts] strong,[data-summary-review]>strong{font-size:12px;color:#5c7064}
+[data-summary-facts] p,[data-summary-review] p{font-size:14px;margin:8px 0 0}
+[data-summary-review]{margin-top:16px}
+@media(max-width:700px){[data-summary-facts]{grid-template-columns:minmax(0,1fr)}[data-summary-header]{align-items:flex-start}[data-summary-generate]{width:100%}}
+
+[data-summary-alerts]{padding:14px 16px;border:1px solid #dfc69f;border-radius:12px;background:#fff8ed;margin:16px 0;font-size:13px}
+
+[data-summary-differential]{margin-top:8px;font-size:12px;color:#5c7064}
+[data-summary-differential] summary,[data-summary-risk-note] summary{cursor:pointer;min-height:32px;align-content:center}
+[data-summary-risk-note]{padding:10px 14px;margin-top:14px;border:1px solid #dfc69f;border-radius:10px;background:#fff8ed;font-size:12px;color:#66543b}
+[data-summary-risk-note] p{font-size:13px;margin:8px 0 0}
+[data-summary-facts]{gap:10px;margin:12px 0}
+[data-summary-facts]>div,[data-summary-review]{padding:11px 14px}
+
+[data-summary-alerts]{background:transparent;border-color:#e4e9e3;color:#65766c;font-size:12px;margin-top:16px}
+[data-summary-alerts]>summary{cursor:pointer;min-height:32px;align-content:center}
+[data-summary-alerts] p{font-size:12px}

@@ -403,15 +403,14 @@ try{
    const findings=Array.from({length:5},(_,i)=>({key:'synthesis-'+i,origin:'synthesis',text:'QA SYNTHESIS '+i+': Αναφέρει μικρότερη δυσκολία στην καθημερινότητα.',source_ids:[source.id]}));
    await page.route('**/api/clinical/summary*',route=>{
     summaryRequests.push(route.request().method());
-    return route.fulfill({json:{card:{date:state.sessions[0].started_at,synthesized:true,notes:[],sources:[source]},findings,mode:'synthesis',context_hash:'fixture'}});
+    return route.fulfill({json:{card:{diagnoses:[],medications:[],alerts:[],date:state.sessions[0].started_at,synthesized:true,notes:[],sources:[source]},findings,mode:'synthesis',context_hash:'fixture'}});
    });
    await open('?tab=summary');
    const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
    await brief.getByText(findings[0].text,{exact:true}).waitFor();
    assert.equal(await brief.locator('footer>details>summary').count(),1);
    assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),false);
-   assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),false);
-   await brief.getByText('Πλήρης σύνθεση',{exact:true}).click();
+   assert.equal(await brief.getByText('Πλήρης σύνθεση',{exact:true}).count(),0);
    assert.equal(await brief.getByText(findings[4].text,{exact:true}).isVisible(),true);
    await brief.getByText('Δες καρτέλα',{exact:true}).click();
    assert.equal(await brief.getByRole('link',{name:source.label,exact:true}).isVisible(),true);
@@ -571,11 +570,11 @@ try{
 
   await check('smooth-summary-refresh-is-explicit-and-freshness-is-visible',async({page,open})=>{
    const methods=[];let current='QA CURRENT SYNTHESIS';
-   await page.route('**/api/clinical/summary*',route=>{methods.push(route.request().method());return route.fulfill({json:{mode:route.request().method()==='POST'?'synthesis':'canonical',reason:'summary_pending',context_hash:'current',card:{synthesized:route.request().method()==='POST',notes:[{text:'QA CURRENT RECORDED NOTE',source_ids:[]}],sources:[]},findings:[{origin:'synthesis',text:current,source_ids:[]}]}})});
+   await page.route('**/api/clinical/summary*',route=>{methods.push(route.request().method());return route.fulfill({json:{mode:route.request().method()==='POST'?'synthesis':'canonical',reason:'summary_pending',context_hash:'current',card:{diagnoses:[],medications:[],alerts:[],synthesized:route.request().method()==='POST',notes:[{text:'QA CURRENT RECORDED NOTE',source_ids:[]}],sources:[]},findings:[{origin:'synthesis',text:current,source_ids:[]}]}})});
    await open('?tab=summary');const brief=page.getByRole('region',{name:'Κλινική σύνοψη',exact:true});
-   await brief.getByText('Ο φάκελος άλλαξε ή δεν υπάρχει σύνθεση· εμφανίζονται τρέχοντα αποσπάσματα.',{exact:true}).waitFor();
+   await brief.getByText('Προσωρινή προβολή αποσπασμάτων — δεν υπάρχει ενημερωμένη σύνοψη. Επιλέξτε «Δημιουργία σύνοψης».',{exact:true}).waitFor();
    assert.ok(methods.length>0&&methods.every(m=>m==='GET'));
-   await brief.getByRole('button',{name:'Ενημέρωση σύνοψης',exact:true}).click();
+   await brief.getByRole('button',{name:'Δημιουργία σύνοψης',exact:true}).click();
    await brief.getByText(current,{exact:true}).waitFor();assert.equal(methods.filter(m=>m==='POST').length,1);
   });
   await check('smooth-next-review-keeps-complete-corrected-source',async({page,open})=>{

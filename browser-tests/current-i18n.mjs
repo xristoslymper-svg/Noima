@@ -74,8 +74,8 @@ try{
  await page.goto(origin+'/patients/demo/custom-visit-preview?surface=visit&tab=record&session='+visit);await dialog.waitFor({state:'visible'});assert.equal(await dialog.locator('textarea').first().inputValue(),'SYNTHETIC NOTE · Δεν αλλάζει η κλινική σημείωση.');report.push('removing in-app language settings preserves the same editor, visit and working note through refresh');
  await dialog.getByRole('button',{name:'Close visit and return to patient record',exact:true}).click();
  await page.getByRole('button',{name:'Summary',exact:true}).click();
- await page.getByText("We couldn't confirm an updated summary. Showing record excerpts.",{exact:true}).waitFor();
- await switchTo('el');await page.getByText('Δεν επιβεβαιώθηκε η ενημέρωση της σύνθεσης· εμφανίζονται αποσπάσματα φακέλου.',{exact:true}).waitFor();
+ await page.getByText("The verified synthesis could not be completed. These are record excerpts, not an AI summary. You can try again.",{exact:true}).waitFor();
+ await switchTo('el');await page.getByText('Δεν ολοκληρώθηκε η επιβεβαιωμένη σύνθεση. Εμφανίζονται αποσπάσματα, όχι AI σύνοψη. Μπορείτε να δοκιμάσετε ξανά.',{exact:true}).waitFor();
  await switchTo('en');report.push('summary fallback messages remain understandable in both languages without translating recorded notes');
  for(const [surface,heading]of [['tele','Teleconsultations'],['presence','My practice page'],['library','Library']]){
   await page.goto(origin+'/?surface='+surface);await page.getByRole('heading',{name:heading,exact:true}).waitFor();await page.screenshot({path:resolve(out,surface+'-en.png'),fullPage:true});

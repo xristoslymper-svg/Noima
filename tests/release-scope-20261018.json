@@ -918,7 +918,12 @@
       "browser-tests/treatment-polish.mjs",
       ".github/workflows/clinical-ui.yml",
       "app/visit-dialog-polish.css",
-      "app/screen-polish.css"
+      "app/screen-polish.css",
+      "lib/clinical/brief-presentation.ts",
+      "app/summary-brief.css",
+      "tests/summary-brief.test.mjs",
+      "browser-tests/summary-brief-fixture.tsx",
+      "browser-tests/summary-brief.mjs"
     ]
   }
 }

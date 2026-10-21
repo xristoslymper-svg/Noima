@@ -3097,5 +3097,23 @@
     "office": "The practice",
     "faq": "Frequently asked questions",
     "contact": "Contact & appointment request"
+  },
+  "summaryBrief": {
+    "create": "Create summary",
+    "refresh": "Update summary",
+    "generating": "Creating…",
+    "checking": "Checking summary…",
+    "generatingHelp": "Creating a synthesis from completed visits and checking it against its sources. Record excerpts remain available until it is complete.",
+    "checkingHelp": "Checking for an up-to-date summary. Showing record excerpts temporarily.",
+    "missing": "Temporary record excerpts — no up-to-date summary is available. Select “Create summary”.",
+    "failed": "The verified synthesis could not be completed. These are record excerpts, not an AI summary. You can try again.",
+    "verified": "Source-checked synthesis · review the sources before use",
+    "diagnosis": "Diagnosis & differential",
+    "medication": "Recorded active medication",
+    "noStructuredMedication": "No active medication is recorded. This does not confirm non-use.",
+    "lastVisit": "Last completed visit: {date}",
+    "review": "Review focus from the latest plan",
+    "completedOnly": "Based on completed visits · not a current assessment.",
+    "attention": "Source review needed"
   }
 }

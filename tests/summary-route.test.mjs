@@ -149,3 +149,26 @@ test('source service failure never validates an older synthesis',async()=>{
  const r=await handler.GET(new Request('http://localhost/api/clinical/summary?view=brief&tester=668a6cc0-1692-4c17-a807-c84d09e9f02e&patient_id='+b.patient.id));
  assert.equal(r.status,503);
 });
+
+test('longitudinal prompt receives all four completed encounters and keeps the two-endpoint score evidence',async()=>{
+ const b=fixture();b.addenda=[];b.assessments=[];b.risks=[];
+ b.sessions=[1,2,3,4].map(n=>({id:'visit-'+n,status:'completed',started_at:'2026-0'+(6+n)+'-07T15:00:00Z',completed_at:'2026-0'+(6+n)+'-07T15:50:00Z'}));
+ b.sessions[3].started_at='2026-10-07T15:00:00Z';b.sessions[3].completed_at='2026-10-07T15:50:00Z';
+ b.sections=b.sessions.map((s,n)=>({id:'report-'+n,session_id:s.id,section_key:'interview',content:'Αναφέρει άγχος. GAD-7: '+[17,14,10,7][n]+'/21.'}));
+ let calls=0;
+ const h=route(b,async(u,o)=>{
+  const body=JSON.parse(o.body),input=JSON.parse(body.input);
+  if(++calls===1){
+   assert.match(body.instructions,/BRIEFING PRIORITIES/);
+   assert.match(body.instructions,/all relevant encounter sources/);
+   assert.match(body.instructions,/including in the brief view/);
+   assert.equal(new Set(input.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size,4);
+   return response({findings:[{text:'Αναφέρεται μείωση GAD-7 από 17 τον Ιούλιο σε 7 τον Οκτώβριο.',source_ids:['section:report-0','section:report-3'],theme:'psychometrics'}]});
+  }
+  assert.deepEqual(input.findings[0].sources.map(s=>s.id),['section:report-0','section:report-3']);
+  return response({checks:[{key:'briefing:0',supported:true,issue:'none'}]});
+ });
+ const result=await(await h.POST(request())).json();
+ assert.equal(result.mode,'synthesis',JSON.stringify(result));
+ assert.equal(calls,2);
+});

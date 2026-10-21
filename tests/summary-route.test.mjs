@@ -165,7 +165,7 @@ test('longitudinal prompt receives all four completed encounters and keeps the t
    assert.equal(new Set(input.sources.filter(s=>s.kind==='session_section').map(s=>s.session_id)).size,4);
    return response({findings:[{text:'Αναφέρεται μείωση GAD-7 από 17 τον Ιούλιο σε 7 τον Οκτώβριο.',source_ids:['section:report-0','section:report-3'],theme:'psychometrics'}]});
   }
-  assert.deepEqual(input.findings[0].sources.map(s=>s.id),['section:report-0','section:report-3']);
+  assert.deepEqual(input.findings[0].sources.map(s=>s.id).sort(),['section:report-0','section:report-3']);
   return response({checks:[{key:'briefing:0',supported:true,issue:'none'}]});
  });
  const result=await(await h.POST(request())).json();

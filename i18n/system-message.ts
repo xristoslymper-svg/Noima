@@ -4,6 +4,10 @@ import {useOptionLabel} from './option-labels';
 import {noticeKeys} from './system-notices';
 // Only render transient system errors through this adapter, never clinical text.
 const messageKeys={
+// Legacy system aliases continue to resolve to current branded translations.
+"Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.":"errors.tabletNotConnected",
+"No tablet is connected. Open NOIMA Tablet on the device first.":"errors.tabletNotConnected",
+
   "Δεν φορτώθηκε ο λογαριασμός": "errors.accountLoad",
   "Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.": "errors.checkConnection",
   "Δεν φορτώθηκαν οι διαθέσιμοι τρόποι σύνδεσης. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.": "errors.authOptions",
@@ -93,7 +97,7 @@ const messageKeys={
   "Η κατάσταση δεν επιβεβαιώθηκε.": "errors.assistantStatusUnconfirmed",
   "Η αναζήτηση δεν είναι διαθέσιμη προσωρινά.": "errors.searchTemporarilyUnavailable",
   "Δεν φορτώθηκαν οι επιλογές αποστολής.": "errors.deliveryOptionsLoad",
-  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.": "errors.tabletNotConnected",
+  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το psi-space Tablet στη συσκευή.": "errors.tabletNotConnected",
   "Δεν δημιουργήθηκε η ανάθεση.": "errors.assignmentCreate",
   "Το email δεν στάλθηκε.": "errors.emailNotSent",
   "Η ανάθεση δεν ολοκληρώθηκε.": "errors.assignmentIncomplete",
@@ -440,7 +444,7 @@ const messageKeys={
   "The status could not be confirmed.": "errors.assistantStatusUnconfirmed",
   "Patient search is temporarily unavailable.": "errors.patientSearchUnavailable",
   "Delivery options could not be loaded.": "errors.deliveryOptionsLoad",
-  "No tablet is connected. Open NOIMA Tablet on the device first.": "errors.tabletNotConnected",
+  "No tablet is connected. Open psi-space Tablet on the device first.": "errors.tabletNotConnected",
   "The assignment could not be created.": "errors.assignmentCreate",
   "The email was not sent.": "errors.emailNotSent",
   "The assignment could not be completed.": "errors.assignmentIncomplete",

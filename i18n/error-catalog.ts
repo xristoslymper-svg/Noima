@@ -1,5 +1,8 @@
 // Stable compatibility mapping for API error messages; never used for clinical content.
 export const errorMessageKeys = {
+  // Recognize pre-rename system labels; translated values use the current brand.
+"Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.":"errors.tabletNotConnected",
+
   "Δεν φορτώθηκε ο λογαριασμός": "errors.accountLoad",
   "Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.": "errors.checkConnection",
   "Δεν φορτώθηκαν οι διαθέσιμοι τρόποι σύνδεσης. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.": "errors.authOptions",
@@ -89,7 +92,7 @@ export const errorMessageKeys = {
   "Η κατάσταση δεν επιβεβαιώθηκε.": "errors.assistantStatusUnconfirmed",
   "Η αναζήτηση δεν είναι διαθέσιμη προσωρινά.": "errors.searchTemporarilyUnavailable",
   "Δεν φορτώθηκαν οι επιλογές αποστολής.": "errors.deliveryOptionsLoad",
-  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.": "errors.tabletNotConnected",
+  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το psi-space Tablet στη συσκευή.": "errors.tabletNotConnected",
   "Δεν δημιουργήθηκε η ανάθεση.": "errors.assignmentCreate",
   "Το email δεν στάλθηκε.": "errors.emailNotSent",
   "Η ανάθεση δεν ολοκληρώθηκε.": "errors.assignmentIncomplete",

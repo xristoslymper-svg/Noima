@@ -89,7 +89,7 @@ export const errorMessageKeys = {
   "Η κατάσταση δεν επιβεβαιώθηκε.": "errors.assistantStatusUnconfirmed",
   "Η αναζήτηση δεν είναι διαθέσιμη προσωρινά.": "errors.searchTemporarilyUnavailable",
   "Δεν φορτώθηκαν οι επιλογές αποστολής.": "errors.deliveryOptionsLoad",
-  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.": "errors.tabletNotConnected",
+  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το psi-space Tablet στη συσκευή.": "errors.tabletNotConnected",
   "Δεν δημιουργήθηκε η ανάθεση.": "errors.assignmentCreate",
   "Το email δεν στάλθηκε.": "errors.emailNotSent",
   "Η ανάθεση δεν ολοκληρώθηκε.": "errors.assignmentIncomplete",

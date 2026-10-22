@@ -17,7 +17,7 @@ export default function GoogleMaps({practice}:{practice:Practice}){
  const [selected,setSelected]=useState<ProfileField[]>([]);
  const [status,setStatus]=useState(''),[confirm,setConfirm]=useState(false);
  const title=useRef<HTMLHeadingElement>(null);
- const local:Business={id:syntheticBusiness.id,name:syntheticBusiness.name,phone:practice.phone,city:practice.city,hours:practice.hours,website:'https://noima.example/iatreio/anna-deigma'};
+ const local:Business={id:syntheticBusiness.id,name:syntheticBusiness.name,phone:practice.phone,city:practice.city,hours:practice.hours,website:'https://psi-space.example/iatreio/anna-deigma'};
  const changed=differences(local,remote);
  function transition(next:typeof step){setStep(next);setConfirm(false);setSelected([]);setStatus('');requestAnimationFrame(()=>title.current?.focus())}
  function disconnect(){transition('idle');setRemote({...syntheticBusiness});setStatus('Η προσομοίωση αποσυνδέθηκε. Δεν υπήρξε σύνδεση Google.')}

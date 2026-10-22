@@ -28,3 +28,11 @@ test('rebranding retains existing session, preference, draft and calendar identi
  assert.match(read('lib/calendar/google-sync.ts'),/noimaWorkspace/);
  assert.match(read('lib/mail/providers.ts'),/process.env.NOIMA_APP_ORIGIN/);
 });
+
+test('legacy API labels still resolve to the renamed message instead of leaking old branding',async()=>{
+ const {errorMessageKeys}=await import('../i18n/error-catalog.ts');
+ const old='Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.';
+ const current=old.replace('Noima','psi-space');
+ assert.equal(errorMessageKeys[old],errorMessageKeys[current]);
+ assert.equal(errorMessageKeys[current],'errors.tabletNotConnected');
+});

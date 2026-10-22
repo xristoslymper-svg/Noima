@@ -1,5 +1,9 @@
 'use client';
-import {useTranslations} from 'next-intl';
+import {
+  // Recognize pre-rename system labels; translated values use the current brand.
+"Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.":"errors.tabletNotConnected",
+"No tablet is connected. Open NOIMA Tablet on the device first.":"errors.tabletNotConnected",
+useTranslations} from 'next-intl';
 import {useOptionLabel} from './option-labels';
 import {noticeKeys} from './system-notices';
 // Only render transient system errors through this adapter, never clinical text.

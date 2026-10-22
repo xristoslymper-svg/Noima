@@ -36,3 +36,36 @@ test('legacy API labels still resolve to the renamed message instead of leaking 
  assert.equal(errorMessageKeys[old],errorMessageKeys[current]);
  assert.equal(errorMessageKeys[current],'errors.tabletNotConnected');
 });
+
+test('runtime source changes are limited to product-name substitutions',()=>{
+ const expected={
+  "app/layout.tsx": "52265358",
+  "components/AuthShell.tsx": "f3e936dd",
+  "components/PilotAccess.tsx": "7da12fc0",
+  "components/calendar/GoogleCalendarPreview.tsx": "efab9750",
+  "components/intake/PatientIntakeForm.tsx": "3dd1cd32",
+  "components/patients/PatientJourney.tsx": "33c320fd",
+  "components/patients/PatientWorkspace.tsx": "8571e0c7",
+  "components/presence/PracticePage.tsx": "21a41d13",
+  "components/presence/GoogleMaps.tsx": "4855cc4b",
+  "app/api/intake/email/route.ts": "aec3cb5e",
+  "app/api/mailbox/route.ts": "a8cd8c6",
+  "app/api/patients/demo/export/route.ts": "e1e5164f",
+  "app/api/intake/scan/route.ts": "b92ae958",
+  "app/api/clinical/summary/route.ts": "1619b6bb",
+  "app/assessment/AssessmentForm.tsx": "b827a8f6",
+  "app/assessment/teleconsultation-preview/page.tsx": "9796b78e",
+  "app/digital-presence/page.tsx": "57bb2f4f",
+  "app/iatreio/[slug]/page.tsx": "cd5e2672",
+  "app/page.tsx": "c4dfde00",
+  "lib/calendar/google-sync.ts": "1addf755",
+  "lib/calendar/google-preview-state.ts": "48058ac0",
+  "lib/clinical/clinical-card.ts": "5f308860",
+  "lib/clinical/record-export-print.ts": "c8a897bc",
+  "lib/clinical/record-export.ts": "339f2578",
+  "lib/copilot/clinical.ts": "70c37eea"
+};
+ const normalize=s=>s.replace(/\b(?:NOIMA|Noima|psi-space)\b|noima(?=\.example|-patient-)/g,'BRAND');
+ const fingerprint=s=>{let h=2166136261;for(const char of normalize(s)){h^=char.codePointAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(16)};
+ for(const [path,hash] of Object.entries(expected))assert.equal(fingerprint(read(path)),hash,path);
+});

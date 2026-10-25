@@ -27,7 +27,7 @@ async function handleGET(request:Request){
     'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
    }});
   }
-  return new Response(patientRecordText(bundle),{headers:{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':`attachment; filename="noima-patient-${patient}.txt"`,'Cache-Control':'no-store'}});
+  return new Response(patientRecordText(bundle),{headers:{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':`attachment; filename="psi-space-patient-${patient}.txt"`,'Cache-Control':'no-store'}});
  }catch{return errorJson({error:'Δεν έγινε εξαγωγή του φακέλου.'},{status:503});}
 }
 

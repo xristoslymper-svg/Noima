@@ -17,8 +17,8 @@ import PilotNotice from '@/i18n/PilotNotice';
 import AccountSessionBoundary from '@/components/AccountSessionBoundary';
 
 export const metadata: Metadata = {
-  title: "NOIMA",
-  description: "NOIMA"
+  title: "Ψ-space",
+  description: "Ψ-space"
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

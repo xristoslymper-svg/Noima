@@ -49,7 +49,7 @@ for(const [path,source]of Object.entries(baseline))test('localization preserves 
  const missing=[];for(const item of before){const n=counts.get(item)||0;if(n)counts.set(item,n-1);else missing.push(item)}
  assert.deepEqual(missing,[],'Existing field, control, handler or layout changed');
 });
-test('every existing stylesheet remains byte-identical to production b8649aa',()=>{
+test('styles remain identical to the approved baseline, including Ψ-space authentication polish',()=>{
  for(const [path,sha]of Object.entries(styles)){
   const content=readFileSync(path);const actual=createHash('sha1').update('blob '+content.length+'\0').update(content).digest('hex');assert.equal(actual,sha,path);
  }

@@ -143,9 +143,9 @@ function medicalName(b:PatientBundle,id:string,oldState:Record<string,unknown>|n
  const html=['<!doctype html><html lang="'+locale+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
  '<title>',escapeHtml(title),'</title><style nonce="',escapeHtml(nonce),'">',stylesheet,'</style></head><body>',
  ui('<div class="toolbar"><span>Εκτυπώσιμη έκδοση · Αποθήκευση ως PDF από τις επιλογές εκτύπωσης</span><button type="button" id="print-document">Εκτύπωση / PDF</button></div>'),
- ui('<main class="paper"><div class="brand">Ψ · NOIMA</div><h1>Κλινικός φάκελος</h1><p class="sub">ΔΟΚΙΜΑΣΤΙΚΑ ΔΕΔΟΜΕΝΑ · '),escapeHtml(name),ui(' · Εξαγωγή '),printDate(exportedAt),'</p>',
+ ui('<main class="paper"><div class="brand">Ψ · Ψ-space</div><h1>Κλινικός φάκελος</h1><p class="sub">ΔΟΚΙΜΑΣΤΙΚΑ ΔΕΔΟΜΕΝΑ · '),escapeHtml(name),ui(' · Εξαγωγή '),printDate(exportedAt),'</p>',
  summary,patient,history,visits,meds,timeline,effects,psychometrics,appointments,
- ui('<div class="footer">NOIMA · Δοκιμαστική εξαγωγή υποθετικού φακέλου · Ελέγξτε το περιεχόμενο πριν από οποιαδήποτε κοινοποίηση.</div>'),
+ ui('<div class="footer">Ψ-space · Δοκιμαστική εξαγωγή υποθετικού φακέλου · Ελέγξτε το περιεχόμενο πριν από οποιαδήποτε κοινοποίηση.</div>'),
  '</main><script nonce="',escapeHtml(nonce),'">document.getElementById("print-document").addEventListener("click",()=>window.print());</script></body></html>'].join('');
  return html;
 }

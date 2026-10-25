@@ -20,8 +20,8 @@ async function message(link:string,doctorName:string,tools:string[],locale:Local
  const invitation=t('notifications.intakeEmailInvitation',{doctor:doctorName||t('notifications.intakeEmailClinic')});
  const duration=t('notifications.intakeEmailDuration',{min,max}),privacy=t('notifications.intakeEmailPrivacy');
  const subject=t('notifications.intakeEmailSubject');
- const body=[t('notifications.intakeEmailGreeting'),'',invitation,duration,'',t('notifications.intakeEmailLink'),link,'',privacy,'','NOIMA'].join('\n');
- const html=`<!doctype html><html lang="${locale}"><body style="margin:0;padding:28px;background:#f4f6f3;font-family:Arial,sans-serif;color:#2f4138"><main style="max-width:560px;margin:auto;padding:28px;background:white;border:1px solid #e1e7e3;border-radius:18px"><div>Ψ · NOIMA</div><h1>${escapeHtml(t('notifications.intakeEmailHeading'))}</h1><p>${escapeHtml(invitation)}</p><p>${escapeHtml(duration)}</p><p><a href="${escapeHtml(link)}" style="display:inline-block;background:#477663;color:white;padding:13px 18px;border-radius:10px">${escapeHtml(subject)}</a></p><p style="font-size:12px">${escapeHtml(privacy)}</p></main></body></html>`;
+ const body=[t('notifications.intakeEmailGreeting'),'',invitation,duration,'',t('notifications.intakeEmailLink'),link,'',privacy,'','Ψ-space'].join('\n');
+ const html=`<!doctype html><html lang="${locale}"><body style="margin:0;padding:28px;background:#f4f6f3;font-family:Arial,sans-serif;color:#2f4138"><main style="max-width:560px;margin:auto;padding:28px;background:white;border:1px solid #e1e7e3;border-radius:18px"><div>Ψ · Ψ-space</div><h1>${escapeHtml(t('notifications.intakeEmailHeading'))}</h1><p>${escapeHtml(invitation)}</p><p>${escapeHtml(duration)}</p><p><a href="${escapeHtml(link)}" style="display:inline-block;background:#477663;color:white;padding:13px 18px;border-radius:10px">${escapeHtml(subject)}</a></p><p style="font-size:12px">${escapeHtml(privacy)}</p></main></body></html>`;
  return {subject,body,html};
 }
 

@@ -21,9 +21,9 @@ export function previewReducer(state:PreviewState,action:PreviewAction):PreviewS
   const chosen=action.choice==='local'?state.local:slot;
   const local={...state.local,...chosen,revision:String(Number(state.local.revision)+1)};
   const remote=remoteValue(local,current.etag+'-resolved');
-  return {...state,local,remotes:state.remotes.map(x=>x.id===remote.id?remote:x),links:[{localId:local.id,remoteId:remote.id,localRevision:local.revision,remoteEtag:remote.etag,slot:{start:local.start,end:local.end,cancelled:local.cancelled}}],comparison:null,message:action.choice==='local'?'Κρατήθηκε η επιλογή NOIMA και στις δύο συνθετικές πλευρές.':'Κρατήθηκε η επιλογή Google και στις δύο συνθετικές πλευρές.'};
+  return {...state,local,remotes:state.remotes.map(x=>x.id===remote.id?remote:x),links:[{localId:local.id,remoteId:remote.id,localRevision:local.revision,remoteEtag:remote.etag,slot:{start:local.start,end:local.end,cancelled:local.cancelled}}],comparison:null,message:action.choice==='local'?'Κρατήθηκε η επιλογή Ψ-space και στις δύο συνθετικές πλευρές.':'Κρατήθηκε η επιλογή Google και στις δύο συνθετικές πλευρές.'};
  }
- if(action.type==='local-move'||action.type==='local-cancel')return {...state,local:{...state.local,revision:String(Number(state.local.revision)+1),cancelled:action.type==='local-cancel',...(action.type==='local-move'?{start:'2026-11-02T17:00:00+02:00',end:'2026-11-02T18:00:00+02:00'}:{})},message:'Η αλλαγή έγινε στο συνθετικό NOIMA. Πατήστε συγχρονισμό.'};
+ if(action.type==='local-move'||action.type==='local-cancel')return {...state,local:{...state.local,revision:String(Number(state.local.revision)+1),cancelled:action.type==='local-cancel',...(action.type==='local-move'?{start:'2026-11-02T17:00:00+02:00',end:'2026-11-02T18:00:00+02:00'}:{})},message:'Η αλλαγή έγινε στο συνθετικό Ψ-space. Πατήστε συγχρονισμό.'};
  if(action.type==='remote-move'||action.type==='remote-cancel')return {...state,remotes:state.remotes.map(x=>({...x,etag:x.etag+'x',status:action.type==='remote-cancel'?'cancelled':'confirmed',...(action.type==='remote-move'?{start:{dateTime:'2026-11-02T18:00:00+02:00'},end:{dateTime:'2026-11-02T19:00:00+02:00'}}:{})})),message:'Η αλλαγή έγινε στο συνθετικό Google. Πατήστε συγχρονισμό.'};
  const plan=planSync(previewWorkspace,[state.local],state.remotes,state.links);
  if(plan.conflicts.length){

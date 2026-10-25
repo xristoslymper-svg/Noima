@@ -12,7 +12,7 @@ async function post(req:Request){if(req.headers.get('origin')!==new URL(req.url)
  if(b.action!=='connect'||!['google','microsoft'].includes(b.provider))return errorJson({error:'Μη έγκυρη επιλογή.'},{status:400});
  const provider=b.provider as Provider;if(!ready(provider))return errorJson({error:'Η σύνδεση αυτού του παρόχου δεν έχει ρυθμιστεί ακόμη. Μπορείτε να ανοίξετε το μήνυμα στο mailbox σας.'},{status:503});
  const {data:{user}}=await client.auth.getUser();if(!user)return errorJson({error:'Συνδεθείτε.'},{status:401});
- if(!validEmail(user.email))return Response.json({error:'Ο λογαριασμός NOIMA χρειάζεται έγκυρο email.'},{status:400});
+ if(!validEmail(user.email))return Response.json({error:'Ο λογαριασμός Ψ-space χρειάζεται έγκυρο email.'},{status:400});
  const state=randomBytes(32).toString('base64url'),verifier=randomBytes(32).toString('base64url');
  (await cookies()).set('noima-mail-oauth',seal({state,verifier,provider,user:user.id,email:user.email,created:Date.now()},user.id),{httpOnly:true,secure:true,sameSite:'lax',path:'/api/mailbox',maxAge:600});
  return Response.json({url:authorization(provider,state,createHash('sha256').update(verifier).digest('base64url'),user.email)});

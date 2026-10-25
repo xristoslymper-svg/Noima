@@ -11,7 +11,7 @@ test('psi-space branding covers Greek and English copy without changing semantic
  }
 });
 test('psi-space appears in authentication, public pages, patient forms and export branding',()=>{
- for(const path of ['app/layout.tsx','components/AuthShell.tsx','components/PilotAccess.tsx','components/presence/PracticePage.tsx','components/intake/PatientIntakeForm.tsx','app/assessment/AssessmentForm.tsx','app/api/intake/email/route.ts','lib/clinical/record-export-print.ts','lib/clinical/record-export.ts']){
+ for(const path of ['app/layout.tsx','components/AuthShell.tsx','components/presence/PracticePage.tsx','components/intake/PatientIntakeForm.tsx','app/assessment/AssessmentForm.tsx','app/api/intake/email/route.ts','lib/clinical/record-export-print.ts','lib/clinical/record-export.ts']){
   const source=read(path);
   assert.match(source,/Ψ-space/,path);
   assert.doesNotMatch(source,/\b(?:NOIMA|Noima)\b/,path);

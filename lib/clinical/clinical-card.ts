@@ -58,7 +58,7 @@ export function buildClinicalCard(bundle:PatientBundle,context:SummaryContext,fi
  // The next step is the doctor's complete record, not an optional model detail.
  const nextStep:CardItem[]=plan.length?[{text:plan.map(i=>i.text).join(' '),source_ids:[...new Set(plan.flatMap(i=>i.source_ids))],role:'plan'}]:[];
  const openContext:CardItem[]=context.findings.filter(f=>f.key.startsWith('context:')).map(f=>({text:f.text,source_ids:f.source_ids}));
- const supplemental:CardItem[]=context.sources.filter(s=>(s.kind==='patient_self_report'||s.kind==='prior_course')&&String((s.content as {text?:string}).text||'').trim()).map(s=>({text:(s.kind==='patient_self_report'?'Ο ασθενής αναφέρει στο ερωτηματολόγιο (χωρίς κλινική επιβεβαίωση): ':'Αναδρομική καταγραφή θεράποντος, πριν από το psi-space: ')+String((s.content as {text:string}).text),source_ids:[s.id]}));
+ const supplemental:CardItem[]=context.sources.filter(s=>(s.kind==='patient_self_report'||s.kind==='prior_course')&&String((s.content as {text?:string}).text||'').trim()).map(s=>({text:(s.kind==='patient_self_report'?'Ο ασθενής αναφέρει στο ερωτηματολόγιο (χωρίς κλινική επιβεβαίωση): ':'Αναδρομική καταγραφή θεράποντος, πριν από το Ψ-space: ')+String((s.content as {text:string}).text),source_ids:[s.id]}));
  const notes:CardItem[]=[...(synthesized?findings.filter(f=>f.origin==='synthesis'&&(f.theme!=='plan'||!plan.length)).map(f=>({text:f.text,source_ids:f.source_ids,role:'course' as const})):recorded.filter(i=>i.role==='course')),...nextStep,...(!synthesized?supplemental:[])];
  const briefing=buildPrevisitBriefing(bundle,context,medications,findings,synthesized);
  const orientation=buildSummaryOrientation(bundle,context,{diagnoses,medications,briefing},findings,synthesized);

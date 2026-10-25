@@ -3,7 +3,7 @@ import {effectiveRisk} from './corrections.ts';
 import type {PatientBundle} from '../patients/demo-runtime';
 // Plain text, not executable HTML/Markdown. No unapproved AI-derived conclusions or invitation tokens.
 export function patientRecordText(b:PatientBundle,exportedAt=new Date().toISOString()){
- const lines=[`Ψ / psi-space — Κλινικός φάκελος`,`Μόνο φανταστικά δεδομένα · Εξαγωγή ${exportedAt}`,`${b.patient.first_name} ${b.patient.last_name}`,`ID: ${b.patient.id}`,`Ηλικία: ${b.patient.reported_age??'Δεν καταγράφηκε'}`,`Λόγος προσέλευσης: ${b.patient.chief_complaint||'Δεν καταγράφηκε'}`,`Τηλέφωνο: ${b.patient.phone||'Δεν καταγράφηκε'} · Email: ${b.patient.email||'Δεν καταγράφηκε'}`,'','ΙΣΤΟΡΙΚΟ',JSON.stringify(b.history,null,2)||'Δεν καταγράφηκε'];
+ const lines=[`Ψ / Ψ-space — Κλινικός φάκελος`,`Μόνο φανταστικά δεδομένα · Εξαγωγή ${exportedAt}`,`${b.patient.first_name} ${b.patient.last_name}`,`ID: ${b.patient.id}`,`Ηλικία: ${b.patient.reported_age??'Δεν καταγράφηκε'}`,`Λόγος προσέλευσης: ${b.patient.chief_complaint||'Δεν καταγράφηκε'}`,`Τηλέφωνο: ${b.patient.phone||'Δεν καταγράφηκε'} · Email: ${b.patient.email||'Δεν καταγράφηκε'}`,'','ΙΣΤΟΡΙΚΟ',JSON.stringify(b.history,null,2)||'Δεν καταγράφηκε'];
  const clinicalTime=(session:PatientBundle['sessions'][number])=>session.started_at;
  for(const s of [...b.sessions].sort((a,c)=>Date.parse(clinicalTime(a))-Date.parse(clinicalTime(c)))){
   lines.push('',`ΚΑΤΑΓΡΑΦΗ ${clinicalTime(s)} · ${s.status==='completed'?'Οριστικοποιημένη':'Μη ολοκληρωμένη'} · ${s.id}`,`Ολοκλήρωση τεκμηρίωσης: ${s.completed_at||'—'} · Έκδοση ${s.version}`);

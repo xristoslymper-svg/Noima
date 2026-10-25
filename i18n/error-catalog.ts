@@ -1,5 +1,6 @@
 // Stable compatibility mapping for API error messages; never used for clinical content.
 export const errorMessageKeys = {
+  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Ψ-space Tablet στη συσκευή.": "errors.tabletNotConnected",
   // Recognize pre-rename system labels; translated values use the current brand.
 "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.":"errors.tabletNotConnected",
 

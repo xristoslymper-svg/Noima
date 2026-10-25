@@ -23,7 +23,7 @@ export function googleEventId(workspace:string,localId:string){
  return 'noima'+workspace.replaceAll('-','').toLowerCase()+localId.replaceAll('-','').toLowerCase();
 }
 export function googleBody(workspace:string,event:LocalEvent){
- return {summary:'Ραντεβού psi-space',visibility:'private',transparency:'opaque',
+ return {summary:'Ραντεβού Ψ-space',visibility:'private',transparency:'opaque',
  start:{dateTime:event.start},end:{dateTime:event.end},
  extendedProperties:{private:{noimaWorkspace:workspace,noimaEvent:event.id}}};
 }

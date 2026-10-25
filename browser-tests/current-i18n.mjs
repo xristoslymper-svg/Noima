@@ -103,9 +103,23 @@ try{
  // Real auth components: the selector exists only on login and preference survives navigation/refresh.
  await page.goto(origin+'/login?surface=login');
  await page.getByRole('button',{name:'English',exact:true}).waitFor();
+ const checkAuthPolish=async()=>{
+  assert.match(await page.locator('.auth-brand').innerText(),/Ψ-space/);
+  assert.doesNotMatch(await page.locator('.login-method-hint').innerText(),/NOIMA|psi-space|Ψ-space/);
+  assert.equal(await page.locator('input[type="email"]').getAttribute('autocomplete'),'email');
+  assert.equal(await page.locator('input[type="password"]').getAttribute('autocomplete'),'current-password');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  const controls=await page.locator('.auth-card button,.auth-card input').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
+  assert.ok(controls.every(h=>h>=44),'auth controls retain touch targets');
+ };
+ await checkAuthPolish();
+ await page.setViewportSize({width:1440,height:1000});await checkAuthPolish();
+ await page.screenshot({path:resolve(out,'psi-space-login-en-desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Ελληνικά',exact:true}).click();
  await page.waitForFunction(()=>document.documentElement.lang==='el');
  await page.reload();await page.getByRole('button',{name:'Ελληνικά',exact:true}).waitFor();
+ await checkAuthPolish();await page.screenshot({path:resolve(out,'psi-space-login-el-mobile.png'),fullPage:true});
  assert.equal(await page.getByRole('button',{name:'Ελληνικά',exact:true}).getAttribute('aria-pressed'),'true');
  await page.getByRole('button',{name:'English',exact:true}).click();
  await page.waitForFunction(()=>document.documentElement.lang==='en');

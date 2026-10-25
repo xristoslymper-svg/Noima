@@ -4,6 +4,8 @@ import {useOptionLabel} from './option-labels';
 import {noticeKeys} from './system-notices';
 // Only render transient system errors through this adapter, never clinical text.
 const messageKeys={
+  "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Ψ-space Tablet στη συσκευή.": "errors.tabletNotConnected",
+  "No tablet is connected. Open Ψ-space Tablet on the device first.": "errors.tabletNotConnected",
 // Legacy system aliases continue to resolve to current branded translations.
 "Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.":"errors.tabletNotConnected",
 "No tablet is connected. Open NOIMA Tablet on the device first.":"errors.tabletNotConnected",

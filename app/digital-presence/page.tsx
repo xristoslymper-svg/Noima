@@ -5,5 +5,5 @@ import {hostedEnabled} from '@/lib/presence/public-policy';
 import PresenceConnected from '@/components/presence/PresenceConnected';
 import {previewEnabled} from '@/lib/presence/model';
 export const dynamic='force-dynamic';
-export async function generateMetadata(){const t=await getTranslations();return {title:t('current.m355')+' · psi-space',robots:{index:false,follow:false}}}
+export async function generateMetadata(){const t=await getTranslations();return {title:t('current.m355')+' · Ψ-space',robots:{index:false,follow:false}}}
 export default function Page(){if(!previewEnabled(process.env))notFound();return <PresenceConnected hosted={hostedEnabled(process.env)} googleMaps={googleMapsPreview(process.env)}/>}

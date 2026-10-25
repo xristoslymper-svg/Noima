@@ -5,20 +5,20 @@ const read=path=>readFileSync(path,'utf8');
 test('psi-space branding covers Greek and English copy without changing semantic translation keys',()=>{
  for(const locale of ['el','en']){
   const messages=JSON.parse(read('i18n/messages/'+locale+'.json'));
-  assert.equal(/\\b(?:NOIMA|Noima)\\b/.test(JSON.stringify(Object.values(messages))),false);
-  assert.match(messages.polish.m008,/psi-space/);
-  assert.match(messages.documents.printFooter,/psi-space/);
+  assert.equal(/\b(?:NOIMA|Noima)\b/.test(JSON.stringify(Object.values(messages))),false);
+  assert.match(messages.polish.m008,/Ψ-space/);
+  assert.match(messages.documents.printFooter,/Ψ-space/);
  }
 });
 test('psi-space appears in authentication, public pages, patient forms and export branding',()=>{
  for(const path of ['app/layout.tsx','components/AuthShell.tsx','components/PilotAccess.tsx','components/presence/PracticePage.tsx','components/intake/PatientIntakeForm.tsx','app/assessment/AssessmentForm.tsx','app/api/intake/email/route.ts','lib/clinical/record-export-print.ts','lib/clinical/record-export.ts']){
   const source=read(path);
-  assert.match(source,/psi-space/,path);
-  assert.doesNotMatch(source,/\\b(?:NOIMA|Noima)\\b/,path);
+  assert.match(source,/Ψ-space/,path);
+  assert.doesNotMatch(source,/\b(?:NOIMA|Noima)\b/,path);
  }
  assert.match(read('components/AuthShell.tsx'),/>Ψ</);
  assert.match(read('components/patients/PatientWorkspace.tsx'),/psi-space-patient-/);
- assert.match(read('lib/calendar/google-sync.ts'),/summary:'Ραντεβού psi-space'/);
+ assert.match(read('lib/calendar/google-sync.ts'),/summary:'Ραντεβού Ψ-space'/);
 });
 test('rebranding retains existing session, preference, draft and calendar identity contracts',()=>{
  assert.match(read('i18n/config.ts'),/'noima-locale'/);
@@ -32,7 +32,7 @@ test('rebranding retains existing session, preference, draft and calendar identi
 test('legacy API labels still resolve to the renamed message instead of leaking old branding',async()=>{
  const {errorMessageKeys}=await import('../i18n/error-catalog.ts');
  const old='Δεν υπάρχει συνδεδεμένο tablet. Ανοίξτε πρώτα το Noima Tablet στη συσκευή.';
- const current=old.replace('Noima','psi-space');
+ const current=old.replace('Noima','Ψ-space');
  assert.equal(errorMessageKeys[old],errorMessageKeys[current]);
  assert.equal(errorMessageKeys[current],'errors.tabletNotConnected');
 });
@@ -65,7 +65,7 @@ test('runtime source changes are limited to product-name substitutions',()=>{
   "lib/clinical/record-export.ts": "339f2578",
   "lib/copilot/clinical.ts": "70c37eea"
 };
- const normalize=s=>s.replace(/\b(?:NOIMA|Noima|psi-space)\b|noima(?=\.example|-patient-)/g,'BRAND');
+ const normalize=s=>s.replaceAll('Ψ-space','psi-space').replace("{t('settings.emailAlternative')}</small>","{t('settings.emailAlternative')} psi-space</small>").replace(/\b(?:NOIMA|Noima|psi-space)\b|noima(?=\.example|-patient-)/g,'BRAND');
  const fingerprint=s=>{let h=2166136261;for(const char of normalize(s)){h^=char.codePointAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(16)};
  for(const [path,hash] of Object.entries(expected))assert.equal(fingerprint(read(path)),hash,path);
 });
